@@ -409,6 +409,12 @@ needs `sdkgo` v0.28.0 or later; connectors need no change.
   so changing them in Dex Web needs an application restart.
 - Credentials are read again before each provider call, so reauthorizing in
   Dex Web takes effect on the next call without a restart.
+- A connection that Dex Web removed, or that the file lists more than once,
+  stops resolving from the next call, and it is never refreshed. The error
+  names the reason, and `ResolveWithRefresh` wraps a removal in
+  `ErrRefreshFailed`. Every other connection in the file keeps resolving. A
+  file that lists a connection more than once cannot be loaded, because the
+  configuration document cannot hold it. Both need `sdkgo` v0.36.0 or later.
 - Dex Web does not refresh credentials. When a refreshable connector refreshes
   one, the application writes the new credential back to `connections.json`
   while that file still holds the credential it read, so a restart or Dex Web
@@ -576,9 +582,11 @@ connector's normal call path, such as the Step context passed to
   result, so a rotated refresh token is never lost. A returned credential
   always belongs to the target that was compared, even when a rebind lands
   after the comparison.
-- A file that lists one connection key more than once fails every resolution
-  of that key, because no single target remains. Under an expectation the
-  error wraps `ErrConnectionTargetChanged`; loading such a file fails.
+- A record removed from the file, or listed more than once, fails every
+  resolution of that key with an error wrapping `ErrConnectionTargetChanged`,
+  because no single expected target remains. The unchanged rewrite checks this
+  again before a refresh. Other keys of the same file resolve and compare
+  their own targets as usual.
 - An empty or malformed fingerprint never matches. Resolutions of other
   connections are unaffected, and a later call for the same key replaces the
   expectation.
@@ -673,7 +681,8 @@ refresh request and no file write, including a rebind written while a guarded
 refresh waits for another holder's lock, between the check under the lock and
 the unchanged rewrite, and during that rewrite. In none of these cases is the
 rewrite allowed to overwrite the newer file. Other tests cover recovery after a
-settings change, duplicated records, a record without
+settings change, removed records, a duplicated record that leaves other
+connections resolving, a record without
 `authorizationId`, the generated connector provider path, fail-closed hosted
 and shared sources, and a write-back that keeps `authorizationId` and unknown
 members across a restart.

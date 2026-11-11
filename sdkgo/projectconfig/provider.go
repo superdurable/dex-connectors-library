@@ -154,7 +154,7 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 		}
 		record, _, err := provider.store.readRecordForCredentialUse(ctx, provider.key)
 		if err != nil {
-			return zero, err
+			return zero, refreshReadError(err)
 		}
 		switch record.Status {
 		case CredentialRevoked, CredentialReauthorizationRequired:
@@ -221,6 +221,14 @@ func (provider *CredentialResolver[C]) ResolveAfterRejection(ctx context.Context
 	return provider.ResolveWithRefresh(ctx, driver)
 }
 
+// refreshReadError reports a connection removed from its file as a failed refresh: nothing was sent.
+func refreshReadError(err error) error {
+	if errors.Is(err, errConnectionRemovedFromFile) && !errors.Is(err, ErrConnectionTargetChanged) {
+		return fmt.Errorf("%w: %w", ErrRefreshFailed, err)
+	}
+	return err
+}
+
 // refuseSharedTargetExpectation fails closed: the broker serves no authorization identity to compare.
 func (provider *CredentialResolver[C]) refuseSharedTargetExpectation(ctx context.Context) error {
 	if _, isExpected := expectedConnectionTarget(ctx, provider.key); isExpected {
@@ -281,7 +289,7 @@ func (provider *CredentialResolver[C]) refreshWhileLocked(ctx context.Context, d
 	defer lock.release()
 	record, _, err := provider.store.readRecordForCredentialUse(ctx, provider.key)
 	if err != nil {
-		return zero, false, err
+		return zero, false, refreshReadError(err)
 	}
 	if record.Status != CredentialReady {
 		return zero, false, nil

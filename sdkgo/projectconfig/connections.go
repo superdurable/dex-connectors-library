@@ -239,27 +239,25 @@ func (store *ConnectionStore) readRecord(ctx context.Context, key ConnectionKey)
 }
 
 // readRecordForCredentialUse is readRecord that enforces ctx's expected target for key from the same read.
+// A source with target snapshots also refuses a record its file no longer lists exactly once.
 func (store *ConnectionStore) readRecordForCredentialUse(ctx context.Context, key ConnectionKey) (connectionRecord, Object, error) {
 	expectedFingerprint, isExpected := expectedConnectionTarget(ctx, key)
-	if !isExpected {
+	reader, isVerifiable := store.objects.(connectionTargetSnapshotReader)
+	if !isVerifiable {
+		if isExpected {
+			return connectionRecord{}, Object{}, ErrConnectionTargetUnverifiable
+		}
 		return store.readRecord(ctx, key)
 	}
 	path, err := store.connectionPath(key)
 	if err != nil {
 		return connectionRecord{}, Object{}, err
 	}
-	reader, isVerifiable := store.objects.(connectionTargetSnapshotReader)
-	if !isVerifiable {
-		return connectionRecord{}, Object{}, ErrConnectionTargetUnverifiable
-	}
-	object, fingerprint, isListed, err := reader.readConnectionHeadWithTarget(ctx, connectionHeadPath(path), key)
+	object, fingerprint, err := reader.readConnectionHeadWithTarget(ctx, connectionHeadPath(path), key)
 	if err != nil {
-		return connectionRecord{}, Object{}, err
+		return connectionRecord{}, Object{}, guardedRecordError(err, isExpected)
 	}
-	if !isListed {
-		return connectionRecord{}, Object{}, fmt.Errorf("%w: connection %q of connector %q was removed", ErrConnectionTargetChanged, key.ConnectionName, key.ConnectorID)
-	}
-	if fingerprint != expectedFingerprint {
+	if isExpected && fingerprint != expectedFingerprint {
 		return connectionRecord{}, Object{}, fmt.Errorf("%w: connection %q of connector %q now has target %s", ErrConnectionTargetChanged, key.ConnectionName, key.ConnectorID, fingerprint)
 	}
 	return store.decodeRecord(object, key, path)

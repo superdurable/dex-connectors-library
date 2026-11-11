@@ -291,10 +291,68 @@ func TestGuardedResolutionRefusesSettingsChangeAndRemoval(t *testing.T) {
 	_, err := resolver.Resolve(ctx)
 	require.ErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
 
-	writeJSON(t, path, map[string]any{"schemaVersion": "connectors.dex.dev/local-connections/v1alpha1", "connections": []any{}, "triggerBindings": []any{}})
+	writeEmptyConnections(t, path)
 	_, err = resolver.Resolve(ctx)
 	require.ErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
-	require.ErrorContains(t, err, "removed")
+	require.ErrorContains(t, err, "no longer in the file")
+}
+
+func writeEmptyConnections(t *testing.T, path string) {
+	t.Helper()
+	writeJSON(t, path, map[string]any{"schemaVersion": "connectors.dex.dev/local-connections/v1alpha1", "connections": []any{}, "triggerBindings": []any{}})
+}
+
+// A connection removed from the file is never used or refreshed, with or without an expected target.
+func TestRemovedConnectionIsNeitherResolvedNorRefreshed(t *testing.T) {
+	path, project, _ := loadTargetProject(t, firstTarget(time.Now().Add(-time.Minute)))
+	resolver := localResolver(t, project)
+	writeEmptyConnections(t, path)
+
+	_, err := resolver.Resolve(context.Background())
+	require.ErrorContains(t, err, "no longer in the file")
+	require.NotErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
+	_, _, err = project.Connections.ReadCredentialMaterial(context.Background(), localKey)
+	require.ErrorContains(t, err, "no longer in the file")
+	driver := &requiringDriver{}
+	_, err = resolver.ResolveWithRefresh(context.Background(), driver)
+	require.ErrorIs(t, err, projectconfig.ErrRefreshFailed)
+	require.ErrorContains(t, err, "no longer in the file")
+	_, err = resolver.ResolveAfterRejection(context.Background(), driver)
+	require.ErrorContains(t, err, "no longer in the file")
+	require.Zero(t, driver.refreshCount())
+	requireFileUnchangedByResolution(t, path)
+}
+
+func requireFileUnchangedByResolution(t *testing.T, path string) {
+	t.Helper()
+	contents, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"schemaVersion":"connectors.dex.dev/local-connections/v1alpha1","connections":[],"triggerBindings":[]}`, string(contents))
+}
+
+// The removal lands after the check under the refresh lock and before the unchanged rewrite.
+func TestRemovalBetweenCheckAndRewriteSendsNoRefresh(t *testing.T) {
+	for name, isGuarded := range map[string]bool{"unguarded": false, "guarded": true} {
+		t.Run(name, func(t *testing.T) {
+			path, project, fingerprint := loadTargetProject(t, firstTarget(time.Now().Add(time.Hour)))
+			driver := &rewritingDriver{t: t, path: path, isRemoval: true}
+			ctx := context.Background()
+			if isGuarded {
+				ctx = projectconfig.ContextWithExpectedConnectionTarget(ctx, localKey, fingerprint)
+			}
+
+			_, err := localResolver(t, project).ResolveWithRefresh(ctx, driver)
+			if isGuarded {
+				require.ErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
+			} else {
+				require.ErrorIs(t, err, projectconfig.ErrRefreshFailed)
+				require.NotErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
+			}
+			require.ErrorContains(t, err, "no longer in the file")
+			require.Zero(t, driver.refreshes)
+			requireFileUnchangedByResolution(t, path)
+		})
+	}
 }
 
 func TestGuardedResolutionKeepsTargetAcrossAnotherProcessRefresh(t *testing.T) {
@@ -497,6 +555,7 @@ type rewritingDriver struct {
 	t         *testing.T
 	path      string
 	rewrite   targetRecord
+	isRemoval bool
 	written   []byte
 	decisions int
 	refreshes int
@@ -505,7 +564,11 @@ type rewritingDriver struct {
 func (driver *rewritingDriver) RefreshRequired(state projectconfig.RefreshState[localCredentials]) bool {
 	driver.decisions++
 	if driver.decisions == 2 {
-		writeTargetConnections(driver.t, driver.path, driver.rewrite)
+		if driver.isRemoval {
+			writeEmptyConnections(driver.t, driver.path)
+		} else {
+			writeTargetConnections(driver.t, driver.path, driver.rewrite)
+		}
 		written, err := os.ReadFile(driver.path)
 		require.NoError(driver.t, err)
 		driver.written = written
@@ -560,7 +623,8 @@ func TestUnguardedRefreshAdoptsReauthorizationBetweenCheckAndRewrite(t *testing.
 	require.Equal(t, driver.written, after)
 }
 
-func TestDuplicateConnectionRecordFailsResolutionClosed(t *testing.T) {
+// A duplicated key fails only its own resolutions; another connection in the file resolves normally.
+func TestDuplicateConnectionRecordFailsOnlyItsKey(t *testing.T) {
 	path, project, fingerprint := loadTargetProject(t, firstTarget(time.Now().Add(time.Hour)))
 	resolver := localResolver(t, project)
 	contents, err := os.ReadFile(path)
@@ -568,13 +632,23 @@ func TestDuplicateConnectionRecordFailsResolutionClosed(t *testing.T) {
 	var file map[string]any
 	require.NoError(t, json.Unmarshal(contents, &file))
 	original := file["connections"].([]any)[0].(map[string]any)
-	duplicate := map[string]any{}
-	for name, value := range original {
-		duplicate[name] = value
+	copyRecord := func(changes map[string]any) map[string]any {
+		record := map[string]any{}
+		for name, value := range original {
+			record[name] = value
+		}
+		for name, value := range changes {
+			record[name] = value
+		}
+		return record
 	}
-	duplicate["authorizationId"] = secondAuthorizationID
-	duplicate["credentials"] = map[string]any{"access_token": "access-other", "refresh_token": "refresh-other"}
-	file["connections"] = []any{original, duplicate}
+	duplicate := copyRecord(map[string]any{
+		"authorizationId": secondAuthorizationID, "credentials": map[string]any{"access_token": "access-other", "refresh_token": "refresh-other"},
+	})
+	other := copyRecord(map[string]any{
+		"connectionName": "other", "credentials": map[string]any{"access_token": "access-unrelated", "refresh_token": "refresh-unrelated"},
+	})
+	file["connections"] = []any{original, duplicate, other}
 	writeJSON(t, path, file)
 	guarded := projectconfig.ContextWithExpectedConnectionTarget(context.Background(), localKey, fingerprint)
 
@@ -584,9 +658,27 @@ func TestDuplicateConnectionRecordFailsResolutionClosed(t *testing.T) {
 	driver := &requiringDriver{}
 	_, err = resolver.ResolveWithRefresh(guarded, driver)
 	require.ErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
-	require.Zero(t, driver.refreshCount())
 	_, err = resolver.Resolve(context.Background())
 	require.ErrorContains(t, err, "more than once")
-	_, err = projectconfig.LoadDexWebConnectionsFile(context.Background(), path)
+	require.NotErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
+	_, err = resolver.ResolveWithRefresh(context.Background(), driver)
 	require.ErrorContains(t, err, "more than once")
+	require.Zero(t, driver.refreshCount())
+
+	otherKey := projectconfig.ConnectionKey{ConnectorID: "example", ConnectionName: "other"}
+	otherResolver, err := projectconfig.NewCredentialResolver(project.Connections, otherKey, decodeLocalCredentials, encodeLocalCredentials)
+	require.NoError(t, err)
+	otherFingerprint := requireFingerprint(t, projectconfig.ConnectionConfiguration{
+		ConnectorID: "example", ConnectionName: "other", Provider: "example", AuthMethodIDs: []string{"oauth", "api_key"},
+		AuthorizationID: firstAuthorizationID, Configuration: json.RawMessage(`{"workspace":"acme"}`),
+	})
+	for _, ctx := range []context.Context{context.Background(), projectconfig.ContextWithExpectedConnectionTarget(context.Background(), otherKey, otherFingerprint)} {
+		credentials, err := otherResolver.Resolve(ctx)
+		require.NoError(t, err)
+		require.Equal(t, "access-unrelated", credentials.AccessToken)
+	}
+
+	// The configuration document cannot hold a duplicated connection, so loading the file fails.
+	_, err = projectconfig.LoadDexWebConnectionsFile(context.Background(), path)
+	require.ErrorContains(t, err, "invalid or duplicated")
 }

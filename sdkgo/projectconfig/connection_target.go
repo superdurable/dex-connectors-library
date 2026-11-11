@@ -24,8 +24,9 @@ const connectionTargetFingerprintPrefix = "sha256:"
 var (
 	// ErrConnectionTargetChanged reports that a credential resolution refused to return a credential because the
 	// connection no longer points at the target the caller expected through ContextWithExpectedConnectionTarget:
-	// the record's account, settings or authorization method changed, or the record was removed. The refusal
-	// happens before any provider request, including a token refresh, so the attempt definitely sent nothing.
+	// the record's account, settings or authorization method changed, or the file no longer lists the record exactly
+	// once. The refusal happens before any provider request, including a token refresh, so the attempt definitely
+	// sent nothing.
 	ErrConnectionTargetChanged = errors.New("project connection target changed; no credential was used")
 	// ErrConnectionTargetUnverifiable reports that a credential resolution refused to return a credential because
 	// the caller expected a connection target and the connection's source cannot read the target together with the
@@ -104,10 +105,10 @@ type expectedConnectionTargetsKey struct{}
 // sdkgo.ResolveCredential, so generated connector code needs no change. Under it, Resolve, ResolveWithRefresh,
 // ResolveAfterRejection and ConnectionStore.ReadCredentialMaterial read the credential and the connection's
 // target fields from one read of the connection record. ResolveWithRefresh compares again after it acquires the
-// refresh lock, before any refresh request. When the fingerprints differ, or the record is gone, they return an
-// error wrapping ErrConnectionTargetChanged without sending any provider request, without changing the record and
-// without returning the credential. A refresh already sent for a matching record still commits its result, so a
-// rotated refresh token is never lost.
+// refresh lock, before any refresh request. When the fingerprints differ, or the file no longer lists the record
+// exactly once, they return an error wrapping ErrConnectionTargetChanged without sending any provider request,
+// without changing the record and without returning the credential. A refresh already sent for a matching record
+// still commits its result, so a rotated refresh token is never lost.
 //
 // Only a project loaded from a Dex Web connections file can verify the target. Every other source, including
 // hosted and S3 storage and shared entries served by the credential broker, refuses a resolution that carries an
@@ -136,6 +137,15 @@ func expectedConnectionTarget(ctx context.Context, key ConnectionKey) (fingerpri
 // connectionTargetSnapshotReader is implemented by a store whose connection records carry their target fields.
 type connectionTargetSnapshotReader interface {
 	// readConnectionHeadWithTarget returns the connection head and the target fingerprint from one read of the
-	// record. isListed is false when the source no longer lists key.
-	readConnectionHeadWithTarget(ctx context.Context, headKey string, key ConnectionKey) (head Object, fingerprint string, isListed bool, err error)
+	// record, or an error wrapping errConnectionRemovedFromFile or errDuplicateConnectionInFile.
+	readConnectionHeadWithTarget(ctx context.Context, headKey string, key ConnectionKey) (head Object, fingerprint string, err error)
+}
+
+// guardedRecordError reports a removed or duplicated record as a changed target to a caller that expects one,
+// because no single expected target remains.
+func guardedRecordError(err error, isExpected bool) error {
+	if isExpected && (errors.Is(err, errConnectionRemovedFromFile) || errors.Is(err, errDuplicateConnectionInFile)) {
+		return fmt.Errorf("%w: %w", ErrConnectionTargetChanged, err)
+	}
+	return err
 }
