@@ -630,6 +630,7 @@ const AddPlaylistItemBranchNotFound sdkgo.BranchID = "notFound"
 const AddPlaylistItemBranchQuotaExhausted sdkgo.BranchID = "quotaExhausted"
 const AddPlaylistItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const AddPlaylistItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const AddPlaylistItemBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const AddPlaylistItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var AddPlaylistItemDefinition = sdkgo.MutationDefinition{
@@ -639,7 +640,8 @@ var AddPlaylistItemDefinition = sdkgo.MutationDefinition{
 		{ID: AddPlaylistItemBranchNotFound, Description: "No playlist the account can manage or no visible video has the ID.", Optional: true},
 		{ID: AddPlaylistItemBranchQuotaExhausted, Description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", Optional: true},
 		{ID: AddPlaylistItemBranchProviderRejected, Description: "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", Optional: true},
-		{ID: AddPlaylistItemBranchInvalidResponse, Description: "YouTube returned an invalid or oversized response to the check or the insert.", Optional: true},
+		{ID: AddPlaylistItemBranchInvalidResponse, Description: "YouTube returned an invalid or oversized check response, or an invalid item after accepting the insert.", Optional: true},
+		{ID: AddPlaylistItemBranchUncertain, Description: "An earlier insert may have added the video, but the playlist listing does not show it; check the playlist before adding it again.", Optional: true},
 		{ID: AddPlaylistItemBranchDefect, Description: "Local input, connection configuration, or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -665,6 +667,7 @@ type AddPlaylistItemStepConfig[IN any] struct {
 	QuotaExhausted                    sdkgo.Target[AddPlaylistItemResult]                     `connector:"branch=quotaExhausted,optional"`
 	ProviderRejected                  sdkgo.Target[AddPlaylistItemResult]                     `connector:"branch=providerRejected,optional"`
 	InvalidResponse                   sdkgo.Target[AddPlaylistItemResult]                     `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[AddPlaylistItemResult]                     `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[AddPlaylistItemResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddedPlaylistItem]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
@@ -682,7 +685,7 @@ func NewAddPlaylistItemStep[IN any](config AddPlaylistItemStepConfig[IN]) sdkgo.
 		Operation: config.Connection.operations.AddPlaylistItem(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddPlaylistItemResult] {
-			branches := make([]sdkgo.BranchTarget[AddPlaylistItemResult], 0, 6)
+			branches := make([]sdkgo.BranchTarget[AddPlaylistItemResult], 0, 7)
 			if config.Added.HasStep() {
 				branches = append(branches, config.Added.BranchTarget(AddPlaylistItemBranchAdded))
 			}
@@ -697,6 +700,9 @@ func NewAddPlaylistItemStep[IN any](config AddPlaylistItemStepConfig[IN]) sdkgo.
 			}
 			if config.InvalidResponse.HasStep() {
 				branches = append(branches, config.InvalidResponse.BranchTarget(AddPlaylistItemBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(AddPlaylistItemBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(AddPlaylistItemBranchDefect))

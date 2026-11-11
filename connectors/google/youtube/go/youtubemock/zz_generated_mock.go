@@ -366,9 +366,14 @@ func AddPlaylistItemProviderRejected(value youtube.AddedPlaylistItem, failure *s
 	return connectormock.Branch(youtube.AddPlaylistItemBranchProviderRejected, value, failure)
 }
 
-// AddPlaylistItemInvalidResponse selects the invalidResponse branch: YouTube returned an invalid or oversized response to the check or the insert.
+// AddPlaylistItemInvalidResponse selects the invalidResponse branch: YouTube returned an invalid or oversized check response, or an invalid item after accepting the insert.
 func AddPlaylistItemInvalidResponse(value youtube.AddedPlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.AddedPlaylistItem] {
 	return connectormock.Branch(youtube.AddPlaylistItemBranchInvalidResponse, value, failure)
+}
+
+// AddPlaylistItemUncertain returns an uncertain addPlaylistItem outcome.
+func AddPlaylistItemUncertain(value youtube.AddedPlaylistItem, failure sdkgo.Failure) connectormock.Case[youtube.AddedPlaylistItem] {
+	return connectormock.Uncertain(value, failure)
 }
 
 // AddPlaylistItemDefect selects the defect branch: Local input, connection configuration, or credentials are invalid.
@@ -403,6 +408,12 @@ func AddPlaylistItemQuotaExhaustedFailure() connectormock.Case[youtube.AddedPlay
 func AddPlaylistItemProviderRejectedFailure() connectormock.Case[youtube.AddedPlaylistItem] {
 	var value youtube.AddedPlaylistItem
 	return connectormock.Branch(youtube.AddPlaylistItemBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "YouTube denied the request."})
+}
+
+// AddPlaylistItemInsertOutcomeUnknown is the manifest mock insertOutcomeUnknown: The insert of AbCdEfGhI12 into playlist PLcurated123 returned no usable response, and the read-back listing does not show the video yet.
+func AddPlaylistItemInsertOutcomeUnknown() connectormock.Case[youtube.AddedPlaylistItem] {
+	var value youtube.AddedPlaylistItem
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "An earlier attempt may have added the video, and the playlist listing does not show it yet; check the playlist before adding the video again."})
 }
 
 // AddPlaylistItemDefault is the manifest default, compilerVideoAdded, which New installs.

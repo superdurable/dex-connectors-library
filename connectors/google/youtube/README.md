@@ -44,14 +44,33 @@ revokes after 7 days.
 
 ## Idempotency
 
-`playlistItems.insert` accepts no idempotency key. `AddPlaylistItem` therefore
-lists the playlist filtered to the video before every insert and returns
-`added` with `wasAlreadyPresent: true` when the playlist already holds it. An
-ambiguous insert, such as a timeout or HTTP 5xx after dispatch, retries, and
-the retried attempt's check finds an item the failed attempt stored. The
-operation uses sync durability so attempts never overlap. Residual risk: a
-playlist read that lags a just-completed insert could let a duplicate through,
-and the operation cannot intentionally add a video a playlist already holds.
+`playlistItems.insert` accepts no idempotency key, and YouTube does not promise
+that `playlistItems.list` shows an item that was just inserted. The first
+attempt of `AddPlaylistItem` lists the playlist filtered to the video and
+returns `added` with `wasAlreadyPresent: true` when the playlist already holds
+it. Otherwise it sends one insert through a single-dispatch fence
+(`execution.dispatchFence`, which requires sync durability). Only an insert
+that YouTube provably did not process, after HTTP 429, a `rateLimitExceeded`
+or `userRateLimitExceeded` refusal, or a connection that never opened, may be
+sent again on a later attempt.
+
+After any other failure that may have applied the insert, such as a timeout,
+HTTP 500 or 503 (Google documents `backendError` without saying the write did
+not happen), or a malformed or oversized 2xx response, the next attempt only
+lists the playlist. It returns `added` when the video is shown and `uncertain`
+when it is not, because the listing can lag behind the insert. Wire
+`uncertain` to a Step that checks the playlist before adding the video again.
+An interrupted attempt that leaves no checkpoint also leads to this read-back.
+The operation cannot intentionally add a video a playlist already holds.
+
+## Agent tools
+
+All five operations carry a reviewed `agent` block, so an agent host may offer
+them as tools. The four reads change nothing, so each optional branch is
+`rejected`. `addPlaylistItem` recommends approval because it changes a playlist
+that other people may see. It does not claim `retry: safe`, and its
+`invalidResponse` and `uncertain` branches are `unknown`, so a host reports
+them as unconfirmed instead of letting a model repeat the call.
 
 ## Branches
 
@@ -60,7 +79,9 @@ Every operation uses `defect` for invalid local input or missing credentials,
 spent, `providerRejected` for conclusive refusals such as HTTP 403 or 400, and
 `invalidResponse` for malformed or oversized responses. Reads of an unknown
 video, channel, or playlist use `notFound`. Rate limits, timeouts, and HTTP 5xx
-retry instead of producing a branch. Failure messages carry Google's documented
+retry instead of producing a branch; for `addPlaylistItem`, see
+[Idempotency](#idempotency) for when a retry only reads the playlist back and
+selects `uncertain`. Failure messages carry Google's documented
 error reason, never its message text. Titles and descriptions are untrusted
 provider text.
 

@@ -292,7 +292,8 @@ export interface AddPlaylistItemInput {
 export interface AddedPlaylistItem {
   /** Item is the new entry, or the existing entry when WasAlreadyPresent is true. */
   "item": PlaylistItem;
-  /** WasAlreadyPresent reports that the playlist already held the video, so nothing was inserted. */
+  /** WasAlreadyPresent reports that this attempt found the video in the playlist and inserted nothing;
+   * after an interrupted attempt, that attempt may have added it. */
   "wasAlreadyPresent": boolean;
 }
 

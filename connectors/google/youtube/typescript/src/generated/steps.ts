@@ -154,15 +154,17 @@ export interface AddPlaylistItemStepConfig<StepInput, OperationInput = AddPlayli
   quotaExhausted?: StepTarget<MutationResult<OperationOutput>>;
   /** YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** YouTube returned an invalid or oversized response to the check or the insert. */
+  /** YouTube returned an invalid or oversized check response, or an invalid item after accepting the insert. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
+  /** An earlier insert may have added the video, but the playlist listing does not show it; check the playlist before adding it again. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
 /** Build the addPlaylistItem Step from a named connection. */
 export function newAddPlaylistItemStep<StepInput, OperationInput = AddPlaylistItemInput, OperationOutput = AddedPlaylistItem>(configuration: AddPlaylistItemStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, added, notFound, quotaExhausted, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  const { connection, connectionName, added, notFound, quotaExhausted, providerRejected, invalidResponse, uncertain, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.addPlaylistItem(), connection: connection.reference, branches: [
     goToBranch("added", added),
@@ -170,6 +172,7 @@ export function newAddPlaylistItemStep<StepInput, OperationInput = AddPlaylistIt
     ...(quotaExhausted ? [goToBranch("quotaExhausted", quotaExhausted)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });
 }

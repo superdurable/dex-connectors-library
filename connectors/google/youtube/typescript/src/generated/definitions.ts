@@ -160,6 +160,7 @@ export const AddPlaylistItemBranch = {
   QuotaExhausted: "quotaExhausted",
   ProviderRejected: "providerRejected",
   InvalidResponse: "invalidResponse",
+  Uncertain: "uncertain",
   Defect: "defect",
 } as const;
 /** The playlist holds the video, added now or found already present. */
@@ -170,8 +171,10 @@ export const AddPlaylistItemBranchNotFound = AddPlaylistItemBranch.NotFound;
 export const AddPlaylistItemBranchQuotaExhausted = AddPlaylistItemBranch.QuotaExhausted;
 /** YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant. */
 export const AddPlaylistItemBranchProviderRejected = AddPlaylistItemBranch.ProviderRejected;
-/** YouTube returned an invalid or oversized response to the check or the insert. */
+/** YouTube returned an invalid or oversized check response, or an invalid item after accepting the insert. */
 export const AddPlaylistItemBranchInvalidResponse = AddPlaylistItemBranch.InvalidResponse;
+/** An earlier insert may have added the video, but the playlist listing does not show it; check the playlist before adding it again. */
+export const AddPlaylistItemBranchUncertain = AddPlaylistItemBranch.Uncertain;
 /** Local input, connection configuration, or credentials are invalid. */
 export const AddPlaylistItemBranchDefect = AddPlaylistItemBranch.Defect;
 /** Manifest definition for addPlaylistItem. */
@@ -182,7 +185,8 @@ export const AddPlaylistItemDefinition: MutationDefinition = {
     { id: "notFound", description: "No playlist the account can manage or no visible video has the ID.", optional: true },
     { id: "quotaExhausted", description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true },
     { id: "providerRejected", description: "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", optional: true },
-    { id: "invalidResponse", description: "YouTube returned an invalid or oversized response to the check or the insert.", optional: true },
+    { id: "invalidResponse", description: "YouTube returned an invalid or oversized check response, or an invalid item after accepting the insert.", optional: true },
+    { id: "uncertain", description: "An earlier insert may have added the video, but the playlist listing does not show it; check the playlist before adding it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

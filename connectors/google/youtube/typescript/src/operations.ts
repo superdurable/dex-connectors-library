@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, zeroReceipt, type Call, type Failure, type Query, type Mutation, type QueryAttempt, type MutationAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, zeroReceipt, type Call, type Failure, type Query, type Mutation, type QueryAttempt, type MutationAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { SearchVideosDefinition, GetVideoDefinition, GetChannelDefinition, ListPlaylistItemsDefinition, AddPlaylistItemDefinition } from './generated/definitions.js';
 import type { SearchVideosInput, VideoSearchPage, VideoSearchResult, GetVideoInput, Video, GetChannelInput, Channel, ListPlaylistItemsInput, PlaylistItemPage, PlaylistItem, AddPlaylistItemInput, AddedPlaylistItem } from './generated/models.js';
+import { Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { YouTubeExchangeError, type YouTubeClient, type YouTubeResponse } from './client.js';
 
 const videoID = /^[A-Za-z0-9_-]{11}$/;
@@ -192,28 +193,73 @@ export class ListPlaylistItemsOperation implements Query<ListPlaylistItemsInput,
 }
 
 /** Add a video once after checking playlist membership. */
+/**
+ * Add a video at most once per Step call after checking the playlist for it. YouTube has no idempotency key
+ * and its listing can lag behind an insert, so a single-dispatch fence forbids a second insert after one that
+ * may have reached YouTube; such a later attempt only reads the playlist back.
+ */
 export class AddPlaylistItemOperation implements Mutation<AddPlaylistItemInput, AddedPlaylistItem> {
   /** Bind a client. */ constructor(private readonly client: YouTubeClient) {}
   /** Return manifest definition. */ definition() { return AddPlaylistItemDefinition; }
-  /** Use the stable Call ID as the Dex idempotency key. */ idempotencyKey(callID: string) { return callID; }
-  /** Check membership and insert only when absent. */ async invoke(call: Call, input: AddPlaylistItemInput): Promise<MutationAttempt<AddedPlaylistItem>> {
-    const operation = 'addPlaylistItem', encoded = playlistQuery({ playlistId: input.playlistId, videoId: input.videoId, maxResults: 1 });
+  /** Use the stable Call ID as the Dex idempotency key; YouTube does not accept it. */ idempotencyKey(callID: string) { return callID; }
+  /** Check membership and insert at most once per Step call. */ async invoke(call: Call, input: AddPlaylistItemInput): Promise<MutationAttempt<AddedPlaylistItem>> {
+    const operation = 'addPlaylistItem', listInput = { playlistId: input.playlistId, videoId: input.videoId, maxResults: 1 }, encoded = playlistQuery(listInput);
     if (encoded.error || !input.videoId) return newMutationBranch('defect', zeroAdded, zeroReceipt(), failure(operation, 'VALIDATION', encoded.error ?? 'videoId must be an 11-character YouTube video ID'));
+    let fence: Fence;
+    try { fence = new Fence(call, AddPlaylistItemDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
+    catch { return newMutationBranch('defect', zeroAdded, zeroReceipt(), failure(operation, 'LOCAL_DEFECT', 'the YouTube dispatch fence is unavailable')); }
+    const decision = fence.decide();
+    if (decision.kind === 'readBackRequired') return this.confirmEarlierInsert(call, listInput, encoded.query!);
+    if (decision.kind !== 'sendAllowed') return newMutationUncertain(zeroAdded, failure(operation, 'TRANSPORT', 'the YouTube dispatch checkpoint is unreadable, so an earlier insert cannot be ruled out; check the playlist before adding the video again'), zeroReceipt());
     let response: YouTubeResponse;
-    try { response = await this.client.exchange(call, operation, '/playlistItems', encoded.query!, true); } catch (cause) { return mutationError(operation, cause, call, input.playlistId); }
+    try { response = await this.client.exchange(call, operation, '/playlistItems', encoded.query!, true); }
+    catch (cause) {
+      if (cause instanceof YouTubeExchangeError && cause.disposition === 'retry') {
+        try { await fence.recordNotSent(); } catch { /* A lost notSent marker makes the next attempt read back instead of inserting. */ }
+      }
+      return mutationError(operation, cause, call, input.playlistId);
+    }
     let page: PlaylistItemPage;
-    try { page = playlistPage(response, { playlistId: input.playlistId, videoId: input.videoId, maxResults: 1 }); }
+    try { page = playlistPage(response, listInput); }
     catch { return newMutationBranch('invalidResponse', zeroAdded, receipt(call, input.playlistId, response), failure(operation, 'PROTOCOL', 'YouTube returned an incomplete playlist page')); }
     if (page.items?.length) return newMutationBranch('added', { item: page.items[0]!, wasAlreadyPresent: true }, receipt(call, page.items[0]!.id, response));
     const body = JSON.stringify({ snippet: { playlistId: input.playlistId, resourceId: { kind: 'youtube#video', videoId: input.videoId } } });
-    try { response = await this.client.exchange(call, operation, '/playlistItems', { part: 'snippet,contentDetails' }, true, body); }
-    catch (cause) { if (cause instanceof YouTubeExchangeError && cause.disposition === 'invalidResponse') return newMutationRetry(failure(operation, cause.kind as Failure['kind'], cause.message)); return mutationError(operation, cause, call, input.playlistId); }
+    try { response = await this.client.exchange(call, operation, '/playlistItems', { part: 'snippet,contentDetails' }, true, body, fence); }
+    catch (cause) {
+      if (cause instanceof YouTubeExchangeError && cause.disposition === 'retryUnprocessed') {
+        try { await fence.recordCanResend(); } catch { /* A lost canResend marker makes the next attempt read back instead of inserting. */ }
+        return newMutationRetry(failure(operation, cause.kind as Failure['kind'], cause.message), cause.retryAfterMs);
+      }
+      // The claim marker stays, so the next attempt only reads the playlist back.
+      if (cause instanceof YouTubeExchangeError && cause.disposition === 'writeUnconfirmed') return newMutationRetry(failure(operation, cause.kind as Failure['kind'], cause.message));
+      return mutationError(operation, cause, call, input.playlistId);
+    }
     let inserted: Record<string, unknown>;
-    try { inserted = decoded(response); } catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'YouTube returned a malformed insert response; the retry checks the playlist')); }
+    try { inserted = decoded(response); } catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'YouTube returned a malformed insert response; the next attempt reads the playlist back')); }
+    let item: PlaylistItem;
     try {
-      const item = playlistItem(inserted, input.playlistId);
-      if (item.videoId !== input.videoId) throw new TypeError();
-      return newMutationBranch('added', { item, wasAlreadyPresent: false }, receipt(call, item.id, response));
+      item = playlistItem(inserted, input.playlistId);
+      if (item.videoId !== input.videoId) throw new TypeError('YouTube returned an item for a different video');
     } catch { return newMutationBranch('invalidResponse', zeroAdded, receipt(call, input.playlistId, response), failure(operation, 'PROTOCOL', 'YouTube returned an invalid or different inserted item')); }
+    try { await fence.recordProviderId(item.id); } catch { /* A lost provider ID marker still forbids another insert. */ }
+    return newMutationBranch('added', { item, wasAlreadyPresent: false }, receipt(call, item.id, response));
+  }
+
+  /** List the playlist after an attempt that may have inserted; only a shown item confirms it. */
+  private async confirmEarlierInsert(call: Call, listInput: ListPlaylistItemsInput, query: Record<string, string>): Promise<MutationAttempt<AddedPlaylistItem>> {
+    const operation = 'addPlaylistItem';
+    let response: YouTubeResponse;
+    try { response = await this.client.exchange(call, operation, '/playlistItems', query, true); }
+    catch (cause) {
+      if (!(cause instanceof YouTubeExchangeError)) throw cause;
+      if (cause.disposition === 'retry') return newMutationRetry(failure(operation, cause.kind as Failure['kind'], cause.message), cause.retryAfterMs);
+      const readBackReceipt = cause.response || cause.message.startsWith('addPlaylistItem requires') ? receipt(call, listInput.playlistId, cause.response) : zeroReceipt();
+      return newMutationUncertain(zeroAdded, failure(operation, cause.kind as Failure['kind'], `an earlier attempt may have added the video, and the playlist could not be read back: ${cause.message}`), readBackReceipt);
+    }
+    let page: PlaylistItemPage;
+    try { page = playlistPage(response, listInput); }
+    catch { return newMutationUncertain(zeroAdded, failure(operation, 'PROTOCOL', 'an earlier attempt may have added the video, and the playlist could not be read back: YouTube returned an incomplete playlist page'), receipt(call, listInput.playlistId, response)); }
+    if (page.items?.length) return newMutationBranch('added', { item: page.items[0]!, wasAlreadyPresent: true }, receipt(call, page.items[0]!.id, response));
+    return newMutationUncertain(zeroAdded, failure(operation, 'TRANSPORT', 'an earlier attempt may have added the video, and the playlist listing does not show it yet; check the playlist before adding the video again'), receipt(call, listInput.playlistId, response));
   }
 }
