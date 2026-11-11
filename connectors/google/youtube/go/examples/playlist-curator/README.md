@@ -49,7 +49,7 @@ mkdir -p /tmp/youtube-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/youtube/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/youtube/go \
-  --version v0.3.0 --tag connectors/google/youtube/go/v0.3.0 \
+  --version v0.4.0 --tag connectors/google/youtube/go/v0.4.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/youtube-release/connector-release.json \
   --digest-output /tmp/youtube-release/connector-release.json.sha256

@@ -1,6 +1,6 @@
 # YouTube Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/youtube/go@v0.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/youtube/go@v0.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/youtube`.
 
