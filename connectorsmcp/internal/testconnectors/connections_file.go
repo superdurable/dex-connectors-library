@@ -22,6 +22,13 @@ type ConnectionsFileConnection struct {
 	Credentials any
 	// CredentialExpiresAt is the credential's expiry; a refresh changes it.
 	CredentialExpiresAt *time.Time
+	// AuthorizationID is the non-secret ID Dex Web replaces on every
+	// authorization; empty writes a record without it, as older Dex Web did.
+	AuthorizationID string
+	// AuthMethodIDs lists the selected authorization methods; nil writes none.
+	AuthMethodIDs []string
+	// ModulePath overrides the connector's Go module path when not empty.
+	ModulePath string
 }
 
 // NotesConnection returns a notes connection served by provider.
@@ -45,14 +52,21 @@ func WriteConnectionsFile(path string, connections ...ConnectionsFileConnection)
 		Configuration       any        `json:"configuration"`
 		Credentials         any        `json:"credentials"`
 		CredentialExpiresAt *time.Time `json:"credentialExpiresAt,omitempty"`
+		AuthorizationID     string     `json:"authorizationId,omitempty"`
+		AuthMethodIDs       []string   `json:"authMethodIds,omitempty"`
 	}
 	records := make([]record, 0, len(connections))
 	for _, connection := range connections {
+		modulePath := connection.ModulePath
+		if modulePath == "" {
+			modulePath = "example.com/connectors/" + connection.ConnectorID + "/go"
+		}
 		records = append(records, record{
-			ConnectorID: connection.ConnectorID, ModulePath: "example.com/connectors/" + connection.ConnectorID + "/go",
+			ConnectorID: connection.ConnectorID, ModulePath: modulePath,
 			Provider: connection.ConnectorID, ConnectionName: connection.ConnectionName,
 			Configuration: connection.Configuration, Credentials: connection.Credentials,
 			CredentialExpiresAt: connection.CredentialExpiresAt,
+			AuthorizationID:     connection.AuthorizationID, AuthMethodIDs: connection.AuthMethodIDs,
 		})
 	}
 	contents, err := json.MarshalIndent(map[string]any{

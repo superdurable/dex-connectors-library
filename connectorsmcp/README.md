@@ -18,7 +18,8 @@ without holding credentials.
 
 The module is `github.com/superdurable/dex-connectors-library/connectorsmcp`
 and the binary is `cmd/dex-connectors-mcp`. It requires Connector Go SDK
-`sdkgo` v0.35.0 or later, which adds the `AgentTool` API. On `main`,
+`sdkgo` v0.36.0 or later: v0.35.0 adds the `AgentTool` API, and v0.36.0 the
+connection target guard. On `main`,
 `cmd/dex-connectors-mcp/zz_generated_registry.go` links no connector; the
 release workflow replaces it and `go.mod` with every connector that has an
 exposed operation, at its latest complete Go release. Tests use fake
@@ -59,7 +60,8 @@ The connections file is chosen in this order:
    variable is an error.
 3. `$HOME/.dex/connectors/connections.json` when it exists.
 4. The hosted project of the `DEX_PROJECT_*` variables, loaded once. Hosted use
-   is untested in this phase.
+   is untested in this phase. A hosted project offers only read tools; see
+   [Connection rebinding](#connection-rebinding).
 5. Otherwise the `$HOME` default, which is watched until it appears.
 
 Every path is made absolute and cleaned.
@@ -299,6 +301,7 @@ Results use these shapes:
 | Expected-identity key mismatch | JSON-RPC `-32602` with outcome `rejected`, not run | same | same |
 | Key's record names a tool this build cannot name, under a vanished name | n/a | `unknown`, state untouched | same |
 | Running key whose connection now points to another target | n/a | no attempt: `rejected` if proven not sent, else `unknown` | finalized from its checkpoint (never runs again) |
+| Attempt that did not succeed, after which the connection points to another target or is gone | `rejected`, no further attempt | no further attempt: `rejected` if proven not sent, else `unknown`; a listed `rejected` branch stays `rejected` unless an attempt may have applied | same |
 | Completed record | n/a | replay | replay |
 | Required branch | success | success | success |
 | Listed `rejected` branch | `rejected` | `rejected`; `unknown` once an earlier attempt may have applied | `rejected` |
@@ -397,12 +400,13 @@ never logged.
   - `projectIdentity` is `file:` plus the real path of `connections.json`, or
     `project:<id>/<scope>` when hosted.
   - `argumentsDigest` treats absent or `null` arguments as `{}`.
-  - `connectionTarget` is `"sha256:"` plus the hex SHA-256 of canonical JSON
-    built from the connection's non-secret target fields:
-    `{"authMethodId", "configuration", "connectionName", "connectorId",
-    "provider", "sharedConnectionId"}`. `configuration` is the connection's
-    settings as canonical JSON, or `null`. Credentials, their expiry, and the
-    module path never enter it, so a credential refresh keeps it. See
+  - `connectionTarget` is the `sdkgo` `projectconfig`
+    `ConnectionTargetFingerprint` of the connection the first attempt was
+    checked against: `"sha256:"` plus the hex SHA-256 of a canonical document
+    whose schema is `connectors.dex.dev/connection-target/v1`. Credentials,
+    their expiry, and the module path never enter it, so a credential refresh
+    keeps it. Every attempt requires it while it resolves credentials. 0.1.0
+    used another formula; see
     [Connection rebinding](#connection-rebinding).
   - `effect` is frozen at the first attempt. When a later build reclassifies
     the operation, the stricter effect applies.
@@ -448,9 +452,9 @@ Protocol for a keyed call:
    - `running` idempotent: finalize when the window passed, the cap was
      reached, the tool is no longer offered for that connection, or the
      connection's current target differs from `connectionTarget`. Otherwise
-     increment `attempt`, write the record durably, then run. Before each
-     inline retry, the same tool and target checks run against the tool set
-     as it is then.
+     increment `attempt`, write the record durably, then run. After an
+     attempt that did not succeed, and again after each retry delay, the same
+     tool and target checks run against the tool set as it is then.
 3. No record: resolve the tool, validate the arguments, write a new record with
    `attempt: 1` durably, then run.
 4. A durable write writes a temporary file in the same directory, syncs it,
@@ -497,12 +501,20 @@ different target. A rebound key settles from its evidence and nothing runs:
 
 A new key after a rebind runs normally against the new target.
 
-The check uses the tool set as it is when the call holds the key's lock, never
-the one in effect when the request arrived. A request that waited on the lock
-while the connection was rebound therefore sees the new target. Before every
-attempt the call resolves the tool from a current snapshot, compares that
-binding's target with `connectionTarget`, and runs the attempt with the tool
-from the same snapshot:
+The target is `projectconfig.ConnectionConfiguration.ConnectionTargetFingerprint`
+from `sdkgo` v0.36.0, the one definition of a connection's target; see
+[Connection targets](../sdkgo/projectconfig/README.md#connection-targets). It
+covers the connector, the connection name, the provider, `authMethodId`,
+`authMethodIds` in order, Dex Web's `authorizationId`, `sharedConnectionId`,
+and the settings. Credentials, their expiry, and the module path never enter
+it.
+
+**Before an attempt.** The check uses the tool set as it is when the call
+holds the key's lock, never the one in effect when the request arrived. A
+request that waited on the lock while the connection was rebound therefore
+sees the new target. Before every attempt the call resolves the tool from a
+current snapshot, compares that binding's target with `connectionTarget`, and
+runs the attempt with the tool from the same snapshot:
 
 - **New key.** The record's `connectionTarget` and the first attempt come from
   the snapshot taken after the lock.
@@ -516,57 +528,99 @@ from the same snapshot:
 
 A tool that is gone, or a different target, settles a write's key as above.
 
-**Residual window.** A Dex Web rebind can land during an attempt's own
-execution, after the attempt resolved its tool and checked its target, and
-before the connector sends. This holds for read and write attempts alike, and
-the server does not close this window. sdkgo `projectconfig` reads the
-credential from `connections.json` when the connector resolves it, so such an
-attempt can combine the checked target and settings with the new account's
-credential.
+**During an attempt.** A Dex Web rebind can land after the checks above and
+before the connector resolves its credential. Every attempt therefore runs
+under `projectconfig.ContextWithExpectedConnectionTarget` for its connection:
+a write with the record's `connectionTarget`, and a read with the target it
+checked when it started. `sdkgo` then reads each credential and the record's
+target from one read of `connections.json`. When the target differs, or the
+record is gone, it refuses the credential before any provider request,
+including a token refresh. An attempt never pairs the checked settings with
+another account's credential. A refresh of the same target keeps working,
+because a refresh keeps `authorizationId` and the settings.
 
-The planned fix is a guard in sdkgo `projectconfig`. It would resolve the
-credential and the connection target, including Dex Web's upcoming
-`authorizationId`, from one snapshot, and refuse a credential whose target no
-longer matches. It is tracked in superdurable/dex-connectors-library#655.
+Connectors report that refusal through their usual credential-error path,
+usually as Retry and sometimes as a branch, so it does not reach the server as
+an error. After every attempt that did not succeed, and before any retry
+delay, the server therefore compares the current target again. When the
+target changed or the tool is gone, the call makes no further attempt:
 
-Detected, because the fingerprint changes:
+- **Write.** The key settles from its evidence, as above. A Retry or `unknown`
+  attempt answers `rejected` only with `notSent` proof. A listed `rejected`
+  branch keeps its branch and adds "the connection now points to a different
+  target". Once anything possibly applied, the answer is `unknown`. A target
+  change never turns a possibly applied write into `rejected`.
+- **Read.** The read stops with `rejected` ("its connection was removed or now
+  points to a different target; nothing was changed").
 
+An attempt that succeeded ran on the target it was checked against, and its
+result stands. A write without a `singledispatch` Fence, such as one that reads
+back and resends with a provider idempotency key, has no proof that a refused
+attempt sent nothing, so it settles `unknown`.
+
+**Hosted and shared connections.** Only a record of a Dex Web connections file
+can be compared while a credential resolves. `sdkgo` refuses an expected
+target with `ErrConnectionTargetUnverifiable` for hosted and S3 projects and
+for shared entries (`sharedConnectionId`) that the credential broker serves.
+Their records carry no authorization identity. For those connections:
+
+- write tools are not offered, and the tool set carries a warning that names
+  the connection;
+- read tools are offered and run without an expected target. The checks
+  before each attempt and after each attempt that did not succeed still apply;
+- a running write key of such a connection settles because its tool is no
+  longer offered: `rejected` if proven not sent, else `unknown`.
+
+Detected, because the target changes:
+
+- another authorization: Dex Web writes a new `authorizationId` for a new
+  connection, every OAuth callback, and any change of the stored credentials.
+  Reauthorizing to another account is detected even when the settings stay
+  identical;
 - any change to the connection's non-secret settings: endpoint or base URL,
   tenant, workspace, region, and account identifiers that a connector derives
   into its settings from OAuth or OIDC claims or setup commands;
-- another provider, another single authorization method (`authMethodId`), or
-  another shared connection (`sharedConnectionId`);
+- another provider, another authorization method (`authMethodId`), another
+  selected method set (`authMethodIds`), or another shared connection
+  (`sharedConnectionId`);
 - a removed connection: its tool is no longer offered, so the key settles. A
   re-added connection is compared like any other;
 - another connections file: `projectIdentity` differs, so the key's call is
   treated as a different call.
 
-Not detected:
+What remains:
 
-- **Same settings, another account.** Re-authorizing the same connection name
-  to a different account when the account exists only in the credentials, for
-  example OAuth tokens of another user or workspace, or another API key, while
-  the settings stay identical. Dex Web stores no non-secret account identity
-  in `connections.json`, and credentials are deliberately never fingerprinted.
-- **Method selection.** A change of the selected method set of a multi-method
-  connector (`authMethodIds`), which `projectconfig` does not expose.
+- **Older Dex Web.** A record written by Dex Web before 1.43 has no
+  `authorizationId`. Reauthorizing it with such a Dex Web to another account
+  with identical settings is not detected. Dex Web 1.43 and later write the ID.
+- **Unlocked saves.** Dex Web releases before superdurable/dex#1526 do not
+  take the refresh lock when they save a reauthorized credential. The windows
+  last milliseconds or less; see
+  [Refresh across processes](../sdkgo/projectconfig/README.md#refresh-across-processes).
+- **Hosted and shared connections** offer no write tools, as above.
+- **Context.** The guard applies to credentials that a connector resolves
+  through the attempt's context, which is the connector's normal call path. A
+  credential cached across calls bypasses it.
 
-To detect the first case:
+The fingerprint is conservative. Reauthorizing the same account, and settings
+re-saved with a new default field after a connector upgrade, also change it.
+A running key then settles, usually `unknown`; repeat such a call with a new
+key.
 
-- Dex Web would store a non-secret, provider-verified account identity in each
-  connection record, captured at authorization: the OAuth or OIDC `sub`, Slack
-  `team_id` and `user_id`, or a Google account `sub`. The planned Dex Web
-  `authorizationId` may serve this purpose if it changes only when the account
-  changes.
-  - Keep it across credential refresh and write-back.
-  - Change it only when re-authorization yields another account.
-- `projectconfig` would expose that identity, and `authMethodIds`, on
-  `ConnectionConfiguration`.
-- This server would then add both to the fingerprint.
+**Upgrading from 0.1.0.** dex-connectors-mcp 0.1.0 computed
+`connectionTarget` with its own formula, without `authorizationId` and
+`authMethodIds`. The call state stays `dex-connectors-mcp/call-state/v1`: the
+field keeps its shape, `sha256:` and 64 hexadecimal digits, and only this
+server reads it, to compare it for equality. A new `FORMAT` would instead make
+the server refuse to start on every existing state directory. After the
+upgrade:
 
-The fingerprint is conservative: settings re-saved with a new default field
-after a connector upgrade also change it, and a running key then settles
-`unknown`.
+- a completed record replays unchanged;
+- a running record written by 0.1.0 never runs again. Its target reads as
+  changed, so it settles `rejected` when its current attempt proved `notSent`
+  and nothing possibly applied, and `unknown` otherwise. Repeat such a call
+  with a new key;
+- a new key records the new fingerprint.
 
 ## Security
 

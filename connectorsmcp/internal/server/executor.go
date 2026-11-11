@@ -21,6 +21,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/callstate"
 	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/canonicaljson"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -35,6 +36,9 @@ const (
 	ProtocolPointBeforeRecordCreate ProtocolPoint = "before-record-create"
 	// ProtocolPointAfterRecordCreate is after that write, before the attempt runs.
 	ProtocolPointAfterRecordCreate ProtocolPoint = "after-record-create"
+	// ProtocolPointBeforeAttempt is after an attempt's tool and target checks,
+	// just before the connector runs it; reads observe it too.
+	ProtocolPointBeforeAttempt ProtocolPoint = "before-attempt"
 	// ProtocolPointAfterAttempt is after an attempt returned, before its result is stored.
 	ProtocolPointAfterAttempt ProtocolPoint = "after-attempt"
 	// ProtocolPointAfterResultStored is after the final result is stored, before the response.
@@ -132,6 +136,9 @@ const (
 
 // connectionRetargetedReason settles a key whose connection was rebound.
 const connectionRetargetedReason = "the connection now points to a different target"
+
+// connectionRemovedReason settles a key whose tool disappeared during an attempt.
+const connectionRemovedReason = "its tool is no longer offered for this connection"
 
 // errRetryWindowPassed ends an attempt that would start at or after the retry window.
 var errRetryWindowPassed = errors.New("the retry window has passed")
@@ -354,7 +361,7 @@ func (call *toolCall) resumeRecordedCall(ctx context.Context, lock *callstate.Ke
 		return call.finalizeFromCheckpoint(lock, record, "its retry window has passed")
 	}
 	if recordBinding == nil {
-		return call.finalizeFromCheckpoint(lock, record, "its tool is no longer offered for this connection")
+		return call.finalizeFromCheckpoint(lock, record, connectionRemovedReason)
 	}
 	if recordBinding.connectionTarget != record.ConnectionTarget {
 		return call.finalizeFromCheckpoint(lock, record, connectionRetargetedReason)
@@ -430,6 +437,9 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 		if attemptMayHaveApplied(attempt, runErr, record) {
 			record.PossiblyApplied = true
 		}
+		if reason := call.writeAttemptRetargetReason(ctx, record, attempt, runErr); reason != "" {
+			return call.finalizeRetargetedAttempt(lock, record, binding, attempt, runErr, reason)
+		}
 		if runErr != nil {
 			return call.finishWriteAttemptWithoutBranch(lock, record, binding, attempt, runErr)
 		}
@@ -461,7 +471,7 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 		// The connections file may have changed during the delay.
 		current := call.executor.currentToolSet(context.WithoutCancel(ctx)).toolForRequest(record.Request)
 		if current == nil {
-			return call.finalizeFromCheckpoint(lock, record, "its tool is no longer offered for this connection")
+			return call.finalizeFromCheckpoint(lock, record, connectionRemovedReason)
 		}
 		if current.connectionTarget != record.ConnectionTarget {
 			return call.finalizeFromCheckpoint(lock, record, connectionRetargetedReason)
@@ -474,6 +484,48 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 			return callAnswer{err: interruptedError("call state cannot be written; nothing was sent by this call")}
 		}
 	}
+}
+
+// writeAttemptRetargetReason re-checks the connection after an attempt that did
+// not succeed, because a connector may turn a refused credential into Retry or
+// a branch. It returns why the key must settle, or "".
+func (call *toolCall) writeAttemptRetargetReason(ctx context.Context, record *callstate.Record, attempt sdkgo.AgentToolAttempt, runErr error) string {
+	if errors.Is(runErr, sdkgo.ErrAgentToolArgumentsInvalid) || (runErr == nil && attempt.Outcome == sdkgo.AgentToolAttemptSucceeded) {
+		return ""
+	}
+	current := call.executor.currentToolSet(context.WithoutCancel(ctx)).toolForRequest(record.Request)
+	switch {
+	case current == nil:
+		return connectionRemovedReason
+	case current.connectionTarget != record.ConnectionTarget:
+		return connectionRetargetedReason
+	case isConnectionTargetRefusal(runErr):
+		return connectionRetargetedReason
+	default:
+		return ""
+	}
+}
+
+// finalizeRetargetedAttempt settles from evidence: a possibly applied write
+// is never rejected, and a provider rejection never claims nothing was sent.
+func (call *toolCall) finalizeRetargetedAttempt(lock *callstate.KeyLock, record *callstate.Record, binding *toolBinding, attempt sdkgo.AgentToolAttempt, runErr error, reason string) callAnswer {
+	call.executor.logger.Warn("connection changed during an attempt; settling the call", "tool", call.name, "key", call.keyPrefix(), "attempt", record.Attempt, "reason", reason)
+	if runErr != nil || attempt.Outcome != sdkgo.AgentToolAttemptRejected {
+		return call.finalizeFromCheckpoint(lock, record, reason)
+	}
+	detail := string(attempt.Branch)
+	if attempt.Failure != nil {
+		detail += ": " + string(attempt.Failure.Kind) + ": " + attempt.Failure.Message
+	}
+	if record.PossiblyApplied {
+		return call.finalize(lock, record, newErrorResult(resultUnknown, binding.operationLabel()+" may have taken effect: "+reason+" ("+detail+"); do not repeat it", attempt.Branch))
+	}
+	return call.finalize(lock, record, newErrorResult(resultRejected, binding.operationLabel()+" returned "+detail+"; "+reason, attempt.Branch))
+}
+
+// isConnectionTargetRefusal reports a credential resolution that refused the expected target.
+func isConnectionTargetRefusal(err error) bool {
+	return errors.Is(err, projectconfig.ErrConnectionTargetChanged) || errors.Is(err, projectconfig.ErrConnectionTargetUnverifiable)
 }
 
 // persistObservation stores PossiblyApplied before the call may stop; the
@@ -498,6 +550,9 @@ func (call *toolCall) runWriteAttempt(ctx context.Context, lock *callstate.KeyLo
 	attemptContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 	defer checkpoints.close()
 	defer cancel()
+	// Credential resolution refuses a record that no longer has the key's target.
+	attemptContext = projectconfig.ContextWithExpectedConnectionTarget(attemptContext,
+		connectionKeyOf(record.Request.ConnectorID, record.Request.ConnectionName), record.ConnectionTarget)
 	dexContext, err := attemptcontext.New(attemptContext, attemptcontext.Options{
 		FlowID: localFlowID, StepExecutionID: key, FirstAttemptAt: record.FirstAttemptAt,
 		Attempt: record.Attempt, LastHeartbeat: record.Checkpoint, OnRecordHeartbeat: checkpoints.persist,
@@ -505,6 +560,7 @@ func (call *toolCall) runWriteAttempt(ctx context.Context, lock *callstate.KeyLo
 	if err != nil {
 		return sdkgo.AgentToolAttempt{}, err
 	}
+	call.executor.observeProtocolPoint(ProtocolPointBeforeAttempt, record.Request.OperationID)
 	return binding.tool.RunAttempt(dexContext, call.arguments)
 }
 
@@ -602,9 +658,15 @@ func (call *toolCall) runRead(ctx context.Context, stepExecutionID string) callA
 	checkpoints := &readCheckpoints{}
 	for attemptNumber := int32(1); ; attemptNumber++ {
 		call.attempt = attemptNumber
-		attempt, runErr := call.runReadAttempt(ctx, binding, stepExecutionID, attemptNumber, checkpoints)
+		attempt, runErr := call.runReadAttempt(ctx, binding, connectionTarget, stepExecutionID, attemptNumber, checkpoints)
 		if errors.Is(runErr, sdkgo.ErrAgentToolArgumentsInvalid) {
 			return callAnswer{result: rejectedResult("invalid arguments for " + call.name + ": " + runErr.Error())}
+		}
+		// A connector may turn a refused credential into Retry or a branch.
+		if runErr != nil || attempt.Outcome != sdkgo.AgentToolAttemptSucceeded {
+			if current := call.currentBinding(ctx, identity); current == nil || current.connectionTarget != connectionTarget || isConnectionTargetRefusal(runErr) {
+				return callAnswer{result: readRetargetedResult(call.name)}
+			}
 		}
 		if runErr != nil {
 			call.executor.logger.Warn("attempt ended without a branch", "tool", call.name, "attempt", attemptNumber, "error", runErr)
@@ -627,9 +689,14 @@ func (call *toolCall) runRead(ctx context.Context, stepExecutionID string) callA
 		}
 		// Each attempt runs from a current snapshot, and never on another target.
 		if binding = call.currentBinding(ctx, identity); binding == nil || binding.connectionTarget != connectionTarget {
-			return callAnswer{result: rejectedResult(call.name + " stopped: its connection was removed or now points to a different target; nothing was changed")}
+			return callAnswer{result: readRetargetedResult(call.name)}
 		}
 	}
+}
+
+// readRetargetedResult stops a read whose connection was removed or rebound.
+func readRetargetedResult(name string) toolResult {
+	return rejectedResult(name + " stopped: its connection was removed or now points to a different target; nothing was changed")
 }
 
 // currentBinding resolves identity in the tool set as it is now, or nil.
@@ -637,9 +704,15 @@ func (call *toolCall) currentBinding(ctx context.Context, identity toolIdentity)
 	return call.executor.currentToolSet(context.WithoutCancel(ctx)).byIdentity[identity]
 }
 
-func (call *toolCall) runReadAttempt(ctx context.Context, binding *toolBinding, stepExecutionID string, attemptNumber int32, checkpoints *readCheckpoints) (sdkgo.AgentToolAttempt, error) {
+// runReadAttempt requires connectionTarget while credentials resolve, except
+// for a hosted or shared connection, which cannot compare it.
+func (call *toolCall) runReadAttempt(ctx context.Context, binding *toolBinding, connectionTarget string, stepExecutionID string, attemptNumber int32, checkpoints *readCheckpoints) (sdkgo.AgentToolAttempt, error) {
 	attemptContext, cancel := context.WithTimeout(ctx, binding.attemptTimeout())
 	defer cancel()
+	if binding.isConnectionTargetVerifiable {
+		attemptContext = projectconfig.ContextWithExpectedConnectionTarget(attemptContext,
+			connectionKeyOf(binding.connector.ConnectorID, binding.connectionName), connectionTarget)
+	}
 	dexContext, err := attemptcontext.New(attemptContext, attemptcontext.Options{
 		FlowID: localFlowID, StepExecutionID: stepExecutionID, FirstAttemptAt: call.startedAt,
 		Attempt: attemptNumber, LastHeartbeat: checkpoints.last(), OnRecordHeartbeat: checkpoints.record,
@@ -647,6 +720,7 @@ func (call *toolCall) runReadAttempt(ctx context.Context, binding *toolBinding, 
 	if err != nil {
 		return sdkgo.AgentToolAttempt{}, err
 	}
+	call.executor.observeProtocolPoint(ProtocolPointBeforeAttempt, binding.metadata.Operation.OperationID)
 	return binding.tool.RunAttempt(dexContext, call.arguments)
 }
 
