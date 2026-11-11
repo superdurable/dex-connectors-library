@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-spotify",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -12,7 +12,17 @@
       "kind": "query",
       "operationId": "listPlaylistTracks",
       "inputType": "ListPlaylistTracksInput",
-      "description": "List one bounded page of tracks from a playlist owned by or shared with the authenticated Spotify user.",
+      "description": "List one page of tracks from a Spotify playlist the user owns or can access. Supply the 22-character playlist ID; optionally a page size from 1 through 50, a two-letter market code, and the offset from the previous page's nextOffset.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "accessDenied": "rejected",
+          "authorizationRevoked": "rejected",
+          "defect": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
