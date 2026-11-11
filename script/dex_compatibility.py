@@ -661,7 +661,7 @@ def run_visualize(source: Path, consumer: Path, dexcli: Path, connector_module: 
                 print(generated.read_text(), flush=True)
             raise
         outputs.append(generated.read_bytes())
-    if outputs[0] != outputs[1]:
+    if definition_without_generation_time(outputs[0]) != definition_without_generation_time(outputs[1]):
         raise RuntimeError(f"visualize output is not deterministic: {source}")
     validate_definition(json.loads(outputs[0]), connector_module, version, source)
     print(f"Visualize: example={source} module={connector_module} version={version} deterministic=true", flush=True)
@@ -836,6 +836,14 @@ def build_fixture_release(root: Path, fixture: Path, output: Path) -> Path:
     run(arguments, root)
     print(f"Fixture {fixture.name}: tag={tag} commit={commit} digest={checksum_entry((output / 'connector-release.json.sha256').read_text(), 'connector-release.json')}", flush=True)
     return output
+
+
+def definition_without_generation_time(output: bytes) -> object:
+    """Parses a visualize definition without its top-level generatedAt, which Dex CLI 1.45 stamps per run."""
+    definition = json.loads(output)
+    if isinstance(definition, dict):
+        definition.pop("generatedAt", None)
+    return definition
 
 
 def test_dex_web(
