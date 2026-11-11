@@ -52,7 +52,7 @@ func hasAuthoredGoSource(goDirectory string) (bool, error) {
 		return false, err
 	}
 	for _, goFile := range goFiles {
-		if filepath.Base(goFile) != codegen.OutputFile {
+		if name := filepath.Base(goFile); name != codegen.OutputFile && name != codegen.AgentToolsOutputFile {
 			return true, nil
 		}
 	}
