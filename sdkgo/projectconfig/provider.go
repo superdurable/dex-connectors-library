@@ -294,7 +294,13 @@ func (provider *CredentialResolver[C]) refreshWhileLocked(ctx context.Context, d
 		return state.Credentials, true, nil
 	}
 	// A rotated refresh token that cannot be written back would strand every other process.
-	if err = refreshLocker.verifyCredentialWriteBack(); err != nil {
+	if err = refreshLocker.verifyCredentialWriteBack(ctx, provider.key); err != nil {
+		if errors.Is(err, ErrConnectionTargetChanged) {
+			return zero, false, err
+		}
+		if errors.Is(err, errFileChangedSinceRead) {
+			return zero, false, nil
+		}
 		return zero, false, fmt.Errorf("%w: the credential cannot be written back: %w", ErrRefreshFailed, err)
 	}
 	return provider.refreshReady(ctx, record, material, state, driver)
@@ -348,6 +354,12 @@ func (provider *CredentialResolver[C]) recoverExchange(ctx context.Context, reco
 			return err
 		}
 		defer lock.release()
+		// The target may have changed while this caller waited; recovery publishes and writes back.
+		if _, isExpected := expectedConnectionTarget(ctx, provider.key); isExpected {
+			if _, _, err = provider.store.readRecordForCredentialUse(ctx, provider.key); err != nil {
+				return err
+			}
+		}
 	}
 	_, err := provider.store.RecoverCredentialExchange(ctx, exchangeAdmission(record, false))
 	return err

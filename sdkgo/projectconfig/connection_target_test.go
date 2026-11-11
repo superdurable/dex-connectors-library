@@ -490,3 +490,103 @@ func TestGuardedSharedEntryFailsClosedWithoutBrokerRequest(t *testing.T) {
 	require.ErrorIs(t, err, projectconfig.ErrConnectionTargetUnverifiable)
 	require.Equal(t, requestsBefore, fixture.broker.requestCount())
 }
+
+// rewritingDriver writes rewrite into connections.json on its second refresh decision of an unexpired credential, made under the
+// refresh lock just before the unchanged rewrite, and then requires a refresh only for access-1.
+type rewritingDriver struct {
+	t         *testing.T
+	path      string
+	rewrite   targetRecord
+	written   []byte
+	decisions int
+	refreshes int
+}
+
+func (driver *rewritingDriver) RefreshRequired(state projectconfig.RefreshState[localCredentials]) bool {
+	driver.decisions++
+	if driver.decisions == 2 {
+		writeTargetConnections(driver.t, driver.path, driver.rewrite)
+		written, err := os.ReadFile(driver.path)
+		require.NoError(driver.t, err)
+		driver.written = written
+		return true
+	}
+	return state.Credentials.AccessToken == "access-1"
+}
+
+func (driver *rewritingDriver) Refresh(_ context.Context, state projectconfig.RefreshState[localCredentials]) (projectconfig.RefreshResult[localCredentials], error) {
+	driver.refreshes++
+	return projectconfig.RefreshResult[localCredentials]{
+		Credentials: localCredentials{AccessToken: "access-2", RefreshToken: "refresh-2"}, ExpiresAt: state.Now.Add(time.Hour),
+	}, nil
+}
+
+func reboundTarget() targetRecord {
+	future := time.Now().Add(time.Hour)
+	return targetRecord{authorizationID: secondAuthorizationID, workspace: "acme", accessToken: "access-other", refreshToken: "refresh-other", expiresAt: &future}
+}
+
+// A writer that skips the refresh lock rebinds after the guarded check under the lock; the rewrite must notice.
+func TestGuardedRefreshRefusesRebindBetweenCheckAndRewrite(t *testing.T) {
+	expiresAt := time.Now().Add(time.Hour)
+	// The settings-only edit keeps the credential and its expiry, so nothing but the guard notices it.
+	settingsOnly := firstTarget(expiresAt)
+	settingsOnly.workspace = "other"
+	for name, rewrite := range map[string]targetRecord{"rebind": reboundTarget(), "settings": settingsOnly} {
+		t.Run(name, func(t *testing.T) {
+			path, project, fingerprint := loadTargetProject(t, firstTarget(expiresAt))
+			driver := &rewritingDriver{t: t, path: path, rewrite: rewrite}
+
+			_, err := localResolver(t, project).ResolveWithRefresh(projectconfig.ContextWithExpectedConnectionTarget(context.Background(), localKey, fingerprint), driver)
+			require.ErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
+			require.Zero(t, driver.refreshes)
+			after, err := os.ReadFile(path)
+			require.NoError(t, err)
+			require.Equal(t, driver.written, after, "the rewrite is never overwritten")
+		})
+	}
+}
+
+func TestUnguardedRefreshAdoptsReauthorizationBetweenCheckAndRewrite(t *testing.T) {
+	path, project, _ := loadTargetProject(t, firstTarget(time.Now().Add(time.Hour)))
+	driver := &rewritingDriver{t: t, path: path, rewrite: reboundTarget()}
+
+	credentials, err := localResolver(t, project).ResolveWithRefresh(context.Background(), driver)
+	require.NoError(t, err)
+	require.Equal(t, "access-other", credentials.AccessToken)
+	require.Zero(t, driver.refreshes, "the superseded credential is never refreshed")
+	after, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, driver.written, after)
+}
+
+func TestDuplicateConnectionRecordFailsResolutionClosed(t *testing.T) {
+	path, project, fingerprint := loadTargetProject(t, firstTarget(time.Now().Add(time.Hour)))
+	resolver := localResolver(t, project)
+	contents, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var file map[string]any
+	require.NoError(t, json.Unmarshal(contents, &file))
+	original := file["connections"].([]any)[0].(map[string]any)
+	duplicate := map[string]any{}
+	for name, value := range original {
+		duplicate[name] = value
+	}
+	duplicate["authorizationId"] = secondAuthorizationID
+	duplicate["credentials"] = map[string]any{"access_token": "access-other", "refresh_token": "refresh-other"}
+	file["connections"] = []any{original, duplicate}
+	writeJSON(t, path, file)
+	guarded := projectconfig.ContextWithExpectedConnectionTarget(context.Background(), localKey, fingerprint)
+
+	_, err = resolver.Resolve(guarded)
+	require.ErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
+	require.ErrorContains(t, err, "more than once")
+	driver := &requiringDriver{}
+	_, err = resolver.ResolveWithRefresh(guarded, driver)
+	require.ErrorIs(t, err, projectconfig.ErrConnectionTargetChanged)
+	require.Zero(t, driver.refreshCount())
+	_, err = resolver.Resolve(context.Background())
+	require.ErrorContains(t, err, "more than once")
+	_, err = projectconfig.LoadDexWebConnectionsFile(context.Background(), path)
+	require.ErrorContains(t, err, "more than once")
+}

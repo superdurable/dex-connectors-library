@@ -454,8 +454,12 @@ refresh of a local connection therefore also holds a file lock:
 3. Otherwise it first rewrites `connections.json` unchanged through the
    write-back steps: a temporary file in the same directory with mode `0600`,
    `fsync`, rename over `connections.json`, then `fsync` of the directory.
-   This proves the file can be replaced. Then it sends the one refresh
-   request and writes the result back through the same steps.
+   This proves the file can be replaced. The rewrite uses the bytes of one
+   read. That read must still hold the credential being refreshed, and the
+   expected target when there is one. Just before the rename, the file must
+   still hold those bytes. Otherwise nothing is renamed, and the caller reads
+   the file again instead of refreshing. Then it sends the one refresh request
+   and writes the result back through the same steps.
 4. It releases the lock. An observer that recovers an unfinished refresh of
    its own process holds the lock in the same way.
 
@@ -496,10 +500,12 @@ Limits:
   refresh is coordinated only within one loaded project, the application logs
   a warning when it loads the file, and the file must serve one loaded project
   of one application process.
-- Dex Web does not take this lock when it saves a reauthorized credential. A
-  reauthorization saved during another process's write-back or its unchanged
-  rewrite, each of which lasts milliseconds, can be overwritten; reauthorize
-  again if a call still uses the previous authorization.
+- Dex Web releases before superdurable/dex#1526 do not take this lock when
+  they save a reauthorized credential. Such a save can still be overwritten
+  in two places: during another process's write-back, or between the
+  unchanged rewrite's last comparison and its rename. Each window lasts
+  milliseconds or less. Reauthorize again if a call still uses the previous
+  authorization.
 - The Python and TypeScript SDKs do not take this lock yet. Do not let them
   refresh a connection that a Go process also refreshes from the same file.
 
@@ -557,8 +563,12 @@ connector's normal call path, such as the Step context passed to
 
 - They read the credential and the record's target fields from one read of
   `connections.json`. `ResolveWithRefresh` compares again after it acquires
-  the [refresh lock](#refresh-across-processes), so a rebind that lands while
-  it waits is caught before the refresh request.
+  the [refresh lock](#refresh-across-processes), and so does recovery of an
+  unfinished refresh before it publishes the result. A rebind that lands
+  while it waits is caught before the refresh request.
+- The unchanged rewrite before a refresh compares the target again, in the
+  same read whose bytes it rewrites. It never renames over a file that changed
+  after that read, so it never overwrites a rebind or a settings edit.
 - When the record's fingerprint differs or the record is gone, they return an
   error wrapping `ErrConnectionTargetChanged`. They send no provider request,
   not even a token refresh, change no record, and return no credential.
@@ -566,6 +576,9 @@ connector's normal call path, such as the Step context passed to
   result, so a rotated refresh token is never lost. A returned credential
   always belongs to the target that was compared, even when a rebind lands
   after the comparison.
+- A file that lists one connection key more than once fails every resolution
+  of that key, because no single target remains. Under an expectation the
+  error wraps `ErrConnectionTargetChanged`; loading such a file fails.
 - An empty or malformed fingerprint never matches. Resolutions of other
   connections are unaffected, and a later call for the same key replaces the
   expectation.
@@ -657,7 +670,10 @@ The connection target tests check the fingerprint's golden vectors and which
 fields change it. They check that a matching target returns the credential and
 that a rebind, a settings change or a removed record is refused with no
 refresh request and no file write, including a rebind written while a guarded
-refresh waits for another holder's lock. They also cover a record without
+refresh waits for another holder's lock, between the check under the lock and
+the unchanged rewrite, and during that rewrite. In none of these cases is the
+rewrite allowed to overwrite the newer file. Other tests cover recovery after a
+settings change, duplicated records, a record without
 `authorizationId`, the generated connector provider path, fail-closed hosted
 and shared sources, and a write-back that keeps `authorizationId` and unknown
 members across a restart.
