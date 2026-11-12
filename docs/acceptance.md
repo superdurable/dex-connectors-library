@@ -52,7 +52,8 @@ go run ./cmd/connectorctl test-matrix --catalog catalog.yaml --scope changed \
 
 Selector tests cover connector-local edits, catalog additions and removals,
 dependent connectors, shared SDK or schema edits, documentation-only edits,
-nested connector paths, and fail-safe unknown shared source changes. Shard tests cover 1, 256, and more
+common-only repository tooling edits, nested connector paths, and fail-safe
+unknown shared source changes. Shard tests cover 1, 256, and more
 than 256 connectors, proving deterministic assignment without duplication or
 omission.
 
@@ -63,6 +64,10 @@ CI behavior is accepted when:
 - shared contract changes select the complete catalog;
 - documentation and agent-rule-only changes run common and the CI summary
   without connector module jobs; directory-site-only changes also run the site suite;
+- changes only to listed common-only repository tooling, such as release
+  publishing scripts and their tests, run common and the CI summary without
+  connector module jobs; a change that also touches code generation, an SDK,
+  or any unlisted shared path selects the complete catalog;
 - common, SDK, React, and site suites run when their inputs change on a
   pull request or push to `main`;
 - the `ci-summary` check reports a result even when a matrix is empty;

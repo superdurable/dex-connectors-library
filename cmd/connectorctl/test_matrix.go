@@ -39,6 +39,39 @@ type ciJobSelection struct {
 	ConnectorsMCP bool
 }
 
+// changedPathImpact is what one changed path requires a changed-scope CI run to test.
+type changedPathImpact struct {
+	shouldTestAllConnectors bool
+	ciJobs                  ciJobSelection
+}
+
+// repositoryToolingTestOnlyPaths run only in common or release workflows; unlisted new files fan out.
+var repositoryToolingTestOnlyPaths = map[string]bool{
+	".githooks/commit-msg":                              true,
+	".github/PULL_REQUEST_TEMPLATE.md":                  true,
+	"script/agent_rules_test.py":                        true,
+	"script/branch_off_main_policy.py":                  true,
+	"script/branch_off_main_policy_test.py":             true,
+	"script/ci_workflow_test.py":                        true,
+	"script/connector_conformance_test.py":              true,
+	"script/dex_compatibility_test.py":                  true,
+	"script/python_latest_sdk_test.py":                  true,
+	"script/python_timestamp_parity_test.py":            true,
+	"script/studio_bundle_theme_check_test.py":          true,
+	"script/verify_go_subdir_migration.py":              true,
+	"script/verify_go_subdir_migration_test.py":         true,
+	"script/release/component_release_test.py":          true,
+	"script/release/connectors_mcp_release.py":          true,
+	"script/release/connectors_mcp_release_test.py":     true,
+	"script/release/github_release_inventory_test.py":   true,
+	"script/release/language_publish.py":                true,
+	"script/release/language_publish_test.py":           true,
+	"script/release/npm_publish.py":                     true,
+	"script/release/npm_publish_test.py":                true,
+	"script/release/retitle_connector_releases.py":      true,
+	"script/release/retitle_connector_releases_test.py": true,
+}
+
 func testMatrixCommand(args []string) error {
 	flags := flag.NewFlagSet("test-matrix", flag.ContinueOnError)
 	catalogPath := flags.String("catalog", "", "connector catalog source")
@@ -217,38 +250,25 @@ func selectCIJobsForPaths(scope string, changedPaths []string) ciJobSelection {
 	}
 	jobs := ciJobSelection{}
 	for _, path := range changedPaths {
-		switch {
-		case strings.HasPrefix(path, "sdkgo/"):
-			jobs.Common, jobs.SDKPython, jobs.SDKTypeScript, jobs.SDKGoIntegration = true, true, true, true
-			// The server links sdkgo, so an SDK change is tested against the server before release.
-			jobs.ConnectorsMCP = true
-		case strings.HasPrefix(path, connectorsMCPServerDirectory+"/"):
-			jobs.ConnectorsMCP = true
-		case strings.HasPrefix(path, "sdkpython/"):
-			jobs.SDKPython = true
-		case strings.HasPrefix(path, "sdkts/"):
-			jobs.SDKTypeScript = true
-		case strings.HasPrefix(path, "sdk/react/"):
-			jobs.React = true
-		case strings.HasPrefix(path, "site/") || path == "catalog.yaml":
-			jobs.Site = true
-		case strings.HasPrefix(path, "connectors/stripe/typescript/"):
-			jobs.Common = true
-		case strings.HasPrefix(path, "docs/") || strings.HasPrefix(path, ".cursor/") || strings.HasPrefix(path, ".codex/") || path == "README.md" || path == "AGENTS.md" || path == "CLAUDE.md":
-			jobs.Common = true
-		case strings.HasPrefix(path, "connectors/") || strings.HasPrefix(path, "conformance/connectors/") || strings.HasPrefix(path, "examples/"):
-			continue
-		case path == ".gitignore" || path == "CODE_OF_CONDUCT.md" || path == "CONTRIBUTING.md":
-			continue
-		default:
-			return selectAllCIJobs()
-		}
+		jobs = jobs.combinedWith(changedPathTestImpact(filepath.ToSlash(path)).ciJobs)
 	}
 	return jobs
 }
 
 func selectAllCIJobs() ciJobSelection {
 	return ciJobSelection{Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, React: true, Site: true, ConnectorsMCP: true}
+}
+
+func (selection ciJobSelection) combinedWith(other ciJobSelection) ciJobSelection {
+	return ciJobSelection{
+		Common:           selection.Common || other.Common,
+		SDKPython:        selection.SDKPython || other.SDKPython,
+		SDKTypeScript:    selection.SDKTypeScript || other.SDKTypeScript,
+		SDKGoIntegration: selection.SDKGoIntegration || other.SDKGoIntegration,
+		React:            selection.React || other.React,
+		Site:             selection.Site || other.Site,
+		ConnectorsMCP:    selection.ConnectorsMCP || other.ConnectorsMCP,
+	}
 }
 
 func selectConnectorDirectoriesForPaths(
@@ -284,10 +304,9 @@ func selectConnectorDirectoriesForPaths(
 			selected[directory] = true
 			continue
 		}
-		if isConnectorTestNeutralPath(changedPath) || strings.HasPrefix(changedPath, "connectors/") {
-			continue
+		if changedPathTestImpact(changedPath).shouldTestAllConnectors {
+			shouldSelectAll = true
 		}
-		shouldSelectAll = true
 	}
 	if shouldSelectAll {
 		return append([]string(nil), directories...)
@@ -311,17 +330,38 @@ func longestConnectorDirectoryPrefix(directories []string, changedPath string) s
 	return matched
 }
 
-func isConnectorTestNeutralPath(changedPath string) bool {
-	for _, prefix := range []string{"docs/", "site/", ".cursor/", ".codex/", "examples/", connectorsMCPServerDirectory + "/"} {
-		if strings.HasPrefix(changedPath, prefix) {
-			return true
-		}
-	}
-	switch changedPath {
-	case "README.md", "AGENTS.md", "CLAUDE.md", ".gitignore", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md":
-		return true
+// changedPathTestImpact tests everything for unlisted paths, such as component_release.py, which connector checks run.
+func changedPathTestImpact(changedPath string) changedPathImpact {
+	switch {
+	case strings.HasPrefix(changedPath, "sdkgo/"):
+		// The server links sdkgo, so an SDK change is tested against the server before release.
+		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{
+			Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, ConnectorsMCP: true,
+		}}
+	case strings.HasPrefix(changedPath, connectorsMCPServerDirectory+"/"):
+		return changedPathImpact{ciJobs: ciJobSelection{ConnectorsMCP: true}}
+	case strings.HasPrefix(changedPath, "sdkpython/"):
+		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{SDKPython: true}}
+	case strings.HasPrefix(changedPath, "sdkts/"):
+		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{SDKTypeScript: true}}
+	case strings.HasPrefix(changedPath, "sdk/react/"):
+		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{React: true}}
+	case strings.HasPrefix(changedPath, "site/") || changedPath == "catalog.yaml":
+		return changedPathImpact{ciJobs: ciJobSelection{Site: true}}
+	case strings.HasPrefix(changedPath, "connectors/stripe/typescript/"):
+		return changedPathImpact{ciJobs: ciJobSelection{Common: true}}
+	case strings.HasPrefix(changedPath, "docs/") || strings.HasPrefix(changedPath, ".cursor/") || strings.HasPrefix(changedPath, ".codex/"):
+		return changedPathImpact{ciJobs: ciJobSelection{Common: true}}
+	case changedPath == "README.md" || changedPath == "AGENTS.md" || changedPath == "CLAUDE.md":
+		return changedPathImpact{ciJobs: ciJobSelection{Common: true}}
+	case repositoryToolingTestOnlyPaths[changedPath]:
+		return changedPathImpact{ciJobs: ciJobSelection{Common: true}}
+	case strings.HasPrefix(changedPath, "connectors/") || strings.HasPrefix(changedPath, "conformance/connectors/") || strings.HasPrefix(changedPath, "examples/"):
+		return changedPathImpact{}
+	case changedPath == ".gitignore" || changedPath == "CODE_OF_CONDUCT.md" || changedPath == "CONTRIBUTING.md":
+		return changedPathImpact{}
 	default:
-		return false
+		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: selectAllCIJobs()}
 	}
 }
 
