@@ -18,11 +18,12 @@ export class ListContactsOperation implements Query<ListContactsInput, ContactsP
   /** Send one bounded page request with a fixed field mask. */
   async invoke(call: Call, input: ListContactsInput): Promise<QueryAttempt<ContactsPage>> {
     const empty = emptyPage();
-    if (!input || !Number.isSafeInteger(input.pageSize) || input.pageSize < 0 || input.pageSize > 1000 || !validPageToken(input.pageToken))
+    const requestedPageSize = input?.pageSize ?? 0; const pageToken = input?.pageToken ?? '';
+    if (!input || !Number.isSafeInteger(requestedPageSize) || requestedPageSize < 0 || requestedPageSize > 1000 || !validPageToken(pageToken))
       return queryBranch('listContacts', 'defect', empty, 'VALIDATION', 'contact page input is invalid');
-    const pageSize = input.pageSize || 100;
+    const pageSize = requestedPageSize || 100;
     const query: Record<string, readonly string[]> = { pageSize: [String(pageSize)], personFields: ['names,emailAddresses'] };
-    if (input.pageToken) query.pageToken = [input.pageToken];
+    if (pageToken) query.pageToken = [pageToken];
     const exchange = await this.client.request(call, `/v1/people/me/connections?${encodeQueryValues(query)}`);
     const failed = classifyRead('listContacts', exchange, empty);
     if (failed) return failed;
@@ -150,10 +151,12 @@ function projectContact(value: unknown): Contact | undefined {
 function validResourceName(value: unknown): value is string { return typeof value === 'string' && resourcePattern.test(value); }
 function validPageToken(value: unknown): value is string { return typeof value === 'string' && Buffer.byteLength(value) <= 4096 && !/[\r\n]/.test(value); }
 function validCreateInput(input: CreateContactInput): boolean {
-  if (!input || typeof input.givenName !== 'string' || typeof input.familyName !== 'string' || typeof input.emailAddress !== 'string') return false;
-  if (![input.givenName, input.familyName, input.emailAddress].every(value => Buffer.from(value).toString('utf8') === value)) return false;
-  if (!input.givenName.trim() || Buffer.byteLength(input.givenName) > 256 || Buffer.byteLength(input.familyName) > 256 || Buffer.byteLength(input.emailAddress) > 320) return false;
-  return !/[\r\n]/.test(input.emailAddress) && (!input.emailAddress || (input.emailAddress.includes('@') && !/[ \t]/.test(input.emailAddress)));
+  if (!input) return false;
+  const { givenName, familyName = '', emailAddress = '' } = input;
+  if (typeof givenName !== 'string' || typeof familyName !== 'string' || typeof emailAddress !== 'string') return false;
+  if (![givenName, familyName, emailAddress].every(value => Buffer.from(value).toString('utf8') === value)) return false;
+  if (!givenName.trim() || Buffer.byteLength(givenName) > 256 || Buffer.byteLength(familyName) > 256 || Buffer.byteLength(emailAddress) > 320) return false;
+  return !/[\r\n]/.test(emailAddress) && (!emailAddress || (emailAddress.includes('@') && !/[ \t]/.test(emailAddress)));
 }
 function queryBranch<Output>(operation: string, branch: string, empty: Output, kind: Failure['kind'], message: string): QueryAttempt<Output> {
   return newQueryBranch(branch, empty, {}, failure(operation, kind, message));

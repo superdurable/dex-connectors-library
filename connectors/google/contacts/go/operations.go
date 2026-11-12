@@ -21,9 +21,9 @@ var contactResourceName = regexp.MustCompile(`^people/[A-Za-z0-9_-]{1,128}$`)
 // ListContactsInput selects one page of the connected user's contacts.
 type ListContactsInput struct {
 	// PageSize is 1 through 1000; zero uses 100.
-	PageSize int `json:"pageSize"`
+	PageSize int `json:"pageSize,omitempty"`
 	// PageToken is Google's opaque cursor; blank selects the first page.
-	PageToken string `json:"pageToken"`
+	PageToken string `json:"pageToken,omitempty"`
 }
 
 // Contact projects a People API resource name and its first display name and email address.

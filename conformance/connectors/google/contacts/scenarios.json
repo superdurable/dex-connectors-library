@@ -64,6 +64,59 @@
       "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
       "exchanges": [
         {
+          "body": "{\"connections\": [{\"resourceName\": \"people/c123\", \"names\": [{\"displayName\": \"Example Contact\"}], \"emailAddresses\": [{\"value\": \"example@example.com\"}]}], \"nextPageToken\": \"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/people/me/connections",
+          "query": {
+            "pageSize": [
+              "100"
+            ],
+            "personFields": [
+              "names,emailAddresses"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-contacts-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "displayName": "Example Contact",
+              "emailAddress": "example@example.com",
+              "resourceName": "people/c123"
+            }
+          ],
+          "nextPageToken": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listContacts-defaults",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
@@ -737,6 +790,70 @@
         "givenName": "Ada"
       },
       "name": "createContact-created",
+      "operation": "createContact"
+    },
+    {
+      "callId": "25f5716f-33bb-5a4b-ac99-755ea13c060d",
+      "exchanges": [
+        {
+          "body": "{\"resourceName\": \"people/c457\", \"names\": [{\"displayName\": \"Ada\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/people:createContact",
+          "query": {
+            "personFields": [
+              "names,emailAddresses"
+            ]
+          },
+          "requestBody": {
+            "names": [
+              {
+                "givenName": "Ada"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-contacts-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25f5716f-33bb-5a4b-ac99-755ea13c060d",
+          "providerId": "people/c457",
+          "state": "claimed"
+        },
+        "output": {
+          "displayName": "Ada",
+          "emailAddress": "",
+          "resourceName": "people/c457"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25f5716f-33bb-5a4b-ac99-755ea13c060d",
+      "input": {
+        "givenName": "Ada"
+      },
+      "name": "createContact-givenNameOnly",
       "operation": "createContact"
     },
     {

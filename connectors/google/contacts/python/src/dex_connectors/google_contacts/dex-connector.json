@@ -1,10 +1,10 @@
 {
   "connectorId": "google-contacts",
-  "releaseTag": "connectors/google/contacts/go/v0.1.0",
+  "releaseTag": "connectors/google/contacts/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-contacts",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -54,10 +54,6 @@
             "type": "string"
           }
         },
-        "required": [
-          "pageSize",
-          "pageToken"
-        ],
         "type": "object"
       }
     },
@@ -167,8 +163,6 @@
           }
         },
         "required": [
-          "emailAddress",
-          "familyName",
           "givenName"
         ],
         "type": "object"
