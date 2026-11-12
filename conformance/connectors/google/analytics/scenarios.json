@@ -88,6 +88,88 @@
       "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
       "exchanges": [
         {
+          "body": "{\"rows\":[{\"dimensionValues\":[{\"value\":\"United States\"}],\"metricValues\":[{\"value\":\"4820\"}]}],\"rowCount\":\"101\",\"private\":\"discard\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/properties/123456789:runReport",
+          "requestBody": {
+            "dateRanges": [
+              {
+                "endDate": "2026-11-07",
+                "startDate": "2026-11-01"
+              }
+            ],
+            "dimensions": [
+              {
+                "name": "country"
+              }
+            ],
+            "limit": "100",
+            "metrics": [
+              {
+                "name": "activeUsers"
+              }
+            ],
+            "offset": "0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "reported",
+        "failureKind": "",
+        "output": {
+          "rowCount": 101,
+          "rows": [
+            {
+              "dimensions": [
+                "United States"
+              ],
+              "metrics": [
+                "4820"
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country"
+        ],
+        "endDate": "2026-11-07",
+        "metrics": [
+          "activeUsers"
+        ],
+        "offset": 0,
+        "propertyId": "123456789",
+        "startDate": "2026-11-01"
+      },
+      "name": "runReport-defaultLimit",
+      "operation": "runReport"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
@@ -830,6 +912,59 @@
         "propertyId": "123456789"
       },
       "name": "listAudiences-listed",
+      "operation": "listAudiences"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"audiences\":[{\"name\":\"properties/123456789/audiences/42\",\"displayName\":\"Returning users\",\"description\":\"Recently active users\",\"private\":\"discard\"}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1alpha/properties/123456789/audiences",
+          "query": {
+            "pageSize": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-analytics-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "audiences": [
+            {
+              "description": "Recently active users",
+              "displayName": "Returning users",
+              "name": "properties/123456789/audiences/42"
+            }
+          ],
+          "nextPageToken": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "",
+        "propertyId": "123456789"
+      },
+      "name": "listAudiences-defaultPageSize",
       "operation": "listAudiences"
     },
     {

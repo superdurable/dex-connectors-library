@@ -96,7 +96,7 @@ export interface RunReportInput {
   /** Metrics are one to ten GA4 Data API metric names in requested order. */
   "metrics": Array<string> | null;
   /** Limit is the page size from 1 to 10000; zero uses 100. */
-  "limit": number;
+  "limit"?: number | undefined;
   /** Offset is the zero-based row offset. */
   "offset": number;
 }
@@ -135,7 +135,7 @@ export interface ListAudiencesInput {
   /** PropertyID is the numeric GA4 Property ID from Analytics Admin. */
   "propertyId": string;
   /** PageSize is from 1 to 200; zero uses 50. */
-  "pageSize": number;
+  "pageSize"?: number | undefined;
   /** PageToken is Google's opaque cursor from a prior page. */
   "pageToken": string;
 }
@@ -163,7 +163,7 @@ export const RunReportInputSchema = z.strictObject({
   "endDate": z.string(),
   "dimensions": z.array(z.string()).nullable(),
   "metrics": z.array(z.string()).nullable(),
-  "limit": z.number().int(),
+  "limit": z.number().int().optional(),
   "offset": z.number().int(),
 }) satisfies z.ZodType<RunReportInput>;
 
@@ -195,7 +195,7 @@ export const PropertySchema = z.strictObject({
 /** Runtime validator for ListAudiencesInput. */
 export const ListAudiencesInputSchema = z.strictObject({
   "propertyId": z.string(),
-  "pageSize": z.number().int(),
+  "pageSize": z.number().int().optional(),
   "pageToken": z.string(),
 }) satisfies z.ZodType<ListAudiencesInput>;
 

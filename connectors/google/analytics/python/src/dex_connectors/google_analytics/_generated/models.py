@@ -27,7 +27,7 @@ class RunReportInput:
     # Metrics are one to ten GA4 Data API metric names in requested order.
     metrics: tuple[str, ...] = ()
     # Limit is the page size from 1 to 10000; zero uses 100.
-    limit: int = 0
+    limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
     # Offset is the zero-based row offset.
     offset: int = 0
 
@@ -112,7 +112,7 @@ class ListAudiencesInput:
     # PropertyID is the numeric GA4 Property ID from Analytics Admin.
     property_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'propertyId'})
     # PageSize is from 1 to 200; zero uses 50.
-    page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize'})
+    page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize', 'dex_json_omit_default': True})
     # PageToken is Google's opaque cursor from a prior page.
     page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken'})
 
