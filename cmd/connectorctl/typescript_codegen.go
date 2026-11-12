@@ -13,7 +13,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/schema"
 )
 
-func generatedTypeScriptFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
+func generatedTypeScriptFiles(manifestPath string, manifest schema.Manifest, goPackage *connectorGoPackage) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 	if manifest.Spec.Languages == nil || manifest.Spec.Languages.TypeScript == nil {
 		return files, nil
@@ -36,7 +36,11 @@ func generatedTypeScriptFiles(manifestPath string, manifest schema.Manifest) (ma
 	if err != nil {
 		return nil, err
 	}
-	generated, err := codegen.GenerateTypeScript(manifest, goDirectory, publishedNames...)
+	connectorPackage, err := goPackage.load()
+	if err != nil {
+		return nil, err
+	}
+	generated, err := codegen.GenerateTypeScriptFromPackage(manifest, connectorPackage, publishedNames...)
 	if err != nil {
 		return nil, err
 	}

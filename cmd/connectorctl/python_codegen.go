@@ -38,7 +38,7 @@ type pythonCodegenInput struct {
 var pythonModelAliasPattern = regexp.MustCompile(`(?m)^# connectorctl: model-alias ([A-Za-z_][A-Za-z_0-9]*)=([A-Za-z_][A-Za-z_0-9]*)$`)
 var pythonPublishedModelPattern = regexp.MustCompile(`(?m)^class ([A-Za-z][A-Za-z_0-9]*):$`)
 
-func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
+func generatedPythonFiles(manifestPath string, manifest schema.Manifest, goPackage *connectorGoPackage) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 	if manifest.Spec.Languages == nil || manifest.Spec.Languages.Python == nil {
 		return files, nil
@@ -67,7 +67,7 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 	if err != nil {
 		return nil, err
 	}
-	models, err := gomodel.Load(filepath.Join(filepath.Dir(manifestPath), "go"), rootNames, publishedNames...)
+	models, err := goPackage.graph(rootNames, publishedNames...)
 	if err != nil {
 		return nil, err
 	}

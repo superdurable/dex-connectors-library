@@ -29,7 +29,7 @@ func TestPythonRefreshDeclarationUsesDecodedManifest(t *testing.T) {
 	manifest.Spec.Auth.Methods[0].OAuth2.TokenEndpoint = schema.ValueSource{
 		FromCredential: "oauth_client_id", Values: map[string]string{"description": "https://example.com/token"},
 	}
-	files, err := generatedPythonFiles(manifestPath, manifest)
+	files, err := generatedPythonFiles(manifestPath, manifest, newConnectorGoPackage(manifestPath))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := generatedPythonFiles(manifestPath, manifest)
+	files, err := generatedPythonFiles(manifestPath, manifest, newConnectorGoPackage(manifestPath))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -936,7 +936,7 @@ func TestPythonCodegenCreatesRealNestedMockFacades(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(packageDirectory, "__init__.py"), []byte(""), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			files, err := generatedPythonFiles(filepath.Join(fixtureDirectory, "connector.yaml"), manifest)
+			files, err := generatedPythonFiles(filepath.Join(fixtureDirectory, "connector.yaml"), manifest, newConnectorGoPackage(filepath.Join(fixtureDirectory, "connector.yaml")))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -970,7 +970,7 @@ func TestPythonCodegenUsesHistoricalInlineModelNames(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			files, err := generatedPythonFiles(manifestPath, manifest)
+			files, err := generatedPythonFiles(manifestPath, manifest, newConnectorGoPackage(manifestPath))
 			if err != nil {
 				t.Fatal(err)
 			}

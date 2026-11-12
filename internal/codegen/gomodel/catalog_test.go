@@ -26,6 +26,7 @@ func TestCatalogOperationModelsLoad(t *testing.T) {
 	}
 	for _, directory := range catalog.Directories {
 		t.Run(directory, func(t *testing.T) {
+			t.Parallel()
 			connectorDirectory := filepath.Join(repository, directory)
 			manifestFile, err := os.Open(filepath.Join(connectorDirectory, "connector.yaml"))
 			if err != nil {

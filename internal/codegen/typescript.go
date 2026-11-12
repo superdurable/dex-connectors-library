@@ -23,6 +23,18 @@ func GenerateTypeScript(manifest schema.Manifest, goDirectory string, publishedM
 	if manifest.Spec.Languages == nil || manifest.Spec.Languages.TypeScript == nil {
 		return nil, nil
 	}
+	connectorPackage, err := gomodel.LoadPackage(goDirectory)
+	if err != nil {
+		return nil, err
+	}
+	return GenerateTypeScriptFromPackage(manifest, connectorPackage, publishedModelNames...)
+}
+
+// GenerateTypeScriptFromPackage is GenerateTypeScript for a connector Go package that is already loaded.
+func GenerateTypeScriptFromPackage(manifest schema.Manifest, connectorPackage *gomodel.Package, publishedModelNames ...string) (map[string][]byte, error) {
+	if manifest.Spec.Languages == nil || manifest.Spec.Languages.TypeScript == nil {
+		return nil, nil
+	}
 	selected := make(map[string]bool)
 	for _, name := range manifest.Spec.Languages.TypeScript.Operations {
 		selected[name] = true
@@ -35,7 +47,7 @@ func GenerateTypeScript(manifest schema.Manifest, goDirectory string, publishedM
 			modelNames = append(modelNames, operation.InputType, operation.OutputType)
 		}
 	}
-	graph, err := gomodel.Load(goDirectory, modelNames, publishedModelNames...)
+	graph, err := connectorPackage.Graph(modelNames, publishedModelNames...)
 	if err != nil {
 		return nil, err
 	}

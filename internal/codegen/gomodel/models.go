@@ -120,29 +120,47 @@ type fieldCandidate struct {
 // Load resolves root Go struct names and their reachable JSON models from a connector module.
 // Published names prevent later collisions from renaming existing generated types.
 func Load(goDirectory string, rootNames []string, publishedNames ...string) (Graph, error) {
+	connectorPackage, err := LoadPackage(goDirectory)
+	if err != nil {
+		return Graph{}, err
+	}
+	return connectorPackage.Graph(rootNames, publishedNames...)
+}
+
+// Package is one type-checked connector Go package. Each Graph call is independent of earlier calls.
+// It reflects sources at LoadPackage time and is not safe for concurrent use.
+type Package struct {
+	goDirectory  string
+	packageTypes *types.Package
+	comments     map[*types.Var]string
+	typeComments map[string]string
+}
+
+// LoadPackage type-checks the Go package in goDirectory and keeps only what model graphs read.
+func LoadPackage(goDirectory string) (*Package, error) {
 	loaded, err := packages.Load(&packages.Config{Dir: goDirectory, Mode: packages.NeedName | packages.NeedTypes | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypesInfo}, ".")
 	if err != nil {
-		return Graph{}, fmt.Errorf("load connector Go package: %w", err)
+		return nil, fmt.Errorf("load connector Go package: %w", err)
 	}
 	if len(loaded) != 1 {
-		return Graph{}, fmt.Errorf("load connector Go package: expected one package, got %d", len(loaded))
+		return nil, fmt.Errorf("load connector Go package: expected one package, got %d", len(loaded))
 	}
 	for _, problem := range loaded[0].Errors {
-		return Graph{}, fmt.Errorf("load connector Go package: %s", problem)
+		return nil, fmt.Errorf("load connector Go package: %s", problem)
 	}
-	modelLoader := &loader{packageTypes: loaded[0].Types, seen: map[string]bool{}, active: map[string]bool{}, reserved: map[string]bool{}, modelTypes: map[string]string{}, externalPreferredNames: map[string]string{}, comments: map[*types.Var]string{}, typeComments: map[string]string{}}
+	connectorPackage := &Package{goDirectory: goDirectory, packageTypes: loaded[0].Types, comments: map[*types.Var]string{}, typeComments: map[string]string{}}
 	for _, file := range loaded[0].Syntax {
 		ast.Inspect(file, func(node ast.Node) bool {
 			switch declaration := node.(type) {
 			case *ast.GenDecl:
 				if declaration.Doc != nil && len(declaration.Specs) == 1 {
 					if specification, ok := declaration.Specs[0].(*ast.TypeSpec); ok {
-						modelLoader.typeComments[specification.Name.Name] = strings.TrimSpace(declaration.Doc.Text())
+						connectorPackage.typeComments[specification.Name.Name] = strings.TrimSpace(declaration.Doc.Text())
 					}
 				}
 			case *ast.TypeSpec:
 				if declaration.Doc != nil {
-					modelLoader.typeComments[declaration.Name.Name] = strings.TrimSpace(declaration.Doc.Text())
+					connectorPackage.typeComments[declaration.Name.Name] = strings.TrimSpace(declaration.Doc.Text())
 				}
 			case *ast.Field:
 				comment := declaration.Doc
@@ -152,7 +170,7 @@ func Load(goDirectory string, rootNames []string, publishedNames ...string) (Gra
 				if comment != nil {
 					for _, name := range declaration.Names {
 						if variable, ok := loaded[0].TypesInfo.Defs[name].(*types.Var); ok {
-							modelLoader.comments[variable] = strings.TrimSpace(comment.Text())
+							connectorPackage.comments[variable] = strings.TrimSpace(comment.Text())
 						}
 					}
 				}
@@ -160,10 +178,17 @@ func Load(goDirectory string, rootNames []string, publishedNames ...string) (Gra
 			return true
 		})
 	}
+	return connectorPackage, nil
+}
+
+// Graph resolves root Go struct names and their reachable JSON models from the loaded package.
+// Published names prevent later collisions from renaming existing generated types.
+func (connectorPackage *Package) Graph(rootNames []string, publishedNames ...string) (Graph, error) {
+	modelLoader := &loader{packageTypes: connectorPackage.packageTypes, seen: map[string]bool{}, active: map[string]bool{}, reserved: map[string]bool{}, modelTypes: map[string]string{}, externalPreferredNames: map[string]string{}, comments: connectorPackage.comments, typeComments: connectorPackage.typeComments}
 	for _, rootName := range rootNames {
 		object := modelLoader.packageTypes.Scope().Lookup(rootName)
 		if object == nil {
-			return Graph{}, fmt.Errorf("Go model %s is missing from %s", rootName, goDirectory)
+			return Graph{}, fmt.Errorf("Go model %s is missing from %s", rootName, connectorPackage.goDirectory)
 		}
 		if err := modelLoader.addModel(rootName, object.Type()); err != nil {
 			return Graph{}, err
