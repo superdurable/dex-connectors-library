@@ -111,13 +111,68 @@ Old module paths and tags remain as history; no release is published there.
 
 Every version that a connector's README files pin for its own module, such as
 `go get` commands, example tag URLs, and the `release-artifact` command's
-`--version` and `--tag`, stays on the manifest version. A test enforces it.
+`--version` and `--tag`, stays on the manifest version. The exact
+`<python package>==X.Y.Z` and `<typescript package>@X.Y.Z` pins stay on the
+declared package versions. A test enforces both.
 
 `connectorctl` and the release workflow reject a version that is not a stable
 semantic version or is behind the connector's latest reachable tag, a release
 that breaks connections without a major bump, and a `(breaking)` release with
 too small a bump. They accept a version that skips a step and a first release
 other than `v0.1.0`, so review checks both.
+
+### Bumping versions with connectorctl
+
+`connectorctl bump` writes a connector's next versions into every file that
+declares them. Name each package to release with its step; an omitted package
+keeps its version:
+
+```bash
+git fetch origin main --tags
+go run ./cmd/connectorctl bump connectors/datadog --go minor --python minor --typescript patch
+```
+
+Each flag takes `patch`, `minor`, or `major`. The command computes the next
+version from the package's latest release tag reachable from `HEAD`,
+`<directory>/go/vX.Y.Z`, `<directory>/python/vX.Y.Z`, or
+`<directory>/typescript/vX.Y.Z`, never from the manifest, so running it again
+on the same branch changes nothing. Run it on a branch rebased onto the latest
+`origin/main`; it fails when a local stable release tag of the package is not
+reachable from `HEAD`. A package without a release tag gets
+`v0.1.0` whatever the step. A Go package whose latest tag is an old-path tag
+accepts only `--go minor`, the one-time `go/` migration step, and a Go v2 or
+later release requires the major-version module path in `go/go.mod` first.
+The command fails, writing nothing, when the connector does not declare the
+named package, and when the proposed files would not pass `connectorctl
+validate`, or when a file to edit is a symbolic link or resolves outside the
+connector directory. It replaces each file through a temporary file in the
+same directory, keeping the file's permissions, and if a replacement fails it
+restores the files it already replaced and removes the ones it created.
+
+It edits only the version fields and lines, keeping the rest of each file
+byte for byte:
+
+- `connector.yaml` `metadata.version` for Go, and
+  `spec.languages.python.version` or `spec.languages.typescript.version`;
+- `python/pyproject.toml` `[project]` `version` and, in `python/uv.lock`, the
+  version of the root package, the one whose source is `{ editable = "." }`
+  or `{ virtual = "." }`;
+- `typescript/package.json` `version` and the root `version` and
+  `packages[""].version` in `typescript/package-lock.json`;
+- in every README of the connector, the Go pins that the README test above
+  checks, and the exact `<python package>==X.Y.Z` and
+  `<typescript package>@X.Y.Z` pins. A version with a prerelease or build
+  suffix, such as a `-rc.1` candidate tag, is not a pin, and prose such as
+  "version `0.1.0`" is left for review.
+
+It then regenerates the Python and TypeScript `dex-connector.json` files,
+whose `releaseTag` names the Go version and whose `package.version` names
+the package version, so `connectorctl generate --check` needs no further run.
+The command prints each planned version and each file it changed.
+
+`bump` neither adds the `(breaking)` marker nor chooses the step: a v0
+breaking change still takes `minor`, and a change that breaks connections
+takes `major`, also before v1.
 
 ## Connection compatibility
 

@@ -14,7 +14,7 @@ The Python package is [`dex-connector-newsapi`](python/README.md), imported as
 
 ## TypeScript
 
-Install `@superdurable/connector-newsapi@0.1.0` for the typed
+Install `@superdurable/connector-newsapi@0.1.1` for the typed
 `newSearchArticlesStep` Query factory, provider client, and scripted mock.
 The runnable [TypeScript company-news Flow](typescript/examples/company-news/README.md)
 uses the static `newsapi` connection and tests the Step through a real Dex

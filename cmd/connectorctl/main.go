@@ -35,7 +35,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: connectorctl <validate|language-capabilities|conformance-operations|catalog|release-matrix|release-candidate|connectors-mcp-inventory|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
+		return errors.New("usage: connectorctl <bump|validate|language-capabilities|conformance-operations|catalog|release-matrix|release-candidate|connectors-mcp-inventory|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
 	}
 	switch args[0] {
 	case "validate":
@@ -84,6 +84,8 @@ func run(args []string) error {
 		return uiArtifact(args[1:])
 	case "release-artifact":
 		return releaseArtifact(args[1:])
+	case "bump":
+		return bumpCommand(args[1:], os.Stdout)
 	case "release-candidate":
 		return releaseCandidateCommand(args[1:])
 	case "connectors-mcp-inventory":

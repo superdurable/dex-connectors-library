@@ -372,7 +372,7 @@ duplicates the customer's earlier open conversation.
 
 ## TypeScript package
 
-`@superdurable/connector-intercom@0.1.0` implements the five conversation
+`@superdurable/connector-intercom@0.1.1` implements the five conversation
 and contact operations with operation-specific TypeScript Step factories. The
 [`read-conversation` example](typescript/examples/read-conversation) is a
 runnable Dex application using a static `intercom` connection. The

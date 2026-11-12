@@ -1,6 +1,6 @@
 # Gorgias Connector
 
-The TypeScript package `@superdurable/connector-gorgias@0.1.0` implements all
+The TypeScript package `@superdurable/connector-gorgias@0.1.1` implements all
 six operations. See its [package guide](typescript/README.md) and
 [runnable ticket read](typescript/examples/read-ticket/README.md). Its provider
 replay and Dex integration use a local stand-in; live Gorgias behavior is

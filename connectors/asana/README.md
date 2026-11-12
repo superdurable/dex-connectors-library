@@ -1,6 +1,6 @@
 # Asana Connector
 
-TypeScript: install `@superdurable/connector-asana@0.1.0`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
+TypeScript: install `@superdurable/connector-asana@0.1.1`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/asana/go@v0.23.0`.
 

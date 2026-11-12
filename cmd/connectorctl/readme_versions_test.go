@@ -4,10 +4,9 @@
 package main
 
 import (
-	"io/fs"
+	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -17,35 +16,44 @@ import (
 // TestConnectorREADMEsNameTheManifestVersion keeps every version that a connector README pins for its own module on
 // the manifest version: the go get commands and the raw tag URLs of its examples, the release-artifact command's
 // --version and --tag, and the "Connector `vX.Y.Z`" and "Before `vX.Y.Z` is published" sentences. A version of
-// another module, the SDK, or Dex is not matched.
+// another module, the SDK, or Dex is not matched. connectorctl bump rewrites the same pins, and also the exact
+// Python "<package>==X.Y.Z" and TypeScript "<package>@X.Y.Z" pins, which stay on each declared package version.
 func TestConnectorREADMEsNameTheManifestVersion(t *testing.T) {
-	const version = `v\d+\.\d+\.\d+`
+	var stalePins []string
 	for _, directory := range registeredConnectorDirectories(t) {
-		root := filepath.Join("..", "..", filepath.FromSlash(directory))
-		manifestVersion := readManifestIdentity(t, directory).Version
-		module := regexp.QuoteMeta(directory)
-		patterns := []*regexp.Regexp{
-			regexp.MustCompile(module + `(?:/[A-Za-z0-9._-]+)*?[@/](` + version + `)\b`),
-			regexp.MustCompile("--version (" + version + `)\b`),
-			regexp.MustCompile("Connector `(" + version + ")`"),
-			regexp.MustCompile("Before `(" + version + ")` is published"),
+		stalePins = append(stalePins, staleREADMEVersionPins(t, filepath.Join("..", "..", filepath.FromSlash(directory)), directory)...)
+	}
+	require.Empty(t, stalePins)
+}
+
+// staleREADMEVersionPins describes each README pin that differs from its package's declared version.
+func staleREADMEVersionPins(t *testing.T, connectorPath, directory string) []string {
+	t.Helper()
+	manifest, err := load(filepath.Join(connectorPath, "connector.yaml"))
+	require.NoError(t, err)
+	type packagePins struct{ language, packageName, version string }
+	packages := []packagePins{{language: "go", version: manifest.Metadata.Version}}
+	if languages := manifest.Spec.Languages; languages != nil {
+		if languages.Python != nil {
+			packages = append(packages, packagePins{"python", languagePackageName(directory, "python", languages.Python.Package), strings.TrimPrefix(languages.Python.Version, "v")})
 		}
-		require.NoError(t, filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
-			require.NoError(t, err)
-			if entry.IsDir() && entry.Name() == "node_modules" {
-				return filepath.SkipDir
-			}
-			if entry.IsDir() || entry.Name() != "README.md" {
-				return nil
-			}
-			contents, readErr := os.ReadFile(path)
-			require.NoError(t, readErr)
-			for _, pattern := range patterns {
-				for _, match := range pattern.FindAllStringSubmatch(string(contents), -1) {
-					require.Equal(t, manifestVersion, match[1], "%s pins %q", strings.TrimPrefix(path, "../../"), match[0])
+		if languages.TypeScript != nil {
+			packages = append(packages, packagePins{"typescript", languagePackageName(directory, "typescript", languages.TypeScript.Package), strings.TrimPrefix(languages.TypeScript.Version, "v")})
+		}
+	}
+	readmePaths, nestedConnectorDirectories, err := connectorREADMEPaths(connectorPath)
+	require.NoError(t, err)
+	var stalePins []string
+	for _, path := range readmePaths {
+		contents, readErr := os.ReadFile(path)
+		require.NoError(t, readErr)
+		for _, declared := range packages {
+			for _, pin := range findREADMEVersionPins(path, contents, directory, nestedConnectorDirectories, declared.language, declared.packageName) {
+				if pin.version != declared.version {
+					stalePins = append(stalePins, fmt.Sprintf("%s pins %q, not %s", strings.TrimPrefix(path, "../../"), pin.text, declared.version))
 				}
 			}
-			return nil
-		}))
+		}
 	}
+	return stalePins
 }

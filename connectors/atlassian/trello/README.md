@@ -39,7 +39,7 @@ No Trigger and no Studio picker ships in this release; see
 
 ## TypeScript package
 
-Install `@superdurable/connector-atlassian-trello@0.1.0` for TypeScript Flows. It implements all five operations listed above with the same branches and non-idempotent create and comment checkpoint behavior. The [runnable approved board Flow](typescript/examples/approved-board-cards/README.md) uses the static `trello-approved-board` connection. The package replays Go-recorded provider scenarios; live Trello behavior for TypeScript remains unverified.
+Install `@superdurable/connector-atlassian-trello@0.1.2` for TypeScript Flows. It implements all five operations listed above with the same branches and non-idempotent create and comment checkpoint behavior. The [runnable approved board Flow](typescript/examples/approved-board-cards/README.md) uses the static `trello-approved-board` connection. The package replays Go-recorded provider scenarios; live Trello behavior for TypeScript remains unverified.
 
 ## Authentication
 
