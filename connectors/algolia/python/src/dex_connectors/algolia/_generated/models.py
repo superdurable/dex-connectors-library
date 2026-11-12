@@ -45,7 +45,7 @@ class SearchInput:
     # IndexName names the Algolia index.
     index_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'indexName'})
     # Query is the search phrase; blank matches all records.
-    query: str = ''
+    query: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
     # HitsPerPage bounds the returned hits; zero uses Algolia's default.
     hits_per_page: int = _dataclass_field(default=0, metadata={'dex_json_name': 'hitsPerPage', 'dex_json_omit_default': True})
 

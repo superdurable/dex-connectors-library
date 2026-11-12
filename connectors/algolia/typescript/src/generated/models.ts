@@ -55,7 +55,7 @@ export interface SearchInput {
   /** IndexName names the Algolia index. */
   "indexName": string;
   /** Query is the search phrase; blank matches all records. */
-  "query": string;
+  "query"?: string | undefined;
   /** HitsPerPage bounds the returned hits; zero uses Algolia's default. */
   "hitsPerPage"?: number | undefined;
 }
@@ -93,7 +93,7 @@ export interface SavedObject {
 /** Runtime validator for SearchInput. */
 export const SearchInputSchema = z.strictObject({
   "indexName": z.string(),
-  "query": z.string(),
+  "query": z.string().optional(),
   "hitsPerPage": z.number().int().optional(),
 }) satisfies z.ZodType<SearchInput>;
 

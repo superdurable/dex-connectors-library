@@ -5,16 +5,16 @@ metadata:
   displayName: Algolia
   description: Search an index and replace a record by object ID.
   company: Algolia
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: algolia
   languages:
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       operations: [saveObject, search]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [saveObject, search]
       triggers: []
   codegen:

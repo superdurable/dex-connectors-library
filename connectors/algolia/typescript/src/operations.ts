@@ -24,7 +24,7 @@ export class SearchOperation implements Query<SearchInput, SearchPage> {
     if (!SearchInputSchema.safeParse(input).success || !validPathPart(input.indexName) || (input.hitsPerPage ?? 0) < 0 || (input.hitsPerPage ?? 0) > 1000) {
       return newQueryBranch('defect', emptyPage, zeroReceipt(), failure('search', 'VALIDATION', 'indexName or hitsPerPage is invalid'));
     }
-    const params = new URLSearchParams({ query: input.query });
+    const params = new URLSearchParams({ query: input.query ?? '' });
     if (input.hitsPerPage) params.set('hitsPerPage', String(input.hitsPerPage));
     params.sort();
     const response = await this.client.send(call, 'POST', `/indexes/${encodePathPart(input.indexName)}/query`, Buffer.from(JSON.stringify({ params: params.toString() })));
