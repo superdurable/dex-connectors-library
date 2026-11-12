@@ -11,7 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListAccountsInput in scripted cases. */
 export const emptyListAccountsInput: ListAccountsInput = ListAccountsInputSchema.parse({
-  "pageToken": '',
 });
 /** Go zero value for TagManagerAccount in scripted cases. */
 export const emptyTagManagerAccount: TagManagerAccount = TagManagerAccountSchema.parse({
@@ -26,7 +25,6 @@ export const emptyAccountsPage: AccountsPage = AccountsPageSchema.parse({
 /** Go zero value for ListContainersInput in scripted cases. */
 export const emptyListContainersInput: ListContainersInput = ListContainersInputSchema.parse({
   "accountId": '',
-  "pageToken": '',
 });
 /** Go zero value for TagManagerContainer in scripted cases. */
 export const emptyTagManagerContainer: TagManagerContainer = TagManagerContainerSchema.parse({
@@ -44,7 +42,6 @@ export const emptyListTagsInput: ListTagsInput = ListTagsInputSchema.parse({
   "accountId": '',
   "containerId": '',
   "workspaceId": '',
-  "pageToken": '',
 });
 /** Go zero value for TagManagerTag in scripted cases. */
 export const emptyTagManagerTag: TagManagerTag = TagManagerTagSchema.parse({

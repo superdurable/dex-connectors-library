@@ -21,7 +21,7 @@ var numericID = regexp.MustCompile(`^[0-9]{1,30}$`)
 // ListAccountsInput selects one page of accounts visible to the connected user.
 type ListAccountsInput struct {
 	// PageToken is Google's opaque cursor; blank selects the first page.
-	PageToken string `json:"pageToken"`
+	PageToken string `json:"pageToken,omitempty"`
 }
 
 // TagManagerAccount is the stable account path and display name.
@@ -45,7 +45,7 @@ type ListContainersInput struct {
 	// AccountID is the numeric account ID from listAccounts.
 	AccountID string `json:"accountId"`
 	// PageToken is Google's opaque cursor; blank selects the first page.
-	PageToken string `json:"pageToken"`
+	PageToken string `json:"pageToken,omitempty"`
 }
 
 // TagManagerContainer is the stable container path and display identity.
@@ -75,7 +75,7 @@ type ListTagsInput struct {
 	// WorkspaceID is the numeric Tag Manager workspace ID.
 	WorkspaceID string `json:"workspaceId"`
 	// PageToken is Google's opaque cursor; blank selects the first page.
-	PageToken string `json:"pageToken"`
+	PageToken string `json:"pageToken,omitempty"`
 }
 
 // TagManagerTag contains a tag's stable path, display name, and type.

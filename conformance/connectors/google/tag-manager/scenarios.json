@@ -56,6 +56,50 @@
       "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
       "exchanges": [
         {
+          "body": "{\"account\":[{\"path\":\"accounts/123456\",\"name\":\"Example Account\",\"private\":\"discard\"}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "accounts": [
+            {
+              "name": "Example Account",
+              "path": "accounts/123456"
+            }
+          ],
+          "nextPageToken": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccounts-firstPage",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
@@ -340,6 +384,53 @@
         "pageToken": "cursor"
       },
       "name": "listContainers-listed",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"container\":[{\"path\":\"accounts/123456/containers/987654\",\"name\":\"Example Container\",\"publicId\":\"GTM-EXAMPLE\",\"private\":\"discard\"}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "containers": [
+            {
+              "name": "Example Container",
+              "path": "accounts/123456/containers/987654",
+              "publicId": "GTM-EXAMPLE"
+            }
+          ],
+          "nextPageToken": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456"
+      },
+      "name": "listContainers-firstPage",
       "operation": "listContainers"
     },
     {
@@ -638,6 +729,55 @@
         "workspaceId": "1"
       },
       "name": "listTags-listed",
+      "operation": "listTags"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"tag\":[{\"path\":\"accounts/123456/containers/987654/workspaces/1/tags/42\",\"name\":\"Analytics Tag\",\"type\":\"gaawe\",\"private\":\"discard\"}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers/987654/workspaces/1/tags",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "next",
+          "tags": [
+            {
+              "name": "Analytics Tag",
+              "path": "accounts/123456/containers/987654/workspaces/1/tags/42",
+              "type": "gaawe"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "containerId": "987654",
+        "workspaceId": "1"
+      },
+      "name": "listTags-firstPage",
       "operation": "listTags"
     },
     {

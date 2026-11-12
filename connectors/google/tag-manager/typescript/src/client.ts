@@ -87,8 +87,9 @@ export class ListAccountsOperation implements Query<ListAccountsInput, AccountsP
   /** Project one bounded account page. */
   async invoke(call: Call, input: ListAccountsInput): Promise<QueryAttempt<AccountsPage>> {
     const operation = 'listAccounts'; const empty: AccountsPage = { accounts: [], nextPageToken: '' };
-    if (!input || !validPageToken(input.pageToken)) return queryBranch(operation, 'defect', empty, 'VALIDATION', 'account page token is invalid');
-    const result = await readPage(this.client, call, operation, pagePath('/tagmanager/v2/accounts', input.pageToken), 'account', 'accounts', empty);
+    const pageToken = input?.pageToken ?? '';
+    if (!input || !validPageToken(pageToken)) return queryBranch(operation, 'defect', empty, 'VALIDATION', 'account page token is invalid');
+    const result = await readPage(this.client, call, operation, pagePath('/tagmanager/v2/accounts', pageToken), 'account', 'accounts', empty);
     if ('attempt' in result) return result.attempt;
     const accounts: TagManagerAccount[] = [];
     for (const entry of result.entries) {
@@ -107,9 +108,10 @@ export class ListContainersOperation implements Query<ListContainersInput, Conta
   /** Project one bounded container page. */
   async invoke(call: Call, input: ListContainersInput): Promise<QueryAttempt<ContainersPage>> {
     const operation = 'listContainers'; const empty: ContainersPage = { containers: [], nextPageToken: '' };
-    if (!input || !validID(input.accountId) || !validPageToken(input.pageToken)) return queryBranch(operation, 'defect', empty, 'VALIDATION', 'container page input is invalid');
+    const pageToken = input?.pageToken ?? '';
+    if (!input || !validID(input.accountId) || !validPageToken(pageToken)) return queryBranch(operation, 'defect', empty, 'VALIDATION', 'container page input is invalid');
     const prefix = `accounts/${input.accountId}/containers`;
-    const result = await readPage(this.client, call, operation, pagePath(`/tagmanager/v2/${prefix}`, input.pageToken), 'container', 'container', empty);
+    const result = await readPage(this.client, call, operation, pagePath(`/tagmanager/v2/${prefix}`, pageToken), 'container', 'container', empty);
     if ('attempt' in result) return result.attempt;
     const containers: TagManagerContainer[] = [];
     for (const entry of result.entries) {
@@ -128,10 +130,11 @@ export class ListTagsOperation implements Query<ListTagsInput, TagsPage> {
   /** Project one bounded tag page. */
   async invoke(call: Call, input: ListTagsInput): Promise<QueryAttempt<TagsPage>> {
     const operation = 'listTags'; const empty: TagsPage = { tags: [], nextPageToken: '' };
-    if (!input || !validID(input.accountId) || !validID(input.containerId) || !validID(input.workspaceId) || !validPageToken(input.pageToken))
+    const pageToken = input?.pageToken ?? '';
+    if (!input || !validID(input.accountId) || !validID(input.containerId) || !validID(input.workspaceId) || !validPageToken(pageToken))
       return queryBranch(operation, 'defect', empty, 'VALIDATION', 'tag page input is invalid');
     const prefix = `accounts/${input.accountId}/containers/${input.containerId}/workspaces/${input.workspaceId}/tags`;
-    const result = await readPage(this.client, call, operation, pagePath(`/tagmanager/v2/${prefix}`, input.pageToken), 'tag', 'tag', empty);
+    const result = await readPage(this.client, call, operation, pagePath(`/tagmanager/v2/${prefix}`, pageToken), 'tag', 'tag', empty);
     if ('attempt' in result) return result.attempt;
     const tags: TagManagerTag[] = [];
     for (const entry of result.entries) {
