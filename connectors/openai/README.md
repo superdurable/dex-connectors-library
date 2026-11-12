@@ -21,7 +21,7 @@ connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.23.0
+go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.24.0
 ```
 
 
@@ -59,7 +59,7 @@ effect without a restart. Configuration is captured at startup:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `model` | `gpt-6-sol` | Model that `createResponse` sends when its request names none. A request's `Model` overrides it. |
+| `model` | `gpt-6-sol` | Model that `createResponse` sends when its request names none. A request's optional `Model` overrides it; omit it or leave it empty to use this default. |
 | `endpoint` | `https://api.openai.com/v1` | Base URL each operation appends its path to, such as `/responses`. HTTPS is required except for loopback test servers. |
 | `maxResponseBytes` | `8388608` (8 MiB) | Largest response, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so 8 MiB holds roughly 30,000 streamed output tokens. When a `createResponse` stream grows larger, the connector reads it to the end and reads the stored Response back if its ID was observed, or selects `uncertain` otherwise. A larger non-streamed `createResponse` response selects `uncertain`, and a larger `retrieveResponse` response selects `invalidResponse`. |
 | `maxSseEventBytes` | `1048576` (1 MiB) | Largest server-sent event. The final Responses event repeats the whole Response, so raise it for very long outputs. An oversized event is handled like an oversized stream. |

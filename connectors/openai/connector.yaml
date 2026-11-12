@@ -5,17 +5,17 @@ metadata:
   displayName: OpenAI
   description: "OpenAI Responses API stored responses: create a model response with JSON Schema structured output, streamed text and progress, token usage, and explicit uncertainty, and retrieve it by ID for recovery. Text generation Steps use the llm connector."
   company: OpenAI
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: openai
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-openai
       operations: [createResponse, retrieveResponse]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-openai"
       operations: [createResponse, retrieveResponse]
       triggers: []

@@ -62,7 +62,7 @@ export interface StructuredOutput {
 /** CreateRequest contains the provider request fields for create. */
 export interface CreateRequest {
   /** Model is the OpenAI model ID for this response. Empty uses the connection's model. */
-  "Model": string;
+  "Model"?: string | undefined;
   /** Input specifies input for create request. */
   "Input": unknown | null;
   /** Instructions specifies instructions for create request. */
@@ -112,7 +112,7 @@ export const StructuredOutputSchema = z.strictObject({
 
 /** Runtime validator for CreateRequest. */
 export const CreateRequestSchema = z.strictObject({
-  "Model": z.string(),
+  "Model": z.string().optional(),
   "Input": z.unknown().nullable(),
   "Instructions": z.string(),
   "StructuredOutput": StructuredOutputSchema.nullable(),

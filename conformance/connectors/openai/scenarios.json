@@ -90,6 +90,72 @@
       "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "exchanges": [
         {
+          "body": "{\"id\":\"resp_001\",\"model\":\"gpt-6-sol\",\"status\":\"completed\",\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {
+            "X-RateLimit-Remaining-Tokens": "900",
+            "X-Request-Id": "req_001"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+          "responseId": "resp_001"
+        },
+        "output": {
+          "id": "resp_001",
+          "model": "gpt-6-sol",
+          "outputText": "Done.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "StructuredOutput": null
+      },
+      "name": "create-default-model",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
           "body": "{\"id\":\"resp_001\",\"model\":\"gpt-test\",\"status\":\"failed\",\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
           "headers": {},
           "keyMode": "absent",

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Fail when the hand-written Python contract drifts from connector.yaml."""
 
+import json
 import tomllib
 from datetime import timedelta
 from pathlib import Path
@@ -94,3 +95,13 @@ def test_example_registers_with_mock_connection() -> None:
     assert flow.get_flow_type() == FLOW_TYPE
     assert flow.map_to_create_request(type("R", (), {"text": "hi"})()).model == "gpt-6-luna"  # type: ignore[arg-type]
     dex.Registry([flow], allow_async_handlers=True)
+
+
+def test_create_response_input_schema_lets_callers_omit_the_model() -> None:
+    schema_path = CONNECTOR_DIRECTORY / "python/src/dex_connectors/openai/dex-connector.json"
+    document = json.loads(schema_path.read_text())
+    schemas = {factory["operationId"]: factory["inputSchema"] for factory in document["factories"]}
+    # An empty Model uses the connection's model; the key keeps its Go field spelling.
+    create_schema = schemas["createResponse"]
+    assert "Model" in create_schema["properties"]
+    assert create_schema["required"] == ["Input", "Instructions", "StructuredOutput"]

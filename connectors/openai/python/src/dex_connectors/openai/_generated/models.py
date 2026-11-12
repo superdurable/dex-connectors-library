@@ -25,7 +25,7 @@ setattr(StructuredOutput, '__module__', 'dex_connectors.openai.models')
 @dataclass(frozen=True, slots=True)
 class CreateRequest:
     # Model is the OpenAI model ID for this response. Empty uses the connection's model.
-    model: str = _dataclass_field(default='', metadata={'dex_json_name': 'Model'})
+    model: str = _dataclass_field(default='', metadata={'dex_json_name': 'Model', 'dex_json_omit_default': True})
     # Input specifies input for create request.
     input: Any = _dataclass_field(default=None, metadata={'dex_json_name': 'Input'})
     # Instructions specifies instructions for create request.
