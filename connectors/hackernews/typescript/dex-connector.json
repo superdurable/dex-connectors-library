@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-hackernews",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "factories": [
     {
