@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # ruff: noqa
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field as _dataclass_field
 from typing import Any
 
 def _replace_nil_slices(value: Any, depth: int) -> Any:
@@ -16,10 +16,10 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 # ListIncidentsInput chooses one incident page.
 @dataclass(frozen=True, slots=True)
 class ListIncidentsInput:
-    # Limit is the maximum number of incidents requested.
-    limit: int = 0
-    # Offset is the zero-based page offset.
-    offset: int = 0
+    # Limit is the maximum number of incidents requested, from 1 through 100; zero selects 25.
+    limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+    # Offset is the zero-based page offset; zero starts at the first incident.
+    offset: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
 
 setattr(ListIncidentsInput, '__module__', 'dex_connectors.pagerduty.models')

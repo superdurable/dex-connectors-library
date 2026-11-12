@@ -16,8 +16,9 @@ export class ListIncidentsOperation implements Query<ListIncidentsInput, Inciden
   /** Validate and classify one list attempt. */
   async invoke(call: Call, input: ListIncidentsInput): Promise<QueryAttempt<IncidentPage>> {
     const limit = input.limit || 25;
-    if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(input.offset) || input.offset < 0) return failed('listIncidents', 'defect', 'VALIDATION', 'limit must be 1–100 and offset nonnegative', emptyPage);
-    const result = await this.client.exchange(call, 'listIncidents', `/incidents?limit=${limit}&offset=${input.offset}`, false);
+    const offset = input.offset ?? 0;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0) return failed('listIncidents', 'defect', 'VALIDATION', 'limit must be 1–100 and offset nonnegative', emptyPage);
+    const result = await this.client.exchange(call, 'listIncidents', `/incidents?limit=${limit}&offset=${offset}`, false);
     if ('outcome' in result) return classify(result.outcome, emptyPage);
     try {
       const document = JSON.parse(Buffer.from(result.response.body).toString('utf8')) as Record<string, unknown>;

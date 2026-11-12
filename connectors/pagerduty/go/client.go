@@ -38,10 +38,10 @@ type Client struct {
 
 // ListIncidentsInput chooses one incident page.
 type ListIncidentsInput struct {
-	// Limit is the maximum number of incidents requested.
-	Limit int `json:"limit"`
-	// Offset is the zero-based page offset.
-	Offset int `json:"offset"`
+	// Limit is the maximum number of incidents requested, from 1 through 100; zero selects 25.
+	Limit int `json:"limit,omitempty"`
+	// Offset is the zero-based page offset; zero starts at the first incident.
+	Offset int `json:"offset,omitempty"`
 }
 
 // GetIncidentInput identifies an incident.

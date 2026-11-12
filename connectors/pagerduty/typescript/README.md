@@ -1,13 +1,13 @@
 # PagerDuty connector for TypeScript
 
-Install `@superdurable/connector-pagerduty@0.1.0`. The package implements the manifest's `listIncidents` and `getIncident` Queries, with no Triggers. It requires `@superdurable/connectors-sdk@0.1.0` and `@superdurable/dex>=1.28.0`.
+Install `@superdurable/connector-pagerduty@0.2.0`. The package implements the manifest's `listIncidents` and `getIncident` Queries, with no Triggers. It requires `@superdurable/connectors-sdk@0.1.0` and `@superdurable/dex>=1.28.0`.
 
 | Operation | Factory | Happy branch | Optional branches |
 | --- | --- | --- | --- |
 | `listIncidents` | `newListIncidentsStep` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `getIncident` | `newGetIncidentStep` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-`listIncidents` requests a page of 1–100 incidents; zero limit selects 25. A negative offset is a local defect. `getIncident` escapes the supplied ID as a URL path segment. HTTP 408, 429, 5xx, and transport errors retry. All other non-200 responses are terminal provider rejections, except HTTP 404 on `getIncident`, which selects `notFound`.
+`listIncidents` requests a page of 1–100 incidents; an omitted or zero limit selects 25, and an omitted or zero offset starts at the first incident. A negative offset is a local defect. `getIncident` escapes the supplied ID as a URL path segment. HTTP 408, 429, 5xx, and transport errors retry. All other non-200 responses are terminal provider rejections, except HTTP 404 on `getIncident`, which selects `notFound`.
 
 HTTP errors retain their status classification even when the error body exceeds `maxResponseBytes`. An oversized HTTP 200 body selects `invalidResponse`.
 

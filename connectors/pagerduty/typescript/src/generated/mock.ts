@@ -11,8 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListIncidentsInput in scripted cases. */
 export const emptyListIncidentsInput: ListIncidentsInput = ListIncidentsInputSchema.parse({
-  "limit": 0,
-  "offset": 0,
 });
 /** Go zero value for Incident in scripted cases. */
 export const emptyIncident: Incident = IncidentSchema.parse({
