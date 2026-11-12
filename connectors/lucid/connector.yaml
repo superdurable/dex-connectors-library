@@ -5,17 +5,17 @@ metadata:
   displayName: Lucid
   description: List document IDs and titles through Lucid REST API v1.
   company: Lucid
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: lucid
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-lucid
       operations: [listDocuments]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-lucid"
       operations: [listDocuments]
       triggers: []

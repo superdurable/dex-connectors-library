@@ -11,7 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListDocumentsInput in scripted cases. */
 export const emptyListDocumentsInput: ListDocumentsInput = ListDocumentsInputSchema.parse({
-  "pageToken": '',
 });
 /** Go zero value for DocumentMetadata in scripted cases. */
 export const emptyDocumentMetadata: DocumentMetadata = DocumentMetadataSchema.parse({

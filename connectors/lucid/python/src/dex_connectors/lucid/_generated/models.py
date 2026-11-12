@@ -17,7 +17,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 @dataclass(frozen=True, slots=True)
 class ListDocumentsInput:
     # PageToken is blank for the first page or a previous NextPageToken value.
-    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken'})
+    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
 
 
 setattr(ListDocumentsInput, '__module__', 'dex_connectors.lucid.models')

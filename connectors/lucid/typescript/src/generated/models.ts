@@ -48,7 +48,7 @@ export type CredentialSource = CredentialProvider<Credentials>;
 /** ListDocumentsInput selects a page by its opaque, non-secret token. */
 export interface ListDocumentsInput {
   /** PageToken is blank for the first page or a previous NextPageToken value. */
-  "pageToken": string;
+  "pageToken"?: string | undefined;
 }
 /** DocumentMetadata contains only the document ID and title. */
 export interface DocumentMetadata {
@@ -67,7 +67,7 @@ export interface DocumentsPage {
 
 /** Runtime validator for ListDocumentsInput. */
 export const ListDocumentsInputSchema = z.strictObject({
-  "pageToken": z.string(),
+  "pageToken": z.string().optional(),
 }) satisfies z.ZodType<ListDocumentsInput>;
 
 /** Runtime validator for DocumentMetadata. */
