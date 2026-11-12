@@ -9,8 +9,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 )
 
-// connectorGoPackage type-checks a connector's Go package at most once, on first use.
-// One generate run shares it across generators; it is not safe for concurrent use.
+// connectorGoPackage loads once per generate run for all generators; not concurrency-safe.
 type connectorGoPackage struct {
 	goDirectory string
 	loaded      *gomodel.Package
