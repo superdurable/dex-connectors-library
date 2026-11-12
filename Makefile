@@ -35,9 +35,10 @@ test-connectors-mcp:
 
 # The Hacker News agent example runs a Dex agent session against dexcli dev and the released server.
 # It needs .bin/dexcli from script/dex_compatibility.py install-dexcli, or DEXCLI.
+# DEX_CONNECTORS_MCP names a local server binary and skips the download.
 test-connectors-mcp-example:
 	cd connectorsmcp && GOWORK=off go build -o examples/hackernews_agent/.bin/notes_fixture_server ./examples/hackernews_agent/notes_fixture_server
-	cd connectorsmcp/examples/hackernews_agent && python3 tools/install_connectors_mcp.py --output .bin/dex-connectors-mcp
+	cd connectorsmcp/examples/hackernews_agent && if [ -z "$$DEX_CONNECTORS_MCP" ]; then python3 tools/install_connectors_mcp.py --output .bin/dex-connectors-mcp; fi
 	cd connectorsmcp/examples/hackernews_agent && uv sync --locked && uv run ruff check . && uv run ruff format --check .
 	cd connectorsmcp/examples/hackernews_agent && DEX_AGENTS_OPEN_BROWSER=0 uv run pytest -v -s
 

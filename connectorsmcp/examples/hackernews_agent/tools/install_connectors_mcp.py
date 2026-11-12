@@ -25,6 +25,8 @@ RELEASE_INDEX_SCHEMA = "dex-connectors-mcp/release-index/v1"
 BINARY_NAME = "dex-connectors-mcp"
 DOWNLOAD_TIMEOUT_SECONDS = 120
 DOWNLOAD_ATTEMPTS = 3
+HTTP_TOO_MANY_REQUESTS = 429
+MAXIMUM_RETRY_AFTER_SECONDS = 60.0
 
 
 def main() -> int:
@@ -78,18 +80,30 @@ def current_platform() -> str:
 def download(url: str) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": "dex-connectors-mcp-example-installer"})
     for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+        backoff_seconds = float(2**attempt)
         try:
             with urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
                 return response.read()
         except urllib.error.HTTPError as error:
-            if error.code < 500 or attempt == DOWNLOAD_ATTEMPTS:
+            is_retryable = error.code == HTTP_TOO_MANY_REQUESTS or error.code >= 500
+            if not is_retryable or attempt == DOWNLOAD_ATTEMPTS:
                 raise
+            backoff_seconds = retry_after_seconds(error.headers.get("Retry-After"), backoff_seconds)
         except (urllib.error.URLError, TimeoutError, ConnectionError):
             if attempt == DOWNLOAD_ATTEMPTS:
                 raise
-        # A short backoff rides out a transient network or CDN failure.
-        time.sleep(2**attempt)
+        # A short backoff rides out a transient network, CDN, or rate-limit failure.
+        time.sleep(backoff_seconds)
     raise AssertionError("unreachable")
+
+
+def retry_after_seconds(retry_after: str | None, default_seconds: float) -> float:
+    """Return a delta-seconds Retry-After, capped; an absent or HTTP-date value keeps the default."""
+    try:
+        seconds = float(retry_after) if retry_after is not None else default_seconds
+    except ValueError:
+        return default_seconds
+    return min(max(seconds, 0.0), MAXIMUM_RETRY_AFTER_SECONDS)
 
 
 def extract_binary(archive: bytes, output: Path) -> None:
