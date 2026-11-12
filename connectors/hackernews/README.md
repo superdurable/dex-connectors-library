@@ -1,6 +1,6 @@
 # Hacker News Daily Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hackernews/go@v0.24.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hackernews/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/hackernews`.
 
