@@ -4,9 +4,44 @@
 
 package main
 
-import "github.com/superdurable/dex-connectors-library/connectorsmcp/internal/registry"
+import (
+	hackernews "github.com/superdurable/dex-connectors-library/connectors/hackernews/go"
+	slack "github.com/superdurable/dex-connectors-library/connectors/slack/go"
+	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/registry"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+)
 
-// linkedConnectors is empty on main; a release commit replaces this file and go.mod.
+// linkedConnectors lists the connector releases this server release links, sorted by connector ID.
 func linkedConnectors() []registry.LinkedConnector {
-	return nil
+	return []registry.LinkedConnector{
+		{
+			ConnectorID:       "hacker-news-daily",
+			DisplayName:       "Hacker News Daily",
+			ModulePath:        "github.com/superdurable/dex-connectors-library/connectors/hackernews/go",
+			ModuleVersion:     "v0.24.0",
+			ExposedAgentTools: hackernews.ExposedAgentTools(),
+			OpenAgentTools: func(project *projectconfig.LoadedProject, connectionName string) ([]sdkgo.AgentTool, error) {
+				connection, err := hackernews.NewProjectConnection(project, connectionName)
+				if err != nil {
+					return nil, err
+				}
+				return connection.AgentTools()
+			},
+		},
+		{
+			ConnectorID:       "slack",
+			DisplayName:       "Slack",
+			ModulePath:        "github.com/superdurable/dex-connectors-library/connectors/slack/go",
+			ModuleVersion:     "v1.5.0",
+			ExposedAgentTools: slack.ExposedAgentTools(),
+			OpenAgentTools: func(project *projectconfig.LoadedProject, connectionName string) ([]sdkgo.AgentTool, error) {
+				connection, err := slack.NewProjectConnection(project, connectionName)
+				if err != nil {
+					return nil, err
+				}
+				return connection.AgentTools()
+			},
+		},
+	}
 }
