@@ -1,11 +1,12 @@
 # Postmark connector for TypeScript
 
-Install `@superdurable/connector-postmark@0.1.0`. This package implements
+Install `@superdurable/connector-postmark@0.2.0`. This package implements
 `listOutboundMessages` and `getMessageDetails` as Dex Queries. The generated
 Step factories are `newListOutboundMessagesStep` and
 `newGetMessageDetailsStep`; `GeneratedMock` supplies manifest defaults.
 
-The list Query accepts a `count` and `offset`. Count zero uses 50; count must
+The list Query accepts an optional `count` and `offset`. An omitted or zero
+count uses 50, and an omitted or zero offset starts at the first message; count must
 be at most 500 and the page must fit Postmark's 10,000-message search window.
 The detail Query returns `notFound` for HTTP 404 or Postmark error code 701.
 HTTP 408, 429, 5xx, and transport failures retry. Other HTTP 4xx responses

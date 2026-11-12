@@ -47,10 +47,10 @@ export type CredentialSource = CredentialProvider<Credentials>;
 
 /** ListOutboundMessagesInput chooses a bounded outbound search page. */
 export interface ListOutboundMessagesInput {
-  /** Count is the number of messages requested, up to 500. */
-  "count": number;
-  /** Offset is the zero-based page offset. */
-  "offset": number;
+  /** Count is the number of messages requested, up to 500; zero selects 50. */
+  "count"?: number | undefined;
+  /** Offset is the zero-based page offset; zero starts at the first message. */
+  "offset"?: number | undefined;
 }
 /** MessageDetails contains non-secret outbound message metadata. */
 export interface MessageDetails {
@@ -76,8 +76,8 @@ export interface GetMessageDetailsInput {
 
 /** Runtime validator for ListOutboundMessagesInput. */
 export const ListOutboundMessagesInputSchema = z.strictObject({
-  "count": z.number().int(),
-  "offset": z.number().int(),
+  "count": z.number().int().optional(),
+  "offset": z.number().int().optional(),
 }) satisfies z.ZodType<ListOutboundMessagesInput>;
 
 /** Runtime validator for MessageDetails. */

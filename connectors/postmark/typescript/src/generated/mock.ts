@@ -11,8 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListOutboundMessagesInput in scripted cases. */
 export const emptyListOutboundMessagesInput: ListOutboundMessagesInput = ListOutboundMessagesInputSchema.parse({
-  "count": 0,
-  "offset": 0,
 });
 /** Go zero value for MessageDetails in scripted cases. */
 export const emptyMessageDetails: MessageDetails = MessageDetailsSchema.parse({

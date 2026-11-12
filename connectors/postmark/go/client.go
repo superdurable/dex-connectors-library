@@ -38,10 +38,10 @@ type Client struct {
 
 // ListOutboundMessagesInput chooses a bounded outbound search page.
 type ListOutboundMessagesInput struct {
-	// Count is the number of messages requested, up to 500.
-	Count int `json:"count"`
-	// Offset is the zero-based page offset.
-	Offset int `json:"offset"`
+	// Count is the number of messages requested, up to 500; zero selects 50.
+	Count int `json:"count,omitempty"`
+	// Offset is the zero-based page offset; zero starts at the first message.
+	Offset int `json:"offset,omitempty"`
 }
 
 // GetMessageDetailsInput identifies an outbound message.
