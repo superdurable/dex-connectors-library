@@ -1,6 +1,6 @@
 # Slack Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.5.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.5.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
 
@@ -31,7 +31,7 @@ the same tools for host tests.
 
 ## TypeScript package
 
-`@superdurable/connector-slack@0.4.0` implements the channel discovery,
+`@superdurable/connector-slack@0.4.1` implements the channel discovery,
 thread read, and message post operations for TypeScript Dex Flows. Socket Mode Triggers remain
 Go-only. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
 uses the static `slack-thread-reader` connection name and obtains OAuth bot and
@@ -289,6 +289,12 @@ no `binding`. Their runner records go to `slog.Default()`, so call
 - `GetThreadReply` reads one reply by timestamp.
 - `PostChannelMessage` creates a top-level channel message.
 - `PostThreadReply` replies to an existing thread.
+
+Every query classifies the HTTP status before decoding the body, because Slack
+may answer 429 or 5xx without a JSON body. HTTP 429 and 5xx return Retry and
+honor `Retry-After` when present; only then does an oversized or malformed body
+select `invalidResponse`. Go v1.5.1 and the Python and TypeScript v0.4.1
+packages apply this to `ListThreadMessages` and `GetThreadReply`.
 
 Posting sends the stable Dex Call ID as Slack `client_msg_id`. [Slack's
 `chat.postMessage` reference](https://docs.slack.dev/reference/methods/chat.postMessage/)

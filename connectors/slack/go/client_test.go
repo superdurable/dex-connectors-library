@@ -625,6 +625,43 @@ func TestListThreadMessagesRejectsPageLargerThanSlackLimit(t *testing.T) {
 	require.Equal(t, slack.ListThreadMessagesBranchDefect, result.Branch)
 }
 
+func TestThreadQueryRetryAfterAcceptsHTTPDateAndCapsAtOneHour(t *testing.T) {
+	now := time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC)
+	for _, testCase := range []struct {
+		name       string
+		status     int
+		retryAfter string
+		expected   time.Duration
+	}{
+		{name: "http-date", status: http.StatusTooManyRequests, retryAfter: now.Add(90 * time.Second).Format(http.TimeFormat), expected: 90 * time.Second},
+		{name: "http-date-over-one-hour", status: http.StatusServiceUnavailable, retryAfter: now.Add(3 * time.Hour).Format(http.TimeFormat), expected: time.Hour},
+		{name: "seconds-over-one-hour", status: http.StatusTooManyRequests, retryAfter: "7200", expected: time.Hour},
+		{name: "past-http-date", status: http.StatusServiceUnavailable, retryAfter: now.Add(-time.Minute).Format(http.TimeFormat), expected: 0},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.Header().Set("Retry-After", testCase.retryAfter)
+				response.WriteHeader(testCase.status)
+			}))
+			defer server.Close()
+			client, err := slack.New(slack.Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[slack.Credentials]{
+				slackConnection: {UserToken: sdkgo.NewSecretString("user-token")},
+			}, slack.WithClock(func() time.Time { return now }))
+			require.NoError(t, err)
+			_, err = sdkgo.RunQuery(newSlackDexContext("retry-after-"+testCase.name), client.ListThreadMessages(), slackConnection, slack.ListThreadMessagesInput{ChannelID: "C123", ThreadTimestamp: "1.0", PageSize: 1})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			var delayed *dex.RetryAfterError
+			if testCase.expected == 0 {
+				require.False(t, errors.As(err, &delayed))
+				return
+			}
+			require.ErrorAs(t, err, &delayed)
+			require.Equal(t, testCase.expected, delayed.After)
+		})
+	}
+}
+
 func newSlackClient(t *testing.T, endpoint string) *slack.Client {
 	t.Helper()
 	client, err := slack.New(slack.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[slack.Credentials]{

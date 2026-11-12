@@ -3970,6 +3970,216 @@
       "input": {},
       "name": "getWorkspaceIdentity-service-unavailable-empty-body",
       "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "limit": [
+              "15"
+            ],
+            "ts": [
+              "1.0"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 12000,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "pageSize": 15,
+        "threadTimestamp": "1.0"
+      },
+      "name": "listThreadMessages-rate-limited-empty-body",
+      "operation": "listThreadMessages"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "limit": [
+              "15"
+            ],
+            "ts": [
+              "1.0"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "pageSize": 15,
+        "threadTimestamp": "1.0"
+      },
+      "name": "listThreadMessages-service-unavailable-empty-body",
+      "operation": "listThreadMessages"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "2.0"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "2.0"
+            ],
+            "ts": [
+              "1.0"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 12000,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "replyTimestamp": "2.0",
+        "threadTimestamp": "1.0"
+      },
+      "name": "getThreadReply-rate-limited-empty-body",
+      "operation": "getThreadReply"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "2.0"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "2.0"
+            ],
+            "ts": [
+              "1.0"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "replyTimestamp": "2.0",
+        "threadTimestamp": "1.0"
+      },
+      "name": "getThreadReply-service-unavailable-empty-body",
+      "operation": "getThreadReply"
     }
   ],
   "schemaVersion": 1

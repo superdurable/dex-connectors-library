@@ -197,7 +197,7 @@ func (operation GetWorkspaceIdentityOperation) Invoke(call sdkgo.Call, _ GetWork
 	}, nil, operation.client.receipt(call, response, decoded.TeamID))
 }
 
-// classifyQueryResponse selects the status, transport, and Slack envelope outcome shared by bot-token reads.
+// classifyQueryResponse selects the status, transport, and Slack envelope outcome shared by every Slack query.
 // Status comes first because Slack may send 429 or 5xx without a JSON body.
 func classifyQueryResponse[Output any](
 	client *Client,
@@ -212,10 +212,10 @@ func classifyQueryResponse[Output any](
 	rateLimitedMessage string,
 ) (sdkgo.QueryAttempt[Output], bool) {
 	if response.statusCode == http.StatusTooManyRequests {
-		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureRateLimit, rateLimitedMessage), retryAfter(response.header)), true
+		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureRateLimit, rateLimitedMessage), client.retryAfter(response.header)), true
 	}
 	if response.statusCode >= 500 {
-		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureAvailability, unavailableMessage), retryAfter(response.header)), true
+		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureAvailability, unavailableMessage), client.retryAfter(response.header)), true
 	}
 	if err != nil {
 		if errors.Is(err, errSlackResponseTooLarge) {

@@ -1,10 +1,10 @@
 {
   "connectorId": "slack",
-  "releaseTag": "connectors/slack/go/v1.5.0",
+  "releaseTag": "connectors/slack/go/v1.5.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-slack",
-    "version": "0.4.0"
+    "version": "0.4.1"
   },
   "factories": [
     {

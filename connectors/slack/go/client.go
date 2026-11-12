@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -331,23 +332,8 @@ func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListT
 		values.Set("cursor", input.Cursor)
 	}
 	response, err := operation.client.get(call, &credentials, userCredentialToken, "conversations.replies", values)
-	if err != nil {
-		if errors.Is(err, errSlackResponseTooLarge) {
-			return sdkgo.NewQueryBranch(ListThreadMessagesBranchInvalidResponse, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
-		}
-		if errors.Is(err, errSlackResponseInvalid) {
-			return sdkgo.NewQueryBranch(ListThreadMessagesBranchInvalidResponse, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureProtocol, err.Error()), operation.client.receipt(call, response, ""))
-		}
-		return sdkgo.NewQueryRetry[ListThreadMessagesOutput](slackFailure("listThreadMessages", sdkgo.FailureAvailability, "Slack thread messages are temporarily unavailable"), 0)
-	}
-	if response.statusCode == http.StatusTooManyRequests {
-		return sdkgo.NewQueryRetry[ListThreadMessagesOutput](slackFailure("listThreadMessages", sdkgo.FailureRateLimit, "Slack rate limited the thread query"), retryAfter(response.header))
-	}
-	if response.statusCode >= 500 {
-		return sdkgo.NewQueryRetry[ListThreadMessagesOutput](slackFailure("listThreadMessages", sdkgo.FailureAvailability, "Slack thread messages are temporarily unavailable"), 0)
-	}
-	if failure := classifyResponse("listThreadMessages", response); failure != nil {
-		return sdkgo.NewQueryBranch(ListThreadMessagesBranchProviderRejected, ListThreadMessagesOutput{}, failure, operation.client.receipt(call, response, ""))
+	if attempt, isClassified := classifyQueryResponse(operation.client, call, "listThreadMessages", response, err, ListThreadMessagesBranchInvalidResponse, ListThreadMessagesBranchProviderRejected, ListThreadMessagesOutput{}, "Slack thread messages are temporarily unavailable", "Slack rate limited the thread query"); isClassified {
+		return attempt
 	}
 	messages := make([]Message, len(response.decoded.Messages))
 	for index, message := range response.decoded.Messages {
@@ -375,23 +361,8 @@ func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThread
 		"latest": {input.ReplyTimestamp}, "inclusive": {"true"}, "limit": {"1"},
 	}
 	response, err := operation.client.get(call, &credentials, userCredentialToken, "conversations.replies", values)
-	if err != nil {
-		if errors.Is(err, errSlackResponseTooLarge) {
-			return sdkgo.NewQueryBranch(GetThreadReplyBranchInvalidResponse, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
-		}
-		if errors.Is(err, errSlackResponseInvalid) {
-			return sdkgo.NewQueryBranch(GetThreadReplyBranchInvalidResponse, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureProtocol, err.Error()), operation.client.receipt(call, response, ""))
-		}
-		return sdkgo.NewQueryRetry[GetThreadReplyOutput](slackFailure("getThreadReply", sdkgo.FailureAvailability, "Slack thread reply is temporarily unavailable"), 0)
-	}
-	if response.statusCode == http.StatusTooManyRequests {
-		return sdkgo.NewQueryRetry[GetThreadReplyOutput](slackFailure("getThreadReply", sdkgo.FailureRateLimit, "Slack rate limited the reply query"), retryAfter(response.header))
-	}
-	if response.statusCode >= 500 {
-		return sdkgo.NewQueryRetry[GetThreadReplyOutput](slackFailure("getThreadReply", sdkgo.FailureAvailability, "Slack thread reply is temporarily unavailable"), 0)
-	}
-	if failure := classifyResponse("getThreadReply", response); failure != nil {
-		return sdkgo.NewQueryBranch(GetThreadReplyBranchProviderRejected, GetThreadReplyOutput{}, failure, operation.client.receipt(call, response, ""))
+	if attempt, isClassified := classifyQueryResponse(operation.client, call, "getThreadReply", response, err, GetThreadReplyBranchInvalidResponse, GetThreadReplyBranchProviderRejected, GetThreadReplyOutput{}, "Slack thread reply is temporarily unavailable", "Slack rate limited the reply query"); isClassified {
+		return attempt
 	}
 	for _, message := range response.decoded.Messages {
 		if message.Timestamp == input.ReplyTimestamp && message.ThreadTS == input.ThreadTimestamp {
@@ -482,7 +453,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 			failureKind = sdkgo.FailureAvailability
 			failureMessage = "Slack message service is temporarily unavailable"
 		}
-		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, failureMessage), retryAfter(response.header))
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, failureMessage), client.retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusUnauthorized ||
 		(err == nil && response.statusCode >= 200 && response.statusCode < 300 && !response.decoded.OK && slackCredentialRejected(response)) {
@@ -535,7 +506,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 			if response.decoded.Error == "ratelimited" {
 				failureKind = sdkgo.FailureRateLimit
 			}
-			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, "Slack did not process the message"), retryAfter(response.header))
+			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, "Slack did not process the message"), client.retryAfter(response.header))
 		case "internal_error", "fatal_error":
 			providerTimestamp := response.decoded.Message.Timestamp
 			if providerTimestamp == "" {
@@ -596,7 +567,7 @@ func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispat
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack message read-back returned an unusable response"), client.receipt(call, response, marker.ProviderID))
 	}
 	if err != nil || response.statusCode == http.StatusTooManyRequests || response.statusCode >= 500 {
-		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message read-back is temporarily unavailable"), retryAfter(response.header))
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message read-back is temporarily unavailable"), client.retryAfter(response.header))
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 || !response.decoded.OK {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack message read-back could not confirm the post"), client.receipt(call, response, marker.ProviderID))
@@ -792,12 +763,9 @@ func slackFailurePointer(operationName string, kind sdkgo.FailureKind, message s
 	return &failure
 }
 
-func retryAfter(header http.Header) time.Duration {
-	seconds, err := strconv.Atoi(header.Get("Retry-After"))
-	if err != nil || seconds < 1 {
-		return 0
-	}
-	return time.Duration(seconds) * time.Second
+// retryAfter matches the Python and TypeScript SDK parsers: delay-seconds or HTTP-date, capped at one hour.
+func (client *Client) retryAfter(header http.Header) time.Duration {
+	return providerhttp.ParseRetryAfter(header.Get("Retry-After"), client.now())
 }
 
 func (client *Client) receipt(call sdkgo.Call, response providerResponse, objectID string) sdkgo.Receipt {

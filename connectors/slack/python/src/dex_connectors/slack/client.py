@@ -394,38 +394,17 @@ class ListThreadMessagesOperation:
         if input.cursor:
             query["cursor"] = input.cursor
         response = await self.client._get(call, credentials, query)
-        if response.error in ("invalid", "too_large"):
-            kind = FailureKind.PROTOCOL if response.error == "invalid" else FailureKind.RESPONSE_TOO_LARGE
-            return QueryAttempt.branch_result(
-                INVALID_RESPONSE,
-                ListThreadMessagesOutput(),
-                self.client._receipt(call, response),
-                _failure(operation, kind, "Slack returned an invalid response"),
-            )
-        if response.error:
-            return QueryAttempt.retry(
-                _failure(
-                    operation, FailureKind.AVAILABILITY, "Slack thread messages are temporarily unavailable"
-                )
-            )
-        if response.status == 429:
-            return QueryAttempt.retry(
-                _failure(operation, FailureKind.RATE_LIMIT, "Slack rate limited the thread query"),
-                _retry_after(response),
-            )
-        if response.status >= 500:
-            return QueryAttempt.retry(
-                _failure(
-                    operation, FailureKind.AVAILABILITY, "Slack thread messages are temporarily unavailable"
-                )
-            )
-        if not 200 <= response.status < 300 or not response.decoded.get("ok", False):
-            return QueryAttempt.branch_result(
-                PROVIDER_REJECTED,
-                ListThreadMessagesOutput(),
-                self.client._receipt(call, response),
-                _failure(operation, _rejection_kind(response), "Slack rejected the request"),
-            )
+        classified = _classify_query_response(
+            self.client,
+            call,
+            operation,
+            response,
+            ListThreadMessagesOutput(),
+            "Slack thread messages are temporarily unavailable",
+            "Slack rate limited the thread query",
+        )
+        if classified is not None:
+            return classified
         output = ListThreadMessagesOutput(
             tuple(
                 _message(input.channel_id, message) for message in (response.decoded.get("messages") or [])
@@ -474,34 +453,17 @@ class GetThreadReplyOperation:
             "limit": "1",
         }
         response = await self.client._get(call, credentials, query)
-        if response.error in ("invalid", "too_large"):
-            kind = FailureKind.PROTOCOL if response.error == "invalid" else FailureKind.RESPONSE_TOO_LARGE
-            return QueryAttempt.branch_result(
-                INVALID_RESPONSE,
-                GetThreadReplyOutput(),
-                self.client._receipt(call, response),
-                _failure(operation, kind, "Slack returned an invalid response"),
-            )
-        if response.error:
-            return QueryAttempt.retry(
-                _failure(operation, FailureKind.AVAILABILITY, "Slack thread reply is temporarily unavailable")
-            )
-        if response.status == 429:
-            return QueryAttempt.retry(
-                _failure(operation, FailureKind.RATE_LIMIT, "Slack rate limited the reply query"),
-                _retry_after(response),
-            )
-        if response.status >= 500:
-            return QueryAttempt.retry(
-                _failure(operation, FailureKind.AVAILABILITY, "Slack thread reply is temporarily unavailable")
-            )
-        if not 200 <= response.status < 300 or not response.decoded.get("ok", False):
-            return QueryAttempt.branch_result(
-                PROVIDER_REJECTED,
-                GetThreadReplyOutput(),
-                self.client._receipt(call, response),
-                _failure(operation, _rejection_kind(response), "Slack rejected the request"),
-            )
+        classified = _classify_query_response(
+            self.client,
+            call,
+            operation,
+            response,
+            GetThreadReplyOutput(),
+            "Slack thread reply is temporarily unavailable",
+            "Slack rate limited the reply query",
+        )
+        if classified is not None:
+            return classified
         for message in response.decoded.get("messages") or []:
             if (
                 message.get("ts") == input.reply_timestamp
@@ -580,7 +542,7 @@ def _classify_query_response(
     unavailable_message: str,
     rate_limited_message: str,
 ) -> QueryAttempt[Any] | None:
-    """Select the status, transport, and Slack envelope outcome shared by bot-token reads.
+    """Select the status, transport, and Slack envelope outcome shared by every Slack query.
 
     Status comes first because Slack may send 429 or 5xx without a JSON body.
     """
