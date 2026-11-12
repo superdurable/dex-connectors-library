@@ -11,6 +11,8 @@ require (
 	github.com/superdurable/dex/sdk-go v1.40.2
 )
 
+require github.com/gorilla/websocket v1.5.3 // indirect
+
 require (
 	github.com/aws/aws-sdk-go-v2 v1.43.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.14 // indirect
@@ -37,6 +39,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/segmentio/encoding v0.5.4 // indirect
+	github.com/superdurable/dex-connectors-library/connectors/hackernews/go v0.25.0
+	github.com/superdurable/dex-connectors-library/connectors/slack/go v1.6.0
 	github.com/superdurable/dex/blob-cache-go v0.1.2 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	golang.org/x/net v0.49.0 // indirect
