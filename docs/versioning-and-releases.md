@@ -41,7 +41,9 @@ application APIs do not expose the release version.
 separate release sources. Each must match its `pyproject.toml` or `package.json`
 version without the leading `v`. A change to one language version releases only
 that language. The same patch, minor, major, and `(breaking)` rules apply to
-each language independently. Use `sdkpython:` and `sdkts:` commit and PR subjects
+each language independently; a scoped `(breaking: <language>)` marker limits a
+breaking change to the named packages, as
+[Breaking change markers](#breaking-change-markers) describes. Use `sdkpython:` and `sdkts:` commit and PR subjects
 for their SDKs; single-connector changes use `connector(<slug>):`.
 
 A connector batch port PR may include five to eight connectors of one language
@@ -91,8 +93,10 @@ A connector pull request that should release moves only that connector's
 - a patch, such as `v0.21.0` to `v0.21.1`, for a fix that adds no public API;
 - a minor, such as `v0.21.0` to `v0.22.0`, for an addition such as an
   operation, a Trigger, a UI unit, or mocks;
-- for a breaking change, the exact `(breaking)` marker and a minor bump before
-  v1, or a major bump at v1 or later;
+- for a breaking change, the exact `(breaking)` marker, or a scoped
+  `(breaking: <language>)` marker when only some language packages break, and
+  a minor bump before v1, or a major bump at v1 or later, of each marked
+  package;
 - for a change that breaks connections, the `(breaking)` marker and a major
   bump, also before v1; see
   [Connection compatibility](#connection-compatibility).
@@ -544,10 +548,32 @@ entry is missing, has no `hostKeptCredentials`, or has `null` instead of an
 array, so every release, candidate, and compatibility build carries the key. A
 host fails closed on a release without it.
 
+### Breaking change markers
+
 Breaking changes use the exact lowercase `(breaking)` marker in a PR title,
 PR body, or direct commit message. A v0 breaking release cannot use a patch
 bump. At v1 or later, a breaking release requires a major bump and the Go
 module path must be migrated before publishing v2 or later.
+
+Plain `(breaking)` marks the change breaking for every package the commit
+releases: Go, Python, and TypeScript. When only some language packages break,
+use the scoped marker `(breaking: <language>[, <language>...])` with the
+lowercase names `go`, `python`, and `typescript`, such as
+`(breaking: typescript)` or `(breaking: python, typescript)`. The breaking rules
+then apply only to the named packages; the change appears under Changes for the
+others, which may release a patch. A Go package's commits include every change
+in the connector directory, and a Python or TypeScript package's commits include
+changes to the shared `connector.yaml`, so a plain marker on a TypeScript-only
+breaking change also blocks Go and Python patch releases. SDK releases use
+their language: `sdkgo` is `go`, `sdkpython` is `python`, and `sdkts` is
+`typescript`.
+
+A plain marker together with a scoped one, in the same pull request or in
+another commit of the release, still marks every package. A change that breaks
+connections affects every package, so it uses plain `(breaking)`. A scoped
+marker that is not closed, names no language, or names any other value, such as
+`(breaking: ts)`, fails the release notes step; edit the pull request text and
+rerun the release.
 For a Python or TypeScript connector release, a marked commit is breaking for
 that language only when it changes the language package beyond its generated
 `dex-connector.json`. Descriptor-only changes appear under Changes. Package

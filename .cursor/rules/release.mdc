@@ -70,5 +70,9 @@ alwaysApply: true
   releases and defers the rest, with their language packages, to later runs.
 - Use sdkgo:, sdkpython:, sdkts:, connector(<slug>):, connectors(python):,
   connectors(typescript):, tooling:, or docs: subjects.
-- Put exact lowercase (breaking) in the PR and final commit message for public
-  breaking changes.
+- Put the exact lowercase token `(breaking)` in the PR title or body and final
+  commit message for every public breaking change. When only some language
+  packages break, scope it as `(breaking: <language>[, <language>...])` with
+  `go`, `python`, or `typescript`; only the named packages then need a
+  breaking bump. Plain `(breaking)` applies to every package, and a change
+  that breaks connections uses it.

@@ -35,6 +35,8 @@ CONNECTOR_MODULE_PATH_PREFIX = f"{LIBRARY_MODULE_PATH}/connectors/"
 CONNECTOR_RELEASE_COMPLETE_ASSET = "connector-release.complete"
 NPM_REPOSITORY_URL = "git+https://github.com/superdurable/dex-connectors-library.git"
 LANGUAGE_DISPLAY_NAMES = {"go": "Go", "python": "Python", "typescript": "TypeScript"}
+# Matches "(breaking)" and the scoped "(breaking: python, typescript)" markers.
+BREAKING_MARKER_PATTERN = re.compile(r"\(breaking(?::([^)]*))?\)")
 
 
 @dataclass(frozen=True)
@@ -384,6 +386,39 @@ def associated_pull_request(repository: str, commit: str) -> dict[str, object] |
     return pulls[0] if pulls else None
 
 
+def component_language(component_path: str) -> str:
+    """Returns the package language a component releases: go, python, or typescript."""
+    if component_path == "sdkpython" or component_path.endswith("/python"):
+        return "python"
+    if component_path == "sdkts" or component_path.endswith("/typescript"):
+        return "typescript"
+    return "go"
+
+
+def marked_breaking_languages(*texts: str) -> frozenset[str]:
+    """Returns the languages the breaking markers in texts name.
+
+    "(breaking)" names every language; "(breaking: go, typescript)" names only
+    those listed. A scoped marker that is unclosed, names no language, or names
+    an unknown one raises ValueError, so a typo never hides a breaking change.
+    """
+    languages: set[str] = set()
+    for text in texts:
+        for match in BREAKING_MARKER_PATTERN.finditer(text):
+            scope = match.group(1)
+            if scope is None:
+                languages.update(LANGUAGE_DISPLAY_NAMES)
+                continue
+            named = [language.strip() for language in scope.split(",")]
+            if not all(language in LANGUAGE_DISPLAY_NAMES for language in named):
+                raise ValueError(f"invalid breaking marker {match.group(0)!r}: list one or more of "
+                                 f"{', '.join(LANGUAGE_DISPLAY_NAMES)}, separated by commas")
+            languages.update(named)
+        if "(breaking:" in BREAKING_MARKER_PATTERN.sub("", text):
+            raise ValueError("invalid breaking marker: a '(breaking:' marker is missing its closing ')'")
+    return frozenset(languages)
+
+
 def release_notes(plan: ReleasePlan, repository: str) -> tuple[str, bool]:
     breaking: list[str] = []
     changes: list[str] = []
@@ -402,9 +437,10 @@ def release_notes(plan: ReleasePlan, repository: str) -> tuple[str, bool]:
             url = str(pull.get("html_url", ""))
             user = pull.get("user") or {}
             author = f" by @{user.get('login')}" if isinstance(user, dict) and user.get("login") else ""
-        is_breaking = (("(breaking)" in title or "(breaking)" in body or "(breaking)" in message)
+        breaking_languages = marked_breaking_languages(title, body, message)
+        is_breaking = (component_language(plan.component_path) in breaking_languages
                        and commit_changes_beyond_language_descriptor(commit, plan.component_path))
-        clean_title = title.replace("(breaking)", "").strip()
+        clean_title = BREAKING_MARKER_PATTERN.sub("", title).strip()
         entry = f"- [{clean_title}]({url}){author}"
         key = url if pull is not None and url else commit
         previous = entries.get(key)

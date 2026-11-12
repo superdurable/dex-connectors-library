@@ -278,7 +278,11 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - Use `sdkgo:`, `sdkpython:`, `sdkts:`, `connector(<slug>):`,
   `connectors(python):`, `connectors(typescript):`, `tooling:`, or `docs:` subjects.
 - Put the exact lowercase token `(breaking)` in the PR title or body and final
-  commit message for every public breaking change.
+  commit message for every public breaking change. When only some language
+  packages break, scope it as `(breaking: <language>[, <language>...])` with
+  `go`, `python`, or `typescript`; only the named packages then need a
+  breaking bump. Plain `(breaking)` applies to every package, and a change
+  that breaks connections uses it.
 - Fetch and branch from the latest `origin/main`. See
   `.cursor/rules/git-branch.mdc`.
 - End every changing agent turn with one commit and a clean working tree. Do not
