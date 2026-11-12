@@ -79,9 +79,13 @@ export function readCatalog(text) {
   return readCatalogDocument(text).connectors;
 }
 
+// Catalog snapshots published before categories existed have no taxonomy; the site then shows no categories.
 function readCategoryTaxonomy(value) {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new Error("catalog is missing categories");
+  if (value == null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("catalog categories must be a list");
   }
   const goldenAngleDegrees = 137.508;
   const seen = new Set();
@@ -101,17 +105,12 @@ function readCategoryTaxonomy(value) {
   });
 }
 
+/** Resolves a connector's category IDs, primary first; missing, unknown, and repeated IDs are dropped. */
 function readConnectorCategories(value, categoriesById) {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 2 || new Set(value).size !== value.length) {
-    throw new Error("catalog connector categories must list 1 or 2 distinct category IDs");
+  if (!Array.isArray(value)) {
+    return [];
   }
-  return value.map((id) => {
-    const category = categoriesById.get(id);
-    if (!category) {
-      throw new Error(`catalog connector names unknown category: ${id}`);
-    }
-    return category;
-  });
+  return [...new Set(value)].map((id) => categoriesById.get(id)).filter(Boolean);
 }
 
 /** Returns the category ID from a URL parameter, or "all" when it is absent or unknown. */
@@ -179,11 +178,6 @@ export function pythonInstall(connector) {
       `#subdirectory=${connector.directory}/python"`,
     releaseUrl: `${connectorLibraryRepositoryUrl}/releases/tag/${pythonPackage.tag}`,
   };
-}
-
-/** Returns the GitHub release page of the connector's listed Go version. */
-export function goReleaseUrl(connector) {
-  return `${connectorLibraryRepositoryUrl}/releases/tag/${connector.directory}/go/${connector.version}`;
 }
 
 export function connectorMatchesQuery(connector, query) {

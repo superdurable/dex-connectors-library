@@ -32,7 +32,7 @@ export type CatalogConnector = {
   id: string;
   name: string;
   description: string;
-  /** One or two categories; the first is primary. */
+  /** The connector's categories, primary first; empty when the catalog predates categories. */
   categories: CatalogCategory[];
   version: string;
   languages: Partial<Record<"go" | "python" | "typescript", string>>;
@@ -77,7 +77,6 @@ export function selectedCategoryID(parameterValue: string | null, categories: Ca
 export function connectorMatchesCategory(connector: CatalogConnector, categoryID: string): boolean;
 export function categoryConnectorCounts(categories: CatalogCategory[], connectors: CatalogConnector[]): Map<string, number>;
 export function pythonInstall(connector: CatalogConnector): PythonInstall | null;
-export function goReleaseUrl(connector: CatalogConnector): string;
 export function connectorMatchesQuery(connector: CatalogConnector, query: string): boolean;
 export function connectorMatchesLanguage(connector: CatalogConnector, language: "all" | "go" | "python" | "typescript"): boolean;
 export function capabilityMatchesLanguage(capability: CatalogCapability, language: "all" | "go" | "python" | "typescript"): boolean;

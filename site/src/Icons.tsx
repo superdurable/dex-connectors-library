@@ -3,6 +3,8 @@
 
 import type { ReactElement } from "react";
 
+import { categoryIconNames } from "./categoryIcons.mjs";
+
 // Hand-drawn 24 px stroke icons; they inherit the current text color.
 const iconShapes = {
   sparkles: <><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z" /><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" /></>,
@@ -40,26 +42,6 @@ const iconShapes = {
 
 /** Names one icon of the directory's inline icon set. */
 export type IconName = keyof typeof iconShapes;
-
-const categoryIconNames: Record<string, IconName> = {
-  ai: "sparkles",
-  communication: "message",
-  marketing: "megaphone",
-  "social-media": "share",
-  "crm-sales": "trendingUp",
-  "customer-support": "headset",
-  productivity: "calendarCheck",
-  "project-management": "kanban",
-  "files-documents": "file",
-  "developer-tools": "code",
-  "databases-storage": "database",
-  analytics: "barChart",
-  "finance-payments": "creditCard",
-  ecommerce: "shoppingBag",
-  "hr-recruiting": "users",
-  "security-identity": "shield",
-  "data-search": "globe",
-};
 
 /** Renders one decorative icon, `size` pixels square, in the current text color. */
 export function Icon({ name, size = 16, className }: { name: IconName; size?: number; className?: string }): ReactElement {

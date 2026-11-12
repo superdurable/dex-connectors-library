@@ -23,7 +23,6 @@ import {
   connectorMatchesCategory,
   connectorMatchesQuery,
   connectorMatchesLanguage,
-  goReleaseUrl,
   pythonInstall,
   readCatalogDocument,
   selectedCategoryID,
@@ -52,8 +51,8 @@ function formatLanguageVersion(language: string, version: string): string {
 }
 
 /** Inline style that hands a category's accent hue to its chip, card, or navigation icon. */
-function categoryHueStyle(category: CatalogCategory): CSSProperties {
-  return { "--category-hue": category.hue } as CSSProperties;
+function categoryHueStyle(category: CatalogCategory | undefined): CSSProperties | undefined {
+  return category ? ({ "--category-hue": category.hue } as CSSProperties) : undefined;
 }
 
 /** Returns the directory path that selects categoryID while keeping the other search parameters. */
@@ -104,14 +103,16 @@ export function App() {
       <SiteHeader />
       <div className="page">
         <header className={`masthead${isDetail ? " masthead-compact" : ""}`}>
-          <p className="masthead-eyebrow">Open source · MIT licensed</p>
-          <h1 className="directory-title">
-            <Link to="/">Dex Connectors</Link>
-          </h1>
-          <p className="lede">
-            Open sourced and trusted connectors, take your process from prototype to production.
-            <LedeRepositoryLink />
-          </p>
+          <div className="masthead-intro">
+            <p className="masthead-eyebrow">Open source · MIT licensed</p>
+            <h1 className="directory-title">
+              <Link to="/">Dex Connectors</Link>
+            </h1>
+            <p className="lede">
+              Open sourced and trusted connectors, take your process from prototype to production.
+              <LedeRepositoryLink />
+            </p>
+          </div>
           <nav className="site-tabs" aria-label="Connector site">
             <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
               Connectors
@@ -202,10 +203,14 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogDocument> }) {
     setLanguage("all");
   };
 
+  const hasCategories = categories.length > 0;
+
   return (
-    <div className="catalog-layout">
-      <CategoryNavigation categories={categories} counts={counts} selectedCategoryID={categoryID}
-        searchParams={searchParams} />
+    <div className={`catalog-layout${hasCategories ? "" : " catalog-layout-uncategorized"}`}>
+      {hasCategories ? (
+        <CategoryNavigation categories={categories} counts={counts} selectedCategoryID={categoryID}
+          searchParams={searchParams} />
+      ) : null}
       <div className="catalog">
         <div className="catalog-controls">
           <form className="search" role="search" onSubmit={(event) => event.preventDefault()}>
@@ -232,7 +237,7 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogDocument> }) {
             ))}
           </fieldset>
         </div>
-        <div className="results-heading" style={selectedCategory ? categoryHueStyle(selectedCategory) : undefined}>
+        <div className="results-heading" style={categoryHueStyle(selectedCategory)}>
           <div>
             <h2>
               {selectedCategory ? (
@@ -340,7 +345,7 @@ function ConnectorCard({ connector, language }: { connector: CatalogConnector; l
       </span>
       <span className="description">{connector.description}</span>
       <span className="card-footer">
-        <CategoryLabel category={primaryCategory} />
+        {primaryCategory ? <CategoryLabel category={primaryCategory} /> : null}
         <CapabilityChips connector={connector} language={language} />
       </span>
     </Link>
@@ -406,6 +411,8 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogDocument> }) {
     );
   }
 
+  const goInstallCommand =
+    `go get github.com/superdurable/dex-connectors-library/${connector.directory}/go@${connector.languages.go}`;
   return (
     <article className="detail" style={categoryHueStyle(connector.categories[0])}>
       <p className="back">
@@ -414,85 +421,111 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogDocument> }) {
           All connectors
         </Link>
       </p>
-      <div className="detail-heading">
+      <header className="detail-heading">
         <span className="detail-logo">
           <img src={companyLogoUrl(connector.companyDirectory, logoOrigin)} alt="" width={64} height={64} />
         </span>
         <div>
           <p className="company-name">{connector.company}</p>
           <h2>{connector.name}</h2>
-          <p className="detail-categories">
-            {connector.categories.map((category, index) => (
-              <Link key={category.id} className="category-chip category-chip-link" style={categoryHueStyle(category)}
-                to={`/?${categorySearchParameter}=${category.id}`}
-                title={index === 0 ? "Primary category" : "Secondary category"}>
-                <CategoryIcon categoryID={category.id} size={13} />
-                {category.name}
-              </Link>
-            ))}
-          </p>
+          {connector.categories.length > 0 ? (
+            <p className="detail-categories">
+              {connector.categories.map((category, index) => (
+                <Link key={category.id} className="category-chip category-chip-link" style={categoryHueStyle(category)}
+                  to={`/?${categorySearchParameter}=${category.id}`}
+                  title={index === 0 ? "Primary category" : "Secondary category"}>
+                  <CategoryIcon categoryID={category.id} size={13} />
+                  {category.name}
+                </Link>
+              ))}
+            </p>
+          ) : null}
         </div>
-      </div>
+      </header>
       <p className="description detail-description">{connector.description}</p>
-      <ul className="detail-facts" aria-label="Releases">
-        {Object.entries(connector.languages).map(([language, version]) => (
-          <li key={language}>
-            <LanguageIcons languages={[language as "go" | "python" | "typescript"]} versions={connector.languages} />
-            {formatLanguageVersion(language, version)}
-          </li>
-        ))}
-        <li>
-          <span className="detail-fact-icon"><Icon name="folder" size={15} /></span>
-          <code>{connector.directory}</code>
-        </li>
-      </ul>
-      <p className="connector-source detail-actions">
+      <aside className="detail-aside" aria-label="Connector facts">
+        <dl className="detail-facts">
+          <div>
+            <dt>Releases</dt>
+            {Object.entries(connector.languages).map(([language, version]) => (
+              <dd key={language}>
+                <LanguageIcons languages={[language as "go" | "python" | "typescript"]} versions={connector.languages} />
+                {formatLanguageVersion(language, version)}
+              </dd>
+            ))}
+          </div>
+          <div>
+            <dt>Directory</dt>
+            <dd><code>{connector.directory}</code></dd>
+          </div>
+        </dl>
         <a className="repository-source-link" href={`${connectorLibraryRepositoryUrl}/tree/main/${connector.directory}`}>
           <GitHubMarkIcon />
           View source
         </a>
-        <a className="repository-source-link" href={goReleaseUrl(connector)}>
-          <Icon name="tag" size={16} />
-          Go release {connector.languages.go}
-        </a>
-      </p>
-      <section className="install">
-        <h3>
-          <span className="section-icon"><Icon name="terminal" size={16} /></span>
-          Install
-        </h3>
-        <InstallCommand command={`go get github.com/superdurable/dex-connectors-library/${connector.directory}/go@${connector.languages.go}`} />
-        <PythonInstallCommand install={pythonInstall(connector)} />
-      </section>
-      <CapabilityList title="UI units" icon="layout" capabilities={connector.uiUnits} versions={connector.languages} showLanguages={false} />
-      <CapabilityList title="Triggers" icon="bolt" capabilities={connector.triggers} versions={connector.languages} />
-      <CapabilityList title="Operations" icon="code" capabilities={connector.operations} versions={connector.languages} />
+      </aside>
+      <div className="detail-content">
+        <section className="install">
+          <h3>
+            <span className="section-icon"><Icon name="terminal" size={16} /></span>
+            Install
+          </h3>
+          <InstallCommand command={goInstallCommand} label="Go install command" />
+          <PythonInstallCommand install={pythonInstall(connector)} />
+        </section>
+        <CapabilityList title="UI units" icon="layout" capabilities={connector.uiUnits} versions={connector.languages} showLanguages={false} />
+        <CapabilityList title="Triggers" icon="bolt" capabilities={connector.triggers} versions={connector.languages} />
+        <CapabilityList title="Operations" icon="code" capabilities={connector.operations} versions={connector.languages} />
+      </div>
     </article>
   );
 }
 
-function InstallCommand({ command }: { command: string }) {
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+type CopyState = "idle" | "copied" | "failed";
+
+/** Shows one install command with a copy button; `label` names the command for assistive technology. */
+function InstallCommand({ command, label }: { command: string; label: string }) {
+  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const commandRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (copyState === "idle") {
       return;
     }
-    const timer = window.setTimeout(() => setCopyState("idle"), 1600);
+    const timer = window.setTimeout(() => setCopyState("idle"), copyState === "failed" ? 4000 : 1600);
     return () => window.clearTimeout(timer);
   }, [copyState]);
-  const copy = () => {
-    navigator.clipboard.writeText(command)
-      .then(() => setCopyState("copied"))
-      .catch(() => setCopyState("failed"));
+  // Without clipboard access (insecure origin, denied permission), select the text for a manual copy.
+  const reportCopyFailure = () => {
+    if (commandRef.current) {
+      window.getSelection()?.selectAllChildren(commandRef.current);
+    }
+    setCopyState("failed");
   };
+  const copy = () => {
+    const clipboard = typeof navigator === "undefined" ? undefined : navigator.clipboard;
+    if (!clipboard || typeof clipboard.writeText !== "function") {
+      reportCopyFailure();
+      return;
+    }
+    try {
+      clipboard.writeText(command).then(() => setCopyState("copied"), reportCopyFailure);
+    } catch {
+      reportCopyFailure();
+    }
+  };
+  const announcement = copyState === "copied" ? `Copied the ${label}`
+    : copyState === "failed" ? `Copy failed. The ${label} is selected; copy it with your keyboard.` : "";
   return (
     <div className="install-command">
-      <code>{command}</code>
-      <button type="button" className="copy-button" onClick={copy}
-        aria-label={copyState === "copied" ? "Copied" : "Copy command"}>
+      <code ref={commandRef}>{command}</code>
+      <button type="button" className={`copy-button${copyState === "failed" ? " copy-button-failed" : ""}`}
+        onClick={copy} aria-label={`Copy ${label}`}>
         <Icon name={copyState === "copied" ? "check" : "copy"} size={15} />
-        <span aria-live="polite">{copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy"}</span>
+        <span aria-hidden="true">
+          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy manually" : "Copy"}
+        </span>
       </button>
+      <span className="visually-hidden" role="status">{announcement}</span>
     </div>
   );
 }
@@ -503,7 +536,7 @@ function PythonInstallCommand({ install }: { install: PythonInstall | null }) {
   }
   return (
     <>
-      <InstallCommand command={install.command} />
+      <InstallCommand command={install.command} label="pip install command" />
       {install.isPyPIPublished ? null : (
         <p className="install-note">
           The PyPI upload is pending. Install from the release tag, or download the wheel from

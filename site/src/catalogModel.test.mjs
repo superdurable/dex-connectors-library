@@ -20,7 +20,6 @@ import {
   allCategories,
   categoryConnectorCounts,
   connectorMatchesCategory,
-  goReleaseUrl,
   selectedCategoryID,
 } from "./catalogModel.mjs";
 
@@ -94,24 +93,27 @@ test("URL category falls back to all when absent or unknown", () => {
   assert.equal(selectedCategoryID("spreadsheets", categories), allCategories);
 });
 
-test("catalog rejects missing taxonomies and invalid connector categories", () => {
+test("catalog without categories degrades to uncategorized connectors", () => {
   const connector = (categories) => `
-  - {company: Google, id: gmail, name: Gmail, description: Mail., version: v0.1.0, categories: ${categories},
+  - {company: Google, id: gmail, name: Gmail, description: Mail., version: v0.1.0${categories},
      directory: connectors/google/gmail, uiUnits: [], triggers: [], operations: []}`;
-  assert.throws(() => readCatalog(`connectors:${connector("[communication]")}`), /missing categories/);
-  assert.throws(() => readCatalog(`${categoryTaxonomy}connectors:${connector("[]")}`), /1 or 2 distinct/);
-  assert.throws(() => readCatalog(`${categoryTaxonomy}connectors:${connector("[ai, communication, hr-recruiting]")}`),
-    /1 or 2 distinct/);
-  assert.throws(() => readCatalog(`${categoryTaxonomy}connectors:${connector("[ai, ai]")}`), /1 or 2 distinct/);
-  assert.throws(() => readCatalog(`${categoryTaxonomy}connectors:${connector("[spreadsheets]")}`), /unknown category/);
-  assert.throws(() => readCatalog(`categories: [{id: ai, name: AI, description: x}, {id: ai, name: AI, description: x}]
-connectors:${connector("[ai]")}`), /invalid or repeated/);
+  const legacy = readCatalogDocument(`connectors:${connector("")}`);
+  assert.deepEqual(legacy.categories, []);
+  assert.deepEqual(legacy.connectors[0].categories, []);
+  assert.deepEqual([...categoryConnectorCounts(legacy.categories, legacy.connectors)], [[allCategories, 1]]);
+  assert.equal(connectorMatchesCategory(legacy.connectors[0], allCategories), true);
+  assert.deepEqual(readCatalog(`${categoryTaxonomy}connectors:${connector("")}`)[0].categories, []);
+  const resolved = readCatalog(`${categoryTaxonomy}connectors:${connector(", categories: [spreadsheets, ai, ai]")}`);
+  assert.deepEqual(resolved[0].categories.map(({ id }) => id), ["ai"]);
 });
 
-test("Go release URL names the connector's Go release tag", () => {
-  const { connectors } = categorizedCatalog();
-  assert.equal(goReleaseUrl(connectors[0]),
-    "https://github.com/superdurable/dex-connectors-library/releases/tag/connectors/google/gmail/go/v0.1.0");
+test("catalog rejects a malformed category taxonomy", () => {
+  const connector = `
+  - {company: Google, id: gmail, name: Gmail, description: Mail., version: v0.1.0, categories: [ai],
+     directory: connectors/google/gmail, uiUnits: [], triggers: [], operations: []}`;
+  assert.throws(() => readCatalog(`categories: ai\nconnectors:${connector}`), /must be a list/);
+  assert.throws(() => readCatalog(`categories: [{id: ai, name: AI, description: x}, {id: ai, name: AI, description: x}]
+connectors:${connector}`), /invalid or repeated/);
 });
 
 test("company directory is the first folder under connectors", () => {
