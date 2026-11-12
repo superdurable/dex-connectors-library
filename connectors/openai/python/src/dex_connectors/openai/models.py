@@ -25,11 +25,11 @@ class CreateRequest:
     """One Responses API create request.
 
     input is a string or a JSON-serializable list of Responses input items. A
-    blank model uses the connection's model.
+    blank or omitted model uses the connection's model.
     """
 
     input: Any = field(default=None, metadata={"dex_json_name": "Input"})
-    model: str = field(default="", metadata={"dex_json_name": "Model"})
+    model: str = field(default="", metadata={"dex_json_name": "Model", "dex_json_omit_default": True})
     instructions: str = field(default="", metadata={"dex_json_name": "Instructions"})
     structured_output: StructuredOutput | None = field(
         default=None, metadata={"dex_json_name": "StructuredOutput"}

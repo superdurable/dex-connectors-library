@@ -17,7 +17,6 @@ export const emptyStructuredOutput: StructuredOutput = StructuredOutputSchema.pa
 });
 /** Go zero value for CreateRequest in scripted cases. */
 export const emptyCreateRequest: CreateRequest = CreateRequestSchema.parse({
-  "Model": '',
   "Input": null,
   "Instructions": '',
   "StructuredOutput": null,

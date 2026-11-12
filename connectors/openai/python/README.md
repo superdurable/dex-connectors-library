@@ -1,6 +1,6 @@
 # OpenAI connector for Python
 
-Install with `pip install dex-connector-openai==0.1.0`. The package requires
+Install with `pip install dex-connector-openai==0.2.0`. The package requires
 `dex-connectors-sdk==0.2.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest operations `createResponse` (Mutation) and `retrieveResponse` (Query)
 with the same branches, defaults, and failure classification as the Go module.
