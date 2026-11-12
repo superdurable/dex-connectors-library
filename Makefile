@@ -1,4 +1,4 @@
-.PHONY: check test test-common test-connectors-mcp test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-python-connectors-latest-sdk test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check test test-common test-connectors-mcp test-connectors-mcp-example test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-python-connectors-latest-sdk test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -32,6 +32,15 @@ test-connectors-mcp:
 	@workspace="$$(mktemp -d)"; \
 	printf 'go 1.25.0\n\nuse %s/connectorsmcp\n\nreplace github.com/superdurable/dex-connectors-library/sdkgo => %s/sdkgo\n' "$(CURDIR)" "$(CURDIR)" > "$$workspace/go.work"; \
 	cd connectorsmcp && GOWORK="$$workspace/go.work" go vet ./... && GOWORK="$$workspace/go.work" go test -race -count=1 ./...
+
+# The Hacker News agent example runs a Dex agent session against dexcli dev and the released server.
+# It needs .bin/dexcli from script/dex_compatibility.py install-dexcli, or DEXCLI.
+# DEX_CONNECTORS_MCP names a local server binary and skips the download.
+test-connectors-mcp-example:
+	cd connectorsmcp && GOWORK=off go build -o examples/hackernews_agent/.bin/notes_fixture_server ./examples/hackernews_agent/notes_fixture_server
+	cd connectorsmcp/examples/hackernews_agent && if [ -z "$$DEX_CONNECTORS_MCP" ]; then python3 tools/install_connectors_mcp.py --output .bin/dex-connectors-mcp; fi
+	cd connectorsmcp/examples/hackernews_agent && uv sync --locked && uv run ruff check . && uv run ruff format --check .
+	cd connectorsmcp/examples/hackernews_agent && DEX_AGENTS_OPEN_BROWSER=0 uv run pytest -v -s
 
 test-conformance:
 	cd sdkgo && GOWORK=off go test ./... -run '^TestConformance' -count=1

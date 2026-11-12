@@ -643,6 +643,17 @@ upgrade:
   `expectedIdentityMismatch`. Logs never contain arguments, results, or
   failure messages.
 
+## Example: a Dex agent session
+
+[`examples/hackernews_agent`](examples/hackernews_agent/README.md) runs a
+dex-agents session whose `McpToolSource` lists and calls
+`hacker-news-daily_list_story_ids` and `hacker-news-daily_get_item` through a
+locally started, released `dex-connectors-mcp serve`, against `dexcli dev`. Its
+tests also lose one tool answer on purpose: the retried Dex `CallTool` Step
+resends the same `io.superdurable.dex/idempotencyKey`, and a declared write gets
+its stored result back with `io.superdurable.connectors/replayed: true`. CI
+runs it in the `connectors-mcp` job with `make test-connectors-mcp-example`.
+
 ## Development
 
 The module requires released modules only and needs Go 1.25 or later:
