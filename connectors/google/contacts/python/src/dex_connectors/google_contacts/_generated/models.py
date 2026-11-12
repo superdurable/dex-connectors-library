@@ -17,9 +17,9 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 @dataclass(frozen=True, slots=True)
 class ListContactsInput:
     # PageSize is 1 through 1000; zero uses 100.
-    page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize'})
+    page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize', 'dex_json_omit_default': True})
     # PageToken is Google's opaque cursor; blank selects the first page.
-    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken'})
+    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
 
 
 setattr(ListContactsInput, '__module__', 'dex_connectors.google_contacts.models')
@@ -72,9 +72,9 @@ class CreateContactInput:
     # GivenName is a nonempty contact given name.
     given_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'givenName'})
     # FamilyName is an optional contact family name.
-    family_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'familyName'})
+    family_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'familyName', 'dex_json_omit_default': True})
     # EmailAddress is an optional email address; blank omits it.
-    email_address: str = _dataclass_field(default='', metadata={'dex_json_name': 'emailAddress'})
+    email_address: str = _dataclass_field(default='', metadata={'dex_json_name': 'emailAddress', 'dex_json_omit_default': True})
 
 
 setattr(CreateContactInput, '__module__', 'dex_connectors.google_contacts.models')

@@ -27,9 +27,9 @@ type CreateContactInput struct {
 	// GivenName is a nonempty contact given name.
 	GivenName string `json:"givenName"`
 	// FamilyName is an optional contact family name.
-	FamilyName string `json:"familyName"`
+	FamilyName string `json:"familyName,omitempty"`
 	// EmailAddress is an optional email address; blank omits it.
-	EmailAddress string `json:"emailAddress"`
+	EmailAddress string `json:"emailAddress,omitempty"`
 }
 
 // CreateContactOperation creates one Google contact with a durable single-dispatch fence.

@@ -11,8 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListContactsInput in scripted cases. */
 export const emptyListContactsInput: ListContactsInput = ListContactsInputSchema.parse({
-  "pageSize": 0,
-  "pageToken": '',
 });
 /** Go zero value for Contact in scripted cases. */
 export const emptyContact: Contact = ContactSchema.parse({
@@ -32,8 +30,6 @@ export const emptyGetContactInput: GetContactInput = GetContactInputSchema.parse
 /** Go zero value for CreateContactInput in scripted cases. */
 export const emptyCreateContactInput: CreateContactInput = CreateContactInputSchema.parse({
   "givenName": '',
-  "familyName": '',
-  "emailAddress": '',
 });
 
 /** Script the listed branch. */

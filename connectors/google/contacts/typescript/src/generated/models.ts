@@ -83,9 +83,9 @@ export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 /** ListContactsInput selects one page of the connected user's contacts. */
 export interface ListContactsInput {
   /** PageSize is 1 through 1000; zero uses 100. */
-  "pageSize": number;
+  "pageSize"?: number | undefined;
   /** PageToken is Google's opaque cursor; blank selects the first page. */
-  "pageToken": string;
+  "pageToken"?: string | undefined;
 }
 /** Contact projects a People API resource name and its first display name and email address. */
 export interface Contact {
@@ -113,15 +113,15 @@ export interface CreateContactInput {
   /** GivenName is a nonempty contact given name. */
   "givenName": string;
   /** FamilyName is an optional contact family name. */
-  "familyName": string;
+  "familyName"?: string | undefined;
   /** EmailAddress is an optional email address; blank omits it. */
-  "emailAddress": string;
+  "emailAddress"?: string | undefined;
 }
 
 /** Runtime validator for ListContactsInput. */
 export const ListContactsInputSchema = z.strictObject({
-  "pageSize": z.number().int(),
-  "pageToken": z.string(),
+  "pageSize": z.number().int().optional(),
+  "pageToken": z.string().optional(),
 }) satisfies z.ZodType<ListContactsInput>;
 
 /** Runtime validator for Contact. */
@@ -145,6 +145,6 @@ export const GetContactInputSchema = z.strictObject({
 /** Runtime validator for CreateContactInput. */
 export const CreateContactInputSchema = z.strictObject({
   "givenName": z.string(),
-  "familyName": z.string(),
-  "emailAddress": z.string(),
+  "familyName": z.string().optional(),
+  "emailAddress": z.string().optional(),
 }) satisfies z.ZodType<CreateContactInput>;
