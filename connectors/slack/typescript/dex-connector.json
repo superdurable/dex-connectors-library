@@ -1,12 +1,133 @@
 {
   "connectorId": "slack",
-  "releaseTag": "connectors/slack/go/v1.4.0",
+  "releaseTag": "connectors/slack/go/v1.5.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-slack",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "factories": [
+    {
+      "name": "newListChannelsStep",
+      "kind": "query",
+      "operationId": "listChannels",
+      "inputType": "ListChannelsInput",
+      "description": "Find Slack channels and their channel IDs. Call this first whenever the user names a channel, such as #general, and pass the returned channelId to other Slack tools instead of asking the user for an ID. Optionally supply part of the channel name (case-insensitive; a leading # is ignored), visibility public or private, memberOnly true to list only channels the app has joined, a limit from 1 through 999, and the cursor from the previous page. The name filter applies to each page separately, so a page can have no match: while nextCursor is present, call again with it. The app can post only where isMember is true, and a private channel appears only after the app is added to it.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListChannelsInput selects one page of Slack channels visible to the connection's app.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the nextCursor from the previous page. Blank reads the first page.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the number of channels Slack examines for this page, from 1 through 999, Slack's maximum. Zero uses 200. The name filter runs after Slack returns the page, so fewer channels can be returned.",
+            "type": "integer"
+          },
+          "memberOnly": {
+            "description": "MemberOnly lists only channels the app has joined, which are the channels it can post to. False also lists public channels the app has not joined.",
+            "type": "boolean"
+          },
+          "nameFilter": {
+            "description": "NameFilter keeps only channels whose name contains this text, ignoring case, surrounding spaces, and one leading #, so \"#General\" matches general and general-ops. Blank keeps every channel on the page.",
+            "type": "string"
+          },
+          "visibility": {
+            "description": "Visibility is public for public channels only or private for private channels only. Blank lists both.",
+            "enum": [
+              "public",
+              "private"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetWorkspaceIdentityStep",
+      "kind": "query",
+      "operationId": "getWorkspaceIdentity",
+      "inputType": "GetWorkspaceIdentityInput",
+      "description": "Show which Slack workspace this connection is connected to and which bot posts for it. Takes no input. Returns the workspace name, ID, and URL, the Enterprise Grid organization ID when there is one, and the bot's user ID, user name, and bot ID. Use it to tell the user which workspace a message will go to.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "read",
+          "field": "read",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetWorkspaceIdentityInput takes no fields because the connection determines the workspace.",
+        "properties": {},
+        "type": "object"
+      }
+    },
     {
       "name": "newListThreadMessagesStep",
       "kind": "query",
@@ -154,7 +275,7 @@
       "kind": "mutation",
       "operationId": "postChannelMessage",
       "inputType": "PostChannelMessageInput",
-      "description": "Post one new top-level message to a Slack channel. Supply the channel ID and the message text.",
+      "description": "Post one new top-level message to a Slack channel. Supply the channel ID and the message text. When the user names a channel, such as #general, first find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find. The app must be a member of the channel.",
       "agent": {
         "exposed": true,
         "approval": "recommended",
@@ -217,7 +338,7 @@
       "kind": "mutation",
       "operationId": "postThreadReply",
       "inputType": "PostThreadReplyInput",
-      "description": "Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text.",
+      "description": "Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text. When the user names a channel, such as #general, find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find.",
       "agent": {
         "exposed": true,
         "approval": "recommended",

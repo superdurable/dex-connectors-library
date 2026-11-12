@@ -9,6 +9,64 @@ export const ConnectorID = "slack";
 /** Provider identity for named connections. */
 export const ProviderID = "slack";
 
+/** Branch IDs for listChannels. */
+export const ListChannelsBranch = {
+  Listed: "listed",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** The channel page was read. */
+export const ListChannelsBranchListed = ListChannelsBranch.Listed;
+/** Slack conclusively rejected the channel query. */
+export const ListChannelsBranchProviderRejected = ListChannelsBranch.ProviderRejected;
+/** Slack returned an invalid or oversized channel response. */
+export const ListChannelsBranchInvalidResponse = ListChannelsBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const ListChannelsBranchDefect = ListChannelsBranch.Defect;
+/** Manifest definition for listChannels. */
+export const ListChannelsDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listChannels" },
+  branches: [
+    { id: "listed", description: "The channel page was read." },
+    { id: "providerRejected", description: "Slack conclusively rejected the channel query.", optional: true },
+    { id: "invalidResponse", description: "Slack returned an invalid or oversized channel response.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for listChannels. */
+export const ListChannelsMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for getWorkspaceIdentity. */
+export const GetWorkspaceIdentityBranch = {
+  Read: "read",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** The workspace and bot identity were read. */
+export const GetWorkspaceIdentityBranchRead = GetWorkspaceIdentityBranch.Read;
+/** Slack conclusively rejected the identity query. */
+export const GetWorkspaceIdentityBranchProviderRejected = GetWorkspaceIdentityBranch.ProviderRejected;
+/** Slack returned an invalid or oversized identity response. */
+export const GetWorkspaceIdentityBranchInvalidResponse = GetWorkspaceIdentityBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const GetWorkspaceIdentityBranchDefect = GetWorkspaceIdentityBranch.Defect;
+/** Manifest definition for getWorkspaceIdentity. */
+export const GetWorkspaceIdentityDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "getWorkspaceIdentity" },
+  branches: [
+    { id: "read", description: "The workspace and bot identity were read." },
+    { id: "providerRejected", description: "Slack conclusively rejected the identity query.", optional: true },
+    { id: "invalidResponse", description: "Slack returned an invalid or oversized identity response.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for getWorkspaceIdentity. */
+export const GetWorkspaceIdentityMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
 /** Branch IDs for listThreadMessages. */
 export const ListThreadMessagesBranch = {
   Read: "read",

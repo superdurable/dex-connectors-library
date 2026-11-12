@@ -16,6 +16,8 @@ from dex_connectors.sdk import (
 
 CONNECTOR_ID = "slack"
 PROVIDER = "slack"
+LIST_CHANNELS_OPERATION_ID = "listChannels"
+GET_WORKSPACE_IDENTITY_OPERATION_ID = "getWorkspaceIdentity"
 LIST_THREAD_MESSAGES_OPERATION_ID = "listThreadMessages"
 GET_THREAD_REPLY_OPERATION_ID = "getThreadReply"
 POST_CHANNEL_MESSAGE_OPERATION_ID = "postChannelMessage"
@@ -23,11 +25,42 @@ POST_THREAD_REPLY_OPERATION_ID = "postThreadReply"
 DEFECT = "defect"
 FOUND = "found"
 INVALID_RESPONSE = "invalidResponse"
+LISTED = "listed"
 NOT_FOUND = "notFound"
 PROVIDER_REJECTED = "providerRejected"
 READ = "read"
 SENT = "sent"
 UNCERTAIN = "uncertain"
+
+LIST_CHANNELS_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, LIST_CHANNELS_OPERATION_ID),
+    (
+        BranchDefinition(LISTED, "The channel page was read.", False),
+        BranchDefinition(PROVIDER_REJECTED, "Slack conclusively rejected the channel query.", True),
+        BranchDefinition(INVALID_RESPONSE, "Slack returned an invalid or oversized channel response.", True),
+        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
+
+GET_WORKSPACE_IDENTITY_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, GET_WORKSPACE_IDENTITY_OPERATION_ID),
+    (
+        BranchDefinition(READ, "The workspace and bot identity were read.", False),
+        BranchDefinition(PROVIDER_REJECTED, "Slack conclusively rejected the identity query.", True),
+        BranchDefinition(INVALID_RESPONSE, "Slack returned an invalid or oversized identity response.", True),
+        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
 
 LIST_THREAD_MESSAGES_DEFINITION = QueryDefinition(
     OperationRef(CONNECTOR_ID, LIST_THREAD_MESSAGES_OPERATION_ID),

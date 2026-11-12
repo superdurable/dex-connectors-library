@@ -5,11 +5,15 @@
 import { ConnectionRefSchema, type ConnectionRef, type Mutation, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { newRefreshingCredentialProvider, type CredentialDecoder, type CredentialEncoder, type SharedCredentialDecoder } from '@superdurable/connectors-sdk/projectconfig';
-import type { ListThreadMessagesInput, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
+import type { ListChannelsInput, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
 export interface Operations {
+  /** Invoke listChannels through this connection. */
+  listChannels(): Query<ListChannelsInput, ListChannelsOutput>;
+  /** Invoke getWorkspaceIdentity through this connection. */
+  getWorkspaceIdentity(): Query<GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput>;
   /** Invoke listThreadMessages through this connection. */
   listThreadMessages(): Query<ListThreadMessagesInput, ListThreadMessagesOutput>;
   /** Invoke getThreadReply through this connection. */

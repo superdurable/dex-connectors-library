@@ -16,6 +16,8 @@ import (
 // StepDefaults are the operation definitions' own and must be treated as read-only.
 func ExposedAgentTools() []sdkgo.AgentToolMetadata {
 	return []sdkgo.AgentToolMetadata{
+		listChannelsAgentToolMetadata(),
+		getWorkspaceIdentityAgentToolMetadata(),
 		listThreadMessagesAgentToolMetadata(),
 		getThreadReplyAgentToolMetadata(),
 		postChannelMessageAgentToolMetadata(),
@@ -30,6 +32,14 @@ func ExposedAgentTools() []sdkgo.AgentToolMetadata {
 func (connection Connection) AgentTools() ([]sdkgo.AgentTool, error) {
 	if err := connection.validateOperations(); err != nil {
 		return nil, err
+	}
+	listChannelsAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.ListChannels(), connection.reference, listChannelsAgentToolMetadata())
+	if err != nil {
+		return nil, fmt.Errorf("slack agent tool listChannels: %w", err)
+	}
+	getWorkspaceIdentityAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.GetWorkspaceIdentity(), connection.reference, getWorkspaceIdentityAgentToolMetadata())
+	if err != nil {
+		return nil, fmt.Errorf("slack agent tool getWorkspaceIdentity: %w", err)
 	}
 	listThreadMessagesAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.ListThreadMessages(), connection.reference, listThreadMessagesAgentToolMetadata())
 	if err != nil {
@@ -47,7 +57,7 @@ func (connection Connection) AgentTools() ([]sdkgo.AgentTool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("slack agent tool postThreadReply: %w", err)
 	}
-	return []sdkgo.AgentTool{listThreadMessagesAgentTool, getThreadReplyAgentTool, postChannelMessageAgentTool, postThreadReplyAgentTool}, nil
+	return []sdkgo.AgentTool{listChannelsAgentTool, getWorkspaceIdentityAgentTool, listThreadMessagesAgentTool, getThreadReplyAgentTool, postChannelMessageAgentTool, postThreadReplyAgentTool}, nil
 }
 
 // Operations returns the operations this connection's Step factories and agent tools invoke.
@@ -56,6 +66,44 @@ func (connection Connection) Operations() Operations { return connection.operati
 
 // Reference returns the connection reference the operations run with.
 func (connection Connection) Reference() sdkgo.ConnectionRef { return connection.reference }
+
+func listChannelsAgentToolMetadata() sdkgo.AgentToolMetadata {
+	return sdkgo.AgentToolMetadata{
+		Operation:             ListChannelsDefinition.Operation,
+		Kind:                  sdkgo.AgentOperationKindQuery,
+		ToolName:              "slack_list_channels",
+		Description:           "Find Slack channels and their channel IDs. Call this first whenever the user names a channel, such as #general, and pass the returned channelId to other Slack tools instead of asking the user for an ID. Optionally supply part of the channel name (case-insensitive; a leading # is ignored), visibility public or private, memberOnly true to list only channels the app has joined, a limit from 1 through 999, and the cursor from the previous page. The name filter applies to each page separately, so a page can have no match: while nextCursor is present, call again with it. The app can post only where isMember is true, and a private channel appears only after the app is added to it.",
+		IsApprovalRecommended: false,
+		IsRetrySafe:           false,
+		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
+			ListChannelsBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
+			ListChannelsBranchDefect:           sdkgo.AgentBranchOutcomeRejected,
+		},
+		InputType:    "ListChannelsInput",
+		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"ListChannelsInput selects one page of Slack channels visible to the connection's app.\",\"properties\":{\"cursor\":{\"description\":\"Cursor is the nextCursor from the previous page. Blank reads the first page.\",\"type\":\"string\"},\"limit\":{\"description\":\"Limit is the number of channels Slack examines for this page, from 1 through 999, Slack's maximum. Zero uses 200. The name filter runs after Slack returns the page, so fewer channels can be returned.\",\"type\":\"integer\"},\"memberOnly\":{\"description\":\"MemberOnly lists only channels the app has joined, which are the channels it can post to. False also lists public channels the app has not joined.\",\"type\":\"boolean\"},\"nameFilter\":{\"description\":\"NameFilter keeps only channels whose name contains this text, ignoring case, surrounding spaces, and one leading #, so \\\"#General\\\" matches general and general-ops. Blank keeps every channel on the page.\",\"type\":\"string\"},\"visibility\":{\"description\":\"Visibility is public for public channels only or private for private channels only. Blank lists both.\",\"enum\":[\"public\",\"private\"],\"type\":\"string\"}},\"type\":\"object\"}"),
+		Branches:     ListChannelsDefinition.Branches,
+		StepDefaults: ListChannelsDefinition.StepDefaults,
+	}
+}
+
+func getWorkspaceIdentityAgentToolMetadata() sdkgo.AgentToolMetadata {
+	return sdkgo.AgentToolMetadata{
+		Operation:             GetWorkspaceIdentityDefinition.Operation,
+		Kind:                  sdkgo.AgentOperationKindQuery,
+		ToolName:              "slack_get_workspace_identity",
+		Description:           "Show which Slack workspace this connection is connected to and which bot posts for it. Takes no input. Returns the workspace name, ID, and URL, the Enterprise Grid organization ID when there is one, and the bot's user ID, user name, and bot ID. Use it to tell the user which workspace a message will go to.",
+		IsApprovalRecommended: false,
+		IsRetrySafe:           false,
+		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
+			GetWorkspaceIdentityBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
+			GetWorkspaceIdentityBranchDefect:           sdkgo.AgentBranchOutcomeRejected,
+		},
+		InputType:    "GetWorkspaceIdentityInput",
+		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"GetWorkspaceIdentityInput takes no fields because the connection determines the workspace.\",\"properties\":{},\"type\":\"object\"}"),
+		Branches:     GetWorkspaceIdentityDefinition.Branches,
+		StepDefaults: GetWorkspaceIdentityDefinition.StepDefaults,
+	}
+}
 
 func listThreadMessagesAgentToolMetadata() sdkgo.AgentToolMetadata {
 	return sdkgo.AgentToolMetadata{
@@ -101,7 +149,7 @@ func postChannelMessageAgentToolMetadata() sdkgo.AgentToolMetadata {
 		Operation:             PostChannelMessageDefinition.Operation,
 		Kind:                  sdkgo.AgentOperationKindMutation,
 		ToolName:              "slack_post_channel_message",
-		Description:           "Post one new top-level message to a Slack channel. Supply the channel ID and the message text.",
+		Description:           "Post one new top-level message to a Slack channel. Supply the channel ID and the message text. When the user names a channel, such as #general, first find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find. The app must be a member of the channel.",
 		IsApprovalRecommended: true,
 		IsRetrySafe:           false,
 		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
@@ -121,7 +169,7 @@ func postThreadReplyAgentToolMetadata() sdkgo.AgentToolMetadata {
 		Operation:             PostThreadReplyDefinition.Operation,
 		Kind:                  sdkgo.AgentOperationKindMutation,
 		ToolName:              "slack_post_thread_reply",
-		Description:           "Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text.",
+		Description:           "Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text. When the user names a channel, such as #general, find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find.",
 		IsApprovalRecommended: true,
 		IsRetrySafe:           false,
 		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{

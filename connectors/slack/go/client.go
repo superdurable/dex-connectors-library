@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package slack connects Dex applications to Slack channel threads.
+// Package slack connects Dex applications to Slack channels and channel threads.
 package slack
 
 import (
@@ -223,6 +223,16 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		maxResponseBytes: config.MaxResponseBytes, maxMessageCharacters: int(config.MaxMessageCharacters),
 		now: dependencies.now, socketDialer: dependencies.socketDialer, logger: dependencies.logger,
 	}, nil
+}
+
+// ListChannels returns the ListChannels operation bound to this client.
+func (client *Client) ListChannels() ListChannelsOperation {
+	return ListChannelsOperation{client: client}
+}
+
+// GetWorkspaceIdentity returns the GetWorkspaceIdentity operation bound to this client.
+func (client *Client) GetWorkspaceIdentity() GetWorkspaceIdentityOperation {
+	return GetWorkspaceIdentityOperation{client: client}
 }
 
 // ListThreadMessages returns the ListThreadMessages operation bound to this client.
@@ -624,6 +634,20 @@ func (client *Client) get(call sdkgo.Call, credentials *Credentials, tokenKind c
 	}
 	return client.doAuthenticated(call, credentials, tokenKind, func() (*http.Request, error) {
 		return http.NewRequestWithContext(call.Context, http.MethodGet, target, nil)
+	})
+}
+
+// postForm sends a form-encoded read, such as auth.test, and refreshes a rejected credential once.
+func (client *Client) postForm(call sdkgo.Call, credentials *Credentials, tokenKind credentialToken, method string, values url.Values) (providerResponse, error) {
+	target := strings.TrimRight(client.endpoint.String(), "/") + "/" + method
+	encoded := values.Encode()
+	return client.doAuthenticated(call, credentials, tokenKind, func() (*http.Request, error) {
+		request, err := http.NewRequestWithContext(call.Context, http.MethodPost, target, strings.NewReader(encoded))
+		if err != nil {
+			return nil, err
+		}
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		return request, nil
 	})
 }
 

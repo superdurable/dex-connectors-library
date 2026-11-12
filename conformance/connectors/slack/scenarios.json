@@ -2857,6 +2857,1119 @@
       },
       "name": "listThreadMessages-missing-ok",
       "operation": "listThreadMessages"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channels\":[{\"id\":\"C0123456789\",\"name\":\"general\",\"is_channel\":true,\"is_private\":false,\"is_archived\":false,\"is_member\":true,\"topic\":{\"value\":\"Company announcements\",\"creator\":\"U0123456789\",\"last_set\":1710000000},\"purpose\":{\"value\":\"Company-wide announcements and work-based matters.\",\"creator\":\"U0123456789\",\"last_set\":1710000000},\"num_members\":42},{\"id\":\"C0456789012\",\"name\":\"random\",\"is_channel\":true,\"is_private\":false,\"is_archived\":false,\"is_member\":true,\"topic\":{\"value\":\"Water cooler\",\"creator\":\"U0123456789\",\"last_set\":1710000000},\"purpose\":{\"value\":\"Non-work banter.\",\"creator\":\"U0123456789\",\"last_set\":1710000000}},{\"id\":\"C0234567890\",\"name\":\"General-Ops\",\"is_channel\":true,\"is_private\":false,\"is_archived\":false,\"is_member\":false,\"topic\":{\"value\":\"\",\"creator\":\"\",\"last_set\":0},\"purpose\":{\"value\":\"Operations questions.\",\"creator\":\"U0234567890\",\"last_set\":1710000100},\"num_members\":7}],\"response_metadata\":{\"next_cursor\":\"dGVhbTpDMDQ1Njc4OTAxMg==\"}}",
+          "headers": {
+            "X-Slack-Req-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "channels": [
+            {
+              "channelId": "C0123456789",
+              "isMember": true,
+              "isPrivate": false,
+              "name": "general",
+              "purpose": "Company-wide announcements and work-based matters.",
+              "topic": "Company announcements"
+            },
+            {
+              "channelId": "C0234567890",
+              "isMember": false,
+              "isPrivate": false,
+              "name": "General-Ops",
+              "purpose": "Operations questions."
+            }
+          ],
+          "nextCursor": "dGVhbTpDMDQ1Njc4OTAxMg=="
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-success",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channels\":[{\"id\":\"C0123456789\",\"name\":\"general\",\"is_channel\":true,\"is_private\":false,\"is_archived\":false,\"is_member\":true,\"topic\":{\"value\":\"Company announcements\",\"creator\":\"U0123456789\",\"last_set\":1710000000},\"purpose\":{\"value\":\"Company-wide announcements and work-based matters.\",\"creator\":\"U0123456789\",\"last_set\":1710000000},\"num_members\":42},{\"id\":\"C0456789012\",\"name\":\"random\",\"is_channel\":true,\"is_private\":false,\"is_archived\":false,\"is_member\":true,\"topic\":{\"value\":\"Water cooler\",\"creator\":\"U0123456789\",\"last_set\":1710000000},\"purpose\":{\"value\":\"Non-work banter.\",\"creator\":\"U0123456789\",\"last_set\":1710000000}},{\"id\":\"C0234567890\",\"name\":\"General-Ops\",\"is_channel\":true,\"is_private\":false,\"is_archived\":false,\"is_member\":false,\"topic\":{\"value\":\"\",\"creator\":\"\",\"last_set\":0},\"purpose\":{\"value\":\"Operations questions.\",\"creator\":\"U0234567890\",\"last_set\":1710000100},\"num_members\":7}],\"response_metadata\":{\"next_cursor\":\"dGVhbTpDMDQ1Njc4OTAxMg==\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "200"
+            ],
+            "types": [
+              "public_channel,private_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "channels": [],
+          "nextCursor": "dGVhbTpDMDQ1Njc4OTAxMg=="
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nameFilter": "#payroll"
+      },
+      "name": "listChannels-no-match-continues",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channels\":[{\"id\":\"C0123456789\",\"name\":\"general\",\"is_channel\":true,\"is_private\":false,\"is_archived\":false,\"is_member\":true,\"topic\":{\"value\":\"Company announcements\",\"creator\":\"U0123456789\",\"last_set\":1710000000},\"purpose\":{\"value\":\"Company-wide announcements and work-based matters.\",\"creator\":\"U0123456789\",\"last_set\":1710000000},\"num_members\":42},{\"id\":\"G0456789012\",\"name\":\"finance\",\"is_private\":true,\"is_member\":false,\"topic\":null,\"purpose\":null}],\"response_metadata\":{\"next_cursor\":\"\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "200"
+            ],
+            "types": [
+              "public_channel,private_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "channels": [
+            {
+              "channelId": "C0123456789",
+              "isMember": true,
+              "isPrivate": false,
+              "name": "general",
+              "purpose": "Company-wide announcements and work-based matters.",
+              "topic": "Company announcements"
+            },
+            {
+              "channelId": "G0456789012",
+              "isMember": false,
+              "isPrivate": true,
+              "name": "finance"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listChannels-first-page-defaults",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channels\":[{\"id\":\"G0345678901\",\"name\":\"order-approvals\",\"is_channel\":false,\"is_group\":true,\"is_private\":true,\"is_archived\":false,\"topic\":{\"value\":\"Orders awaiting approval\",\"creator\":\"U0123456789\",\"last_set\":1710000000},\"purpose\":{\"value\":\"Approve or reject large orders.\",\"creator\":\"U0123456789\",\"last_set\":1710000000}}],\"response_metadata\":{\"next_cursor\":\"\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users.conversations",
+          "query": {
+            "cursor": [
+              "dXNlcjpVMDYxTkZUVDI="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "50"
+            ],
+            "types": [
+              "private_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "channels": [
+            {
+              "channelId": "G0345678901",
+              "isMember": true,
+              "isPrivate": true,
+              "name": "order-approvals",
+              "purpose": "Approve or reject large orders.",
+              "topic": "Orders awaiting approval"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dXNlcjpVMDYxTkZUVDI=",
+        "limit": 50,
+        "memberOnly": true,
+        "visibility": "private"
+      },
+      "name": "listChannels-member-only",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"missing_scope\",\"needed\":\"groups:read\",\"provided\":\"channels:read\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-provider-rejected",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channels\":[{\"id\":\"C0123456789\",\"name\":\"general\",\"topic\":\"Company announcements\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-invalid-response",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channels\":[{\"name\":\"general\",\"is_member\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-missing-channel-id",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channels\":[",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-malformed-json",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"ratelimited\"}",
+          "headers": {
+            "Retry-After": "30"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-rate-limited",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"internal_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-server-failure",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-transport-before-send",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1000,
+        "nameFilter": "general"
+      },
+      "name": "listChannels-defect",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "visibility": "archived"
+      },
+      "name": "listChannels-invalid-visibility",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"url\":\"https://acme.slack.com/\",\"team\":\"Acme Corp\",\"user\":\"dex-bot\",\"team_id\":\"T0123456789\",\"user_id\":\"U0BOT123456\",\"bot_id\":\"B0123456789\"}",
+          "headers": {
+            "X-Slack-Req-Id": "request-2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "botId": "B0123456789",
+          "botUserId": "U0BOT123456",
+          "botUserName": "dex-bot",
+          "teamId": "T0123456789",
+          "teamName": "Acme Corp",
+          "workspaceUrl": "https://acme.slack.com/"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-success",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"url\":\"https://acme-grid.enterprise.slack.com/\",\"team\":\"Acme Sales\",\"user\":\"dex-bot\",\"team_id\":\"T0234567890\",\"user_id\":\"U0BOT234567\",\"bot_id\":\"B0234567890\",\"enterprise_id\":\"E0123456789\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "botId": "B0234567890",
+          "botUserId": "U0BOT234567",
+          "botUserName": "dex-bot",
+          "enterpriseId": "E0123456789",
+          "teamId": "T0234567890",
+          "teamName": "Acme Sales",
+          "workspaceUrl": "https://acme-grid.enterprise.slack.com/"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-enterprise-grid",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"account_inactive\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "botId": "",
+          "botUserId": "",
+          "botUserName": "",
+          "teamId": "",
+          "teamName": "",
+          "workspaceUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-provider-rejected",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"url\":\"https://acme.slack.com/\",\"team\":\"Acme Corp\",\"team_id\":\"T0123456789\",\"user_id\":42}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "botId": "",
+          "botUserId": "",
+          "botUserName": "",
+          "teamId": "",
+          "teamName": "",
+          "workspaceUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-invalid-response",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"url\":\"https://acme.slack.com/\",\"team\":\"Acme Corp\",\"team_id\":\"T0123456789\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "botId": "",
+          "botUserId": "",
+          "botUserName": "",
+          "teamId": "",
+          "teamName": "",
+          "workspaceUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-missing-user-id",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"ratelimited\"}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-rate-limited",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"service_unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-server-failure",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-transport-before-send",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "botId": "",
+          "botUserId": "",
+          "botUserName": "",
+          "teamId": "",
+          "teamName": "",
+          "workspaceUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-defect",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 12000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-rate-limited-empty-body",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-service-unavailable-empty-body",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 12000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-rate-limited-empty-body",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-service-unavailable-empty-body",
+      "operation": "getWorkspaceIdentity"
     }
   ],
   "schemaVersion": 1

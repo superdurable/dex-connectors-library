@@ -17,11 +17,13 @@ import (
 
 // Mock is a scripted slack connection. Script each operation through its accessor.
 type Mock struct {
-	connection         slack.Connection
-	listThreadMessages *connectormock.Query[slack.ListThreadMessagesInput, slack.ListThreadMessagesOutput]
-	getThreadReply     *connectormock.Query[slack.GetThreadReplyInput, slack.GetThreadReplyOutput]
-	postChannelMessage *connectormock.Mutation[slack.PostChannelMessageInput, slack.PostMessageOutput]
-	postThreadReply    *connectormock.Mutation[slack.PostThreadReplyInput, slack.PostMessageOutput]
+	connection           slack.Connection
+	listChannels         *connectormock.Query[slack.ListChannelsInput, slack.ListChannelsOutput]
+	getWorkspaceIdentity *connectormock.Query[slack.GetWorkspaceIdentityInput, slack.GetWorkspaceIdentityOutput]
+	listThreadMessages   *connectormock.Query[slack.ListThreadMessagesInput, slack.ListThreadMessagesOutput]
+	getThreadReply       *connectormock.Query[slack.GetThreadReplyInput, slack.GetThreadReplyOutput]
+	postChannelMessage   *connectormock.Mutation[slack.PostChannelMessageInput, slack.PostMessageOutput]
+	postThreadReply      *connectormock.Mutation[slack.PostThreadReplyInput, slack.PostMessageOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,11 +31,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listThreadMessages: connectormock.NewQuery[slack.ListThreadMessagesInput, slack.ListThreadMessagesOutput](t, slack.ListThreadMessagesDefinition),
-		getThreadReply:     connectormock.NewQuery[slack.GetThreadReplyInput, slack.GetThreadReplyOutput](t, slack.GetThreadReplyDefinition),
-		postChannelMessage: connectormock.NewMutation[slack.PostChannelMessageInput, slack.PostMessageOutput](t, slack.PostChannelMessageDefinition),
-		postThreadReply:    connectormock.NewMutation[slack.PostThreadReplyInput, slack.PostMessageOutput](t, slack.PostThreadReplyDefinition),
+		listChannels:         connectormock.NewQuery[slack.ListChannelsInput, slack.ListChannelsOutput](t, slack.ListChannelsDefinition),
+		getWorkspaceIdentity: connectormock.NewQuery[slack.GetWorkspaceIdentityInput, slack.GetWorkspaceIdentityOutput](t, slack.GetWorkspaceIdentityDefinition),
+		listThreadMessages:   connectormock.NewQuery[slack.ListThreadMessagesInput, slack.ListThreadMessagesOutput](t, slack.ListThreadMessagesDefinition),
+		getThreadReply:       connectormock.NewQuery[slack.GetThreadReplyInput, slack.GetThreadReplyOutput](t, slack.GetThreadReplyDefinition),
+		postChannelMessage:   connectormock.NewMutation[slack.PostChannelMessageInput, slack.PostMessageOutput](t, slack.PostChannelMessageDefinition),
+		postThreadReply:      connectormock.NewMutation[slack.PostThreadReplyInput, slack.PostMessageOutput](t, slack.PostThreadReplyDefinition),
 	}
+	mock.listChannels.Default(ListChannelsDefault())
+	mock.getWorkspaceIdentity.Default(GetWorkspaceIdentityDefault())
 	mock.listThreadMessages.Default(ListThreadMessagesDefault())
 	mock.getThreadReply.Default(GetThreadReplyDefault())
 	mock.postChannelMessage.Default(PostChannelMessageDefault())
@@ -48,6 +54,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() slack.Connection { return mock.connection }
+
+// ListChannels returns the listChannels script.
+func (mock *Mock) ListChannels() *connectormock.Query[slack.ListChannelsInput, slack.ListChannelsOutput] {
+	return mock.listChannels
+}
+
+// GetWorkspaceIdentity returns the getWorkspaceIdentity script.
+func (mock *Mock) GetWorkspaceIdentity() *connectormock.Query[slack.GetWorkspaceIdentityInput, slack.GetWorkspaceIdentityOutput] {
+	return mock.getWorkspaceIdentity
+}
 
 // ListThreadMessages returns the listThreadMessages script.
 func (mock *Mock) ListThreadMessages() *connectormock.Query[slack.ListThreadMessagesInput, slack.ListThreadMessagesOutput] {
@@ -71,6 +87,12 @@ func (mock *Mock) PostThreadReply() *connectormock.Mutation[slack.PostThreadRepl
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListChannels() sdkgo.Query[slack.ListChannelsInput, slack.ListChannelsOutput] {
+	return operations.mock.listChannels
+}
+func (operations mockOperations) GetWorkspaceIdentity() sdkgo.Query[slack.GetWorkspaceIdentityInput, slack.GetWorkspaceIdentityOutput] {
+	return operations.mock.getWorkspaceIdentity
+}
 func (operations mockOperations) ListThreadMessages() sdkgo.Query[slack.ListThreadMessagesInput, slack.ListThreadMessagesOutput] {
 	return operations.mock.listThreadMessages
 }
@@ -82,6 +104,119 @@ func (operations mockOperations) PostChannelMessage() sdkgo.Mutation[slack.PostC
 }
 func (operations mockOperations) PostThreadReply() sdkgo.Mutation[slack.PostThreadReplyInput, slack.PostMessageOutput] {
 	return operations.mock.postThreadReply
+}
+
+// ListChannelsListed selects the listed branch: The channel page was read.
+func ListChannelsListed(value slack.ListChannelsOutput, failure *sdkgo.Failure) connectormock.Case[slack.ListChannelsOutput] {
+	return connectormock.Branch(slack.ListChannelsBranchListed, value, failure)
+}
+
+// ListChannelsProviderRejected selects the providerRejected branch: Slack conclusively rejected the channel query.
+func ListChannelsProviderRejected(value slack.ListChannelsOutput, failure *sdkgo.Failure) connectormock.Case[slack.ListChannelsOutput] {
+	return connectormock.Branch(slack.ListChannelsBranchProviderRejected, value, failure)
+}
+
+// ListChannelsInvalidResponse selects the invalidResponse branch: Slack returned an invalid or oversized channel response.
+func ListChannelsInvalidResponse(value slack.ListChannelsOutput, failure *sdkgo.Failure) connectormock.Case[slack.ListChannelsOutput] {
+	return connectormock.Branch(slack.ListChannelsBranchInvalidResponse, value, failure)
+}
+
+// ListChannelsDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func ListChannelsDefect(value slack.ListChannelsOutput, failure *sdkgo.Failure) connectormock.Case[slack.ListChannelsOutput] {
+	return connectormock.Branch(slack.ListChannelsBranchDefect, value, failure)
+}
+
+// ListChannelsRetry asks Dex to retry the listChannels Step, after the delay when it is positive.
+func ListChannelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[slack.ListChannelsOutput] {
+	return connectormock.Retry[slack.ListChannelsOutput](failure, after)
+}
+
+// ListChannelsWorkspaceChannels is the manifest mock workspaceChannels: Three unordered channel pages with a repeated channel across a page boundary and a channel the app has not joined.
+func ListChannelsWorkspaceChannels() connectormock.Case[slack.ListChannelsOutput] {
+	pages := []slack.ListChannelsOutput{
+		connectormock.MustDecodeOutput[slack.ListChannelsOutput](`{"channels":[{"channelId":"C0345678901","name":"support","isPrivate":false,"isMember":true,"topic":"Customer questions","purpose":"Answer customer questions within one business day."},{"channelId":"C0123456789","name":"general","isPrivate":false,"isMember":true,"topic":"Company announcements","purpose":"Company-wide announcements and work-based matters."}],"nextCursor":"cursor-page-2"}`),
+		connectormock.MustDecodeOutput[slack.ListChannelsOutput](`{"channels":[{"channelId":"C0123456789","name":"general","isPrivate":false,"isMember":true,"topic":"Company announcements","purpose":"Company-wide announcements and work-based matters."},{"channelId":"C0456789012","name":"random","isPrivate":false,"isMember":false,"purpose":"Non-work banter and water cooler conversation."}],"nextCursor":"cursor-page-3"}`),
+		connectormock.MustDecodeOutput[slack.ListChannelsOutput](`{"channels":[{"channelId":"G0234567890","name":"order-approvals","isPrivate":true,"isMember":true,"topic":"Orders awaiting approval","purpose":"Approve or reject large orders."}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[slack.ListChannelsInput]("cursor", "nextCursor", pages)
+	return connectormock.Paged(slack.ListChannelsBranchListed, pageNumber, pages...)
+}
+
+// ListChannelsChannelListRejected is the manifest mock channelListRejected: Slack rejects the channel listing because the app lacks the channel read scopes.
+func ListChannelsChannelListRejected() connectormock.Case[slack.ListChannelsOutput] {
+	var value slack.ListChannelsOutput
+	return connectormock.Branch(slack.ListChannelsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Slack rejected the channel listing because the app lacks a required scope."})
+}
+
+// ListChannelsMalformedChannelList is the manifest mock malformedChannelList: Slack returns an invalid channel list response.
+func ListChannelsMalformedChannelList() connectormock.Case[slack.ListChannelsOutput] {
+	var value slack.ListChannelsOutput
+	return connectormock.Branch(slack.ListChannelsBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Slack returned an invalid channel list response."})
+}
+
+// ListChannelsChannelLimitOutOfRange is the manifest mock channelLimitOutOfRange: The page limit is above 999, so no request is sent.
+func ListChannelsChannelLimitOutOfRange() connectormock.Case[slack.ListChannelsOutput] {
+	var value slack.ListChannelsOutput
+	return connectormock.Branch(slack.ListChannelsBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "The channel page limit must be from 1 through 999."})
+}
+
+// ListChannelsDefault is the manifest default, workspaceChannels, which New installs.
+func ListChannelsDefault() connectormock.Case[slack.ListChannelsOutput] {
+	return ListChannelsWorkspaceChannels()
+}
+
+// GetWorkspaceIdentityRead selects the read branch: The workspace and bot identity were read.
+func GetWorkspaceIdentityRead(value slack.GetWorkspaceIdentityOutput, failure *sdkgo.Failure) connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	return connectormock.Branch(slack.GetWorkspaceIdentityBranchRead, value, failure)
+}
+
+// GetWorkspaceIdentityProviderRejected selects the providerRejected branch: Slack conclusively rejected the identity query.
+func GetWorkspaceIdentityProviderRejected(value slack.GetWorkspaceIdentityOutput, failure *sdkgo.Failure) connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	return connectormock.Branch(slack.GetWorkspaceIdentityBranchProviderRejected, value, failure)
+}
+
+// GetWorkspaceIdentityInvalidResponse selects the invalidResponse branch: Slack returned an invalid or oversized identity response.
+func GetWorkspaceIdentityInvalidResponse(value slack.GetWorkspaceIdentityOutput, failure *sdkgo.Failure) connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	return connectormock.Branch(slack.GetWorkspaceIdentityBranchInvalidResponse, value, failure)
+}
+
+// GetWorkspaceIdentityDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func GetWorkspaceIdentityDefect(value slack.GetWorkspaceIdentityOutput, failure *sdkgo.Failure) connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	return connectormock.Branch(slack.GetWorkspaceIdentityBranchDefect, value, failure)
+}
+
+// GetWorkspaceIdentityRetry asks Dex to retry the getWorkspaceIdentity Step, after the delay when it is positive.
+func GetWorkspaceIdentityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	return connectormock.Retry[slack.GetWorkspaceIdentityOutput](failure, after)
+}
+
+// GetWorkspaceIdentityAcmeWorkspace is the manifest mock acmeWorkspace: The bot identity in a standard workspace outside Enterprise Grid.
+func GetWorkspaceIdentityAcmeWorkspace() connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	value := connectormock.MustDecodeOutput[slack.GetWorkspaceIdentityOutput](`{"teamId":"T0123456789","teamName":"Acme Corp","workspaceUrl":"https://acme.slack.com/","botUserId":"U0BOT123456","botUserName":"dex-bot","botId":"B0123456789"}`)
+	return connectormock.Branch(slack.GetWorkspaceIdentityBranchRead, value, nil)
+}
+
+// GetWorkspaceIdentityIdentityRejected is the manifest mock identityRejected: Slack rejects the identity read because the connection was revoked.
+func GetWorkspaceIdentityIdentityRejected() connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	var value slack.GetWorkspaceIdentityOutput
+	return connectormock.Branch(slack.GetWorkspaceIdentityBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Slack rejected the identity read because the connection was revoked."})
+}
+
+// GetWorkspaceIdentityMalformedIdentity is the manifest mock malformedIdentity: Slack returns an identity response without the bot user ID.
+func GetWorkspaceIdentityMalformedIdentity() connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	var value slack.GetWorkspaceIdentityOutput
+	return connectormock.Branch(slack.GetWorkspaceIdentityBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Slack returned an invalid identity response."})
+}
+
+// GetWorkspaceIdentityMissingBotToken is the manifest mock missingBotToken: The connection has no bot token, so no request is sent.
+func GetWorkspaceIdentityMissingBotToken() connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	var value slack.GetWorkspaceIdentityOutput
+	return connectormock.Branch(slack.GetWorkspaceIdentityBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "Slack connection credentials are unavailable."})
+}
+
+// GetWorkspaceIdentityDefault is the manifest default, acmeWorkspace, which New installs.
+func GetWorkspaceIdentityDefault() connectormock.Case[slack.GetWorkspaceIdentityOutput] {
+	return GetWorkspaceIdentityAcmeWorkspace()
 }
 
 // ListThreadMessagesRead selects the read branch: The thread page was read.
