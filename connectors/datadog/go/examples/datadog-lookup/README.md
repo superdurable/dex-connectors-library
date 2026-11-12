@@ -22,7 +22,7 @@ mkdir -p /tmp/datadog-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/datadog/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/datadog/go \
-  --version v0.2.0 --tag connectors/datadog/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/datadog/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/datadog-release/connector-release.json \
   --digest-output /tmp/datadog-release/connector-release.json.sha256

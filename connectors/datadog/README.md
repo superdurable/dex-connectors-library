@@ -1,6 +1,6 @@
 # Datadog connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/datadog/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/datadog/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/datadog`.
 
@@ -23,7 +23,8 @@ authorization and provider behavior have not been verified.
 | NewQueryMetricsStep | GET /api/v1/query | `From`, `To` (Unix seconds), and Datadog `Query` expression | `MetricsQuery.Status` and `Series` with millisecond timestamps in `Pointlist` | `queried` | `providerRejected`, `invalidResponse`, `defect` |
 | NewListMonitorsStep | GET /api/v1/monitor | zero-based `Page` and `PageSize` (zero selects 100) | `MonitorsPage.Monitors` | `listed` | `providerRejected`, `invalidResponse`, `defect |
 
-Both operations are read-only Queries.
+Both operations are read-only Queries. `Page` and `PageSize` are optional in the
+input schema, so `{}` lists the first page of 100 monitors.
 
 ## Authorization
 

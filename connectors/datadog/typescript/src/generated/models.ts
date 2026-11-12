@@ -76,9 +76,9 @@ export interface MetricsQuery {
 /** ListMonitorsInput selects a zero-based monitor page. */
 export interface ListMonitorsInput {
   /** Page is zero-based; zero selects the first page. */
-  "page": number;
+  "page"?: number | undefined;
   /** PageSize is the number of monitors requested; zero selects 100. */
-  "pageSize": number;
+  "pageSize"?: number | undefined;
 }
 /** Monitor is a Datadog monitor summary. */
 export interface Monitor {
@@ -118,8 +118,8 @@ export const MetricsQuerySchema = z.strictObject({
 
 /** Runtime validator for ListMonitorsInput. */
 export const ListMonitorsInputSchema = z.strictObject({
-  "page": z.number().int(),
-  "pageSize": z.number().int(),
+  "page": z.number().int().optional(),
+  "pageSize": z.number().int().optional(),
 }) satisfies z.ZodType<ListMonitorsInput>;
 
 /** Runtime validator for Monitor. */

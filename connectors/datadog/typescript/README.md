@@ -7,7 +7,7 @@ connector manifest. Each operation resolves both private keys for every call.
 
 `queryMetrics` accepts `from` and `to` in Unix seconds and a nonblank Datadog
 metric expression. `listMonitors` accepts a zero-based `page` and `pageSize`;
-zero page size selects 100. The success branches are `queried` and `listed`.
+zero page size selects 100, and both fields are optional. The success branches are `queried` and `listed`.
 Monitor IDs use JavaScript numbers; integers above `2^53 - 1` are supported only
 when exactly representable as a number, so use Go for arbitrary 64-bit IDs.
 Optional `providerRejected`, `invalidResponse`, and `defect` branches fail a

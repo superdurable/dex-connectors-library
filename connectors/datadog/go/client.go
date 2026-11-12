@@ -92,9 +92,9 @@ type MetricsQuery struct {
 // ListMonitorsInput selects a zero-based monitor page.
 type ListMonitorsInput struct {
 	// Page is zero-based; zero selects the first page.
-	Page int `json:"page"`
+	Page int `json:"page,omitempty"`
 	// PageSize is the number of monitors requested; zero selects 100.
-	PageSize int `json:"pageSize"`
+	PageSize int `json:"pageSize,omitempty"`
 }
 
 // Monitor is a Datadog monitor summary.

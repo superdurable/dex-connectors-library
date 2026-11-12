@@ -65,9 +65,9 @@ setattr(MetricsQuery, '__module__', 'dex_connectors.datadog.models')
 @dataclass(frozen=True, slots=True)
 class ListMonitorsInput:
     # Page is zero-based; zero selects the first page.
-    page: int = 0
+    page: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
     # PageSize is the number of monitors requested; zero selects 100.
-    page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize'})
+    page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize', 'dex_json_omit_default': True})
 
 
 setattr(ListMonitorsInput, '__module__', 'dex_connectors.datadog.models')

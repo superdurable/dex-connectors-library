@@ -27,8 +27,6 @@ export const emptyMetricsQuery: MetricsQuery = MetricsQuerySchema.parse({
 });
 /** Go zero value for ListMonitorsInput in scripted cases. */
 export const emptyListMonitorsInput: ListMonitorsInput = ListMonitorsInputSchema.parse({
-  "page": 0,
-  "pageSize": 0,
 });
 /** Go zero value for Monitor in scripted cases. */
 export const emptyMonitor: Monitor = MonitorSchema.parse({
