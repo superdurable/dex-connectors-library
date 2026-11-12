@@ -1,10 +1,10 @@
 {
   "connectorId": "activecampaign",
-  "releaseTag": "connectors/activecampaign/go/v0.1.0",
+  "releaseTag": "connectors/activecampaign/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-activecampaign",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -50,13 +50,10 @@
             "type": "integer"
           },
           "offset": {
-            "description": "Offset is the zero-based number of contacts to skip.",
+            "description": "Offset is the zero-based number of contacts to skip; zero starts at the first contact.",
             "type": "integer"
           }
         },
-        "required": [
-          "offset"
-        ],
         "type": "object"
       }
     },

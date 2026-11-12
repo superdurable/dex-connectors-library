@@ -5,16 +5,16 @@ metadata:
   displayName: ActiveCampaign
   description: List and inspect contact metadata through the ActiveCampaign API.
   company: ActiveCampaign
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: activecampaign
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listContacts, getContact]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-activecampaign'
       operations: [listContacts, getContact]
       triggers: []

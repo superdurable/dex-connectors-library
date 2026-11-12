@@ -58,6 +58,59 @@
       "operation": "listContacts"
     },
     {
+      "callId": "2ddfef08-72ec-4e16-86c7-4613b8716f02",
+      "exchanges": [
+        {
+          "body": "{\"contacts\":[{\"id\":\"68\",\"email\":\"ada@example.com\",\"firstName\":\"Ada\",\"lastName\":\"Lovelace\",\"fieldValues\":[{\"value\":\"not-persisted\"}]}],\"meta\":{\"total\":\"21\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "email": "ada@example.com",
+              "firstName": "Ada",
+              "id": "68",
+              "lastName": "Lovelace"
+            }
+          ],
+          "limit": 20,
+          "offset": 0,
+          "total": 21
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listContacts-defaults",
+      "operation": "listContacts"
+    },
+    {
       "callId": "78f73f38-1618-4c60-bbaf-a9236a865639",
       "exchanges": [
         {

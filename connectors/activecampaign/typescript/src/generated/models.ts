@@ -47,8 +47,8 @@ export type CredentialSource = CredentialProvider<Credentials>;
 
 /** ListContactsInput selects an offset-based page of at most 100 contacts. */
 export interface ListContactsInput {
-  /** Offset is the zero-based number of contacts to skip. */
-  "offset": number;
+  /** Offset is the zero-based number of contacts to skip; zero starts at the first contact. */
+  "offset"?: number | undefined;
   /** Limit is the maximum contact count; zero defaults to 20. */
   "limit"?: number | undefined;
 }
@@ -82,7 +82,7 @@ export interface GetContactInput {
 
 /** Runtime validator for ListContactsInput. */
 export const ListContactsInputSchema = z.strictObject({
-  "offset": z.number().int(),
+  "offset": z.number().int().optional(),
   "limit": z.number().int().optional(),
 }) satisfies z.ZodType<ListContactsInput>;
 

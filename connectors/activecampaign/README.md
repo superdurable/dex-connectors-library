@@ -1,6 +1,6 @@
 # ActiveCampaign connector
 
-The Go, Python, and TypeScript connectors list contact IDs, email addresses, and names with `listContacts` and retrieve one contact with `getContact`. Embedded relationships, custom field values, activity, deals, and provider links are excluded from Flow results. The account's API Key is sent in the `Api-Token` header, never in a URL or result.
+The Go, Python, and TypeScript connectors list contact IDs, email addresses, and names with `listContacts` and retrieve one contact with `getContact`. `listContacts` input fields are optional: omitted `offset` starts at the first contact and omitted `limit` reads 20. Embedded relationships, custom field values, activity, deals, and provider links are excluded from Flow results. The account's API Key is sent in the `Api-Token` header, never in a URL or result.
 
 Sign in to [ActiveCampaign](https://www.activecampaign.com/login), then open Settings > Developer. Copy the full account-specific API URL into `baseUrl` and the current user's API Key into the secret `api_key` field. The API URL ends in `/api/3`; blank `baseUrl` prevents connection creation. The [contact-inspection Flow](go/examples/contact-inspection/README.md) is the runnable consumer. See the [authentication guide](https://developers.activecampaign.com/reference/authentication) and [contact API](https://developers.activecampaign.com/reference/list-all-contacts).
 

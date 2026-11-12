@@ -11,7 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListContactsInput in scripted cases. */
 export const emptyListContactsInput: ListContactsInput = ListContactsInputSchema.parse({
-  "offset": 0,
 });
 /** Go zero value for ContactMetadata in scripted cases. */
 export const emptyContactMetadata: ContactMetadata = ContactMetadataSchema.parse({
