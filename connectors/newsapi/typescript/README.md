@@ -13,7 +13,7 @@ checks the adapter without type assertions.
 ## Install
 
 ```sh
-npm install @superdurable/connector-newsapi@0.1.0
+npm install @superdurable/connector-newsapi@0.1.1
 ```
 
 The package requires the released `@superdurable/connectors-sdk` version pinned

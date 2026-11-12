@@ -2,7 +2,7 @@
 
 `@superdurable/connector-amazon-sqs` implements `receiveMessages`, `deleteMessage`, and `changeMessageVisibility` as Dex Mutations. The package includes generated operation models, Step factories, mock cases, and `dex-connector.json`; hand-written code signs the SQS JSON protocol with AWS Signature Version 4 and classifies provider outcomes. It has no Trigger.
 
-Install the published package with `npm install @superdurable/connector-amazon-sqs@0.1.0`. Node.js 22 or 24 is required by the Connector SDK. For this checkout, run `npm ci` from this directory.
+Install the published package with `npm install @superdurable/connector-amazon-sqs@0.1.1`. Node.js 22 or 24 is required by the Connector SDK. For this checkout, run `npm ci` from this directory.
 
 ## Connection
 

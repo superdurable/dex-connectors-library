@@ -9,7 +9,7 @@ Import the mock entry point from `@superdurable/connector-contentful/mock`.
 
 ## Setup
 
-Install `@superdurable/connector-contentful@0.1.0` and the matching released
+Install `@superdurable/connector-contentful@0.1.1` and the matching released
 Connector SDK. In [Contentful](https://app.contentful.com), select a space,
 open **Settings → API keys**, and create or select a Content Delivery API key.
 Copy its access token into the secret `delivery_token` field in Dex Web
