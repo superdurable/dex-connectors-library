@@ -62,6 +62,7 @@ func runCrashHelper() {
 		ObserveProtocolPoint: func(point ProtocolPoint, operationID string) {
 			if point == crashPoint && operationID == crashOperation {
 				exitOnError(syscall.Kill(os.Getpid(), syscall.SIGKILL))
+				waitForOwnSIGKILL()
 			}
 		},
 	})
@@ -70,6 +71,14 @@ func runCrashHelper() {
 	exitOnError(err)
 	fmt.Printf("ready http://%s%s\n", listener.Addr(), MCPPath)
 	exitOnError(http.Serve(listener, server.Handler()))
+}
+
+// waitForOwnSIGKILL keeps the call at its crash point: darwin's kill(2) may
+// return before the process dies.
+func waitForOwnSIGKILL() {
+	for {
+		time.Sleep(time.Hour)
+	}
 }
 
 func exitOnError(err error) {
