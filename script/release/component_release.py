@@ -35,8 +35,18 @@ CONNECTOR_MODULE_PATH_PREFIX = f"{LIBRARY_MODULE_PATH}/connectors/"
 CONNECTOR_RELEASE_COMPLETE_ASSET = "connector-release.complete"
 NPM_REPOSITORY_URL = "git+https://github.com/superdurable/dex-connectors-library.git"
 LANGUAGE_DISPLAY_NAMES = {"go": "Go", "python": "Python", "typescript": "TypeScript"}
-# Matches "(breaking)" and the scoped "(breaking: python, typescript)" markers.
-BREAKING_MARKER_PATTERN = re.compile(r"\(breaking(?::([^)]*))?\)")
+RELEASE_LANGUAGE_ALTERNATIVES = "go|python|typescript"
+# The only accepted markers: "(breaking)" and "(breaking: python, typescript)".
+CANONICAL_BREAKING_MARKER_PATTERN = re.compile(
+    rf"\(breaking(?:: (?:{RELEASE_LANGUAGE_ALTERNATIVES})(?:, (?:{RELEASE_LANGUAGE_ALTERNATIVES}))*)?\)"
+)
+# Any spelling a contributor may mean as a marker; non-canonical ones fail closed.
+BREAKING_MARKER_CANDIDATE_PATTERN = re.compile(r"\(\s*breaking\s*(?::[^)]*)?\)", re.IGNORECASE)
+UNCLOSED_BREAKING_MARKER_PATTERN = re.compile(r"\(\s*breaking\s*:", re.IGNORECASE)
+MARKDOWN_FENCE_OPENING_PATTERN = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+MARKDOWN_INLINE_CODE_SPAN_PATTERN = re.compile(r"(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)", re.DOTALL)
+CANONICAL_BREAKING_MARKER_SYNTAX = ("(breaking) or (breaking: <language>[, <language>...]) with lowercase "
+                                    "go, python, or typescript separated by a comma and one space")
 
 
 @dataclass(frozen=True)
@@ -395,27 +405,51 @@ def component_language(component_path: str) -> str:
     return "go"
 
 
+def text_outside_markdown_code(text: str) -> str:
+    """Returns text with Markdown fenced code blocks and inline code spans replaced by spaces."""
+    kept_lines: list[str] = []
+    fence = ""
+    for line in text.splitlines(keepends=True):
+        if fence:
+            stripped = line.strip()
+            if (len(line) - len(line.lstrip(" ")) <= 3 and stripped.startswith(fence)
+                    and stripped == fence[0] * len(stripped)):
+                fence = ""
+            kept_lines.append("\n")
+            continue
+        opening = MARKDOWN_FENCE_OPENING_PATTERN.match(line)
+        if opening is not None and not (opening.group(1)[0] == "`" and "`" in line[opening.end():]):
+            fence = opening.group(1)
+            kept_lines.append("\n")
+            continue
+        kept_lines.append(line)
+    return MARKDOWN_INLINE_CODE_SPAN_PATTERN.sub(" ", "".join(kept_lines))
+
+
 def marked_breaking_languages(*texts: str) -> frozenset[str]:
     """Returns the languages the breaking markers in texts name.
 
     "(breaking)" names every language; "(breaking: go, typescript)" names only
-    those listed. A scoped marker that is unclosed, names no language, or names
-    an unknown one raises ValueError, so a typo never hides a breaking change.
+    those listed. Markdown code is documentation and never a marker. Any other
+    spelling, such as "(Breaking)", "(breaking : go)", "(breaking: ts)", or an
+    unclosed "(breaking:", raises ValueError, so a typo never hides a breaking
+    change.
     """
     languages: set[str] = set()
     for text in texts:
-        for match in BREAKING_MARKER_PATTERN.finditer(text):
-            scope = match.group(1)
-            if scope is None:
+        prose = text_outside_markdown_code(text)
+        for match in BREAKING_MARKER_CANDIDATE_PATTERN.finditer(prose):
+            marker = match.group(0)
+            if CANONICAL_BREAKING_MARKER_PATTERN.fullmatch(marker) is None:
+                raise ValueError(f"invalid breaking marker {marker!r}: write {CANONICAL_BREAKING_MARKER_SYNTAX}")
+            if marker == "(breaking)":
                 languages.update(LANGUAGE_DISPLAY_NAMES)
-                continue
-            named = [language.strip() for language in scope.split(",")]
-            if not all(language in LANGUAGE_DISPLAY_NAMES for language in named):
-                raise ValueError(f"invalid breaking marker {match.group(0)!r}: list one or more of "
-                                 f"{', '.join(LANGUAGE_DISPLAY_NAMES)}, separated by commas")
-            languages.update(named)
-        if "(breaking:" in BREAKING_MARKER_PATTERN.sub("", text):
-            raise ValueError("invalid breaking marker: a '(breaking:' marker is missing its closing ')'")
+            else:
+                languages.update(marker.removeprefix("(breaking: ").removesuffix(")").split(", "))
+        unclosed = UNCLOSED_BREAKING_MARKER_PATTERN.search(BREAKING_MARKER_CANDIDATE_PATTERN.sub(" ", prose))
+        if unclosed is not None:
+            raise ValueError(f"invalid breaking marker {unclosed.group(0)!r} is missing its closing ')': "
+                             f"write {CANONICAL_BREAKING_MARKER_SYNTAX}")
     return frozenset(languages)
 
 
@@ -440,7 +474,7 @@ def release_notes(plan: ReleasePlan, repository: str) -> tuple[str, bool]:
         breaking_languages = marked_breaking_languages(title, body, message)
         is_breaking = (component_language(plan.component_path) in breaking_languages
                        and commit_changes_beyond_language_descriptor(commit, plan.component_path))
-        clean_title = BREAKING_MARKER_PATTERN.sub("", title).strip()
+        clean_title = CANONICAL_BREAKING_MARKER_PATTERN.sub("", title).strip()
         entry = f"- [{clean_title}]({url}){author}"
         key = url if pull is not None and url else commit
         previous = entries.get(key)

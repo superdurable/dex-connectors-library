@@ -570,10 +570,21 @@ their language: `sdkgo` is `go`, `sdkpython` is `python`, and `sdkts` is
 
 A plain marker together with a scoped one, in the same pull request or in
 another commit of the release, still marks every package. A change that breaks
-connections affects every package, so it uses plain `(breaking)`. A scoped
-marker that is not closed, names no language, or names any other value, such as
-`(breaking: ts)`, fails the release notes step; edit the pull request text and
-rerun the release.
+connections affects every package, so it uses plain `(breaking)`.
+
+Write a marker outside Markdown code. Text inside inline code spans, with any
+number of backticks, and inside fenced code blocks is documentation, so a pull
+request can quote a marker without marking itself. Outside code, the release
+accepts only the two canonical spellings: `(breaking)` and
+`(breaking: <language>[, <language>...])`, lowercase, with one space after the
+colon and a comma and one space between languages. Any other parenthesized
+spelling fails the release notes step instead of being ignored. Examples are a
+different case such as `(Breaking: typescript)`, other spacing such as
+`(breaking : typescript)`, `( breaking: typescript)`, or
+`(breaking: go,python)`, an unknown or empty language such as
+`(breaking: ts)`, and an unclosed `(breaking:`. Edit the pull request text or
+commit message and rerun the release.
+
 For a Python or TypeScript connector release, a marked commit is breaking for
 that language only when it changes the language package beyond its generated
 `dex-connector.json`. Descriptor-only changes appear under Changes. Package

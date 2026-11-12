@@ -282,7 +282,8 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   packages break, scope it as `(breaking: <language>[, <language>...])` with
   `go`, `python`, or `typescript`; only the named packages then need a
   breaking bump. Plain `(breaking)` applies to every package, and a change
-  that breaks connections uses it.
+  that breaks connections uses it. Markers inside Markdown code are ignored;
+  any other spelling outside code fails the release.
 - Fetch and branch from the latest `origin/main`. See
   `.cursor/rules/git-branch.mdc`.
 - End every changing agent turn with one commit and a clean working tree. Do not

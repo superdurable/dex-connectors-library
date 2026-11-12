@@ -9,7 +9,9 @@ single modules.
 
 A breaking change to only some language packages uses the scoped marker
 `(breaking: <language>[, <language>...])`, such as `(breaking: typescript)`;
-plain `(breaking)` applies to every package. `AGENTS.md` owns the full rule.
+plain `(breaking)` applies to every package. Markers inside Markdown code are
+ignored, and any other spelling outside code fails the release. `AGENTS.md`
+owns the full rule.
 
 A Python or TypeScript package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
 

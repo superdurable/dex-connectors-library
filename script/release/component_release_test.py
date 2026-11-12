@@ -1431,7 +1431,7 @@ class ScopedBreakingMarkerTest(unittest.TestCase):
                 self.assert_patch_allowed(language, [self.pull(title)], ["squash"], False)
 
     def test_multi_language_scope_names_each_listed_language(self) -> None:
-        body = "Changes the Python and TypeScript input types (breaking: python,typescript)."
+        body = "Changes the Python and TypeScript input types (breaking: python, typescript)."
         for language, is_patch_allowed in (("go", True), ("python", False), ("typescript", False)):
             with self.subTest(language=language):
                 self.assert_patch_allowed(language, [self.pull("connector(hackernews): change input", body)],
@@ -1490,22 +1490,78 @@ class ScopedBreakingMarkerTest(unittest.TestCase):
         self.assertFalse(is_breaking)
 
     def test_marked_breaking_languages(self) -> None:
-        self.assertEqual(release.marked_breaking_languages("no marker", "breaking change", "(Breaking)"), frozenset())
+        self.assertEqual(release.marked_breaking_languages("no marker", "breaking change", "(breaking changes)",
+                                                           "Breaking Changes: none"), frozenset())
         self.assertEqual(release.marked_breaking_languages("x (breaking)"), frozenset({"go", "python", "typescript"}))
         self.assertEqual(release.marked_breaking_languages("x (breaking: typescript)"), frozenset({"typescript"}))
-        self.assertEqual(release.marked_breaking_languages("(breaking:go , python)"), frozenset({"go", "python"}))
+        self.assertEqual(release.marked_breaking_languages("(breaking: go, python)"), frozenset({"go", "python"}))
+        self.assertEqual(release.marked_breaking_languages("(breaking: go, python, typescript)"),
+                         frozenset({"go", "python", "typescript"}))
         self.assertEqual(release.marked_breaking_languages("(breaking: go)", "(breaking: python)"),
                          frozenset({"go", "python"}))
 
     def test_invalid_scoped_marker_fails_release_notes(self) -> None:
         for text in ("(breaking: ts)", "(breaking: TypeScript)", "(breaking: )", "(breaking:)",
-                     "(breaking: go,)", "(breaking: go python)", "(breaking: go", "(breaking) and (breaking: rust)"):
+                     "(breaking: go,)", "(breaking: go python)", "(breaking: go", "(breaking) and (breaking: rust)",
+                     "(breaking : typescript)", "( breaking: typescript)", "(Breaking: typescript)",
+                     "(BREAKING)", "(Breaking)", "( breaking )", "(breaking )", "(breaking:typescript)",
+                     "(breaking:  typescript)", "(breaking: typescript )", "(breaking: go,python)",
+                     "(breaking: go , python)", "(breaking: go,  python)", "(breaking:\ngo)",
+                     "( Breaking : go", "(breaking: <language>[, <language>...])"):
             with self.subTest(text=text):
                 with self.assertRaisesRegex(ValueError, "invalid breaking marker"):
                     release.marked_breaking_languages(text)
         with self.assertRaisesRegex(ValueError, "invalid breaking marker"):
             self.notes_for("connectors/hackernews/go", [self.pull("connector(hackernews): change", "(breaking: ts)")],
                            ["squash"])
+
+    def test_non_canonical_marker_names_canonical_syntax(self) -> None:
+        with self.assertRaisesRegex(ValueError, re.escape("invalid breaking marker '(breaking : typescript)': write "
+                                                          "(breaking) or (breaking: <language>[, <language>...])")):
+            release.marked_breaking_languages("connector(hackernews): change (breaking : typescript)")
+        with self.assertRaisesRegex(ValueError, "missing its closing"):
+            release.marked_breaking_languages("( Breaking : typescript and more")
+
+    def test_markers_inside_markdown_code_are_documentation(self) -> None:
+        pull_request_681_body = (
+            "- New scoped marker `(breaking: <language>[, <language>...])` with `go`, `python`, `typescript`; "
+            "the v0 \"breaking cannot be a patch\" rule applies only to the named packages. Plain `(breaking)` "
+            "still applies to all, and wins when both appear."
+        )
+        self.assertEqual(release.marked_breaking_languages(pull_request_681_body), frozenset())
+        for text in (
+            "write ``(breaking: <language>)`` or ``a ` (breaking: ts)``",
+            "a span ```(Breaking : go)``` here",
+            "```\n(breaking: <language>[, <language>...])\n(breaking)\n```\nafter the fence",
+            "~~~markdown\n(breaking : go)\n~~~",
+            "   ```text\n(BREAKING)\n   ``````\n",
+            "an unclosed fence\n````\n(breaking: ts)\n```\nstill code",
+            "the span `(breaking:` hides an unclosed marker",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(release.marked_breaking_languages(text), frozenset())
+        self.assertEqual(release.marked_breaking_languages("`(breaking)` documented; this changes Go (breaking: go)"),
+                         frozenset({"go"}))
+        self.assertEqual(release.marked_breaking_languages("```\n(breaking)\n```\n(breaking: python)"),
+                         frozenset({"python"}))
+        for text in ("an unmatched ` backtick (breaking : go)", "```\ncode\n```\n(Breaking)",
+                     "``(breaking)` mismatched (breaking: ts)"):
+            with self.subTest(text=text):
+                with self.assertRaisesRegex(ValueError, "invalid breaking marker"):
+                    release.marked_breaking_languages(text)
+
+    def test_pull_request_681_squash_commit_releases_no_breaking_change(self) -> None:
+        body = "- New scoped marker `(breaking: <language>[, <language>...])` with `go`, `python`, `typescript`."
+        message = ("tooling: scope breaking markers to a language package (#681)\n\n"
+                   "Add the scoped marker `(breaking: <language>[, <language>...])`; plain `(breaking)` still applies.")
+        pull = self.pull("tooling: scope breaking markers to a language package", body, 681)
+        for language in ("go", "python", "typescript"):
+            with self.subTest(language=language, source="pull request"):
+                self.assert_patch_allowed(language, [pull], [message], True)
+            with self.subTest(language=language, source="direct commit"):
+                self.assert_patch_allowed(language, [None], [message], True)
+            with self.subTest(language=language, source="prose marker"):
+                self.assert_patch_allowed(language, [None], [message + "\n\nThis is (breaking)."], False)
 
     def test_release_component_language(self) -> None:
         for component_path, language in (
