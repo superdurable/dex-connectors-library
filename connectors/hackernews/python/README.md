@@ -1,6 +1,6 @@
 # Hacker News connector for Python
 
-Install with `pip install dex-connector-hackernews==0.2.1`. The package
+Install with `pip install dex-connector-hackernews==0.3.0`. The package
 requires `dex-connectors-sdk>=0.8.0,<1` and `dex-python-sdk>=1.28.0`, and
 implements the manifest Queries `listStoryIDs` and `getItem` with the same
 branches, defaults, and failure classification as the Go module. The public
