@@ -11,7 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListFormsInput in scripted cases. */
 export const emptyListFormsInput: ListFormsInput = ListFormsInputSchema.parse({
-  "offset": 0,
 });
 /** Go zero value for FormMetadata in scripted cases. */
 export const emptyFormMetadata: FormMetadata = FormMetadataSchema.parse({

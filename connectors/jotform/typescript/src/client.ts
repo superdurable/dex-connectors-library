@@ -83,11 +83,12 @@ export class ListFormsOperation implements Query<ListFormsInput, FormsPage> {
   /** Return the manifest-generated contract. */ definition(): QueryDefinition { return ListFormsDefinition; }
   /** Read one page or select a Go-compatible optional branch. */
   async invoke(call: Call, input: ListFormsInput): Promise<QueryAttempt<FormsPage>> {
-    if (!input || !Number.isSafeInteger(input.offset) || input.offset < 0 || (input.limit !== undefined && (!Number.isSafeInteger(input.limit) || input.limit < 0 || input.limit > 100))) {
+    const offset = input?.offset ?? 0;
+    if (!input || !Number.isSafeInteger(offset) || offset < 0 || (input.limit !== undefined && (!Number.isSafeInteger(input.limit) || input.limit < 0 || input.limit > 100))) {
       return terminal('listForms', 'defect', 'VALIDATION', 'offset or limit is invalid', emptyPage());
     }
     const limit = input.limit || 20;
-    const path = `/user/forms?${new URLSearchParams({ offset: String(input.offset), limit: String(limit) })}`;
+    const path = `/user/forms?${new URLSearchParams({ offset: String(offset), limit: String(limit) })}`;
     const result = await this.client.exchange(call, 'listForms', path, false);
     if (result.retry) return newQueryRetry(result.failure!, result.retryAfterMs);
     if (result.failure) return newQueryBranch(result.branch!, emptyPage(), {}, result.failure);
@@ -101,7 +102,7 @@ export class ListFormsOperation implements Query<ListFormsInput, FormsPage> {
       if (!isObject(item) || typeof item.id !== 'string' || !numericID.test(item.id) || typeof item.title !== 'string' || !item.title || (item.status != null && typeof item.status !== 'string')) return invalid('listForms', emptyPage());
       forms.push({ id: item.id, title: item.title, status: item.status as string | undefined ?? '' });
     }
-    return newQueryBranch('listed', { forms, offset: input.offset, limit });
+    return newQueryBranch('listed', { forms, offset, limit });
   }
 }
 

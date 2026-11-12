@@ -16,7 +16,7 @@ import (
 // ListFormsInput selects a zero-based page of at most 100 forms.
 type ListFormsInput struct {
 	// Offset is the zero-based form offset; zero starts the first page.
-	Offset int `json:"offset"`
+	Offset int `json:"offset,omitempty"`
 	// Limit is the maximum form count; zero defaults to 20.
 	Limit int `json:"limit,omitempty"`
 }

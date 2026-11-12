@@ -59,6 +59,57 @@
       "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
       "exchanges": [
         {
+          "body": "{\"responseCode\":200,\"content\":[{\"id\":\"241234567890123\",\"title\":\"Contact request\",\"status\":\"ENABLED\",\"questions\":{\"private\":\"excluded\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/forms",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "forms": [
+            {
+              "id": "241234567890123",
+              "status": "ENABLED",
+              "title": "Contact request"
+            }
+          ],
+          "limit": 20,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listForms-defaults",
+      "operation": "listForms"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
           "body": "{\"error\":\"denied\"}",
           "headers": {},
           "keyMode": "absent",

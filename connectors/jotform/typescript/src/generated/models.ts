@@ -48,7 +48,7 @@ export type CredentialSource = CredentialProvider<Credentials>;
 /** ListFormsInput selects a zero-based page of at most 100 forms. */
 export interface ListFormsInput {
   /** Offset is the zero-based form offset; zero starts the first page. */
-  "offset": number;
+  "offset"?: number | undefined;
   /** Limit is the maximum form count; zero defaults to 20. */
   "limit"?: number | undefined;
 }
@@ -89,7 +89,7 @@ export interface SubmissionMetadata {
 
 /** Runtime validator for ListFormsInput. */
 export const ListFormsInputSchema = z.strictObject({
-  "offset": z.number().int(),
+  "offset": z.number().int().optional(),
   "limit": z.number().int().optional(),
 }) satisfies z.ZodType<ListFormsInput>;
 
