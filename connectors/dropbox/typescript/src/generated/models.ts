@@ -92,7 +92,7 @@ export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 /** ListFolderInput selects one bounded page of a Dropbox folder. */
 export interface ListFolderInput {
   /** Path is an empty string for the root or a Dropbox folder path or ID. */
-  "path": string;
+  "path"?: string | undefined;
   /** Limit is the approximate number of entries per page, from 1 to 2000. */
   "limit": number;
 }
@@ -155,7 +155,7 @@ export interface UploadedFile {
 
 /** Runtime validator for ListFolderInput. */
 export const ListFolderInputSchema = z.strictObject({
-  "path": z.string(),
+  "path": z.string().optional(),
   "limit": z.number().int(),
 }) satisfies z.ZodType<ListFolderInput>;
 

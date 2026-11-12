@@ -59,6 +59,62 @@
       "operation": "listFolder"
     },
     {
+      "callId": "4bfc4386-d086-57e7-a4a9-36df425fc637",
+      "exchanges": [
+        {
+          "body": "{\"entries\":[{\".tag\":\"folder\",\"id\":\"id:projects\",\"name\":\"Projects\",\"path_display\":\"/Projects\"}],\"cursor\":\"root-cursor\",\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/list_folder",
+          "requestBody": {
+            "limit": 20,
+            "path": ""
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "root-cursor",
+          "entries": [
+            {
+              "id": "id:projects",
+              "kind": "folder",
+              "name": "Projects",
+              "pathDisplay": "/Projects"
+            }
+          ],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20
+      },
+      "name": "listFolder-root",
+      "operation": "listFolder"
+    },
+    {
       "callId": "2c69f8ac-79ca-5dbb-8e04-6d6e23c63db2",
       "exchanges": [
         {

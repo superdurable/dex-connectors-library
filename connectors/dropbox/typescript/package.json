@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-dropbox",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Dropbox file operations for Dex TypeScript Flows",
   "license": "MIT",
   "repository": {

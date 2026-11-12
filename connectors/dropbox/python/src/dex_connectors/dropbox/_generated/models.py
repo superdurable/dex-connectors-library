@@ -17,7 +17,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 @dataclass(frozen=True, slots=True)
 class ListFolderInput:
     # Path is an empty string for the root or a Dropbox folder path or ID.
-    path: str = ''
+    path: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
     # Limit is the approximate number of entries per page, from 1 to 2000.
     limit: int = 0
 

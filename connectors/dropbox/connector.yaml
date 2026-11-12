@@ -5,16 +5,16 @@ metadata:
   displayName: Dropbox
   description: List folders, read metadata, download bounded files, and overwrite bounded files through typed Dex operations.
   company: Dropbox
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: dropbox
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listFolder, getMetadata, continueFolder, downloadFile, uploadFile]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listFolder, getMetadata, continueFolder, downloadFile, uploadFile]
       triggers: []
   codegen:
