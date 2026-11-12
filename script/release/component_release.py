@@ -23,10 +23,16 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 if __package__:
-    from .github_release_inventory import github_json, release_assets
+    from .github_release_inventory import TRANSIENT_CONNECTION_ERRORS, github_json, is_certificate_verification_failure, release_assets
 else:
     sys.path.insert(0, str(Path(__file__).parent))
-    from github_release_inventory import github_json, release_assets
+    from github_release_inventory import TRANSIENT_CONNECTION_ERRORS, github_json, is_certificate_verification_failure, release_assets
+
+PYPI_LOOKUP_ATTEMPTS = 4
+NPM_LOOKUP_ATTEMPTS = 4
+# npm error codes for a dropped or refused connection, DNS failure, timeout, rate limit, or registry outage.
+TRANSIENT_NPM_ERROR_CODES = ("ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ESOCKETTIMEDOUT", "EAI_AGAIN", "EPIPE",
+                             "E429", "E500", "E502", "E503", "E504", "socket hang up")
 
 VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 RELEASE_ARTIFACT_VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-rc\.[1-9][0-9]*)?$")
@@ -96,23 +102,32 @@ class DependencyReleaseLookup:
 
     def is_language_sdk_published(self, language: str, version: str) -> bool:
         if language == "python":
-            try:
-                with urllib.request.urlopen(f"https://pypi.org/pypi/dex-connectors-sdk/{version}/json", timeout=15) as response:
-                    return response.status == 200
-            except urllib.error.HTTPError as error:
-                if error.code == 404:
-                    return False
-                raise ValueError(f"PyPI SDK lookup failed: HTTP {error.code}") from error
-            except urllib.error.URLError as error:
-                raise ValueError(f"PyPI SDK lookup failed: {error.reason}") from error
-        result = subprocess.run(("npm", "view", f"@superdurable/connectors-sdk@{version}", "version", "--json",
-                                 "--registry", "https://registry.npmjs.org"),
-                                capture_output=True, text=True, check=False)
-        if result.returncode == 0:
-            return json.loads(result.stdout) == version
-        if "E404" in result.stderr:
-            return False
-        raise ValueError("npm SDK lookup failed")
+            for attempt in range(1, PYPI_LOOKUP_ATTEMPTS + 1):
+                try:
+                    with urllib.request.urlopen(f"https://pypi.org/pypi/dex-connectors-sdk/{version}/json", timeout=15) as response:
+                        return response.status == 200
+                except urllib.error.HTTPError as error:
+                    if error.code == 404:
+                        return False
+                    if attempt == PYPI_LOOKUP_ATTEMPTS or not (error.code == 429 or 500 <= error.code <= 599):
+                        raise ValueError(f"PyPI SDK lookup failed: HTTP {error.code}") from error
+                except TRANSIENT_CONNECTION_ERRORS as error:
+                    if attempt == PYPI_LOOKUP_ATTEMPTS or is_certificate_verification_failure(error):
+                        raise ValueError(f"PyPI SDK lookup failed: {getattr(error, 'reason', error)}") from error
+                time.sleep(2 ** attempt)
+            raise AssertionError("retry loop always returns or raises")
+        for attempt in range(1, NPM_LOOKUP_ATTEMPTS + 1):
+            result = subprocess.run(("npm", "view", f"@superdurable/connectors-sdk@{version}", "version", "--json",
+                                     "--registry", "https://registry.npmjs.org"),
+                                    capture_output=True, text=True, check=False)
+            if result.returncode == 0:
+                return json.loads(result.stdout) == version
+            if "E404" in result.stderr:
+                return False
+            if attempt == NPM_LOOKUP_ATTEMPTS or not any(code in result.stderr for code in TRANSIENT_NPM_ERROR_CODES):
+                raise ValueError(f"npm SDK lookup failed: {result.stderr.strip()[:500]}")
+            time.sleep(2 ** attempt)
+        raise AssertionError("retry loop always returns or raises")
 
     def download_module_directly(self, component_path: Path, module: str, version: str) -> None:
         """Runs go mod download in the connector module; Go adds any missing go.sum entry."""

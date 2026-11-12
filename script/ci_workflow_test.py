@@ -264,5 +264,63 @@ class ConnectorsMCPWorkflowTest(unittest.TestCase):
         self.assertIn("'RUN_CONNECTORS_MCP': ('connectors-mcp',),", summary)
 
 
+MAKEFILE_PATH = WORKFLOW_PATH.parents[2] / "Makefile"
+GO_DOWNLOAD_RETRY_COMMAND = "$(GO_DOWNLOAD_RETRY)"
+
+
+def makefile_target(makefile: str, target: str) -> tuple[str, str]:
+    """Returns one Makefile target's prerequisite line and recipe."""
+    match = re.search(rf"(?m)^{re.escape(target)}:(.*)\n((?:\t.*\n)*)", makefile)
+    if match is None:
+        raise AssertionError(f"Makefile target {target} is missing")
+    return match.group(1), match.group(2)
+
+
+class GoDownloadRetryTest(unittest.TestCase):
+    """Network downloads finish under bounded retries before any job runs Go tests."""
+
+    makefile = MAKEFILE_PATH.read_text(encoding="utf-8")
+    workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+
+    def test_ci_jobs_run_the_targets_that_download_before_testing(self) -> None:
+        for job_name, target in (("connectors", "test-connectors"), ("dex-integration-connectors", "test-connector-integration"),
+                                 ("dex-compat-current", "test-dex-compat-current"), ("language-connectors", "test-typescript-connectors"),
+                                 ("language-connectors", "test-python-connectors")):
+            with self.subTest(job=job_name):
+                self.assertRegex(workflow_job(self.workflow, job_name), rf"make [^\n]*\b{target}\b")
+
+    def test_connector_go_modules_download_before_their_tests(self) -> None:
+        self.assertIn("GO_DOWNLOAD_RETRY = python3 script/go_download_retry.py\n", self.makefile)
+        # The prewarm loads the same packages and build tags as the test that follows it.
+        for target, download_command, test_command in (
+                ("test-connectors", f'{GO_DOWNLOAD_RETRY_COMMAND} "$$module/go" || exit 1;', "go test -race ./..."),
+                ("test-connector-integration", f'{GO_DOWNLOAD_RETRY_COMMAND} --tags integration "$$module/go" || exit 1;',
+                 "go test -p 1 -tags=integration ./...")):
+            with self.subTest(target=target):
+                _, recipe = makefile_target(self.makefile, target)
+                download = recipe.find(download_command)
+                self.assertGreaterEqual(download, 0)
+                self.assertLess(download, recipe.index(test_command))
+
+    def test_root_module_downloads_before_connectorctl_runs(self) -> None:
+        _, recipe = makefile_target(self.makefile, "download-root-go-modules")
+        self.assertEqual(f"\t@{GO_DOWNLOAD_RETRY_COMMAND} --without-tests --package ./cmd/connectorctl .\n", recipe)
+        for target in ("test-connectors", "test-python-connectors", "test-python-connectors-latest-sdk", "test-typescript-connectors", "test-connector-integration",
+                       "test-dex-compat-current", "test-dex-compat-released", "test-dex-compat-latest-go-sdk"):
+            with self.subTest(target=target):
+                prerequisites, _ = makefile_target(self.makefile, target)
+                self.assertIn("download-root-go-modules", prerequisites.split())
+
+    def test_dex_web_downloads_its_toolchain_and_modules_before_go_test(self) -> None:
+        source = (WORKFLOW_PATH.parents[2] / "script/dex_compatibility.py").read_text(encoding="utf-8")
+        dex_web = source.split("\ndef test_dex_web(", 1)[1].split("\ndef ", 1)[0]
+        prewarm = dex_web.index('run_go_network_command(go_package_prewarm_command(["."], "", True), web, environment')
+        self.assertLess(prewarm, dex_web.index('run(["go", "test", ".",'))
+
+    def test_retry_helper_tests_run_in_common_ci(self) -> None:
+        _, recipe = makefile_target(self.makefile, "test-common")
+        self.assertIn("script/go_download_retry_test.py", recipe)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -598,6 +598,27 @@ class DexWebFixtureTest(unittest.TestCase):
 
 
 class LatestDexGoSdkTest(unittest.TestCase):
+    def test_go_get_retries_a_transient_proxy_failure_but_vet_failures_are_not_retried(self) -> None:
+        stream_error = 'go: read "https://proxy.golang.org/x/@v/v1.zip": stream error: stream ID 1; INTERNAL_ERROR\n'
+        calls: list[list[str]] = []
+
+        def fake_run(command, directory, environment=None, should_print_stdout=True, should_check=True):
+            calls.append(command)
+            if command[:2] == ["go", "get"] and len(calls) == 1:
+                return subprocess.CompletedProcess(command, 1, stdout="", stderr=stream_error)
+            if command[:2] == ["go", "vet"]:
+                raise RuntimeError("vet failed")
+            return subprocess.CompletedProcess(command, 0, stdout="v1.40.0\n", stderr="")
+
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch("script.dex_compatibility.run", side_effect=fake_run), \
+                patch("script.go_download_retry.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "vet failed"):
+                build_and_vet_with_dex_go_sdk(Path(temporary), "v1.40.0")
+        self.assertEqual([["go", "get"], ["go", "get"], ["go", "mod"], ["go", "list"], ["go", "build"], ["go", "vet"]],
+                         [command[:2] for command in calls])
+        sleep.assert_called_once_with(5.0)
+
     def test_vet_tag_sets_cover_every_build_constraint_in_the_sdk_and_connectors(self) -> None:
         constraint_tags = build_constraint_names(ROOT / CONNECTOR_SDK_DIRECTORY) | build_constraint_names(ROOT / "connectors")
         self.assertTrue(constraint_tags)
@@ -610,6 +631,7 @@ class LatestDexGoSdkTest(unittest.TestCase):
                 (module / "lock.go").write_text(f"//go:build {constraint}\n\npackage lock\n")
                 with patch("script.dex_compatibility.run") as run, patch("script.dex_compatibility.module_path", return_value="example.com/lock"):
                     run.return_value.stdout = "v1.40.0\n"
+                    run.return_value.returncode = 0
                     build_and_vet_with_dex_go_sdk(module, "v1.40.0")
                 vet_calls = [call for call in run.call_args_list if call.args[0][:2] == ["go", "vet"]]
                 self.assertEqual(

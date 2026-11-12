@@ -18,6 +18,7 @@ import platform
 import random
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 import tarfile
@@ -27,6 +28,12 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
+
+if __package__:
+    from .go_download_retry import go_package_prewarm_command, run_go_download_with_retries
+else:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from go_download_retry import go_package_prewarm_command, run_go_download_with_retries
 
 
 REPOSITORY = "superdurable/dex-connectors-library"
@@ -205,8 +212,8 @@ def dex_release_from_environment(requested_version: str) -> tuple[dict[str, obje
 def build_and_vet_with_dex_go_sdk(module_root: Path, version: str) -> None:
     """Requires the Dex Go SDK version, then builds every package and vets each build-constraint file set."""
     environment = standalone_go_environment()
-    run(["go", "get", f"{DEX_GO_SDK_MODULE}@{version}"], module_root, environment)
-    run(["go", "mod", "tidy"], module_root, environment)
+    run_go_network_command(["go", "get", f"{DEX_GO_SDK_MODULE}@{version}"], module_root, environment)
+    run_go_network_command(["go", "mod", "tidy"], module_root, environment)
     selected = run(["go", "list", "-m", "-f", "{{.Version}}", DEX_GO_SDK_MODULE], module_root, environment)
     if selected.stdout.strip() != version:
         raise RuntimeError(f"{module_root} selected {DEX_GO_SDK_MODULE}@{selected.stdout.strip()}, not {version}")
@@ -293,8 +300,9 @@ def with_transient_retries(operation):
                 print(f"GitHub rate limit (HTTP {error.code}); waiting {int(wait)} s for reset", flush=True)
                 # Jitter spreads the retries of the jobs that the same limit stopped.
                 delay = wait + random.uniform(0, delay)
-        except (urllib.error.URLError, http.client.IncompleteRead, ConnectionError, TimeoutError):
-            if attempt == GITHUB_REQUEST_ATTEMPTS:
+        except (urllib.error.URLError, http.client.IncompleteRead, ConnectionError, TimeoutError) as error:
+            # Retrying cannot fix a rejected TLS certificate.
+            if attempt == GITHUB_REQUEST_ATTEMPTS or isinstance(getattr(error, "reason", None), ssl.SSLCertVerificationError):
                 raise
         time.sleep(delay)
     raise AssertionError("retry loop always returns or raises")
@@ -646,7 +654,7 @@ def run_visualize(source: Path, consumer: Path, dexcli: Path, connector_module: 
     if proxy_url:
         environment["GOPROXY"] = f"{proxy_url},https://proxy.golang.org,direct"
         environment["GONOSUMDB"] = connector_module
-    run(["go", "mod", "tidy"], consumer, environment)
+    run_go_network_command(["go", "mod", "tidy"], consumer, environment)
     outputs = []
     flow_sources = [path for path in sorted((consumer / "flow").glob("*.go")) if "GetSteps(" in path.read_text()]
     if len(flow_sources) != 1:
@@ -806,7 +814,7 @@ def test_released_examples(releases: list[dict[str, object]], output: Path, dexc
         tag = str(release["tag_name"])
         prefix, version = tag.rsplit("/", 1)
         connector_module = f"github.com/superdurable/dex-connectors-library/{prefix}"
-        module = json.loads(run(["go", "mod", "download", "-json", f"{connector_module}@{version}"], output.parent, {**os.environ, "GOWORK": "off"}).stdout)
+        module = json.loads(run_go_network_command(["go", "mod", "download", "-json", f"{connector_module}@{version}"], output.parent, {**os.environ, "GOWORK": "off"}).stdout)
         module_root = Path(module["Dir"])
         released_examples = []
         for source in sorted((module_root / "examples").glob("**/flow/*.go")):
@@ -873,6 +881,8 @@ def test_dex_web(
     environment["DEX_CONNECTOR_COMPAT_ARTIFACT_ROOT"] = str(artifacts)
     environment[CREDENTIAL_ISOLATION_RELEASE_ENVIRONMENT] = str(credential_isolation_release)
     compatibility_tests = dex_web_compatibility_test_names(compatibility_sources)
+    # Fetches the Dex Web toolchain and modules with network retries, so go test reads only the cache.
+    run_go_network_command(go_package_prewarm_command(["."], "", True), web, environment, should_print_stdout=False)
     result = run(["go", "test", ".", "-run", "|".join((*compatibility_tests, *DEX_WEB_SECURITY_TESTS)), "-count=1", "-v"], web, environment)
     require_dex_web_tests_passed(result.stdout, compatibility_tests)
     require_dex_web_security_tests_passed(result.stdout, DEX_WEB_SECURITY_TESTS)
@@ -909,11 +919,28 @@ def require_dex_web_security_tests_passed(output: str, prefixes: tuple[str, ...]
             raise RuntimeError(f"no Dex Web security test named {prefix}* passed")
 
 
+def run_go_network_command(
+    arguments: list[str],
+    directory: Path,
+    environment: dict[str, str],
+    should_print_stdout: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    """Runs a repeatable Go command that reads the network, retrying transient network failures."""
+    def run_attempt(attempt_arguments, attempt_directory, attempt_environment):
+        return run(list(attempt_arguments), attempt_directory, attempt_environment, should_print_stdout, should_check=False)
+
+    result = run_go_download_with_retries(arguments, directory, environment, runner=run_attempt)
+    if result.returncode:
+        raise RuntimeError(f"command failed with exit code {result.returncode}: {' '.join(arguments)}")
+    return result
+
+
 def run(
     arguments: list[str],
     directory: Path,
     environment: dict[str, str] | None = None,
     should_print_stdout: bool = True,
+    should_check: bool = True,
 ) -> subprocess.CompletedProcess[str]:
     print("+ " + " ".join(arguments), flush=True)
     result = subprocess.run(arguments, cwd=directory, env=environment, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -921,7 +948,7 @@ def run(
         print(result.stdout, end="", flush=True)
     if result.stderr:
         print(result.stderr, end="", file=sys.stderr, flush=True)
-    if result.returncode:
+    if result.returncode and should_check:
         raise RuntimeError(f"command failed with exit code {result.returncode}: {' '.join(arguments)}")
     return result
 
