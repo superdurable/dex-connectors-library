@@ -60,7 +60,7 @@ func listStoryIDsAgentToolMetadata() sdkgo.AgentToolMetadata {
 			ListStoryIDsBranchDefect:           sdkgo.AgentBranchOutcomeRejected,
 		},
 		InputType:    "ListStoryIDsInput",
-		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"ListStoryIDsInput selects one feed snapshot. It does not select a historical time window.\",\"properties\":{\"feed\":{\"description\":\"Feed is top, best, new, ask, or show. Empty selects top.\",\"type\":\"string\"},\"limit\":{\"description\":\"Limit bounds returned IDs from 1 through 500. Zero selects 50.\",\"type\":\"integer\"}},\"required\":[\"feed\",\"limit\"],\"type\":\"object\"}"),
+		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"ListStoryIDsInput selects one feed snapshot. It does not select a historical time window.\",\"properties\":{\"feed\":{\"description\":\"Feed is top, best, new, ask, or show. Empty selects top.\",\"type\":\"string\"},\"limit\":{\"description\":\"Limit bounds returned IDs from 1 through 500. Zero selects 50.\",\"type\":\"integer\"}},\"type\":\"object\"}"),
 		Branches:     ListStoryIDsDefinition.Branches,
 		StepDefaults: ListStoryIDsDefinition.StepDefaults,
 	}

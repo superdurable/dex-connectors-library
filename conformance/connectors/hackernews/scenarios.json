@@ -46,6 +46,138 @@
       "operation": "listStoryIDs"
     },
     {
+      "callId": "330eea6b-b6a8-58e6-81b3-bbbe5cfd1d2d",
+      "exchanges": [
+        {
+          "body": "[101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topstories.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": true,
+          "ids": [
+            101,
+            102,
+            103,
+            104,
+            105,
+            106,
+            107,
+            108,
+            109,
+            110,
+            111,
+            112,
+            113,
+            114,
+            115,
+            116,
+            117,
+            118,
+            119,
+            120,
+            121,
+            122,
+            123,
+            124,
+            125,
+            126,
+            127,
+            128,
+            129,
+            130,
+            131,
+            132,
+            133,
+            134,
+            135,
+            136,
+            137,
+            138,
+            139,
+            140,
+            141,
+            142,
+            143,
+            144,
+            145,
+            146,
+            147,
+            148,
+            149,
+            150
+          ],
+          "observedAt": "2026-10-26T12:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-26T12:00:00Z",
+      "input": {},
+      "name": "listStoryIDs-defaults",
+      "operation": "listStoryIDs"
+    },
+    {
+      "callId": "4d3d0d48-60ca-5313-964e-ec672f69f0d8",
+      "exchanges": [
+        {
+          "body": "[42001,42002,42003]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/topstories.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": true,
+          "ids": [
+            42001,
+            42002
+          ],
+          "observedAt": "2026-10-26T12:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-26T12:00:00Z",
+      "input": {
+        "limit": 2
+      },
+      "name": "listStoryIDs-limit-only",
+      "operation": "listStoryIDs"
+    },
+    {
       "callId": "7ba339a2-5298-5a59-9938-1d0d4372e327",
       "exchanges": [
         {

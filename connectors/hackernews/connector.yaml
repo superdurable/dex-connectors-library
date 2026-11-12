@@ -5,16 +5,16 @@ metadata:
   displayName: Hacker News Daily
   description: Read public Hacker News feeds, stories, and discussions for a daily developer digest with direct source links.
   company: Hacker News
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: hacker-news
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listStoryIDs, getItem]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-hackernews'
       operations: [listStoryIDs, getItem]
       triggers: []

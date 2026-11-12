@@ -47,6 +47,9 @@ func TestClientAgentToolsClassifyProviderOutcomes(t *testing.T) {
 		require.Equal(t, connection.Reference(), tool.Connection())
 	}
 	listStoryIDs, getItem := tools[0], tools[1]
+	// Empty feed and zero limit select defaults, so agents may omit both.
+	require.Equal(t, []string(nil), agentToolRequiredInputs(t, listStoryIDs))
+	require.Equal(t, []string{"id"}, agentToolRequiredInputs(t, getItem))
 
 	attempts := []struct {
 		name      string
@@ -56,6 +59,8 @@ func TestClientAgentToolsClassifyProviderOutcomes(t *testing.T) {
 		branch    sdkgo.BranchID
 	}{
 		{"listStoryIDs listed", listStoryIDs, `{"feed":"top","limit":2}`, sdkgo.AgentToolAttemptSucceeded, hackernews.ListStoryIDsBranchListed},
+		{"listStoryIDs defaults", listStoryIDs, `{}`, sdkgo.AgentToolAttemptSucceeded, hackernews.ListStoryIDsBranchListed},
+		{"listStoryIDs limit only", listStoryIDs, `{"limit":2}`, sdkgo.AgentToolAttemptSucceeded, hackernews.ListStoryIDsBranchListed},
 		{"listStoryIDs providerRejected", listStoryIDs, `{"feed":"best","limit":2}`, sdkgo.AgentToolAttemptRejected, hackernews.ListStoryIDsBranchProviderRejected},
 		{"getItem found", getItem, `{"id":42001}`, sdkgo.AgentToolAttemptSucceeded, hackernews.GetItemBranchFound},
 		{"getItem notFound", getItem, `{"id":42002}`, sdkgo.AgentToolAttemptRejected, hackernews.GetItemBranchNotFound},
@@ -110,4 +115,13 @@ func agentToolMetadataNames(metadata []sdkgo.AgentToolMetadata) []string {
 		names = append(names, tool.ToolName)
 	}
 	return names
+}
+
+func agentToolRequiredInputs(t *testing.T, tool sdkgo.AgentTool) []string {
+	t.Helper()
+	var schema struct {
+		Required []string `json:"required"`
+	}
+	require.NoError(t, json.Unmarshal(tool.Metadata().InputSchema, &schema))
+	return schema.Required
 }

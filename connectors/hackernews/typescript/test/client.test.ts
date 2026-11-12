@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { HackerNewsClient } from '../src/client.js';
 import type { Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
-import { newProjectConnection } from '../src/index.js';
+import { ListStoryIDsInputSchema, newProjectConnection } from '../src/index.js';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 
 const call = { context: { cancellationSignal: new AbortController().signal } } as Call;
@@ -24,6 +24,11 @@ describe('HackerNewsClient', () => {
       configuration: { timeout: -1_000_000 },
     }] } } as unknown as LoadedProject;
     expect(() => newProjectConnection(project, 'public')).toThrow('timeout');
+  });
+
+  it('accepts input that omits the defaulted feed and limit', () => {
+    expect(ListStoryIDsInputSchema.parse({})).toEqual({});
+    expect(ListStoryIDsInputSchema.parse({ limit: 2 })).toEqual({ limit: 2 });
   });
 
   it('keeps invalid feed input local', async () => {

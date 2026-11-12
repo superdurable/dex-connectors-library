@@ -20,9 +20,9 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 @dataclass(frozen=True, slots=True)
 class ListStoryIDsInput:
     # Feed is top, best, new, ask, or show. Empty selects top.
-    feed: str = ''
+    feed: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
     # Limit bounds returned IDs from 1 through 500. Zero selects 50.
-    limit: int = 0
+    limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
 
 setattr(ListStoryIDsInput, '__module__', 'dex_connectors.hackernews.models')

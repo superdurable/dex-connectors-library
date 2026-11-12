@@ -11,8 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListStoryIDsInput in scripted cases. */
 export const emptyListStoryIDsInput: ListStoryIDsInput = ListStoryIDsInputSchema.parse({
-  "feed": '',
-  "limit": 0,
 });
 /** Go zero value for StoryIDs in scripted cases. */
 export const emptyStoryIDs: StoryIDs = StoryIDsSchema.parse({
