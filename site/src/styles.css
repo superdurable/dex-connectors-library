@@ -1814,6 +1814,12 @@ h2, h3 {
   .language-filter legend { display: none; }
 }
 
+/* The narrowest phones: the masthead clips overflow, so the tab row and totals wrap instead. */
+@media (max-width: 359px) {
+  .site-tabs { flex-wrap: wrap; border-radius: 18px; }
+  .totals { grid-template-columns: repeat(3, auto); justify-content: start; gap: 0.6rem 1.25rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
