@@ -85,8 +85,9 @@ export class ListProjectsOperation implements Query<ListProjectsInput, Projects>
   /** Return the manifest-generated operation definition. */ definition(): QueryDefinition { return ListProjectsDefinition; }
   /** Read one project page. */
   async invoke(call: Call, input: ListProjectsInput): Promise<QueryAttempt<Projects>> {
-    if (!input || !Number.isSafeInteger(input.top) || input.top < 1 || input.top > 100 || !Number.isSafeInteger(input.skip) || input.skip < 0) return terminal('listProjects', 'defect', 'VALIDATION', 'project page size or offset is invalid', emptyProjects());
-    const query = new URLSearchParams({ '$top': String(input.top), '$skip': String(input.skip), 'api-version': '7.1' });
+    const skip = input?.skip ?? 0;
+    if (!input || !Number.isSafeInteger(input.top) || input.top < 1 || input.top > 100 || !Number.isSafeInteger(skip) || skip < 0) return terminal('listProjects', 'defect', 'VALIDATION', 'project page size or offset is invalid', emptyProjects());
+    const query = new URLSearchParams({ '$top': String(input.top), '$skip': String(skip), 'api-version': '7.1' });
     const result = await this.client.exchange(call, 'listProjects', `/_apis/projects?${query.toString()}`, false);
     if (result.retry) return newQueryRetry(result.failure!, result.retryAfterMs);
     if (result.failure) return newQueryBranch(result.branch!, emptyProjects(), {}, result.failure);
@@ -97,7 +98,7 @@ export class ListProjectsOperation implements Query<ListProjectsInput, Projects>
       if (!isObject(value) || typeof value.id !== 'string' || !value.id || typeof value.name !== 'string' || !value.name) return invalid('listProjects', emptyProjects());
       projects.push({ id: value.id, name: value.name, state: typeof value.state === 'string' ? value.state : '' });
     }
-    return newQueryBranch('listed', { projects, top: input.top, skip: input.skip });
+    return newQueryBranch('listed', { projects, top: input.top, skip });
   }
 }
 
