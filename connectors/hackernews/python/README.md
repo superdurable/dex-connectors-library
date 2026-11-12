@@ -1,6 +1,6 @@
 # Hacker News connector for Python
 
-Install with `pip install dex-connector-hackernews==0.2.0`. The package
+Install with `pip install dex-connector-hackernews==0.2.1`. The package
 requires `dex-connectors-sdk>=0.8.0,<1` and `dex-python-sdk>=1.28.0`, and
 implements the manifest Queries `listStoryIDs` and `getItem` with the same
 branches, defaults, and failure classification as the Go module. The public
@@ -21,7 +21,8 @@ open a Dex Web connection; 0.2.0 changes that identity (breaking).
 
 `listStoryIDs` reads the `top` (default), `best`, `new`, `ask`, or `show` feed
 and keeps the first `limit` IDs (default 50, at most 500), reporting whether
-more remained. `getItem` returns a public story, comment, job, poll, or poll
+more remained. Both fields are optional in the published input schema, so an
+agent call may omit either or both. `getItem` returns a public story, comment, job, poll, or poll
 option with its discussion URL; a missing, deleted, or dead item selects
 `notFound`. 408, 429, 5xx, and transport failures retry; other non-200
 responses select `providerRejected`. Item `text_html` is untrusted provider

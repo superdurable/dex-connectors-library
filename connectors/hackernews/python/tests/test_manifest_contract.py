@@ -128,6 +128,14 @@ def test_identity_and_agent_metadata_match_manifest() -> None:
         assert agent["branches"] == dict.fromkeys(optional, "rejected")
 
 
+def test_list_story_ids_input_schema_lets_agents_omit_defaulted_fields() -> None:
+    document = json.loads((Path(package.__file__).parent / "dex-connector.json").read_text())
+    schemas = {factory["operationId"]: factory["inputSchema"] for factory in document["factories"]}
+    # Empty feed selects top and zero limit selects 50.
+    assert "required" not in schemas["listStoryIDs"]
+    assert schemas["getItem"]["required"] == ["id"]
+
+
 def test_example_registers_with_mock_connection() -> None:
     flow = TopStoryFlow(Mock().connection())
     assert flow.get_flow_type() == FLOW_TYPE

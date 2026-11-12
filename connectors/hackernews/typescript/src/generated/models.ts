@@ -76,9 +76,9 @@ export type CredentialSource = CredentialProvider<Credentials>;
 /** ListStoryIDsInput selects one feed snapshot. It does not select a historical time window. */
 export interface ListStoryIDsInput {
   /** Feed is top, best, new, ask, or show. Empty selects top. */
-  "feed": string;
+  "feed"?: string | undefined;
   /** Limit bounds returned IDs from 1 through 500. Zero selects 50. */
-  "limit": number;
+  "limit"?: number | undefined;
 }
 /** StoryIDs contains the start of a feed in the provider's current display order. */
 export interface StoryIDs {
@@ -129,8 +129,8 @@ export interface Item {
 
 /** Runtime validator for ListStoryIDsInput. */
 export const ListStoryIDsInputSchema = z.strictObject({
-  "feed": z.string(),
-  "limit": z.number().int(),
+  "feed": z.string().optional(),
+  "limit": z.number().int().optional(),
 }) satisfies z.ZodType<ListStoryIDsInput>;
 
 /** Runtime validator for StoryIDs. */

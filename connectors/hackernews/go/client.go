@@ -43,9 +43,9 @@ type Client struct {
 // ListStoryIDsInput selects one feed snapshot. It does not select a historical time window.
 type ListStoryIDsInput struct {
 	// Feed is top, best, new, ask, or show. Empty selects top.
-	Feed string `json:"feed"`
+	Feed string `json:"feed,omitempty"`
 	// Limit bounds returned IDs from 1 through 500. Zero selects 50.
-	Limit int `json:"limit"`
+	Limit int `json:"limit,omitempty"`
 }
 
 // StoryIDs contains the start of a feed in the provider's current display order.

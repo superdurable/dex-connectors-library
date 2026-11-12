@@ -1,6 +1,6 @@
 # Hacker News Daily Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hackernews/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hackernews/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/hackernews`.
 
@@ -29,7 +29,8 @@ Go-recorded provider scenarios replay through the Python and TypeScript packages
 | `NewGetItemStep` | `GetItemInput` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
 `ListStoryIDs` reads `top`, `best`, `new`, `ask`, or `show`. Empty `Feed` selects
-`top`. `Limit` accepts 1 through 500; zero selects 50. The result preserves the
+`top`. `Limit` accepts 1 through 500; zero selects 50. Both fields are optional
+in the input schema, so `{}` and `{"limit": 2}` are valid inputs. The result preserves the
 provider's order and reports `ObservedAt` and `HasMore`. These feeds are current
 snapshots. They do not provide pagination or a complete historical daily window.
 The top feed can include jobs.
