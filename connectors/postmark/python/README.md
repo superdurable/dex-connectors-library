@@ -1,6 +1,6 @@
 # Postmark connector for Python
 
-Install with `pip install dex-connector-postmark==0.2.0`. The package requires
+Install with `pip install dex-connector-postmark==0.3.0`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest Queries `listOutboundMessages` and `getMessageDetails` with the same
 branches, defaults, and failure classification as the Go module.
@@ -12,7 +12,8 @@ branches, defaults, and failure classification as the Go module.
 | `listOutboundMessages` | `new_list_outbound_messages_step` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `getMessageDetails` | `new_get_message_details_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-`listOutboundMessages` sends `count` (zero means 50, at most 500) and `offset`;
+`listOutboundMessages` sends `count` (zero or omitted means 50, at most 500) and
+`offset` (zero or omitted starts at the first message);
 `count + offset` must stay within Postmark's 10,000-message search window.
 `getMessageDetails` selects `notFound` for HTTP 404 or Postmark error code 701.
 408, 429, 5xx, and transport failures retry; other 4xx responses select

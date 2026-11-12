@@ -1,10 +1,10 @@
 {
   "connectorId": "postmark",
-  "releaseTag": "connectors/postmark/go/v0.2.0",
+  "releaseTag": "connectors/postmark/go/v0.3.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-postmark",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -46,18 +46,14 @@
         "description": "ListOutboundMessagesInput chooses a bounded outbound search page.",
         "properties": {
           "count": {
-            "description": "Count is the number of messages requested, up to 500.",
+            "description": "Count is the number of messages requested, up to 500; zero selects 50.",
             "type": "integer"
           },
           "offset": {
-            "description": "Offset is the zero-based page offset.",
+            "description": "Offset is the zero-based page offset; zero starts at the first message.",
             "type": "integer"
           }
         },
-        "required": [
-          "count",
-          "offset"
-        ],
         "type": "object"
       }
     },

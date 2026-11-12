@@ -15,11 +15,12 @@ export class ListOutboundMessagesOperation implements Query<ListOutboundMessages
   /** Return the generated query definition. */ definition() { return ListOutboundMessagesDefinition; }
   /** Validate the search window and invoke one provider GET. */
   async invoke(call: Call, input: ListOutboundMessagesInput): Promise<QueryAttempt<MessagePage>> {
-    const count = input.count === 0 ? 50 : input.count;
-    if (!Number.isInteger(count) || !Number.isInteger(input.offset) || count < 1 || count > 500 || input.offset < 0 || count + input.offset > 10_000) {
+    const count = input.count === undefined || input.count === 0 ? 50 : input.count;
+    const offset = input.offset ?? 0;
+    if (!Number.isInteger(count) || !Number.isInteger(offset) || count < 1 || count > 500 || offset < 0 || count + offset > 10_000) {
       return newQueryBranch('defect', emptyPage, {}, { kind: 'VALIDATION', provider: 'postmark', operation: 'listOutboundMessages', message: "count and offset must fit Postmark's 10,000-message search window" });
     }
-    const received = await this.client.request(call, `/messages/outbound?count=${count}&offset=${input.offset}`);
+    const received = await this.client.request(call, `/messages/outbound?count=${count}&offset=${offset}`);
     return this.client.classify('listOutboundMessages', received, emptyPage, 'listed', '', decodePage);
   }
 }

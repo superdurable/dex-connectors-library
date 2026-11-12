@@ -58,6 +58,59 @@
       "operation": "listOutboundMessages"
     },
     {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"TotalCount\":1,\"Messages\":[{\"MessageID\":\"msg-1\",\"Subject\":\"Welcome\",\"Status\":\"Sent\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound",
+          "query": {
+            "count": [
+              "50"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "Messages": [
+            {
+              "MessageID": "msg-1",
+              "Status": "Sent",
+              "Subject": "Welcome"
+            }
+          ],
+          "TotalCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOutboundMessages-defaults",
+      "operation": "listOutboundMessages"
+    },
+    {
       "callId": "85f7e05d-545e-5b1d-b07b-7103c4763bde",
       "exchanges": [
         {

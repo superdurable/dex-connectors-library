@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-postmark",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Postmark outbound message queries for Dex TypeScript applications",
   "repository": { "type": "git", "url": "git+https://github.com/superdurable/dex-connectors-library.git", "directory": "connectors/postmark/typescript" },

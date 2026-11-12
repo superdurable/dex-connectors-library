@@ -16,10 +16,10 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 # ListOutboundMessagesInput chooses a bounded outbound search page.
 @dataclass(frozen=True, slots=True)
 class ListOutboundMessagesInput:
-    # Count is the number of messages requested, up to 500.
-    count: int = 0
-    # Offset is the zero-based page offset.
-    offset: int = 0
+    # Count is the number of messages requested, up to 500; zero selects 50.
+    count: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+    # Offset is the zero-based page offset; zero starts at the first message.
+    offset: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
 
 setattr(ListOutboundMessagesInput, '__module__', 'dex_connectors.postmark.models')

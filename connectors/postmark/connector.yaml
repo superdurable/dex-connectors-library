@@ -5,16 +5,16 @@ metadata:
   displayName: Postmark
   description: Read and act through the Postmark public API.
   company: Postmark
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: postmark
   languages:
     python:
-      version: v0.2.0
+      version: v0.3.0
       operations: [listOutboundMessages, getMessageDetails]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-postmark"
       operations: [listOutboundMessages, getMessageDetails]
       triggers: []

@@ -1,11 +1,11 @@
 # Postmark connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/postmark/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/postmark/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/postmark`.
 
 This Dex connector calls the public Postmark JSON API. Its
-manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.3.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`outbound-lookup` example](go/examples/outbound-lookup/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
