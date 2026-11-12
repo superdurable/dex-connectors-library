@@ -14,7 +14,8 @@ export class ListAccountsOperation implements Query<ListAccountsInput, AccountsP
   /** Return the generated Query contract. */ definition(): QueryDefinition { return ListAccountsDefinition; }
   /** Project account IDs and company names from a bounded JSON response. */
   async invoke(call: Call, input: ListAccountsInput): Promise<QueryAttempt<AccountsPage>> {
-    if (!input || !Number.isSafeInteger(input.offset) || input.offset < 0 ||
+    const offset = input?.offset ?? 0;
+    if (!input || !Number.isSafeInteger(offset) || offset < 0 ||
       (input.limit !== undefined && (!Number.isSafeInteger(input.limit) || input.limit < 0 || input.limit > 100)))
       return branch('defect', 'VALIDATION', 'offset or limit is invalid');
     const limit = input.limit || 100;
@@ -34,7 +35,7 @@ export class ListAccountsOperation implements Query<ListAccountsInput, AccountsP
       seen.add(item.id);
       accounts.push({ id: String(item.id), company: item.name });
     }
-    return newQueryBranch('listed', { accounts: accounts.slice(input.offset, input.offset + limit), offset: input.offset, limit, total: accounts.length });
+    return newQueryBranch('listed', { accounts: accounts.slice(offset, offset + limit), offset, limit, total: accounts.length });
   }
 }
 

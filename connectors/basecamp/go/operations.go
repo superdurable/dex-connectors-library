@@ -17,8 +17,8 @@ import (
 
 // ListAccountsInput selects a locally bounded page of authorized accounts.
 type ListAccountsInput struct {
-	// Offset is the zero-based number of accounts to skip.
-	Offset int `json:"offset"`
+	// Offset is the zero-based number of accounts to skip; zero starts at the first account.
+	Offset int `json:"offset,omitempty"`
 	// Limit is the maximum account count; zero uses 100.
 	Limit int `json:"limit,omitempty"`
 }

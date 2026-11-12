@@ -51,6 +51,60 @@
       "operation": "listAccounts"
     },
     {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{\"identity\":{\"email_address\":\"discard@example.com\"},\"accounts\":[{\"product\":\"bc3\",\"id\":1,\"name\":\"First\"},{\"product\":\"bc2\",\"id\":2,\"name\":\"Legacy\"},{\"product\":\"bc3\",\"id\":3,\"name\":\"Second\"},{\"product\":\"bc3\",\"id\":123,\"name\":\"Example Company\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "accounts": [
+            {
+              "company": "First",
+              "id": "1"
+            },
+            {
+              "company": "Second",
+              "id": "3"
+            },
+            {
+              "company": "Example Company",
+              "id": "123"
+            }
+          ],
+          "limit": 100,
+          "offset": 0,
+          "total": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccounts-defaults",
+      "operation": "listAccounts"
+    },
+    {
       "callId": "1c1bfd8b-75f2-508c-8fa1-cb8fd37d46a9",
       "exchanges": [
         {
