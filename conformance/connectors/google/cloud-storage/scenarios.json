@@ -65,6 +65,57 @@
       "callId": "b44bc3f4-6493-53b1-96ad-56dd79d07fab",
       "exchanges": [
         {
+          "body": "{\"items\":[{\"name\":\"reports/a.txt\",\"generation\":\"123\"}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/storage/v1/b/example-bucket/o",
+          "query": {
+            "maxResults": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "next",
+          "objects": [
+            {
+              "generation": "123",
+              "name": "reports/a.txt"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "example-bucket"
+      },
+      "name": "listObjects-bucketOnly",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "b44bc3f4-6493-53b1-96ad-56dd79d07fab",
+      "exchanges": [
+        {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",

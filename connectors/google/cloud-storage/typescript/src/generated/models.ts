@@ -88,11 +88,11 @@ export interface ListObjectsInput {
   /** Bucket is the non-secret bucket name shown in Cloud Storage Buckets. */
   "bucket": string;
   /** Prefix limits names to this optional object name prefix. */
-  "prefix": string;
+  "prefix"?: string | undefined;
   /** PageSize is 1 through 1000; zero uses 100. */
-  "pageSize": number;
+  "pageSize"?: number | undefined;
   /** PageToken is Google's opaque cursor; blank selects the first page. */
-  "pageToken": string;
+  "pageToken"?: string | undefined;
 }
 /** Object describes one object identity and immutable generation. */
 export interface Object {
@@ -139,9 +139,9 @@ export interface UploadObjectInput {
 /** Runtime validator for ListObjectsInput. */
 export const ListObjectsInputSchema = z.strictObject({
   "bucket": z.string(),
-  "prefix": z.string(),
-  "pageSize": z.number().int(),
-  "pageToken": z.string(),
+  "prefix": z.string().optional(),
+  "pageSize": z.number().int().optional(),
+  "pageToken": z.string().optional(),
 }) satisfies z.ZodType<ListObjectsInput>;
 
 /** Runtime validator for Object. */

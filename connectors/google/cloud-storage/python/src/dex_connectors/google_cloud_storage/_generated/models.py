@@ -19,11 +19,11 @@ class ListObjectsInput:
     # Bucket is the non-secret bucket name shown in Cloud Storage Buckets.
     bucket: str = ''
     # Prefix limits names to this optional object name prefix.
-    prefix: str = ''
+    prefix: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
     # PageSize is 1 through 1000; zero uses 100.
-    page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize'})
+    page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize', 'dex_json_omit_default': True})
     # PageToken is Google's opaque cursor; blank selects the first page.
-    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken'})
+    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
 
 
 setattr(ListObjectsInput, '__module__', 'dex_connectors.google_cloud_storage.models')

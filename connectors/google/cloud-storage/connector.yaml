@@ -5,16 +5,16 @@ metadata:
   displayName: Google Cloud Storage
   description: List, download, and upload objects in Google Cloud Storage buckets.
   company: Google
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: google-cloud-storage
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listObjects, downloadObject, uploadObject]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listObjects, downloadObject, uploadObject]
       triggers: []
   codegen:

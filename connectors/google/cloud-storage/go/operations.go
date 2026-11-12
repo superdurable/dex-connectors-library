@@ -25,11 +25,11 @@ type ListObjectsInput struct {
 	// Bucket is the non-secret bucket name shown in Cloud Storage Buckets.
 	Bucket string `json:"bucket"`
 	// Prefix limits names to this optional object name prefix.
-	Prefix string `json:"prefix"`
+	Prefix string `json:"prefix,omitempty"`
 	// PageSize is 1 through 1000; zero uses 100.
-	PageSize int `json:"pageSize"`
+	PageSize int `json:"pageSize,omitempty"`
 	// PageToken is Google's opaque cursor; blank selects the first page.
-	PageToken string `json:"pageToken"`
+	PageToken string `json:"pageToken,omitempty"`
 }
 
 // Object describes one object identity and immutable generation.
