@@ -331,23 +331,8 @@ func (operation ListThreadMessagesOperation) Invoke(call sdkgo.Call, input ListT
 		values.Set("cursor", input.Cursor)
 	}
 	response, err := operation.client.get(call, &credentials, userCredentialToken, "conversations.replies", values)
-	if err != nil {
-		if errors.Is(err, errSlackResponseTooLarge) {
-			return sdkgo.NewQueryBranch(ListThreadMessagesBranchInvalidResponse, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
-		}
-		if errors.Is(err, errSlackResponseInvalid) {
-			return sdkgo.NewQueryBranch(ListThreadMessagesBranchInvalidResponse, ListThreadMessagesOutput{}, slackFailurePointer("listThreadMessages", sdkgo.FailureProtocol, err.Error()), operation.client.receipt(call, response, ""))
-		}
-		return sdkgo.NewQueryRetry[ListThreadMessagesOutput](slackFailure("listThreadMessages", sdkgo.FailureAvailability, "Slack thread messages are temporarily unavailable"), 0)
-	}
-	if response.statusCode == http.StatusTooManyRequests {
-		return sdkgo.NewQueryRetry[ListThreadMessagesOutput](slackFailure("listThreadMessages", sdkgo.FailureRateLimit, "Slack rate limited the thread query"), retryAfter(response.header))
-	}
-	if response.statusCode >= 500 {
-		return sdkgo.NewQueryRetry[ListThreadMessagesOutput](slackFailure("listThreadMessages", sdkgo.FailureAvailability, "Slack thread messages are temporarily unavailable"), 0)
-	}
-	if failure := classifyResponse("listThreadMessages", response); failure != nil {
-		return sdkgo.NewQueryBranch(ListThreadMessagesBranchProviderRejected, ListThreadMessagesOutput{}, failure, operation.client.receipt(call, response, ""))
+	if attempt, isClassified := classifyQueryResponse(operation.client, call, "listThreadMessages", response, err, ListThreadMessagesBranchInvalidResponse, ListThreadMessagesBranchProviderRejected, ListThreadMessagesOutput{}, "Slack thread messages are temporarily unavailable", "Slack rate limited the thread query"); isClassified {
+		return attempt
 	}
 	messages := make([]Message, len(response.decoded.Messages))
 	for index, message := range response.decoded.Messages {
@@ -375,23 +360,8 @@ func (operation GetThreadReplyOperation) Invoke(call sdkgo.Call, input GetThread
 		"latest": {input.ReplyTimestamp}, "inclusive": {"true"}, "limit": {"1"},
 	}
 	response, err := operation.client.get(call, &credentials, userCredentialToken, "conversations.replies", values)
-	if err != nil {
-		if errors.Is(err, errSlackResponseTooLarge) {
-			return sdkgo.NewQueryBranch(GetThreadReplyBranchInvalidResponse, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
-		}
-		if errors.Is(err, errSlackResponseInvalid) {
-			return sdkgo.NewQueryBranch(GetThreadReplyBranchInvalidResponse, GetThreadReplyOutput{}, slackFailurePointer("getThreadReply", sdkgo.FailureProtocol, err.Error()), operation.client.receipt(call, response, ""))
-		}
-		return sdkgo.NewQueryRetry[GetThreadReplyOutput](slackFailure("getThreadReply", sdkgo.FailureAvailability, "Slack thread reply is temporarily unavailable"), 0)
-	}
-	if response.statusCode == http.StatusTooManyRequests {
-		return sdkgo.NewQueryRetry[GetThreadReplyOutput](slackFailure("getThreadReply", sdkgo.FailureRateLimit, "Slack rate limited the reply query"), retryAfter(response.header))
-	}
-	if response.statusCode >= 500 {
-		return sdkgo.NewQueryRetry[GetThreadReplyOutput](slackFailure("getThreadReply", sdkgo.FailureAvailability, "Slack thread reply is temporarily unavailable"), 0)
-	}
-	if failure := classifyResponse("getThreadReply", response); failure != nil {
-		return sdkgo.NewQueryBranch(GetThreadReplyBranchProviderRejected, GetThreadReplyOutput{}, failure, operation.client.receipt(call, response, ""))
+	if attempt, isClassified := classifyQueryResponse(operation.client, call, "getThreadReply", response, err, GetThreadReplyBranchInvalidResponse, GetThreadReplyBranchProviderRejected, GetThreadReplyOutput{}, "Slack thread reply is temporarily unavailable", "Slack rate limited the reply query"); isClassified {
+		return attempt
 	}
 	for _, message := range response.decoded.Messages {
 		if message.Timestamp == input.ReplyTimestamp && message.ThreadTS == input.ThreadTimestamp {

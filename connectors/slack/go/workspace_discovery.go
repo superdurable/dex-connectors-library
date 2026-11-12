@@ -197,7 +197,7 @@ func (operation GetWorkspaceIdentityOperation) Invoke(call sdkgo.Call, _ GetWork
 	}, nil, operation.client.receipt(call, response, decoded.TeamID))
 }
 
-// classifyQueryResponse selects the status, transport, and Slack envelope outcome shared by bot-token reads.
+// classifyQueryResponse selects the status, transport, and Slack envelope outcome shared by every Slack query.
 // Status comes first because Slack may send 429 or 5xx without a JSON body.
 func classifyQueryResponse[Output any](
 	client *Client,

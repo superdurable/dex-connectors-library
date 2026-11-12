@@ -32,7 +32,7 @@ export class ListChannelsOperation implements Query<ListChannelsInput, ListChann
     // users.conversations lists only joined channels and omits is_member.
     const path = input.memberOnly ? 'users.conversations' : 'conversations.list';
     const response = await this.client.get(call, credential.token, path, query, 'bot');
-    const classified = classifyDiscoveryQuery(this.client, call, operation, response, emptyChannels, 'Slack channels are temporarily unavailable', 'Slack rate limited the channel query');
+    const classified = classifyQuery(this.client, call, operation, response, emptyChannels, 'Slack channels are temporarily unavailable', 'Slack rate limited the channel query');
     if (classified) return classified;
     const body = response.body as SlackBody & { channels?: unknown };
     const channels = decodeChannels(body.channels);
@@ -55,7 +55,7 @@ export class GetWorkspaceIdentityOperation implements Query<GetWorkspaceIdentity
     const credential = await this.client.resolveToken(call, 'bot');
     if (!credential.token) return newQueryBranch('defect', emptyIdentity, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
     const response = await this.client.postForm(call, credential.token, 'auth.test', new URLSearchParams(), 'bot');
-    const classified = classifyDiscoveryQuery(this.client, call, operation, response, emptyIdentity, 'Slack workspace identity is temporarily unavailable', 'Slack rate limited the identity query');
+    const classified = classifyQuery(this.client, call, operation, response, emptyIdentity, 'Slack workspace identity is temporarily unavailable', 'Slack rate limited the identity query');
     if (classified) return classified;
     const identity = decodeIdentity(response.body as Record<string, unknown>);
     if (!identity || !identity.botUserId || !(identity.teamId || identity.enterpriseId)) return newQueryBranch('invalidResponse', emptyIdentity, this.client.receipt(call, response), failure(operation, 'PROTOCOL', 'Slack returned an invalid workspace identity'));
@@ -189,21 +189,15 @@ function classifyResponse(operation: string, response: SlackExchange): Failure |
   return failure(operation, kind, 'Slack rejected the request');
 }
 
+/** Classify a Slack query by status first, because Slack may send 429 or 5xx without a JSON body. */
 function classifyQuery<Output>(client: SlackClient, call: Call, operation: string, response: SlackExchange, empty: Output, unavailable: string, limited: string): QueryAttempt<Output> | undefined {
+  if (response.status === 429) return newQueryRetry(failure(operation, 'RATE_LIMIT', limited), retryAfter(response));
+  if (response.status >= 500) return newQueryRetry(failure(operation, 'AVAILABILITY', unavailable), retryAfter(response));
   if (response.error === 'tooLarge') return newQueryBranch('invalidResponse', empty, client.receipt(call, response), failure(operation, 'RESPONSE_TOO_LARGE', 'Slack response exceeds configured size limit'));
   if (response.error === 'invalid') return newQueryBranch('invalidResponse', empty, client.receipt(call, response), failure(operation, 'PROTOCOL', 'Slack returned malformed JSON'));
   if (response.error) return newQueryRetry(failure(operation, 'AVAILABILITY', unavailable));
-  if (response.status === 429) return newQueryRetry(failure(operation, 'RATE_LIMIT', limited), retryAfter(response));
-  if (response.status >= 500) return newQueryRetry(failure(operation, 'AVAILABILITY', unavailable));
   const rejected = classifyResponse(operation, response);
   return rejected ? newQueryBranch('providerRejected', empty, client.receipt(call, response), rejected) : undefined;
-}
-
-/** Classify a bot-token discovery read by status first, because Slack may send 429 or 5xx without a JSON body. */
-function classifyDiscoveryQuery<Output>(client: SlackClient, call: Call, operation: string, response: SlackExchange, empty: Output, unavailable: string, limited: string): QueryAttempt<Output> | undefined {
-  if (response.status === 429) return newQueryRetry(failure(operation, 'RATE_LIMIT', limited), retryAfter(response));
-  if (response.status >= 500) return newQueryRetry(failure(operation, 'AVAILABILITY', unavailable), retryAfter(response));
-  return classifyQuery(client, call, operation, response, empty, unavailable, limited);
 }
 
 function replyQuery(channelId: string, threadTimestamp: string, replyTimestamp: string): URLSearchParams {
