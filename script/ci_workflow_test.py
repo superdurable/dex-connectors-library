@@ -33,6 +33,20 @@ class CISummaryDependenciesTest(unittest.TestCase):
         self.assertFalse(summary_needs - job_names)
 
 
+class MergeQueueTriggerTest(unittest.TestCase):
+    def test_merge_groups_plan_changed_connectors_like_pull_requests(self) -> None:
+        workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+        triggers = workflow.split("\njobs:\n", maxsplit=1)[0]
+        self.assertRegex(triggers, r"(?m)^  merge_group:\s*$")
+        scopes = re.findall(r"CONNECTOR_SCOPE: \$\{\{(.*)\}\}", workflow)
+        self.assertTrue(scopes)
+        for scope in scopes:
+            self.assertIn("github.event_name == 'merge_group'", scope)
+        bases = re.findall(r"(?:CONNECTOR_BASE|BASE_SHA): \$\{\{(.*)\}\}", workflow)
+        self.assertTrue(bases)
+        for base in bases:
+            self.assertIn("github.event.merge_group.base_sha", base)
+
 class DexDevelopmentServerDurabilityTest(unittest.TestCase):
     def test_every_workflow_dexcli_dev_uses_process_crash_safe_durability(self) -> None:
         # dexcli 1.35 defaults to strict fsync durability, which slows test servers several times.
