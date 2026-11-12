@@ -327,6 +327,17 @@ class AgentRulesTest(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIn(rule, top_level_bullets(path))
 
+    def test_scoped_breaking_marker_rule_is_mirrored(self) -> None:
+        rule = ("Put the exact lowercase token `(breaking)` in the PR title or body and final commit message for "
+                "every public breaking change. When only some language packages break, scope it as "
+                "`(breaking: <language>[, <language>...])` with `go`, `python`, or `typescript`; only the named "
+                "packages then need a breaking bump. Plain `(breaking)` applies to every package, and a change "
+                "that breaks connections uses it. Markers inside Markdown code are ignored; any other spelling "
+                "outside code fails the release.")
+        for path in (ROOT / "AGENTS.md", ROOT / ".cursor" / "rules" / "release.mdc"):
+            with self.subTest(path=path):
+                self.assertIn(rule, top_level_bullets(path))
+
     def test_cursor_hook_rejects_skipping_git_hooks(self) -> None:
         payload = json.dumps({"command": "git commit --no-verify -m test"})
 

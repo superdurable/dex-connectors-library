@@ -1377,5 +1377,201 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertEqual(len(openai_plan.commits), 1)
 
 
+class ScopedBreakingMarkerTest(unittest.TestCase):
+    """Covers per-language "(breaking: <language>)" markers next to plain "(breaking)"."""
+
+    HACKERNEWS_COMPONENTS = {
+        "go": "connectors/hackernews/go",
+        "python": "connectors/hackernews/python",
+        "typescript": "connectors/hackernews/typescript",
+    }
+
+    def patch_plan(self, component_path: str, commits: tuple[str, ...] = ("change",)) -> release.ReleasePlan:
+        return release.ReleasePlan(
+            component_path=component_path, module_path="module", baseline_tag=f"{component_path}/v0.24.0",
+            baseline_version="v0.24.0", bump="patch", version="v0.24.1", tag=f"{component_path}/v0.24.1",
+            source_sha=commits[-1], commits=commits,
+        )
+
+    def notes_for(self, component_path: str, pulls: list[dict[str, object] | None], messages: list[str]) -> tuple[str, bool]:
+        plan = self.patch_plan(component_path, tuple(f"commit-{index}" for index in range(len(messages))))
+        with mock.patch.object(release, "associated_pull_request", side_effect=pulls), \
+                mock.patch.object(release, "commit_message", side_effect=messages), \
+                mock.patch.object(release, "commit_changes_beyond_language_descriptor", return_value=True):
+            return release.release_notes(plan, "superdurable/dex-connectors-library")
+
+    def assert_patch_allowed(self, language: str, pulls: list[dict[str, object] | None], messages: list[str],
+                             is_patch_allowed: bool) -> None:
+        component_path = self.HACKERNEWS_COMPONENTS[language]
+        _, is_breaking = self.notes_for(component_path, pulls, messages)
+        plan = self.patch_plan(component_path)
+        if is_patch_allowed:
+            self.assertFalse(is_breaking, language)
+            release.validate_breaking_bump(plan, is_breaking)
+        else:
+            self.assertTrue(is_breaking, language)
+            with self.assertRaisesRegex(ValueError, "cannot use a patch"):
+                release.validate_breaking_bump(plan, is_breaking)
+
+    @staticmethod
+    def pull(title: str, body: str = "", number: int = 676) -> dict[str, object]:
+        return {"title": title, "body": body, "user": {"login": "contributor"},
+                "html_url": f"https://github.com/superdurable/dex-connectors-library/pull/{number}"}
+
+    def test_typescript_scoped_marker_allows_go_and_python_patches(self) -> None:
+        title = "connector(hackernews): make listStoryIDs feed and limit optional (breaking: typescript)"
+        for language, is_patch_allowed in (("go", True), ("python", True), ("typescript", False)):
+            with self.subTest(language=language):
+                self.assert_patch_allowed(language, [self.pull(title)], ["squash"], is_patch_allowed)
+
+    def test_plain_marker_rejects_every_language_patch(self) -> None:
+        title = "connector(hackernews): change shared manifest (breaking)"
+        for language in self.HACKERNEWS_COMPONENTS:
+            with self.subTest(language=language):
+                self.assert_patch_allowed(language, [self.pull(title)], ["squash"], False)
+
+    def test_multi_language_scope_names_each_listed_language(self) -> None:
+        body = "Changes the Python and TypeScript input types (breaking: python, typescript)."
+        for language, is_patch_allowed in (("go", True), ("python", False), ("typescript", False)):
+            with self.subTest(language=language):
+                self.assert_patch_allowed(language, [self.pull("connector(hackernews): change input", body)],
+                                          ["squash"], is_patch_allowed)
+
+    def test_scoped_marker_in_direct_commit_message(self) -> None:
+        message = "connector(hackernews): change Go API\n\n(breaking: go)"
+        for language, is_patch_allowed in (("go", False), ("python", True), ("typescript", True)):
+            with self.subTest(language=language):
+                self.assert_patch_allowed(language, [None], [message], is_patch_allowed)
+
+    def test_plain_and_scoped_markers_together_mean_every_language(self) -> None:
+        for language in self.HACKERNEWS_COMPONENTS:
+            with self.subTest(language=language, case="one pull request"):
+                self.assert_patch_allowed(
+                    language, [self.pull("connector(hackernews): change API (breaking: typescript)", "(breaking)")],
+                    ["squash"], False,
+                )
+            with self.subTest(language=language, case="separate commits"):
+                self.assert_patch_allowed(
+                    language,
+                    [self.pull("connector(hackernews): change TypeScript (breaking: typescript)", number=1),
+                     self.pull("connector(hackernews): change everything (breaking)", number=2)],
+                    ["first", "second"], False,
+                )
+
+    def test_scoped_markers_across_commits_union_their_languages(self) -> None:
+        pulls = [self.pull("connector(hackernews): change Python (breaking: python)", number=1),
+                 self.pull("connector(hackernews): change TypeScript (breaking: typescript)", number=2)]
+        for language, is_patch_allowed in (("go", True), ("python", False), ("typescript", False)):
+            with self.subTest(language=language):
+                self.assert_patch_allowed(language, pulls, ["first", "second"], is_patch_allowed)
+
+    def test_unmarked_language_lists_scoped_change_under_changes(self) -> None:
+        title = "connector(hackernews): make listStoryIDs feed and limit optional (breaking: typescript)"
+        go_notes, _ = self.notes_for("connectors/hackernews/go", [self.pull(title)], ["squash"])
+        typescript_notes, _ = self.notes_for("connectors/hackernews/typescript", [self.pull(title)], ["squash"])
+        entry = "- [connector(hackernews): make listStoryIDs feed and limit optional](https://github.com/superdurable/dex-connectors-library/pull/676) by @contributor"
+        self.assertEqual(go_notes, f"## Breaking Changes\n\nNone.\n\n## Changes\n\n{entry}\n")
+        self.assertEqual(typescript_notes, f"## Breaking Changes\n\n{entry}\n\n## Changes\n\nNone.\n")
+
+    def test_sdk_components_use_their_language(self) -> None:
+        for component_path, language in (("sdkgo", "go"), ("sdkpython", "python"), ("sdkts", "typescript")):
+            for marked_language in ("go", "python", "typescript"):
+                with self.subTest(component_path=component_path, marked_language=marked_language):
+                    _, is_breaking = self.notes_for(
+                        component_path, [None], [f"sdk: change API (breaking: {marked_language})"],
+                    )
+                    self.assertEqual(is_breaking, marked_language == language)
+
+    def test_language_descriptor_only_change_ignores_scoped_marker(self) -> None:
+        plan = self.patch_plan("connectors/hackernews/typescript")
+        with mock.patch.object(release, "commit_message", return_value="tooling: rewrite descriptors (breaking: typescript)"), \
+                mock.patch.object(release, "commit_changes_beyond_language_descriptor", return_value=False):
+            _, is_breaking = release.release_notes(plan, "")
+        self.assertFalse(is_breaking)
+
+    def test_marked_breaking_languages(self) -> None:
+        self.assertEqual(release.marked_breaking_languages("no marker", "breaking change", "(breaking changes)",
+                                                           "Breaking Changes: none"), frozenset())
+        self.assertEqual(release.marked_breaking_languages("x (breaking)"), frozenset({"go", "python", "typescript"}))
+        self.assertEqual(release.marked_breaking_languages("x (breaking: typescript)"), frozenset({"typescript"}))
+        self.assertEqual(release.marked_breaking_languages("(breaking: go, python)"), frozenset({"go", "python"}))
+        self.assertEqual(release.marked_breaking_languages("(breaking: go, python, typescript)"),
+                         frozenset({"go", "python", "typescript"}))
+        self.assertEqual(release.marked_breaking_languages("(breaking: go)", "(breaking: python)"),
+                         frozenset({"go", "python"}))
+
+    def test_invalid_scoped_marker_fails_release_notes(self) -> None:
+        for text in ("(breaking: ts)", "(breaking: TypeScript)", "(breaking: )", "(breaking:)",
+                     "(breaking: go,)", "(breaking: go python)", "(breaking: go", "(breaking) and (breaking: rust)",
+                     "(breaking : typescript)", "( breaking: typescript)", "(Breaking: typescript)",
+                     "(BREAKING)", "(Breaking)", "( breaking )", "(breaking )", "(breaking:typescript)",
+                     "(breaking:  typescript)", "(breaking: typescript )", "(breaking: go,python)",
+                     "(breaking: go , python)", "(breaking: go,  python)", "(breaking:\ngo)",
+                     "( Breaking : go", "(breaking: <language>[, <language>...])"):
+            with self.subTest(text=text):
+                with self.assertRaisesRegex(ValueError, "invalid breaking marker"):
+                    release.marked_breaking_languages(text)
+        with self.assertRaisesRegex(ValueError, "invalid breaking marker"):
+            self.notes_for("connectors/hackernews/go", [self.pull("connector(hackernews): change", "(breaking: ts)")],
+                           ["squash"])
+
+    def test_non_canonical_marker_names_canonical_syntax(self) -> None:
+        with self.assertRaisesRegex(ValueError, re.escape("invalid breaking marker '(breaking : typescript)': write "
+                                                          "(breaking) or (breaking: <language>[, <language>...])")):
+            release.marked_breaking_languages("connector(hackernews): change (breaking : typescript)")
+        with self.assertRaisesRegex(ValueError, "missing its closing"):
+            release.marked_breaking_languages("( Breaking : typescript and more")
+
+    def test_markers_inside_markdown_code_are_documentation(self) -> None:
+        pull_request_681_body = (
+            "- New scoped marker `(breaking: <language>[, <language>...])` with `go`, `python`, `typescript`; "
+            "the v0 \"breaking cannot be a patch\" rule applies only to the named packages. Plain `(breaking)` "
+            "still applies to all, and wins when both appear."
+        )
+        self.assertEqual(release.marked_breaking_languages(pull_request_681_body), frozenset())
+        for text in (
+            "write ``(breaking: <language>)`` or ``a ` (breaking: ts)``",
+            "a span ```(Breaking : go)``` here",
+            "```\n(breaking: <language>[, <language>...])\n(breaking)\n```\nafter the fence",
+            "~~~markdown\n(breaking : go)\n~~~",
+            "   ```text\n(BREAKING)\n   ``````\n",
+            "an unclosed fence\n````\n(breaking: ts)\n```\nstill code",
+            "the span `(breaking:` hides an unclosed marker",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(release.marked_breaking_languages(text), frozenset())
+        self.assertEqual(release.marked_breaking_languages("`(breaking)` documented; this changes Go (breaking: go)"),
+                         frozenset({"go"}))
+        self.assertEqual(release.marked_breaking_languages("```\n(breaking)\n```\n(breaking: python)"),
+                         frozenset({"python"}))
+        for text in ("an unmatched ` backtick (breaking : go)", "```\ncode\n```\n(Breaking)",
+                     "``(breaking)` mismatched (breaking: ts)"):
+            with self.subTest(text=text):
+                with self.assertRaisesRegex(ValueError, "invalid breaking marker"):
+                    release.marked_breaking_languages(text)
+
+    def test_pull_request_681_squash_commit_releases_no_breaking_change(self) -> None:
+        body = "- New scoped marker `(breaking: <language>[, <language>...])` with `go`, `python`, `typescript`."
+        message = ("tooling: scope breaking markers to a language package (#681)\n\n"
+                   "Add the scoped marker `(breaking: <language>[, <language>...])`; plain `(breaking)` still applies.")
+        pull = self.pull("tooling: scope breaking markers to a language package", body, 681)
+        for language in ("go", "python", "typescript"):
+            with self.subTest(language=language, source="pull request"):
+                self.assert_patch_allowed(language, [pull], [message], True)
+            with self.subTest(language=language, source="direct commit"):
+                self.assert_patch_allowed(language, [None], [message], True)
+            with self.subTest(language=language, source="prose marker"):
+                self.assert_patch_allowed(language, [None], [message + "\n\nThis is (breaking)."], False)
+
+    def test_release_component_language(self) -> None:
+        for component_path, language in (
+            ("sdkgo", "go"), ("sdkpython", "python"), ("sdkts", "typescript"),
+            ("connectors/google/gmail/go", "go"), ("connectors/google/gmail/python", "python"),
+            ("connectors/google/gmail/typescript", "typescript"), ("connectors/zoom", "go"),
+        ):
+            with self.subTest(component_path=component_path):
+                self.assertEqual(release.component_language(component_path), language)
+
+
 if __name__ == "__main__":
     unittest.main()
