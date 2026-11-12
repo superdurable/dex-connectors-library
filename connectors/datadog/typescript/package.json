@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-datadog",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Datadog connector for Dex TypeScript applications",
   "repository": {

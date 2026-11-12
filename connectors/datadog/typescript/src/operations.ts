@@ -35,10 +35,12 @@ export class ListMonitorsOperation implements Query<ListMonitorsInput, MonitorsP
   /** Return the generated manifest definition. */ definition() { return ListMonitorsDefinition; }
   /** Validate page settings, send one request, and classify the result. */
   async invoke(call: Call, input: ListMonitorsInput): Promise<QueryAttempt<MonitorsPage>> {
-    if (!Number.isSafeInteger(input.page) || input.page < 0 || !Number.isSafeInteger(input.pageSize) || input.pageSize < 0 || input.pageSize > 1000) {
+    const page = input.page ?? 0;
+    const pageSize = input.pageSize ?? 0;
+    if (!Number.isSafeInteger(page) || page < 0 || !Number.isSafeInteger(pageSize) || pageSize < 0 || pageSize > 1000) {
       return validationFailure('listMonitors', emptyMonitorsPage, 'page must be nonnegative and pageSize at most 1000');
     }
-    const exchange = await this.client.exchange(call, 'listMonitors', '/api/v1/monitor', new URLSearchParams({ page: String(input.page), page_size: String(input.pageSize || 100) }));
+    const exchange = await this.client.exchange(call, 'listMonitors', '/api/v1/monitor', new URLSearchParams({ page: String(page), page_size: String(pageSize || 100) }));
     if (!('response' in exchange)) return classify(exchange, emptyMonitorsPage);
     try {
       const parsed = decodeMonitorsPage(exchange.response.body);

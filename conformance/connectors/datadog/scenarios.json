@@ -410,6 +410,114 @@
       "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
+          "body": "[{\"id\":12345,\"name\":\"Meridian API latency\",\"type\":\"metric alert\",\"overall_state\":\"OK\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor",
+          "query": {
+            "page": [
+              "0"
+            ],
+            "page_size": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "monitors": [
+            {
+              "id": 12345,
+              "name": "Meridian API latency",
+              "overall_state": "OK",
+              "type": "metric alert"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listMonitors-defaults",
+      "operation": "listMonitors"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "[{\"id\":12345,\"name\":\"Meridian API latency\",\"type\":\"metric alert\",\"overall_state\":\"OK\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "monitors": [
+            {
+              "id": 12345,
+              "name": "Meridian API latency",
+              "overall_state": "OK",
+              "type": "metric alert"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2
+      },
+      "name": "listMonitors-page-only",
+      "operation": "listMonitors"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
           "body": "{\"errors\":[\"invalid credentials\"]}",
           "headers": {},
           "keyMode": "absent",

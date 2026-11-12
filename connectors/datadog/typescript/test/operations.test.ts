@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { DatadogClient } from '../src/client.js';
-import type { QueryMetricsInput } from '../src/generated/models.js';
+import { ListMonitorsInputSchema, type QueryMetricsInput } from '../src/generated/models.js';
 
 const connection = { provider: 'datadog', name: 'datadog' };
 const call = {
@@ -15,6 +15,11 @@ const call = {
 const credentials = { resolve: async () => ({ apiKey: new SecretString('api-key'), applicationKey: new SecretString('application-key') }) };
 
 describe('Datadog provider classification', () => {
+  it('accepts monitor input that omits the defaulted page fields', () => {
+    expect(ListMonitorsInputSchema.parse({})).toEqual({});
+    expect(ListMonitorsInputSchema.parse({ page: 2 })).toEqual({ page: 2 });
+  });
+
   it('rejects an invalid metric window without sending a request', async () => {
     let sends = 0;
     const client = new DatadogClient({}, credentials, { send: async () => { sends++; throw new Error('unexpected request'); } });
