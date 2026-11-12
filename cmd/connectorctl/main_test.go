@@ -187,10 +187,14 @@ func TestReleaseArtifactPublishesTheHostKeptCredentialsOfEveryMethod(t *testing.
 	}
 }
 
+// Each check only reads its own connector directory, so connectors are checked in parallel.
 func TestGeneratedConnectorsAreCurrent(t *testing.T) {
 	for _, directory := range registeredConnectorDirectories(t) {
-		path := filepath.Join("..", "..", filepath.FromSlash(directory), "connector.yaml")
-		require.NoError(t, generate([]string{"--check", path}), directory)
+		t.Run(directory, func(t *testing.T) {
+			t.Parallel()
+			path := filepath.Join("..", "..", filepath.FromSlash(directory), "connector.yaml")
+			require.NoError(t, generate([]string{"--check", path}), directory)
+		})
 	}
 }
 

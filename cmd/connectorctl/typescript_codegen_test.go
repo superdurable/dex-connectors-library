@@ -36,7 +36,7 @@ func TestTypeScriptGenerationRejectsPublishedExternalNameCollision(t *testing.T)
 			{Name: "second", InputType: "ExternalSameName", OutputType: "ExternalSameName"},
 		},
 	}}
-	_, err = generatedTypeScriptFiles(filepath.Join(connector, "connector.yaml"), manifest)
+	_, err = generatedTypeScriptFiles(filepath.Join(connector, "connector.yaml"), manifest, newConnectorGoPackage(filepath.Join(connector, "connector.yaml")))
 	if err == nil || !strings.Contains(err.Error(), `Go model name "v1Item" conflicts`) || !strings.Contains(err.Error(), "published type") {
 		t.Fatalf("generation must reject a published-name collision, got %v", err)
 	}

@@ -7,8 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/superdurable/dex-connectors-library/schema"
@@ -16,48 +18,100 @@ import (
 )
 
 func TestTypeScriptGenerationCoversCatalog(t *testing.T) {
-	repository := filepath.Join("..", "..")
-	source, err := os.ReadFile(filepath.Join(repository, "catalog.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var catalog struct {
-		Directories []string `yaml:"directories"`
-	}
-	if err := yaml.Unmarshal(source, &catalog); err != nil {
-		t.Fatal(err)
-	}
-	for _, directory := range catalog.Directories {
-		t.Run(directory, func(t *testing.T) {
-			connectorDirectory := filepath.Join(repository, directory)
-			manifestFile, err := os.Open(filepath.Join(connectorDirectory, "connector.yaml"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer manifestFile.Close()
-			manifest, err := schema.Decode(manifestFile)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if manifest.Spec.Languages == nil {
-				manifest.Spec.Languages = &schema.Languages{}
-			}
-			selected := &schema.LanguagePackage{}
-			for _, operation := range manifest.Spec.Operations {
-				selected.Operations = append(selected.Operations, operation.Name)
-			}
-			manifest.Spec.Languages.TypeScript = selected
-			generated, err := GenerateTypeScript(manifest, filepath.Join(connectorDirectory, "go"))
-			if err != nil {
-				t.Fatal(err)
+	for _, connector := range generatedCatalogTypeScript(t) {
+		t.Run(connector.directory, func(t *testing.T) {
+			if connector.err != nil {
+				t.Fatal(connector.err)
 			}
 			for _, name := range []string{"models.ts", "definitions.ts", "steps.ts", "connection.ts", "mock.ts"} {
-				if len(generated[name]) == 0 {
+				if len(connector.files[name]) == 0 {
 					t.Errorf("empty %s", name)
 				}
 			}
 		})
 	}
+}
+
+// catalogTypeScript is one catalog connector's TypeScript generated for every operation.
+type catalogTypeScript struct {
+	directory string
+	files     map[string][]byte
+	err       error
+}
+
+var catalogTypeScriptGeneration struct {
+	once       sync.Once
+	connectors []catalogTypeScript
+	err        error
+}
+
+// generatedCatalogTypeScript generates the catalog once per test process; both catalog tests check that output.
+func generatedCatalogTypeScript(t *testing.T) []catalogTypeScript {
+	t.Helper()
+	catalogTypeScriptGeneration.once.Do(func() {
+		repository := filepath.Join("..", "..")
+		source, err := os.ReadFile(filepath.Join(repository, "catalog.yaml"))
+		if err != nil {
+			catalogTypeScriptGeneration.err = err
+			return
+		}
+		var catalog struct {
+			Directories []string `yaml:"directories"`
+		}
+		if err := yaml.Unmarshal(source, &catalog); err != nil {
+			catalogTypeScriptGeneration.err = err
+			return
+		}
+		connectors := make([]catalogTypeScript, len(catalog.Directories))
+		indexes := make(chan int)
+		var workers sync.WaitGroup
+		for range runtime.GOMAXPROCS(0) {
+			workers.Add(1)
+			go func() {
+				defer workers.Done()
+				for index := range indexes {
+					directory := catalog.Directories[index]
+					files, err := generateAllOperationsTypeScript(filepath.Join(repository, directory))
+					connectors[index] = catalogTypeScript{directory: directory, files: files, err: err}
+				}
+			}()
+		}
+		for index := range catalog.Directories {
+			indexes <- index
+		}
+		close(indexes)
+		workers.Wait()
+		catalogTypeScriptGeneration.connectors = connectors
+	})
+	if catalogTypeScriptGeneration.err != nil {
+		t.Fatal(catalogTypeScriptGeneration.err)
+	}
+	return catalogTypeScriptGeneration.connectors
+}
+
+// generateAllOperationsTypeScript selects every manifest operation for the TypeScript package.
+func generateAllOperationsTypeScript(connectorDirectory string) (map[string][]byte, error) {
+	manifestFile, err := os.Open(filepath.Join(connectorDirectory, "connector.yaml"))
+	if err != nil {
+		return nil, err
+	}
+	manifest, decodeErr := schema.Decode(manifestFile)
+	closeErr := manifestFile.Close()
+	if decodeErr != nil {
+		return nil, decodeErr
+	}
+	if closeErr != nil {
+		return nil, closeErr
+	}
+	if manifest.Spec.Languages == nil {
+		manifest.Spec.Languages = &schema.Languages{}
+	}
+	selected := &schema.LanguagePackage{}
+	for _, operation := range manifest.Spec.Operations {
+		selected.Operations = append(selected.Operations, operation.Name)
+	}
+	manifest.Spec.Languages.TypeScript = selected
+	return GenerateTypeScript(manifest, filepath.Join(connectorDirectory, "go"))
 }
 
 func TestCatalogGeneratedTypeScriptCompiles(t *testing.T) {
@@ -84,47 +138,16 @@ func TestCatalogGeneratedTypeScriptCompiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(generatedRoot, "tsconfig.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	source, err := os.ReadFile(filepath.Join(repository, "catalog.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var catalog struct {
-		Directories []string `yaml:"directories"`
-	}
-	if err := yaml.Unmarshal(source, &catalog); err != nil {
-		t.Fatal(err)
-	}
-	for _, directory := range catalog.Directories {
-		connectorDirectory := filepath.Join(repository, directory)
-		manifestFile, err := os.Open(filepath.Join(connectorDirectory, "connector.yaml"))
-		if err != nil {
-			t.Fatal(err)
+	catalog := generatedCatalogTypeScript(t)
+	for _, connector := range catalog {
+		if connector.err != nil {
+			t.Fatalf("%s: %v", connector.directory, connector.err)
 		}
-		manifest, decodeErr := schema.Decode(manifestFile)
-		closeErr := manifestFile.Close()
-		if decodeErr != nil {
-			t.Fatal(decodeErr)
-		}
-		if closeErr != nil {
-			t.Fatal(closeErr)
-		}
-		if manifest.Spec.Languages == nil {
-			manifest.Spec.Languages = &schema.Languages{}
-		}
-		selected := &schema.LanguagePackage{}
-		for _, operation := range manifest.Spec.Operations {
-			selected.Operations = append(selected.Operations, operation.Name)
-		}
-		manifest.Spec.Languages.TypeScript = selected
-		generated, err := GenerateTypeScript(manifest, filepath.Join(connectorDirectory, "go"))
-		if err != nil {
-			t.Fatalf("%s: %v", directory, err)
-		}
-		destination := filepath.Join(generatedRoot, filepath.FromSlash(directory))
+		destination := filepath.Join(generatedRoot, filepath.FromSlash(connector.directory))
 		if err := os.MkdirAll(destination, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		for name, contents := range generated {
+		for name, contents := range connector.files {
 			if err := os.WriteFile(filepath.Join(destination, name), contents, 0o644); err != nil {
 				t.Fatal(err)
 			}
@@ -139,8 +162,8 @@ func TestCatalogGeneratedTypeScriptCompiles(t *testing.T) {
 	var script strings.Builder
 	script.WriteString("// Copyright (c) 2026 Super Durable\n// SPDX-License-Identifier: MIT\n\n")
 	script.WriteString("for (const path of [\n")
-	for _, directory := range catalog.Directories {
-		script.WriteString("  " + strconv.Quote("./"+filepath.ToSlash(directory)+"/mock.ts") + ",\n")
+	for _, connector := range catalog {
+		script.WriteString("  " + strconv.Quote("./"+filepath.ToSlash(connector.directory)+"/mock.ts") + ",\n")
 	}
 	script.WriteString("]) {\n  const mock = await import(path);\n  for (const [name, value] of Object.entries(mock)) {\n    if (/^[a-z]/.test(name) && typeof value === 'function' && value.length === 0) value();\n  }\n}\n")
 	script.WriteString("const { TicketSchema } = await import('./connectors/zendesk/support/models.ts');\n")

@@ -414,8 +414,9 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
+	goPackage := newConnectorGoPackage(args[0])
 	if language == "python" {
-		generated, err := generatedPythonFiles(args[0], manifest)
+		generated, err := generatedPythonFiles(args[0], manifest, goPackage)
 		if err != nil {
 			return err
 		}
@@ -437,7 +438,7 @@ func generate(args []string) error {
 		return writeGeneratedFiles(generated)
 	}
 	if language == "typescript" {
-		generated, err := generatedTypeScriptFiles(args[0], manifest)
+		generated, err := generatedTypeScriptFiles(args[0], manifest, goPackage)
 		if err != nil {
 			return err
 		}
@@ -479,7 +480,7 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
-	agentToolFiles, err := generatedAgentToolFiles(args[0], manifest)
+	agentToolFiles, err := generatedAgentToolFiles(args[0], manifest, goPackage)
 	if err != nil {
 		return err
 	}
@@ -487,11 +488,11 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
-	languageManifestFiles, err := generatedLanguageManifestFiles(args[0], manifest)
+	languageManifestFiles, err := generatedLanguageManifestFiles(args[0], manifest, goPackage)
 	if err != nil {
 		return err
 	}
-	typeScriptFiles, err := generatedTypeScriptFiles(args[0], manifest)
+	typeScriptFiles, err := generatedTypeScriptFiles(args[0], manifest, goPackage)
 	if err != nil {
 		return err
 	}
@@ -499,7 +500,7 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
-	pythonFiles, err := generatedPythonFiles(args[0], manifest)
+	pythonFiles, err := generatedPythonFiles(args[0], manifest, goPackage)
 	if err != nil {
 		return err
 	}

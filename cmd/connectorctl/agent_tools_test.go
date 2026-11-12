@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -39,25 +40,31 @@ func TestAgentToolNamesMatchPythonFactoriesAndSDKVectors(t *testing.T) {
 
 // Exposed catalog operations match each dex-connector.json listing them, whether or not Go adopted agent tools.
 func TestCatalogAgentToolMetadataMatchesLanguagePackageManifests(t *testing.T) {
-	comparedFactories := 0
-	for _, directory := range registeredConnectorDirectories(t) {
-		manifestPath := filepath.Join("..", "..", filepath.FromSlash(directory), "connector.yaml")
-		manifest, err := load(manifestPath)
-		require.NoError(t, err)
-		if len(codegen.ExposedAgentOperations(manifest)) == 0 {
-			continue
+	var comparedFactories atomic.Int64
+	// The group returns only after its parallel connector subtests finish.
+	t.Run("connectors", func(t *testing.T) {
+		for _, directory := range registeredConnectorDirectories(t) {
+			t.Run(directory, func(t *testing.T) {
+				t.Parallel()
+				manifestPath := filepath.Join("..", "..", filepath.FromSlash(directory), "connector.yaml")
+				manifest, err := load(manifestPath)
+				require.NoError(t, err)
+				if len(codegen.ExposedAgentOperations(manifest)) == 0 {
+					return
+				}
+				operations, err := agentToolOperations(manifest, newConnectorGoPackage(manifestPath))
+				require.NoError(t, err, directory)
+				for path, contents := range publishedLanguageManifests(t, directory) {
+					comparedFactories.Add(int64(requireAgentToolsMatchLanguageManifest(t, path, contents, manifest, operations)))
+				}
+				hasAdopted, err := hasAdoptedGoAgentTools(manifestPath, manifest)
+				require.NoError(t, err, directory)
+				_, statErr := os.Stat(agentToolsOutputPath(manifestPath))
+				require.Equal(t, hasAdopted, statErr == nil, "%s: the agent tools file exists exactly when the Go module has adopted them", directory)
+			})
 		}
-		operations, err := agentToolOperations(manifestPath, manifest)
-		require.NoError(t, err, directory)
-		for path, contents := range publishedLanguageManifests(t, directory) {
-			comparedFactories += requireAgentToolsMatchLanguageManifest(t, path, contents, manifest, operations)
-		}
-		hasAdopted, err := hasAdoptedGoAgentTools(manifestPath, manifest)
-		require.NoError(t, err, directory)
-		_, statErr := os.Stat(agentToolsOutputPath(manifestPath))
-		require.Equal(t, hasAdopted, statErr == nil, "%s: the agent tools file exists exactly when the Go module has adopted them", directory)
-	}
-	require.Positive(t, comparedFactories, "the catalog exposes operations that the language packages list")
+	})
+	require.Positive(t, comparedFactories.Load(), "the catalog exposes operations that the language packages list")
 }
 
 func TestGenerateAgentToolsOnlyAfterTheModuleRequiresTheSDKRelease(t *testing.T) {
@@ -94,7 +101,7 @@ func TestGenerateAgentToolsOnlyAfterTheModuleRequiresTheSDKRelease(t *testing.T)
 	require.NotContains(t, string(generated), "getItemAgentToolMetadata", "an unreviewed operation is not an agent tool")
 	manifest, err := load(manifestPath)
 	require.NoError(t, err)
-	operations, err := agentToolOperations(manifestPath, manifest)
+	operations, err := agentToolOperations(manifest, newConnectorGoPackage(manifestPath))
 	require.NoError(t, err)
 	packageManifest, err := os.ReadFile(packageManifestPath)
 	require.NoError(t, err)
@@ -180,12 +187,14 @@ func TestGoOnlyAgentToolKeepsLanguageInputSchemas(t *testing.T) {
 	manifest.Spec.Operations = []schema.Operation{operation("getListed", "ListedInput"), operation("getGoOnly", "GoOnlyInput")}
 	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getListed"}}}
 	manifestPath := filepath.Join(connectorDirectory, "connector.yaml")
+	// One loaded package serves every root set, as in generate; each graph must still be independent.
+	goPackage := newConnectorGoPackage(manifestPath)
 
-	operations, err := agentToolOperations(manifestPath, manifest)
+	operations, err := agentToolOperations(manifest, goPackage)
 
 	require.NoError(t, err)
 	require.Len(t, operations, 2)
-	languageModels, err := languageOperationInputModels(manifestPath, manifest)
+	languageModels, err := languageOperationInputModels(manifest, goPackage)
 	require.NoError(t, err)
 	languageSchema, err := languageModels.JSONSchema("ListedInput")
 	require.NoError(t, err)
@@ -193,7 +202,7 @@ func TestGoOnlyAgentToolKeepsLanguageInputSchemas(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, string(encodedLanguageSchema), string(operations[0].InputSchema))
 	require.Contains(t, string(operations[0].InputSchema), `"$defs":{"providerItem":`, "the language schema keeps the short model name")
-	combinedModels, err := loadOperationInputModels(goDirectory, manifest, map[string]bool{"getListed": true, "getGoOnly": true})
+	combinedModels, err := loadOperationInputModels(goPackage, manifest, map[string]bool{"getListed": true, "getGoOnly": true})
 	require.NoError(t, err)
 	combinedSchema, err := combinedModels.JSONSchema("ListedInput")
 	require.NoError(t, err)

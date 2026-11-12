@@ -60,7 +60,7 @@ type dexConnectorBranch struct {
 	Optional bool   `json:"optional"`
 }
 
-func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
+func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifest, goPackage *connectorGoPackage) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 	if manifest.Spec.Languages == nil || (manifest.Spec.Languages.Python == nil && manifest.Spec.Languages.TypeScript == nil) {
 		return files, nil
@@ -69,7 +69,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 	if err != nil {
 		return nil, err
 	}
-	inputModels, err := languageOperationInputModels(manifestPath, manifest)
+	inputModels, err := languageOperationInputModels(manifest, goPackage)
 	if err != nil {
 		return nil, err
 	}
@@ -160,13 +160,12 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 
 // Python and TypeScript share one graph, so both packages publish the same schema for an operation.
 // It returns nil for a fixture without authored Go models; the catalog test requires every schema.
-func languageOperationInputModels(manifestPath string, manifest schema.Manifest) (*gomodel.Graph, error) {
-	goDirectory := filepath.Join(filepath.Dir(manifestPath), "go")
-	hasAuthoredGoTypes, err := hasAuthoredGoSource(goDirectory)
+func languageOperationInputModels(manifest schema.Manifest, goPackage *connectorGoPackage) (*gomodel.Graph, error) {
+	hasAuthoredGoTypes, err := hasAuthoredGoSource(goPackage.goDirectory)
 	if err != nil || !hasAuthoredGoTypes {
 		return nil, err
 	}
-	return loadOperationInputModels(goDirectory, manifest, languageSelectedOperations(manifest))
+	return loadOperationInputModels(goPackage, manifest, languageSelectedOperations(manifest))
 }
 
 // languageSelectedOperations names the operations that any language package implements.
@@ -187,14 +186,14 @@ func languageSelectedOperations(manifest schema.Manifest) map[string]bool {
 }
 
 // loadOperationInputModels roots the graph at selected inputs in manifest order; the root set decides model names.
-func loadOperationInputModels(goDirectory string, manifest schema.Manifest, selectedOperations map[string]bool) (*gomodel.Graph, error) {
+func loadOperationInputModels(goPackage *connectorGoPackage, manifest schema.Manifest, selectedOperations map[string]bool) (*gomodel.Graph, error) {
 	var inputTypes []string
 	for _, operation := range manifest.Spec.Operations {
 		if selectedOperations[operation.Name] {
 			inputTypes = append(inputTypes, operation.InputType)
 		}
 	}
-	graph, err := gomodel.Load(goDirectory, inputTypes)
+	graph, err := goPackage.graph(inputTypes)
 	if err != nil {
 		return nil, err
 	}

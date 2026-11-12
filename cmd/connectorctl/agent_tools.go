@@ -21,13 +21,13 @@ import (
 const connectorSDKModulePath = "github.com/superdurable/dex-connectors-library/sdkgo"
 
 // generatedAgentToolFiles returns the agent tools file of a Go module that has adopted them.
-func generatedAgentToolFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
+func generatedAgentToolFiles(manifestPath string, manifest schema.Manifest, goPackage *connectorGoPackage) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 	hasAdopted, err := hasAdoptedGoAgentTools(manifestPath, manifest)
 	if err != nil || !hasAdopted {
 		return files, err
 	}
-	operations, err := agentToolOperations(manifestPath, manifest)
+	operations, err := agentToolOperations(manifest, goPackage)
 	if err != nil {
 		return nil, err
 	}
@@ -96,20 +96,19 @@ func requiredConnectorSDKVersion(goModulePath string) (string, error) {
 }
 
 // agentToolOperations ignores the SDK requirement, so parity tests also cover modules that have not adopted.
-func agentToolOperations(manifestPath string, manifest schema.Manifest) ([]codegen.AgentToolOperation, error) {
+func agentToolOperations(manifest schema.Manifest, goPackage *connectorGoPackage) ([]codegen.AgentToolOperation, error) {
 	exposedOperations := codegen.ExposedAgentOperations(manifest)
 	if len(exposedOperations) == 0 {
 		return nil, nil
 	}
-	goDirectory := filepath.Join(filepath.Dir(manifestPath), "go")
-	hasAuthoredGoTypes, err := hasAuthoredGoSource(goDirectory)
+	hasAuthoredGoTypes, err := hasAuthoredGoSource(goPackage.goDirectory)
 	if err != nil {
 		return nil, err
 	}
 	if !hasAuthoredGoTypes {
-		return nil, fmt.Errorf("agent tools require authored Go operation types in %s", goDirectory)
+		return nil, fmt.Errorf("agent tools require authored Go operation types in %s", goPackage.goDirectory)
 	}
-	schemas := agentToolInputSchemas{goDirectory: goDirectory, manifest: manifest, languageOperations: languageSelectedOperations(manifest)}
+	schemas := agentToolInputSchemas{goPackage: goPackage, manifest: manifest, languageOperations: languageSelectedOperations(manifest)}
 	operations := make([]codegen.AgentToolOperation, 0, len(exposedOperations))
 	for _, operation := range exposedOperations {
 		inputSchema, err := schemas.inputSchema(operation)
@@ -132,7 +131,7 @@ func agentToolOperations(manifestPath string, manifest schema.Manifest) ([]codeg
 
 // agentToolInputSchemas loads graphs whose roots never differ from the language packages' roots.
 type agentToolInputSchemas struct {
-	goDirectory        string
+	goPackage          *connectorGoPackage
 	manifest           schema.Manifest
 	languageOperations map[string]bool
 	languageModels     *gomodel.Graph
@@ -142,7 +141,7 @@ type agentToolInputSchemas struct {
 func (schemas *agentToolInputSchemas) inputSchema(operation schema.Operation) (map[string]any, error) {
 	if schemas.languageOperations[operation.Name] {
 		if schemas.languageModels == nil {
-			languageModels, err := loadOperationInputModels(schemas.goDirectory, schemas.manifest, schemas.languageOperations)
+			languageModels, err := loadOperationInputModels(schemas.goPackage, schemas.manifest, schemas.languageOperations)
 			if err != nil {
 				return nil, err
 			}
@@ -152,7 +151,7 @@ func (schemas *agentToolInputSchemas) inputSchema(operation schema.Operation) (m
 	}
 	roots := maps.Clone(schemas.languageOperations)
 	roots[operation.Name] = true
-	models, err := loadOperationInputModels(schemas.goDirectory, schemas.manifest, roots)
+	models, err := loadOperationInputModels(schemas.goPackage, schemas.manifest, roots)
 	if err != nil {
 		return nil, err
 	}
