@@ -6,9 +6,11 @@ from __future__ import annotations
 import importlib.util
 import io
 import hashlib
+import http.client
 import json
 import os
 import re
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -1571,6 +1573,81 @@ class ScopedBreakingMarkerTest(unittest.TestCase):
         ):
             with self.subTest(component_path=component_path):
                 self.assertEqual(release.component_language(component_path), language)
+
+
+class PythonSDKRegistryLookupTest(unittest.TestCase):
+    def test_retries_dropped_connections_and_server_errors(self) -> None:
+        unavailable = urllib.error.HTTPError("https://pypi.org", 503, "Unavailable", None, None)
+        self.addCleanup(unavailable.close)
+        published = mock.MagicMock()
+        published.__enter__.return_value.status = 200
+        lookup = release.DependencyReleaseLookup("origin/main")
+        with mock.patch.object(release.urllib.request, "urlopen", side_effect=[
+                http.client.RemoteDisconnected("Remote end closed connection without response"), unavailable, published]) as urlopen, \
+             mock.patch.object(release.time, "sleep") as sleep:
+            self.assertTrue(lookup.is_language_sdk_published("python", "0.4.0"))
+        self.assertEqual(urlopen.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_persistent_dropped_connection_fails_after_bounded_attempts(self) -> None:
+        lookup = release.DependencyReleaseLookup("origin/main")
+        dropped = http.client.RemoteDisconnected("Remote end closed connection without response")
+        with mock.patch.object(release.urllib.request, "urlopen", side_effect=dropped) as urlopen, \
+             mock.patch.object(release.time, "sleep"):
+            with self.assertRaisesRegex(ValueError, "PyPI SDK lookup failed: Remote end closed"):
+                lookup.is_language_sdk_published("python", "0.4.0")
+        self.assertEqual(urlopen.call_count, release.PYPI_LOOKUP_ATTEMPTS)
+
+    def test_certificate_verification_failure_is_not_retried(self) -> None:
+        lookup = release.DependencyReleaseLookup("origin/main")
+        rejected = urllib.error.URLError(ssl.SSLCertVerificationError(1, "certificate verify failed"))
+        with mock.patch.object(release.urllib.request, "urlopen", side_effect=rejected) as urlopen, \
+             mock.patch.object(release.time, "sleep") as sleep:
+            with self.assertRaisesRegex(ValueError, "certificate verify failed"):
+                lookup.is_language_sdk_published("python", "0.4.0")
+        urlopen.assert_called_once()
+        sleep.assert_not_called()
+
+    def test_npm_lookup_retries_network_errors_only(self) -> None:
+        lookup = release.DependencyReleaseLookup("origin/main")
+
+        def npm(returncode: int, stdout: str = "", stderr: str = "") -> subprocess.CompletedProcess[str]:
+            return subprocess.CompletedProcess(["npm"], returncode, stdout=stdout, stderr=stderr)
+
+        cases = (
+            ("reset then published", [npm(1, stderr="npm error code ECONNRESET\n"), npm(1, stderr="npm error code E503\n"),
+                                      npm(0, stdout='"0.4.0"')], True, 3),
+            ("missing", [npm(1, stderr="npm error code E404\n")], False, 1),
+            ("forbidden", [npm(1, stderr="npm error code E403\n")], "npm SDK lookup failed: npm error code E403", 1),
+            ("persistent timeout", [npm(1, stderr="npm error code ETIMEDOUT\n")] * release.NPM_LOOKUP_ATTEMPTS,
+             "ETIMEDOUT", release.NPM_LOOKUP_ATTEMPTS),
+        )
+        for name, results, expectation, attempts in cases:
+            with self.subTest(case=name), \
+                    mock.patch.object(release.subprocess, "run", side_effect=results) as run, \
+                    mock.patch.object(release.time, "sleep"):
+                if isinstance(expectation, str):
+                    with self.assertRaisesRegex(ValueError, expectation):
+                        lookup.is_language_sdk_published("typescript", "0.4.0")
+                else:
+                    self.assertEqual(expectation, lookup.is_language_sdk_published("typescript", "0.4.0"))
+                self.assertEqual(attempts, run.call_count)
+
+    def test_missing_version_and_client_errors_are_not_retried(self) -> None:
+        lookup = release.DependencyReleaseLookup("origin/main")
+        for code, expectation in ((404, None), (403, "HTTP 403")):
+            with self.subTest(code=code):
+                error = urllib.error.HTTPError("https://pypi.org", code, "Refused", None, None)
+                self.addCleanup(error.close)
+                with mock.patch.object(release.urllib.request, "urlopen", side_effect=error) as urlopen, \
+                     mock.patch.object(release.time, "sleep") as sleep:
+                    if expectation is None:
+                        self.assertFalse(lookup.is_language_sdk_published("python", "0.4.0"))
+                    else:
+                        with self.assertRaisesRegex(ValueError, expectation):
+                            lookup.is_language_sdk_published("python", "0.4.0")
+                urlopen.assert_called_once()
+                sleep.assert_not_called()
 
 
 if __name__ == "__main__":

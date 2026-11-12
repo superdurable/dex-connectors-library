@@ -6,8 +6,10 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
+import ssl
 import sys
 import time
 import urllib.error
@@ -17,6 +19,14 @@ from pathlib import Path
 
 REPOSITORY = "superdurable/dex-connectors-library"
 MAXIMUM_RATE_LIMIT_WAIT_SECONDS = 1200
+# urlopen raises http.client.RemoteDisconnected unwrapped when a server drops the connection.
+TRANSIENT_CONNECTION_ERRORS = (urllib.error.URLError, http.client.HTTPException, ConnectionError, TimeoutError)
+
+
+def is_certificate_verification_failure(error: BaseException) -> bool:
+    """Reports whether a connection error is a TLS certificate rejection, which retrying cannot fix."""
+    return isinstance(error, ssl.SSLCertVerificationError) or isinstance(
+        getattr(error, "reason", None), ssl.SSLCertVerificationError)
 
 
 class GitHubNotFoundError(RuntimeError):
@@ -62,6 +72,12 @@ def github_json(url: str, *, sleep=time.sleep, clock=time.time) -> tuple[object,
                 sleep(2 ** attempts)
                 continue
             raise RuntimeError(f"GitHub API request failed: HTTP {error.code}: {body[:200]}") from error
+        except TRANSIENT_CONNECTION_ERRORS as error:
+            if attempts >= 4 or is_certificate_verification_failure(error):
+                raise
+            attempts += 1
+            print(f"GitHub API connection failed ({error}); retrying {url}", file=sys.stderr, flush=True)
+            sleep(2 ** attempts)
 
 
 def release_inventory(*, fetch=github_json) -> dict[str, list[str]]:

@@ -1,9 +1,11 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 
+import http.client
 import io
 import json
 import os
+import ssl
 import tempfile
 import unittest
 import urllib.error
@@ -102,6 +104,37 @@ class GitHubReleaseInventoryTests(unittest.TestCase):
         missing = urllib.error.HTTPError("https://api.github.com/test", 404, "Not Found", {}, io.BytesIO(b"{}"))
         with patch.object(inventory.urllib.request, "urlopen", side_effect=missing):
             self.assertIsNone(inventory.release_assets("connectors/acme/go/v0.2.0"))
+
+    def test_retries_dropped_connections_then_reads_release(self) -> None:
+        dropped = [http.client.RemoteDisconnected("Remote end closed connection without response"),
+                   urllib.error.URLError("temporary failure in name resolution"), TimeoutError("read timed out")]
+        with patch.object(inventory.urllib.request, "urlopen", side_effect=[*dropped, Response({"assets": []})]) as open_url:
+            delays = []
+            result, _ = inventory.github_json("https://api.github.com/test", sleep=delays.append, clock=lambda: 1000)
+        self.assertEqual({"assets": []}, result)
+        self.assertEqual([2, 4, 8], delays)
+        self.assertEqual(4, open_url.call_count)
+
+    def test_persistent_dropped_connection_raises_the_original_error(self) -> None:
+        dropped = http.client.RemoteDisconnected("Remote end closed connection without response")
+        with patch.object(inventory.urllib.request, "urlopen", side_effect=dropped) as open_url:
+            with self.assertRaisesRegex(http.client.RemoteDisconnected, "Remote end closed"):
+                inventory.github_json("https://api.github.com/test", sleep=lambda _: None, clock=lambda: 1000)
+        self.assertEqual(5, open_url.call_count)
+
+    def test_certificate_verification_failure_is_not_retried(self) -> None:
+        rejected = urllib.error.URLError(ssl.SSLCertVerificationError(1, "certificate verify failed"))
+        with patch.object(inventory.urllib.request, "urlopen", side_effect=rejected) as open_url:
+            with self.assertRaises(urllib.error.URLError):
+                inventory.github_json("https://api.github.com/test", sleep=lambda _: self.fail("retried"), clock=lambda: 1000)
+        open_url.assert_called_once()
+
+    def test_missing_release_is_not_retried(self) -> None:
+        missing = urllib.error.HTTPError("https://api.github.com/test", 404, "Not Found", {}, io.BytesIO(b"{}"))
+        with patch.object(inventory.urllib.request, "urlopen", side_effect=missing) as open_url:
+            with self.assertRaises(inventory.GitHubNotFoundError):
+                inventory.github_json("https://api.github.com/test", sleep=lambda _: None, clock=lambda: 1000)
+        open_url.assert_called_once()
 
 
 if __name__ == "__main__":
