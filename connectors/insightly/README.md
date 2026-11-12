@@ -1,6 +1,6 @@
 # Insightly CRM connector
 
-The Go, Python, and TypeScript connectors read a bounded page of contact IDs, names, and email addresses with `listContacts`, then read one contact by ID with `getContact`. Custom fields, links, and other provider data remain outside Flow results. The page request sets `top` from 1 to 500 and a nonnegative `skip`; the contact lookup requires a positive decimal ID.
+The Go, Python, and TypeScript connectors read a bounded page of contact IDs, names, and email addresses with `listContacts`, then read one contact by ID with `getContact`. Custom fields, links, and other provider data remain outside Flow results. The page request sets `top` from 1 to 500 and an optional nonnegative `skip`, where an omitted or zero `skip` starts at the first contact; the contact lookup requires a positive decimal ID.
 
 Sign in to [Insightly CRM](https://login.insightly.com/), open the top-right user icon, then **User Settings > User Settings > API**. Copy the personal API key into the Dex Web secret `api_key` field. Copy the pod-specific API URL shown beside it into `baseUrl` if the displayed na1 default is not your pod. The connector sends the key as the HTTP Basic username with an empty password. See the [Insightly API overview](https://api.na1.insightly.com/v3.1/Help/_OverviewResource) and [credential guidance](https://support.insight.ly/en-us/Knowledge/article/9549/Find_your_API_key_and_url/).
 

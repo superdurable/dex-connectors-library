@@ -18,8 +18,8 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 class ListContactsInput:
     # Top is the maximum page size, from 1 to 500 records.
     top: int = 0
-    # Skip is the nonnegative number of contacts to omit before this page.
-    skip: int = 0
+    # Skip is the nonnegative number of contacts to omit before this page; zero starts at the first contact.
+    skip: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
 
 setattr(ListContactsInput, '__module__', 'dex_connectors.insightly.models')

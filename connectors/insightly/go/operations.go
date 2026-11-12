@@ -16,8 +16,8 @@ import (
 type ListContactsInput struct {
 	// Top is the maximum page size, from 1 to 500 records.
 	Top int `json:"top"`
-	// Skip is the nonnegative number of contacts to omit before this page.
-	Skip int `json:"skip"`
+	// Skip is the nonnegative number of contacts to omit before this page; zero starts at the first contact.
+	Skip int `json:"skip,omitempty"`
 }
 
 // ContactMetadata contains public contact identity without custom fields or links.

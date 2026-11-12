@@ -5,15 +5,15 @@ metadata:
   displayName: Insightly CRM
   description: Read Insightly contact identity with explicit page controls.
   company: Insightly
-  version: v0.1.0
+  version: v0.2.0
 spec:
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listContacts, getContact]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listContacts, getContact]
       triggers: []
   provider: insightly
