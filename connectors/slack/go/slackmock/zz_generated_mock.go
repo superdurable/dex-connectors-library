@@ -192,7 +192,7 @@ func GetWorkspaceIdentityRetry(failure sdkgo.Failure, after time.Duration) conne
 
 // GetWorkspaceIdentityAcmeWorkspace is the manifest mock acmeWorkspace: The bot identity in a standard workspace outside Enterprise Grid.
 func GetWorkspaceIdentityAcmeWorkspace() connectormock.Case[slack.GetWorkspaceIdentityOutput] {
-	value := connectormock.MustDecodeOutput[slack.GetWorkspaceIdentityOutput](`{"teamId":"T0123456789","teamName":"Acme Corp","workspaceUrl":"https://acme.slack.com/","isEnterpriseInstall":false,"botUserId":"U0BOT123456","botUserName":"dex-bot","botId":"B0123456789"}`)
+	value := connectormock.MustDecodeOutput[slack.GetWorkspaceIdentityOutput](`{"teamId":"T0123456789","teamName":"Acme Corp","workspaceUrl":"https://acme.slack.com/","botUserId":"U0BOT123456","botUserName":"dex-bot","botId":"B0123456789"}`)
 	return connectormock.Branch(slack.GetWorkspaceIdentityBranchRead, value, nil)
 }
 

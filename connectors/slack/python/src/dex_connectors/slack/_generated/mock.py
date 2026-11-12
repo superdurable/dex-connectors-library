@@ -82,7 +82,7 @@ def get_workspace_identity_retry(failure: Failure, after_seconds: float = 0) -> 
 setattr(get_workspace_identity_retry, '__module__', "dex_connectors.slack.slackmock")
 
 def get_workspace_identity_acme_workspace() -> Case[GetWorkspaceIdentityOutput]:
-    return Case.branch_result(READ, GetWorkspaceIdentityOutput(team_id='T0123456789', team_name='Acme Corp', workspace_url='https://acme.slack.com/', is_enterprise_install=False, bot_user_id='U0BOT123456', bot_user_name='dex-bot', bot_id='B0123456789'))
+    return Case.branch_result(READ, GetWorkspaceIdentityOutput(team_id='T0123456789', team_name='Acme Corp', workspace_url='https://acme.slack.com/', bot_user_id='U0BOT123456', bot_user_name='dex-bot', bot_id='B0123456789'))
 
 setattr(get_workspace_identity_acme_workspace, '__module__', "dex_connectors.slack.slackmock")
 

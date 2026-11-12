@@ -3485,16 +3485,19 @@
       "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
       "exchanges": [
         {
-          "body": "{\"ok\":true,\"url\":\"https://acme.slack.com/\",\"team\":\"Acme Corp\",\"user\":\"dex-bot\",\"team_id\":\"T0123456789\",\"user_id\":\"U0BOT123456\",\"bot_id\":\"B0123456789\",\"is_enterprise_install\":false}",
+          "body": "{\"ok\":true,\"url\":\"https://acme.slack.com/\",\"team\":\"Acme Corp\",\"user\":\"dex-bot\",\"team_id\":\"T0123456789\",\"user_id\":\"U0BOT123456\",\"bot_id\":\"B0123456789\"}",
           "headers": {
             "X-Slack-Req-Id": "request-2"
           },
           "keyMode": "absent",
-          "method": "GET",
+          "method": "POST",
           "path": "/auth.test",
           "requestHeaders": {
             "Authorization": [
               "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
             ]
           },
           "status": 200
@@ -3507,7 +3510,6 @@
           "botId": "B0123456789",
           "botUserId": "U0BOT123456",
           "botUserName": "dex-bot",
-          "isEnterpriseInstall": false,
           "teamId": "T0123456789",
           "teamName": "Acme Corp",
           "workspaceUrl": "https://acme.slack.com/"
@@ -3525,14 +3527,17 @@
       "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
       "exchanges": [
         {
-          "body": "{\"ok\":true,\"url\":\"https://acme-grid.enterprise.slack.com/\",\"team\":\"Acme Sales\",\"user\":\"dex-bot\",\"team_id\":\"T0234567890\",\"user_id\":\"U0BOT234567\",\"bot_id\":\"B0234567890\",\"enterprise_id\":\"E0123456789\",\"is_enterprise_install\":true}",
+          "body": "{\"ok\":true,\"url\":\"https://acme-grid.enterprise.slack.com/\",\"team\":\"Acme Sales\",\"user\":\"dex-bot\",\"team_id\":\"T0234567890\",\"user_id\":\"U0BOT234567\",\"bot_id\":\"B0234567890\",\"enterprise_id\":\"E0123456789\"}",
           "headers": {},
           "keyMode": "absent",
-          "method": "GET",
+          "method": "POST",
           "path": "/auth.test",
           "requestHeaders": {
             "Authorization": [
               "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
             ]
           },
           "status": 200
@@ -3546,7 +3551,6 @@
           "botUserId": "U0BOT234567",
           "botUserName": "dex-bot",
           "enterpriseId": "E0123456789",
-          "isEnterpriseInstall": true,
           "teamId": "T0234567890",
           "teamName": "Acme Sales",
           "workspaceUrl": "https://acme-grid.enterprise.slack.com/"
@@ -3567,11 +3571,14 @@
           "body": "{\"ok\":false,\"error\":\"account_inactive\"}",
           "headers": {},
           "keyMode": "absent",
-          "method": "GET",
+          "method": "POST",
           "path": "/auth.test",
           "requestHeaders": {
             "Authorization": [
               "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
             ]
           },
           "status": 200
@@ -3584,7 +3591,6 @@
           "botId": "",
           "botUserId": "",
           "botUserName": "",
-          "isEnterpriseInstall": false,
           "teamId": "",
           "teamName": "",
           "workspaceUrl": ""
@@ -3602,14 +3608,17 @@
       "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
       "exchanges": [
         {
-          "body": "{\"ok\":true,\"url\":\"https://acme.slack.com/\",\"team\":\"Acme Corp\",\"team_id\":\"T0123456789\",\"is_enterprise_install\":\"no\"}",
+          "body": "{\"ok\":true,\"url\":\"https://acme.slack.com/\",\"team\":\"Acme Corp\",\"team_id\":\"T0123456789\",\"user_id\":42}",
           "headers": {},
           "keyMode": "absent",
-          "method": "GET",
+          "method": "POST",
           "path": "/auth.test",
           "requestHeaders": {
             "Authorization": [
               "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
             ]
           },
           "status": 200
@@ -3622,7 +3631,6 @@
           "botId": "",
           "botUserId": "",
           "botUserName": "",
-          "isEnterpriseInstall": false,
           "teamId": "",
           "teamName": "",
           "workspaceUrl": ""
@@ -3643,11 +3651,14 @@
           "body": "{\"ok\":true,\"url\":\"https://acme.slack.com/\",\"team\":\"Acme Corp\",\"team_id\":\"T0123456789\"}",
           "headers": {},
           "keyMode": "absent",
-          "method": "GET",
+          "method": "POST",
           "path": "/auth.test",
           "requestHeaders": {
             "Authorization": [
               "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
             ]
           },
           "status": 200
@@ -3660,7 +3671,6 @@
           "botId": "",
           "botUserId": "",
           "botUserName": "",
-          "isEnterpriseInstall": false,
           "teamId": "",
           "teamName": "",
           "workspaceUrl": ""
@@ -3683,11 +3693,14 @@
             "Retry-After": "7"
           },
           "keyMode": "absent",
-          "method": "GET",
+          "method": "POST",
           "path": "/auth.test",
           "requestHeaders": {
             "Authorization": [
               "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
             ]
           },
           "status": 429
@@ -3712,11 +3725,14 @@
           "body": "{\"ok\":false,\"error\":\"service_unavailable\"}",
           "headers": {},
           "keyMode": "absent",
-          "method": "GET",
+          "method": "POST",
           "path": "/auth.test",
           "requestHeaders": {
             "Authorization": [
               "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
             ]
           },
           "status": 503
@@ -3739,11 +3755,14 @@
       "exchanges": [
         {
           "keyMode": "absent",
-          "method": "GET",
+          "method": "POST",
           "path": "/auth.test",
           "requestHeaders": {
             "Authorization": [
               "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
             ]
           },
           "transportFailure": "before-send"
@@ -3771,7 +3790,6 @@
           "botId": "",
           "botUserId": "",
           "botUserName": "",
-          "isEnterpriseInstall": false,
           "teamId": "",
           "teamName": "",
           "workspaceUrl": ""
@@ -3783,6 +3801,174 @@
       },
       "input": {},
       "name": "getWorkspaceIdentity-defect",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 12000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-rate-limited-empty-body",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.list",
+          "query": {
+            "cursor": [
+              "dGVhbTpDMDEyMzQ1Njc4OQ=="
+            ],
+            "exclude_archived": [
+              "true"
+            ],
+            "limit": [
+              "100"
+            ],
+            "types": [
+              "public_channel"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "dGVhbTpDMDEyMzQ1Njc4OQ==",
+        "limit": 100,
+        "nameFilter": " #Gen",
+        "visibility": "public"
+      },
+      "name": "listChannels-service-unavailable-empty-body",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 12000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-rate-limited-empty-body",
+      "operation": "getWorkspaceIdentity"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth.test",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getWorkspaceIdentity-service-unavailable-empty-body",
       "operation": "getWorkspaceIdentity"
     }
   ],

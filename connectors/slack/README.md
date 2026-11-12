@@ -281,9 +281,10 @@ no `binding`. Their runner records go to `slog.Default()`, so call
   Slack returns the page, so a page may be empty while `nextCursor` continues
   the listing. `visibility` selects `public` or `private` channels. Slack lists
   a private channel only after the app is added to it.
-- `GetWorkspaceIdentity` calls `auth.test` with the bot token and returns the
-  workspace ID, name, and URL, the Enterprise Grid ID when present, and the bot
-  user ID, user name, and bot ID. It needs no scope.
+- `GetWorkspaceIdentity` sends a form-encoded POST to `auth.test`, as Slack
+  documents it, with the bot token. It returns the workspace ID, name, and
+  URL, the Enterprise Grid ID when present, and the bot user ID, user name,
+  and bot ID. It needs no scope.
 - `ListThreadMessages` returns one page and a next cursor. Page size is 1–15.
 - `GetThreadReply` reads one reply by timestamp.
 - `PostChannelMessage` creates a top-level channel message.

@@ -31,7 +31,6 @@ export const emptyGetWorkspaceIdentityOutput: GetWorkspaceIdentityOutput = GetWo
   "teamId": '',
   "teamName": '',
   "workspaceUrl": '',
-  "isEnterpriseInstall": false,
   "botUserId": '',
   "botUserName": '',
   "botId": '',
@@ -123,7 +122,7 @@ export function getWorkspaceIdentityDefect(value: GetWorkspaceIdentityOutput, fa
 export function getWorkspaceIdentityRetry(failure: Failure, retryAfterMs = 0): Case<GetWorkspaceIdentityOutput> { return retryCase(failure, retryAfterMs); }
 /** Manifest scenario acmeWorkspace for getWorkspaceIdentity. */
 export function getWorkspaceIdentityAcmeWorkspace(): Case<GetWorkspaceIdentityOutput> {
-  const value = GetWorkspaceIdentityOutputSchema.parse({"botId":"B0123456789","botUserId":"U0BOT123456","botUserName":"dex-bot","isEnterpriseInstall":false,"teamId":"T0123456789","teamName":"Acme Corp","workspaceUrl":"https://acme.slack.com/"});
+  const value = GetWorkspaceIdentityOutputSchema.parse({"botId":"B0123456789","botUserId":"U0BOT123456","botUserName":"dex-bot","teamId":"T0123456789","teamName":"Acme Corp","workspaceUrl":"https://acme.slack.com/"});
   return branchCase("read", value);
 }
 /** Default getWorkspaceIdentity scenario. */

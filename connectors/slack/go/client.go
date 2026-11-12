@@ -637,6 +637,20 @@ func (client *Client) get(call sdkgo.Call, credentials *Credentials, tokenKind c
 	})
 }
 
+// postForm sends a form-encoded read, such as auth.test, and refreshes a rejected credential once.
+func (client *Client) postForm(call sdkgo.Call, credentials *Credentials, tokenKind credentialToken, method string, values url.Values) (providerResponse, error) {
+	target := strings.TrimRight(client.endpoint.String(), "/") + "/" + method
+	encoded := values.Encode()
+	return client.doAuthenticated(call, credentials, tokenKind, func() (*http.Request, error) {
+		request, err := http.NewRequestWithContext(call.Context, http.MethodPost, target, strings.NewReader(encoded))
+		if err != nil {
+			return nil, err
+		}
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		return request, nil
+	})
+}
+
 func (client *Client) post(requestContext context.Context, credentials Credentials, tokenKind credentialToken, method string, payload any) (providerResponse, error) {
 	contents, err := json.Marshal(payload)
 	if err != nil {

@@ -74,12 +74,13 @@ export class SlackClient {
   }
 
   /** Make one Slack HTTP request with Go-compatible body and status handling. */
-  async request(method: 'GET' | 'POST', path: string, token: string, query?: URLSearchParams, payload?: Record<string, string>, signal?: AbortSignal): Promise<SlackExchange> {
+  async request(method: 'GET' | 'POST', path: string, token: string, query?: URLSearchParams, payload?: Record<string, string>, signal?: AbortSignal, form?: URLSearchParams): Promise<SlackExchange> {
     const queryString = query ? encodeGoQuery(query) : '';
     const url = `${this.endpoint}/${path}${queryString ? `?${queryString}` : ''}`;
     const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-    if (method === 'POST') headers['Content-Type'] = 'application/json; charset=utf-8';
-    const request: ProviderRequest = { url, method, headers, maxResponseBytes: this.maxResponseBytes, addressPolicy: this.endpoint.startsWith('https://slack.com/') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs: 25_000, ...(signal ? { signal } : {}), ...(payload ? { body: Buffer.from(JSON.stringify(payload)) } : {}) };
+    if (method === 'POST') headers['Content-Type'] = form ? 'application/x-www-form-urlencoded' : 'application/json; charset=utf-8';
+    const body = form ? Buffer.from(encodeGoQuery(form)) : payload ? Buffer.from(JSON.stringify(payload)) : undefined;
+    const request: ProviderRequest = { url, method, headers, maxResponseBytes: this.maxResponseBytes, addressPolicy: this.endpoint.startsWith('https://slack.com/') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs: 25_000, ...(signal ? { signal } : {}), ...(body ? { body } : {}) };
     let received: ProviderResponse;
     try { received = await this.send(request); }
     catch (error) {
@@ -100,6 +101,14 @@ export class SlackClient {
     if (first.error || !isCredentialRejected(first) || !('resolveAfterRejection' in this.credentials)) return first;
     const replacement = await this.refreshRejectedToken(call, kind, token);
     return replacement.token ? this.request('GET', path, replacement.token, query, undefined, call.context.cancellationSignal) : first;
+  }
+
+  /** Send a form-encoded read, such as auth.test, and refresh a rejected credential once. */
+  async postForm(call: Call, token: string, path: string, form: URLSearchParams, kind: 'bot' | 'user'): Promise<SlackExchange> {
+    const first = await this.request('POST', path, token, undefined, undefined, call.context.cancellationSignal, form);
+    if (first.error || !isCredentialRejected(first) || !('resolveAfterRejection' in this.credentials)) return first;
+    const replacement = await this.refreshRejectedToken(call, kind, token);
+    return replacement.token ? this.request('POST', path, replacement.token, undefined, undefined, call.context.cancellationSignal, form) : first;
   }
 
   /** A receipt contains only provider IDs and safe timing. */

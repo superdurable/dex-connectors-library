@@ -73,8 +73,6 @@ type GetWorkspaceIdentityOutput struct {
 	WorkspaceURL string `json:"workspaceUrl"`
 	// EnterpriseID is the Enterprise Grid organization identifier; blank outside Enterprise Grid.
 	EnterpriseID string `json:"enterpriseId,omitempty"`
-	// IsEnterpriseInstall is true when the app is installed for a whole Enterprise Grid organization.
-	IsEnterpriseInstall bool `json:"isEnterpriseInstall"`
 	// BotUserID is the Slack user identifier of the bot that posts messages, such as U0BOT123456.
 	BotUserID string `json:"botUserId"`
 	// BotUserName is the bot user's Slack name.
@@ -110,14 +108,13 @@ type slackChannelText struct {
 }
 
 type slackIdentityResponse struct {
-	URL                 string `json:"url"`
-	Team                string `json:"team"`
-	User                string `json:"user"`
-	TeamID              string `json:"team_id"`
-	UserID              string `json:"user_id"`
-	BotID               string `json:"bot_id"`
-	EnterpriseID        string `json:"enterprise_id"`
-	IsEnterpriseInstall bool   `json:"is_enterprise_install"`
+	URL          string `json:"url"`
+	Team         string `json:"team"`
+	User         string `json:"user"`
+	TeamID       string `json:"team_id"`
+	UserID       string `json:"user_id"`
+	BotID        string `json:"bot_id"`
+	EnterpriseID string `json:"enterprise_id"`
 }
 
 // Definition returns the immutable connector operation definition.
@@ -179,14 +176,14 @@ func (GetWorkspaceIdentityOperation) Definition() sdkgo.QueryDefinition {
 	return GetWorkspaceIdentityDefinition
 }
 
-// Invoke reads the bot token's workspace and identity with auth.test.
+// Invoke reads the bot token's workspace and identity with a POST to auth.test, as Slack documents it.
 func (operation GetWorkspaceIdentityOperation) Invoke(call sdkgo.Call, _ GetWorkspaceIdentityInput) sdkgo.QueryAttempt[GetWorkspaceIdentityOutput] {
 	const operationName = "getWorkspaceIdentity"
 	credentials, failure, _ := operation.client.resolveCredentials(call, operationName, botCredentialToken)
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetWorkspaceIdentityBranchDefect, GetWorkspaceIdentityOutput{}, failure, sdkgo.Receipt{})
 	}
-	response, err := operation.client.get(call, &credentials, botCredentialToken, "auth.test", nil)
+	response, err := operation.client.postForm(call, &credentials, botCredentialToken, "auth.test", nil)
 	if attempt, isClassified := classifyQueryResponse(operation.client, call, operationName, response, err, GetWorkspaceIdentityBranchInvalidResponse, GetWorkspaceIdentityBranchProviderRejected, GetWorkspaceIdentityOutput{}, "Slack workspace identity is temporarily unavailable", "Slack rate limited the identity query"); isClassified {
 		return attempt
 	}
@@ -196,11 +193,12 @@ func (operation GetWorkspaceIdentityOperation) Invoke(call sdkgo.Call, _ GetWork
 	}
 	return sdkgo.NewQueryBranch(GetWorkspaceIdentityBranchRead, GetWorkspaceIdentityOutput{
 		TeamID: decoded.TeamID, TeamName: decoded.Team, WorkspaceURL: decoded.URL, EnterpriseID: decoded.EnterpriseID,
-		IsEnterpriseInstall: decoded.IsEnterpriseInstall, BotUserID: decoded.UserID, BotUserName: decoded.User, BotID: decoded.BotID,
+		BotUserID: decoded.UserID, BotUserName: decoded.User, BotID: decoded.BotID,
 	}, nil, operation.client.receipt(call, response, decoded.TeamID))
 }
 
-// classifyQueryResponse selects the transport, status, and Slack envelope outcome shared by bot-token reads.
+// classifyQueryResponse selects the status, transport, and Slack envelope outcome shared by bot-token reads.
+// Status comes first because Slack may send 429 or 5xx without a JSON body.
 func classifyQueryResponse[Output any](
 	client *Client,
 	call sdkgo.Call,
@@ -213,6 +211,12 @@ func classifyQueryResponse[Output any](
 	unavailableMessage string,
 	rateLimitedMessage string,
 ) (sdkgo.QueryAttempt[Output], bool) {
+	if response.statusCode == http.StatusTooManyRequests {
+		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureRateLimit, rateLimitedMessage), retryAfter(response.header)), true
+	}
+	if response.statusCode >= 500 {
+		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureAvailability, unavailableMessage), retryAfter(response.header)), true
+	}
 	if err != nil {
 		if errors.Is(err, errSlackResponseTooLarge) {
 			return sdkgo.NewQueryBranch(invalidResponse, empty, slackFailurePointer(operationName, sdkgo.FailureResponseTooLarge, err.Error()), client.receipt(call, response, "")), true
@@ -220,12 +224,6 @@ func classifyQueryResponse[Output any](
 		if errors.Is(err, errSlackResponseInvalid) {
 			return sdkgo.NewQueryBranch(invalidResponse, empty, slackFailurePointer(operationName, sdkgo.FailureProtocol, err.Error()), client.receipt(call, response, "")), true
 		}
-		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureAvailability, unavailableMessage), 0), true
-	}
-	if response.statusCode == http.StatusTooManyRequests {
-		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureRateLimit, rateLimitedMessage), retryAfter(response.header)), true
-	}
-	if response.statusCode >= 500 {
 		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureAvailability, unavailableMessage), 0), true
 	}
 	if failure := classifyResponse(operationName, response); failure != nil {

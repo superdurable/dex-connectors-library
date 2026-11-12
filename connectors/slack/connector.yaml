@@ -252,7 +252,7 @@ spec:
           branch: read
           description: The bot identity in a standard workspace outside Enterprise Grid.
           default: true
-          output: {teamId: T0123456789, teamName: Acme Corp, workspaceUrl: "https://acme.slack.com/", isEnterpriseInstall: false, botUserId: U0BOT123456, botUserName: dex-bot, botId: B0123456789}
+          output: {teamId: T0123456789, teamName: Acme Corp, workspaceUrl: "https://acme.slack.com/", botUserId: U0BOT123456, botUserName: dex-bot, botId: B0123456789}
         - name: identityRejected
           branch: providerRejected
           description: Slack rejects the identity read because the connection was revoked.

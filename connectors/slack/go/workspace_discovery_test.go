@@ -72,13 +72,14 @@ func TestListChannelsRejectsInvalidInputBeforeRequest(t *testing.T) {
 func TestDiscoveryReadsRefreshRejectedBotTokenOnce(t *testing.T) {
 	testCases := []struct {
 		name   string
+		method string
 		path   string
 		body   string
 		invoke func(*slack.Client) (sdkgo.BranchID, error)
 		branch sdkgo.BranchID
 	}{
 		{
-			name: "listChannels", path: "/conversations.list", body: `{"ok":true,"channels":[{"id":"C123","name":"general"}]}`,
+			name: "listChannels", method: http.MethodGet, path: "/conversations.list", body: `{"ok":true,"channels":[{"id":"C123","name":"general"}]}`,
 			invoke: func(client *slack.Client) (sdkgo.BranchID, error) {
 				result, err := sdkgo.RunQuery(newSlackDexContext("list-channels-refresh"), client.ListChannels(), slackConnection, slack.ListChannelsInput{})
 				return result.Branch, err
@@ -86,7 +87,7 @@ func TestDiscoveryReadsRefreshRejectedBotTokenOnce(t *testing.T) {
 			branch: slack.ListChannelsBranchListed,
 		},
 		{
-			name: "getWorkspaceIdentity", path: "/auth.test", body: `{"ok":true,"team":"Acme","team_id":"T123","user_id":"UBOT"}`,
+			name: "getWorkspaceIdentity", method: http.MethodPost, path: "/auth.test", body: `{"ok":true,"team":"Acme","team_id":"T123","user_id":"UBOT"}`,
 			invoke: func(client *slack.Client) (sdkgo.BranchID, error) {
 				result, err := sdkgo.RunQuery(newSlackDexContext("identity-refresh"), client.GetWorkspaceIdentity(), slackConnection, slack.GetWorkspaceIdentityInput{})
 				return result.Branch, err
@@ -99,6 +100,7 @@ func TestDiscoveryReadsRefreshRejectedBotTokenOnce(t *testing.T) {
 			requests := 0
 			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 				requests++
+				require.Equal(t, testCase.method, request.Method)
 				require.Equal(t, testCase.path, request.URL.Path)
 				if requests == 1 {
 					require.Equal(t, "Bearer rejected-bot", request.Header.Get("Authorization"))

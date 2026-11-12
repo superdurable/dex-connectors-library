@@ -29,7 +29,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "getWorkspaceIdentity/acmeWorkspace/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[slack.GetWorkspaceIdentityOutput](`{"teamId":"T0123456789","teamName":"Acme Corp","workspaceUrl":"https://acme.slack.com/","isEnterpriseInstall":false,"botUserId":"U0BOT123456","botUserName":"dex-bot","botId":"B0123456789"}`)
+			_, err := connectormock.DecodeOutput[slack.GetWorkspaceIdentityOutput](`{"teamId":"T0123456789","teamName":"Acme Corp","workspaceUrl":"https://acme.slack.com/","botUserId":"U0BOT123456","botUserName":"dex-bot","botId":"B0123456789"}`)
 			return err
 		}},
 		{name: "listThreadMessages/approvalThread/1", decode: func() error {

@@ -91,8 +91,6 @@ class GetWorkspaceIdentityOutput:
     workspace_url: str = _dataclass_field(default='', metadata={'dex_json_name': 'workspaceUrl'})
     # EnterpriseID is the Enterprise Grid organization identifier; blank outside Enterprise Grid.
     enterprise_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'enterpriseId', 'dex_json_omit_default': True})
-    # IsEnterpriseInstall is true when the app is installed for a whole Enterprise Grid organization.
-    is_enterprise_install: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isEnterpriseInstall'})
     # BotUserID is the Slack user identifier of the bot that posts messages, such as U0BOT123456.
     bot_user_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'botUserId'})
     # BotUserName is the bot user's Slack name.

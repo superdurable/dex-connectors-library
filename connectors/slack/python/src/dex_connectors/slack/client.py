@@ -262,19 +262,20 @@ class Client:
         *,
         query: dict[str, str] | None = None,
         payload: dict[str, str] | None = None,
+        form: dict[str, str] | None = None,
     ) -> _Response:
         url = self.endpoint + "/" + api_method
         if query:
             url += "?" + _encode_query(query)
         headers = {"Authorization": "Bearer " + getattr(credentials, token_field).reveal()}
+        content: str | None = None
         if payload is not None:
             headers["Content-Type"] = "application/json; charset=utf-8"
-        request = self.http_client.build_request(
-            method,
-            url,
-            headers=headers,
-            content=json.dumps(payload, separators=(",", ":")) if payload is not None else None,
-        )
+            content = json.dumps(payload, separators=(",", ":"))
+        elif form is not None:
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            content = _encode_query(form)
+        request = self.http_client.build_request(method, url, headers=headers, content=content)
         try:
             response, _ = await send_traced(self.http_client, request)
         except ProviderTransportError as error:
@@ -302,8 +303,29 @@ class Client:
         token_field: str = "user_token",
         api_method: str = "conversations.replies",
     ) -> _Response:
+        return await self._read_with_refresh(call, credentials, token_field, "GET", api_method, query=query)
+
+    async def _post_form(
+        self, call: Call, credentials: Credentials, form: dict[str, str], token_field: str, api_method: str
+    ) -> _Response:
+        """Send a form-encoded read, such as auth.test, and refresh a rejected credential once."""
+        return await self._read_with_refresh(call, credentials, token_field, "POST", api_method, form=form)
+
+    async def _read_with_refresh(
+        self,
+        call: Call,
+        credentials: Credentials,
+        token_field: str,
+        method: str,
+        api_method: str,
+        *,
+        query: dict[str, str] | None = None,
+        form: dict[str, str] | None = None,
+    ) -> _Response:
         for attempt in range(2):
-            result = await self._request(call, credentials, token_field, "GET", api_method, query=query)
+            result = await self._request(
+                call, credentials, token_field, method, api_method, query=query, form=form
+            )
             if result.error or not _credential_rejected(result) or attempt:
                 return result
             refresh = getattr(self.credentials, "resolve_after_rejection", None)
@@ -558,7 +580,18 @@ def _classify_query_response(
     unavailable_message: str,
     rate_limited_message: str,
 ) -> QueryAttempt[Any] | None:
-    """Select the transport, status, and Slack envelope outcome shared by bot-token reads."""
+    """Select the status, transport, and Slack envelope outcome shared by bot-token reads.
+
+    Status comes first because Slack may send 429 or 5xx without a JSON body.
+    """
+    if response.status == 429:
+        return QueryAttempt.retry(
+            _failure(operation, FailureKind.RATE_LIMIT, rate_limited_message), _retry_after(response)
+        )
+    if response.status >= 500:
+        return QueryAttempt.retry(
+            _failure(operation, FailureKind.AVAILABILITY, unavailable_message), _retry_after(response)
+        )
     if response.error in ("invalid", "too_large"):
         kind = FailureKind.PROTOCOL if response.error == "invalid" else FailureKind.RESPONSE_TOO_LARGE
         return QueryAttempt.branch_result(
@@ -568,12 +601,6 @@ def _classify_query_response(
             _failure(operation, kind, "Slack returned an invalid response"),
         )
     if response.error:
-        return QueryAttempt.retry(_failure(operation, FailureKind.AVAILABILITY, unavailable_message))
-    if response.status == 429:
-        return QueryAttempt.retry(
-            _failure(operation, FailureKind.RATE_LIMIT, rate_limited_message), _retry_after(response)
-        )
-    if response.status >= 500:
         return QueryAttempt.retry(_failure(operation, FailureKind.AVAILABILITY, unavailable_message))
     if not 200 <= response.status < 300 or not response.decoded.get("ok", False):
         return QueryAttempt.branch_result(
@@ -659,7 +686,7 @@ class ListChannelsOperation:
 
 
 class GetWorkspaceIdentityOperation:
-    """Read the bot token's workspace and identity with auth.test."""
+    """Read the bot token's workspace and identity with a POST to auth.test, as Slack documents it."""
 
     def __init__(self, client: Client) -> None:
         self.client = client
@@ -678,7 +705,7 @@ class GetWorkspaceIdentityOperation:
             return _query_branch(
                 operation, DEFECT, FailureKind.AUTHENTICATION, "Slack connection credentials are unavailable"
             )
-        response = await self.client._get(call, credentials, {}, "bot_token", "auth.test")
+        response = await self.client._post_form(call, credentials, {}, "bot_token", "auth.test")
         classified = _classify_query_response(
             self.client,
             call,
@@ -697,7 +724,6 @@ class GetWorkspaceIdentityOperation:
                 _optional_value(decoded, "team", str),
                 _optional_value(decoded, "url", str),
                 _optional_value(decoded, "enterprise_id", str),
-                _optional_value(decoded, "is_enterprise_install", bool),
                 _optional_value(decoded, "user_id", str),
                 _optional_value(decoded, "user", str),
                 _optional_value(decoded, "bot_id", str),

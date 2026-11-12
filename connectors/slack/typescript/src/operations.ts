@@ -12,7 +12,7 @@ const emptyReply: GetThreadReplyOutput = { message: emptyMessage };
 const emptyPost: PostMessageOutput = { message: emptyMessage };
 const emptyList: ListThreadMessagesOutput = { messages: [] };
 const emptyChannels: ListChannelsOutput = { channels: [] };
-const emptyIdentity: GetWorkspaceIdentityOutput = { teamId: '', teamName: '', workspaceUrl: '', isEnterpriseInstall: false, botUserId: '', botUserName: '', botId: '' };
+const emptyIdentity: GetWorkspaceIdentityOutput = { teamId: '', teamName: '', workspaceUrl: '', botUserId: '', botUserName: '', botId: '' };
 
 /** Read one Slack channel page with the bot token and filter it by name. */
 export class ListChannelsOperation implements Query<ListChannelsInput, ListChannelsOutput> {
@@ -32,7 +32,7 @@ export class ListChannelsOperation implements Query<ListChannelsInput, ListChann
     // users.conversations lists only joined channels and omits is_member.
     const path = input.memberOnly ? 'users.conversations' : 'conversations.list';
     const response = await this.client.get(call, credential.token, path, query, 'bot');
-    const classified = classifyQuery(this.client, call, operation, response, emptyChannels, 'Slack channels are temporarily unavailable', 'Slack rate limited the channel query');
+    const classified = classifyDiscoveryQuery(this.client, call, operation, response, emptyChannels, 'Slack channels are temporarily unavailable', 'Slack rate limited the channel query');
     if (classified) return classified;
     const body = response.body as SlackBody & { channels?: unknown };
     const channels = decodeChannels(body.channels);
@@ -45,7 +45,7 @@ export class ListChannelsOperation implements Query<ListChannelsInput, ListChann
   }
 }
 
-/** Read the bot token's workspace and identity with auth.test. */
+/** Read the bot token's workspace and identity with a POST to auth.test, as Slack documents it. */
 export class GetWorkspaceIdentityOperation implements Query<GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput> {
   /** Bind the provider client. */ constructor(private readonly client: SlackClient) {}
   /** Return the manifest definition. */ definition() { return GetWorkspaceIdentityDefinition; }
@@ -54,8 +54,8 @@ export class GetWorkspaceIdentityOperation implements Query<GetWorkspaceIdentity
     const operation = 'getWorkspaceIdentity';
     const credential = await this.client.resolveToken(call, 'bot');
     if (!credential.token) return newQueryBranch('defect', emptyIdentity, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
-    const response = await this.client.get(call, credential.token, 'auth.test', new URLSearchParams(), 'bot');
-    const classified = classifyQuery(this.client, call, operation, response, emptyIdentity, 'Slack workspace identity is temporarily unavailable', 'Slack rate limited the identity query');
+    const response = await this.client.postForm(call, credential.token, 'auth.test', new URLSearchParams(), 'bot');
+    const classified = classifyDiscoveryQuery(this.client, call, operation, response, emptyIdentity, 'Slack workspace identity is temporarily unavailable', 'Slack rate limited the identity query');
     if (classified) return classified;
     const identity = decodeIdentity(response.body as Record<string, unknown>);
     if (!identity || !identity.botUserId || !(identity.teamId || identity.enterpriseId)) return newQueryBranch('invalidResponse', emptyIdentity, this.client.receipt(call, response), failure(operation, 'PROTOCOL', 'Slack returned an invalid workspace identity'));
@@ -159,12 +159,11 @@ function decodeChannels(value: unknown): Channel[] | undefined {
 function decodeIdentity(body: Record<string, unknown>): GetWorkspaceIdentityOutput | undefined {
   const fields = [
     optionalField(body, 'team_id', 'string', ''), optionalField(body, 'team', 'string', ''), optionalField(body, 'url', 'string', ''),
-    optionalField(body, 'enterprise_id', 'string', ''), optionalField(body, 'is_enterprise_install', 'boolean', false),
-    optionalField(body, 'user_id', 'string', ''), optionalField(body, 'user', 'string', ''), optionalField(body, 'bot_id', 'string', ''),
+    optionalField(body, 'enterprise_id', 'string', ''), optionalField(body, 'user_id', 'string', ''), optionalField(body, 'user', 'string', ''), optionalField(body, 'bot_id', 'string', ''),
   ] as const;
   if (fields.some(field => field === undefined)) return undefined;
-  const [teamId, teamName, workspaceUrl, enterpriseId, isEnterpriseInstall, botUserId, botUserName, botId] = fields as unknown as [string, string, string, string, boolean, string, string, string];
-  return { teamId, teamName, workspaceUrl, ...(enterpriseId ? { enterpriseId } : {}), isEnterpriseInstall, botUserId, botUserName, botId };
+  const [teamId, teamName, workspaceUrl, enterpriseId, botUserId, botUserName, botId] = fields as unknown as [string, string, string, string, string, string, string];
+  return { teamId, teamName, workspaceUrl, ...(enterpriseId ? { enterpriseId } : {}), botUserId, botUserName, botId };
 }
 
 /** Trim spaces and one leading # and lowercase the filter. */
@@ -198,6 +197,13 @@ function classifyQuery<Output>(client: SlackClient, call: Call, operation: strin
   if (response.status >= 500) return newQueryRetry(failure(operation, 'AVAILABILITY', unavailable));
   const rejected = classifyResponse(operation, response);
   return rejected ? newQueryBranch('providerRejected', empty, client.receipt(call, response), rejected) : undefined;
+}
+
+/** Classify a bot-token discovery read by status first, because Slack may send 429 or 5xx without a JSON body. */
+function classifyDiscoveryQuery<Output>(client: SlackClient, call: Call, operation: string, response: SlackExchange, empty: Output, unavailable: string, limited: string): QueryAttempt<Output> | undefined {
+  if (response.status === 429) return newQueryRetry(failure(operation, 'RATE_LIMIT', limited), retryAfter(response));
+  if (response.status >= 500) return newQueryRetry(failure(operation, 'AVAILABILITY', unavailable), retryAfter(response));
+  return classifyQuery(client, call, operation, response, empty, unavailable, limited);
 }
 
 function replyQuery(channelId: string, threadTimestamp: string, replyTimestamp: string): URLSearchParams {

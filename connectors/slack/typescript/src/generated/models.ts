@@ -147,8 +147,6 @@ export interface GetWorkspaceIdentityOutput {
   "workspaceUrl": string;
   /** EnterpriseID is the Enterprise Grid organization identifier; blank outside Enterprise Grid. */
   "enterpriseId"?: string | undefined;
-  /** IsEnterpriseInstall is true when the app is installed for a whole Enterprise Grid organization. */
-  "isEnterpriseInstall": boolean;
   /** BotUserID is the Slack user identifier of the bot that posts messages, such as U0BOT123456. */
   "botUserId": string;
   /** BotUserName is the bot user's Slack name. */
@@ -258,7 +256,6 @@ export const GetWorkspaceIdentityOutputSchema = z.strictObject({
   "teamName": z.string(),
   "workspaceUrl": z.string(),
   "enterpriseId": z.string().optional(),
-  "isEnterpriseInstall": z.boolean(),
   "botUserId": z.string(),
   "botUserName": z.string(),
   "botId": z.string(),
