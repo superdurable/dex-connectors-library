@@ -12,9 +12,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 /** Go zero value for ListObjectsInput in scripted cases. */
 export const emptyListObjectsInput: ListObjectsInput = ListObjectsInputSchema.parse({
   "bucket": '',
-  "prefix": '',
-  "pageSize": 0,
-  "pageToken": '',
 });
 /** Go zero value for Object in scripted cases. */
 export const emptyObject: Object = ObjectSchema.parse({

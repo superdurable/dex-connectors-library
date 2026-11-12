@@ -19,13 +19,14 @@ export class ListObjectsOperation implements Query<ListObjectsInput, ObjectsPage
   /** Read one object page. */
   async invoke(call: Call, input: ListObjectsInput): Promise<QueryAttempt<ObjectsPage>> {
     const empty = emptyPage();
-    if (!input || !validBucket(input.bucket) || !Number.isSafeInteger(input.pageSize) || input.pageSize < 0 || input.pageSize > 1000 ||
-        !validText(input.prefix, 1024) || !validText(input.pageToken, 4096))
+    const requestedPageSize = input?.pageSize ?? 0; const prefix = input?.prefix ?? ''; const pageToken = input?.pageToken ?? '';
+    if (!input || !validBucket(input.bucket) || !Number.isSafeInteger(requestedPageSize) || requestedPageSize < 0 || requestedPageSize > 1000 ||
+        !validText(prefix, 1024) || !validText(pageToken, 4096))
       return queryBranch('listObjects', 'defect', empty, 'VALIDATION', 'object page input is invalid');
-    const pageSize = input.pageSize || 100;
+    const pageSize = requestedPageSize || 100;
     const query: Record<string, readonly string[]> = { maxResults: [String(pageSize)] };
-    if (input.prefix) query.prefix = [input.prefix];
-    if (input.pageToken) query.pageToken = [input.pageToken];
+    if (prefix) query.prefix = [prefix];
+    if (pageToken) query.pageToken = [pageToken];
     const exchange = await this.client.request(call, `/storage/v1/b/${encodeURIComponent(input.bucket)}/o?${encodeQueryValues(query)}`);
     const failure = classifyRead('listObjects', exchange, empty);
     if (failure) return failure;
