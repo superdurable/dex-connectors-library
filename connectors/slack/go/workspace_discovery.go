@@ -212,10 +212,10 @@ func classifyQueryResponse[Output any](
 	rateLimitedMessage string,
 ) (sdkgo.QueryAttempt[Output], bool) {
 	if response.statusCode == http.StatusTooManyRequests {
-		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureRateLimit, rateLimitedMessage), retryAfter(response.header)), true
+		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureRateLimit, rateLimitedMessage), client.retryAfter(response.header)), true
 	}
 	if response.statusCode >= 500 {
-		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureAvailability, unavailableMessage), retryAfter(response.header)), true
+		return sdkgo.NewQueryRetry[Output](slackFailure(operationName, sdkgo.FailureAvailability, unavailableMessage), client.retryAfter(response.header)), true
 	}
 	if err != nil {
 		if errors.Is(err, errSlackResponseTooLarge) {

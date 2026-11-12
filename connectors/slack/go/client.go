@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -452,7 +453,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 			failureKind = sdkgo.FailureAvailability
 			failureMessage = "Slack message service is temporarily unavailable"
 		}
-		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, failureMessage), retryAfter(response.header))
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, failureMessage), client.retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusUnauthorized ||
 		(err == nil && response.statusCode >= 200 && response.statusCode < 300 && !response.decoded.OK && slackCredentialRejected(response)) {
@@ -505,7 +506,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 			if response.decoded.Error == "ratelimited" {
 				failureKind = sdkgo.FailureRateLimit
 			}
-			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, "Slack did not process the message"), retryAfter(response.header))
+			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, "Slack did not process the message"), client.retryAfter(response.header))
 		case "internal_error", "fatal_error":
 			providerTimestamp := response.decoded.Message.Timestamp
 			if providerTimestamp == "" {
@@ -566,7 +567,7 @@ func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispat
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack message read-back returned an unusable response"), client.receipt(call, response, marker.ProviderID))
 	}
 	if err != nil || response.statusCode == http.StatusTooManyRequests || response.statusCode >= 500 {
-		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message read-back is temporarily unavailable"), retryAfter(response.header))
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message read-back is temporarily unavailable"), client.retryAfter(response.header))
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 || !response.decoded.OK {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack message read-back could not confirm the post"), client.receipt(call, response, marker.ProviderID))
@@ -762,12 +763,9 @@ func slackFailurePointer(operationName string, kind sdkgo.FailureKind, message s
 	return &failure
 }
 
-func retryAfter(header http.Header) time.Duration {
-	seconds, err := strconv.Atoi(header.Get("Retry-After"))
-	if err != nil || seconds < 1 {
-		return 0
-	}
-	return time.Duration(seconds) * time.Second
+// retryAfter matches the Python and TypeScript SDK parsers: delay-seconds or HTTP-date, capped at one hour.
+func (client *Client) retryAfter(header http.Header) time.Duration {
+	return providerhttp.ParseRetryAfter(header.Get("Retry-After"), client.now())
 }
 
 func (client *Client) receipt(call sdkgo.Call, response providerResponse, objectID string) sdkgo.Receipt {
