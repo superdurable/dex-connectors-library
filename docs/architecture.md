@@ -178,7 +178,12 @@ longest registered directory prefix for connector and conformance changes,
 then include connectors that require those modules. Shared SDK, schema, code
 generation, React, catalog tooling, workflow, or test-infrastructure changes
 select all connectors. Documentation and directory-site-only changes select
-none. Unknown shared source changes select all.
+none. Repository tooling that runs only in the common suite or in release
+workflows, such as `script/release/language_publish.py` and the
+`script/release/*_test.py` files, selects none and runs the common suite. The
+planner lists those files by exact path; `script/release/component_release.py`
+and `script/release/github_release_inventory.py` validate every connector, so
+they select all. Unknown shared source changes select all.
 
 Selected paths are assigned to at most 256 stable SHA-256 buckets, with each
 connector in exactly one shard. Standalone module tests always use

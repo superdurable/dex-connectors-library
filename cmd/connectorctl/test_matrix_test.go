@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -71,6 +74,26 @@ func TestConnectorTestSelectionUsesLocalAndCatalogChanges(t *testing.T) {
 		{
 			name: "workflow", previous: directories,
 			paths: []string{".github/workflows/ci.yml"}, expected: directories,
+		},
+		{
+			name: "release-only scripts and their tests", previous: directories,
+			paths: []string{"script/release/language_publish.py", "script/release/component_release_test.py", "script/agent_rules_test.py"}, expected: []string{},
+		},
+		{
+			name: "release script and one connector", previous: directories,
+			paths: []string{"script/release/npm_publish.py", "connectors/acme/mail/client.go"}, expected: []string{"connectors/acme/mail"},
+		},
+		{
+			name: "connector validation script", previous: directories,
+			paths: []string{"script/release/component_release.py"}, expected: directories,
+		},
+		{
+			name: "release script and code generation", previous: directories,
+			paths: []string{"script/release/language_publish.py", "internal/codegen/generator.go"}, expected: directories,
+		},
+		{
+			name: "unlisted release script", previous: directories,
+			paths: []string{"script/release/new_tool.py"}, expected: directories,
 		},
 		{
 			name: "documentation", previous: directories,
@@ -146,6 +169,25 @@ func TestCIJobsSelectOnlyChangedInputs(t *testing.T) {
 		{"internal", "internal/x.go", allJobs},
 		{"command", "cmd/connectorctl/x.go", allJobs},
 		{"root Go module", "go.mod", allJobs},
+		{"root Go checksums", "go.sum", allJobs},
+		{"code generation", "internal/codegen/x.go", allJobs},
+		{"connector validation script", "script/release/component_release.py", allJobs},
+		{"release inventory loaded by connector validation", "script/release/github_release_inventory.py", allJobs},
+		{"conformance runner", "script/connector_conformance.py", allJobs},
+		{"conformance replay runner", "conformance/runners/python/x.py", allJobs},
+		{"Dex compatibility checks", "script/dex_compatibility.py", allJobs},
+		{"per-package Python check", "script/python_model_drift_test.py", allJobs},
+		{"per-package TypeScript check", "script/typescript_input_schema_test.mts", allJobs},
+		{"unlisted release script", "script/release/new_tool.py", allJobs},
+		{"release workflow", ".github/workflows/release-connector.yml", allJobs},
+		{"release script test", "script/release/component_release_test.py", ciJobSelection{Common: true}},
+		{"language publish script", "script/release/language_publish.py", ciJobSelection{Common: true}},
+		{"npm publish script", "script/release/npm_publish.py", ciJobSelection{Common: true}},
+		{"release retitle script", "script/release/retitle_connector_releases.py", ciJobSelection{Common: true}},
+		{"Connectors MCP release script", "script/release/connectors_mcp_release.py", ciJobSelection{Common: true}},
+		{"CI workflow test", "script/ci_workflow_test.py", ciJobSelection{Common: true}},
+		{"branch policy hook", "script/branch_off_main_policy.py", ciJobSelection{Common: true}},
+		{"commit message hook", ".githooks/commit-msg", ciJobSelection{Common: true}},
 		{"agent rules", "AGENTS.md", ciJobSelection{Common: true}},
 		{"Claude rules", "CLAUDE.md", ciJobSelection{Common: true}},
 		{"Cursor rules", ".cursor/rules/x.mdc", ciJobSelection{Common: true}},
@@ -175,6 +217,235 @@ func TestCIJobsSelectOnlyChangedInputs(t *testing.T) {
 	}
 	require.Equal(t, allJobs, selectCIJobsForPaths("all", nil))
 	require.Equal(t, ciJobSelection{Common: true, Site: true}, selectCIJobsForPaths("changed", []string{"AGENTS.md", "catalog.yaml"}))
+	require.Equal(t, allJobs, selectCIJobsForPaths("changed", []string{"script/release/language_publish.py", "internal/codegen/x.go"}))
+	require.Equal(t, ciJobSelection{Common: true, React: true}, selectCIJobsForPaths("changed", []string{"script/release/npm_publish.py", "sdk/react/src/index.ts"}))
+}
+
+func TestRepositoryToolingTestOnlyPathsExistAndNeverRunPerConnector(t *testing.T) {
+	for path := range repositoryToolingTestOnlyPaths {
+		_, err := os.Stat(filepath.Join("..", "..", filepath.FromSlash(path)))
+		require.NoError(t, err, "remove the stale classification for %s", path)
+		require.False(t, changedPathTestImpact(path).shouldTestAllConnectors, path)
+	}
+	repositoryRoot := filepath.Join("..", "..")
+	trackedFiles, err := gitOutput(repositoryRoot, "ls-files", "-z")
+	require.NoError(t, err)
+	contentsByPath := map[string]string{}
+	for _, path := range splitNullTerminated(trackedFiles) {
+		if !isToolingConsumerCandidatePath(path) {
+			continue
+		}
+		contents, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(path)))
+		require.NoError(t, err)
+		contentsByPath[path] = string(contents)
+	}
+	require.Contains(t, contentsByPath, "Makefile")
+	require.Contains(t, contentsByPath, ".github/workflows/ci.yml")
+	references := findUnlistedToolingReferencesInFiles(repositoryToolingTestOnlyPaths, contentsByPath)
+	unreviewed := []string{}
+	for _, reference := range references {
+		if !reviewedNonConnectorToolingReferences[reference] {
+			unreviewed = append(unreviewed, reference)
+		}
+	}
+	// A consumer that runs in connector CI must take the listed file off repositoryToolingTestOnlyPaths.
+	require.Empty(t, unreviewed)
+	for reference := range reviewedNonConnectorToolingReferences {
+		require.Contains(t, references, reference, "remove the stale reviewed reference")
+	}
+}
+
+func TestToolingConsumerGuardRejectsSyntheticConsumers(t *testing.T) {
+	listed := map[string]bool{"script/release/language_publish.py": true, "script/release/language_publish_test.py": true}
+	testCases := []struct {
+		name     string
+		path     string
+		contents string
+		expected []string
+	}{
+		{"Python package import", "script/connector_conformance.py", "from script.release import language_publish\n",
+			[]string{"script/connector_conformance.py references language_publish"}},
+		{"Python sys.path import", "conformance/runners/python/x.py", "import language_publish as publish\n",
+			[]string{"conformance/runners/python/x.py references language_publish"}},
+		{"Go command", "cmd/connectorctl/x.go", `exec.Command("python3", filepath.Join("script", "release", "language_publish.py"))`,
+			[]string{"cmd/connectorctl/x.go references language_publish"}},
+		{"shell wrapper", "script/x.sh", "python3 \"$root/script/release/language_publish.py\"\n",
+			[]string{"script/x.sh references language_publish"}},
+		{"other workflow", ".github/workflows/other.yml", "run: python3 script/release/language_publish.py\n",
+			[]string{".github/workflows/other.yml references language_publish"}},
+		{"connector test", "connectors/acme/python/tests/test_x.py", "import language_publish\n",
+			[]string{"connectors/acme/python/tests/test_x.py references language_publish"}},
+		{"GNUmakefile", "GNUmakefile", "test-typescript-connectors:\n\tpython3 script/release/language_publish.py select\n",
+			[]string{"GNUmakefile references language_publish"}},
+		{"extensionless include", "ci-targets", "test-release-tool:\n\tpython3 script/release/language_publish.py select\n",
+			[]string{"ci-targets references language_publish"}},
+		{"composite action", ".github/actions/connector-check/action.yml", "runs:\n  steps:\n    - run: python3 script/release/language_publish.py\n",
+			[]string{".github/actions/connector-check/action.yml references language_publish"}},
+		{"YAML outside .github", "tools/connector-check/action.yaml", "run: python3 script/release/language_publish.py\n",
+			[]string{"tools/connector-check/action.yaml references language_publish"}},
+		{"non-candidate prose", "docs/x.md", "language_publish.py publishes packages.\n", []string{}},
+		{"Makefile outside test-common", "Makefile", "test-x:\n\tpython3 script/release/language_publish.py check\n",
+			[]string{"Makefile references language_publish: \tpython3 script/release/language_publish.py check"}},
+		{"Makefile unittest prefix outside test-common", "Makefile",
+			"test-typescript-connectors:\n\tpython3 -m unittest script/release/language_publish_test.py && python3 script/release/language_publish.py select\n",
+			[]string{
+				"Makefile references language_publish: \tpython3 -m unittest script/release/language_publish_test.py && python3 script/release/language_publish.py select",
+				"Makefile references language_publish_test: \tpython3 -m unittest script/release/language_publish_test.py && python3 script/release/language_publish.py select",
+			}},
+		{"Makefile test-common shell operator", "Makefile",
+			"test-common:\n\tpython3 -m unittest script/release/language_publish_test.py; python3 script/release/language_publish.py select\n",
+			[]string{
+				"Makefile references language_publish: \tpython3 -m unittest script/release/language_publish_test.py; python3 script/release/language_publish.py select",
+				"Makefile references language_publish_test: \tpython3 -m unittest script/release/language_publish_test.py; python3 script/release/language_publish.py select",
+			}},
+		{"Makefile test-common continuation", "Makefile",
+			"test-common:\n\tpython3 -m unittest script/release/language_publish_test.py \\\n\t\t$(shell python3 script/release/language_publish.py)\n",
+			[]string{
+				"Makefile references language_publish: \tpython3 -m unittest script/release/language_publish_test.py  \t\t$(shell python3 script/release/language_publish.py)",
+				"Makefile references language_publish_test: \tpython3 -m unittest script/release/language_publish_test.py  \t\t$(shell python3 script/release/language_publish.py)",
+			}},
+		{"Makefile test-common non-test argument", "Makefile", "test-common:\n\tpython3 -m unittest script/release/language_publish.py\n",
+			[]string{"Makefile references language_publish: \tpython3 -m unittest script/release/language_publish.py"}},
+		{"Makefile variable", "Makefile", "TOOL := script/release/language_publish.py\ntest-common:\n\tpython3 -m unittest script/release/language_publish_test.py\n",
+			[]string{"Makefile references language_publish: TOOL := script/release/language_publish.py"}},
+		{"Makefile test-common", "Makefile", "test-common:\n\tcd sdkgo && go test ./...\n\tpython3 -m unittest script/release/language_publish_test.py script/x_test.py\n", []string{}},
+		{"own test", "script/release/language_publish_test.py", "from script.release import language_publish\n", []string{}},
+		{"longer identifier", "script/x.py", "def validate_language_publish_manifest(): pass\n", []string{}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			require.Equal(t, testCase.expected, findUnlistedToolingReferencesInFiles(listed, map[string]string{testCase.path: testCase.contents}))
+		})
+	}
+}
+
+// reviewedNonConnectorToolingReferences name listed tooling from files that never run in connector CI.
+var reviewedNonConnectorToolingReferences = map[string]bool{
+	// Local hook installer, run only by `make githooks`.
+	"script/install-githooks references commit-msg": true,
+	// Local Codex and Cursor branch hooks.
+	".codex/hooks/validate-branch-off-main.sh references branch_off_main_policy":  true,
+	".cursor/hooks/validate-branch-off-main.sh references branch_off_main_policy": true,
+	// Release and token-check workflows, which CI never runs.
+	".github/workflows/check-npm-token.yml references npm_publish":              true,
+	".github/workflows/release-candidate.yml references npm_publish":            true,
+	".github/workflows/release-connector.yml references connectors_mcp_release": true,
+	".github/workflows/release-connector.yml references language_publish":       true,
+	".github/workflows/release-connector.yml references npm_publish":            true,
+	".github/workflows/release-sdk-ts.yml references npm_publish":               true,
+	// Comments only.
+	"cmd/connectorctl/catalog.go references language_publish": true,
+	// Root-module Go tests, which run only in common.
+	"cmd/connectorctl/python_codegen_test.go references python_timestamp_parity_test": true,
+	"cmd/connectorctl/release_selection_test.go references language_publish":          true,
+}
+
+func isToolingConsumerCandidatePath(path string) bool {
+	// Scan every file except prose and images, so new build inputs such as GNUmakefile or includes are covered.
+	for _, extension := range []string{".md", ".mdx", ".mdc", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp"} {
+		if strings.HasSuffix(strings.ToLower(path), extension) {
+			return false
+		}
+	}
+	return true
+}
+
+// findUnlistedToolingReferencesInFiles applies the candidate filter that the repository scan uses.
+func findUnlistedToolingReferencesInFiles(listedPaths map[string]bool, contentsByPath map[string]string) []string {
+	candidates := map[string]string{}
+	for path, contents := range contentsByPath {
+		if isToolingConsumerCandidatePath(path) {
+			candidates[path] = contents
+		}
+	}
+	return findUnlistedToolingReferences(listedPaths, candidates)
+}
+
+// findUnlistedToolingReferences reports unlisted, non-classifier files naming a listed module, except test-common's unittest line.
+func findUnlistedToolingReferences(listedPaths map[string]bool, contentsByPath map[string]string) []string {
+	references := []string{}
+	for consumerPath, contents := range contentsByPath {
+		if listedPaths[consumerPath] || consumerPath == "cmd/connectorctl/test_matrix.go" || consumerPath == "cmd/connectorctl/test_matrix_test.go" {
+			continue
+		}
+		for listedPath := range listedPaths {
+			moduleName := strings.TrimSuffix(filepath.Base(listedPath), filepath.Ext(listedPath))
+			if !containsToolingIdentifier(contents, moduleName) {
+				continue
+			}
+			if consumerPath != "Makefile" {
+				references = append(references, consumerPath+" references "+moduleName)
+				continue
+			}
+			for _, line := range makefileLogicalLines(contents) {
+				if containsToolingIdentifier(line.text, moduleName) && !isTestCommonUnittestLine(line) {
+					references = append(references, "Makefile references "+moduleName+": "+line.text)
+				}
+			}
+		}
+	}
+	sort.Strings(references)
+	return references
+}
+
+// testCommonUnittestLine admits only plain test-file arguments, so no shell operator can run another script.
+var testCommonUnittestLine = regexp.MustCompile(`^\tpython3 -m unittest( [A-Za-z0-9_./-]+_test\.py)+$`)
+
+var makefileRuleLine = regexp.MustCompile(`^([^\t#=:][^=:]*):([^=]|$)`)
+
+type makefileLogicalLine struct {
+	target string
+	text   string
+}
+
+func isTestCommonUnittestLine(line makefileLogicalLine) bool {
+	return line.target == "test-common" && testCommonUnittestLine.MatchString(line.text)
+}
+
+// makefileLogicalLines joins backslash continuations and records the rule each recipe line belongs to.
+func makefileLogicalLines(contents string) []makefileLogicalLine {
+	lines := []makefileLogicalLine{}
+	target := ""
+	pending := ""
+	for _, physicalLine := range strings.Split(contents, "\n") {
+		if strings.HasSuffix(physicalLine, "\\") {
+			pending += strings.TrimSuffix(physicalLine, "\\") + " "
+			continue
+		}
+		text := pending + physicalLine
+		pending = ""
+		if strings.HasPrefix(text, "\t") {
+			lines = append(lines, makefileLogicalLine{target: target, text: text})
+			continue
+		}
+		target = ""
+		if match := makefileRuleLine.FindStringSubmatch(text); match != nil {
+			target = strings.TrimSpace(match[1])
+		}
+		lines = append(lines, makefileLogicalLine{text: text})
+	}
+	if pending != "" {
+		lines = append(lines, makefileLogicalLine{target: target, text: pending})
+	}
+	return lines
+}
+
+func containsToolingIdentifier(contents string, identifier string) bool {
+	for offset := 0; ; {
+		index := strings.Index(contents[offset:], identifier)
+		if index < 0 {
+			return false
+		}
+		start, end := offset+index, offset+index+len(identifier)
+		if (start == 0 || !isIdentifierByte(contents[start-1])) && (end == len(contents) || !isIdentifierByte(contents[end])) {
+			return true
+		}
+		offset = start + 1
+	}
+}
+
+func isIdentifierByte(character byte) bool {
+	return character == '_' || character >= '0' && character <= '9' || character >= 'a' && character <= 'z' || character >= 'A' && character <= 'Z'
 }
 
 func TestConnectorTestSelectionIncludesTransitiveDependents(t *testing.T) {
