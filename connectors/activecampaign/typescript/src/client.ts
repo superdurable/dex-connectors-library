@@ -85,7 +85,7 @@ export class ListContactsOperation implements Query<ListContactsInput, ContactsP
   /** Return the generated operation definition. */ definition(): QueryDefinition { return ListContactsDefinition; }
   /** Validate pagination and read contact metadata. */
   async invoke(call: Call, input: ListContactsInput): Promise<QueryAttempt<ContactsPage>> {
-    const offset = input.offset;
+    const offset = input.offset ?? 0;
     const limit = input.limit === undefined || input.limit === 0 ? 20 : input.limit;
     if (!isNonnegativeInteger(offset) || !isPositiveInteger(limit) || limit > 100) return terminal('listContacts', 'defect', 'VALIDATION', 'offset or limit is invalid', emptyContacts());
     const result = await this.client.exchange(call, 'listContacts', `/contacts?limit=${limit}&offset=${offset}`, false);

@@ -16,8 +16,8 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 # ListContactsInput selects an offset-based page of at most 100 contacts.
 @dataclass(frozen=True, slots=True)
 class ListContactsInput:
-    # Offset is the zero-based number of contacts to skip.
-    offset: int = 0
+    # Offset is the zero-based number of contacts to skip; zero starts at the first contact.
+    offset: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
     # Limit is the maximum contact count; zero defaults to 20.
     limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 

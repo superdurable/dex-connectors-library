@@ -15,8 +15,8 @@ import (
 
 // ListContactsInput selects an offset-based page of at most 100 contacts.
 type ListContactsInput struct {
-	// Offset is the zero-based number of contacts to skip.
-	Offset int `json:"offset"`
+	// Offset is the zero-based number of contacts to skip; zero starts at the first contact.
+	Offset int `json:"offset,omitempty"`
 	// Limit is the maximum contact count; zero defaults to 20.
 	Limit int `json:"limit,omitempty"`
 }
