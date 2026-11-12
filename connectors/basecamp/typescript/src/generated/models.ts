@@ -82,8 +82,8 @@ export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 
 /** ListAccountsInput selects a locally bounded page of authorized accounts. */
 export interface ListAccountsInput {
-  /** Offset is the zero-based number of accounts to skip. */
-  "offset": number;
+  /** Offset is the zero-based number of accounts to skip; zero starts at the first account. */
+  "offset"?: number | undefined;
   /** Limit is the maximum account count; zero uses 100. */
   "limit"?: number | undefined;
 }
@@ -108,7 +108,7 @@ export interface AccountsPage {
 
 /** Runtime validator for ListAccountsInput. */
 export const ListAccountsInputSchema = z.strictObject({
-  "offset": z.number().int(),
+  "offset": z.number().int().optional(),
   "limit": z.number().int().optional(),
 }) satisfies z.ZodType<ListAccountsInput>;
 

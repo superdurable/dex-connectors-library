@@ -16,8 +16,8 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 # ListAccountsInput selects a locally bounded page of authorized accounts.
 @dataclass(frozen=True, slots=True)
 class ListAccountsInput:
-    # Offset is the zero-based number of accounts to skip.
-    offset: int = 0
+    # Offset is the zero-based number of accounts to skip; zero starts at the first account.
+    offset: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
     # Limit is the maximum account count; zero uses 100.
     limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 

@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-basecamp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Basecamp connector for Dex TypeScript applications",
   "repository": {
