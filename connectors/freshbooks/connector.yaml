@@ -5,6 +5,7 @@ metadata:
   displayName: FreshBooks
   description: Read one invoice from a FreshBooks accounting account.
   company: FreshBooks
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: freshbooks

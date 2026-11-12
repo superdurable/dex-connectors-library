@@ -5,6 +5,7 @@ metadata:
   displayName: LinkedIn
   description: Read the authenticated member's OpenID Connect UserInfo profile and verified email.
   company: LinkedIn
+  categories: [social-media, security-identity]
   version: v0.24.0
 spec:
   provider: linkedin

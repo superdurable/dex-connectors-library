@@ -5,6 +5,7 @@ metadata:
   displayName: Pinecone
   description: Pinecone REST connector with two bounded operations.
   company: Pinecone
+  categories: [ai, databases-storage]
   version: v0.2.0
 spec:
   provider: pinecone

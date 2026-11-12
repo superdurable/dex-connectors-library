@@ -15,8 +15,106 @@ import {
   connectorMatchesLanguage,
   pythonInstall,
   readCatalog,
+  readCatalogDocument,
   readOperations,
+  allCategories,
+  categoryConnectorCounts,
+  connectorMatchesCategory,
+  selectedCategoryID,
 } from "./catalogModel.mjs";
+
+const categoryTaxonomy = `categories:
+  - {id: ai, name: AI & Machine Learning, description: Models.}
+  - {id: communication, name: Communication, description: Chat and email.}
+  - {id: finance-payments, name: "Finance, Payments & Accounting", description: Payments.}
+  - {id: hr-recruiting, name: HR & Recruiting, description: People.}
+`;
+
+function categorizedCatalog() {
+  return readCatalogDocument(`${categoryTaxonomy}connectors:
+  - {company: Google, id: gmail, name: Gmail, description: Send mail., version: v0.1.0, categories: [communication],
+     directory: connectors/google/gmail, uiUnits: [], triggers: [], operations: [{name: sendMessage, kind: mutation, description: Send.}]}
+  - {company: OpenAI, id: openai, name: OpenAI, description: Generate text., version: v0.1.0, categories: [ai],
+     directory: connectors/openai, uiUnits: [], triggers: [], operations: []}
+  - {company: Slack, id: slack, name: Slack, description: Post messages with an assistant., version: v0.1.0,
+     categories: [communication, ai], languages: {go: v0.1.0, python: v0.1.0},
+     directory: connectors/slack, uiUnits: [], triggers: [], operations: []}
+  - {company: Stripe, id: stripe, name: Stripe, description: Take payments., version: v0.1.0, categories: [finance-payments],
+     directory: connectors/stripe, uiUnits: [], triggers: [], operations: []}
+`);
+}
+
+test("catalog reads the category taxonomy in order and resolves connector categories, primary first", () => {
+  const { categories, connectors } = categorizedCatalog();
+  assert.deepEqual(categories.map(({ id }) => id), ["ai", "communication", "finance-payments", "hr-recruiting"]);
+  assert.equal(categories[2].name, "Finance, Payments & Accounting");
+  assert.equal(new Set(categories.map(({ hue }) => hue)).size, categories.length);
+  const slack = connectors.find(({ id }) => id === "slack");
+  assert.deepEqual(slack.categories.map(({ id }) => id), ["communication", "ai"]);
+  assert.equal(slack.categories[0].name, "Communication");
+});
+
+test("category filter matches primary and secondary categories", () => {
+  const { connectors } = categorizedCatalog();
+  const matching = (categoryID) => connectors.filter((connector) => connectorMatchesCategory(connector, categoryID))
+    .map(({ id }) => id);
+  assert.deepEqual(matching("ai"), ["openai", "slack"]);
+  assert.deepEqual(matching("communication"), ["gmail", "slack"]);
+  assert.deepEqual(matching("hr-recruiting"), []);
+  assert.deepEqual(matching(allCategories), ["gmail", "openai", "slack", "stripe"]);
+});
+
+test("category counts include every category, count secondary membership, and follow other filters", () => {
+  const { categories, connectors } = categorizedCatalog();
+  assert.deepEqual([...categoryConnectorCounts(categories, connectors)], [
+    ["all", 4], ["ai", 2], ["communication", 2], ["finance-payments", 1], ["hr-recruiting", 0],
+  ]);
+  const pythonMatches = connectors.filter((connector) => connectorMatchesLanguage(connector, "python"));
+  assert.deepEqual([...categoryConnectorCounts(categories, pythonMatches)], [
+    ["all", 1], ["ai", 1], ["communication", 1], ["finance-payments", 0], ["hr-recruiting", 0],
+  ]);
+});
+
+test("category filter composes with search, and search matches category names", () => {
+  const { connectors } = categorizedCatalog();
+  const matching = (categoryID, query) => connectors
+    .filter((connector) => connectorMatchesCategory(connector, categoryID) && connectorMatchesQuery(connector, query))
+    .map(({ id }) => id);
+  assert.deepEqual(matching("communication", "assistant"), ["slack"]);
+  assert.deepEqual(matching("communication", "send"), ["gmail"]);
+  assert.deepEqual(matching("ai", "payments"), []);
+  assert.deepEqual(matching(allCategories, "machine learning"), ["openai", "slack"]);
+});
+
+test("URL category falls back to all when absent or unknown", () => {
+  const { categories } = categorizedCatalog();
+  assert.equal(selectedCategoryID("ai", categories), "ai");
+  assert.equal(selectedCategoryID(null, categories), allCategories);
+  assert.equal(selectedCategoryID("spreadsheets", categories), allCategories);
+});
+
+test("catalog without categories degrades to uncategorized connectors", () => {
+  const connector = (categories) => `
+  - {company: Google, id: gmail, name: Gmail, description: Mail., version: v0.1.0${categories},
+     directory: connectors/google/gmail, uiUnits: [], triggers: [], operations: []}`;
+  const legacy = readCatalogDocument(`connectors:${connector("")}`);
+  assert.deepEqual(legacy.categories, []);
+  assert.deepEqual(legacy.connectors[0].categories, []);
+  assert.deepEqual([...categoryConnectorCounts(legacy.categories, legacy.connectors)], [[allCategories, 1]]);
+  assert.equal(connectorMatchesCategory(legacy.connectors[0], allCategories), true);
+  assert.deepEqual(readCatalog(`${categoryTaxonomy}connectors:${connector("")}`)[0].categories, []);
+  const resolved = readCatalog(`${categoryTaxonomy}connectors:${connector(", categories: [spreadsheets, ai, ai]")}`);
+  assert.deepEqual(resolved[0].categories.map(({ id }) => id), ["ai"]);
+});
+
+test("catalog rejects a malformed category taxonomy", () => {
+  const connector = `
+  - {company: Google, id: gmail, name: Gmail, description: Mail., version: v0.1.0, categories: [ai],
+     directory: connectors/google/gmail, uiUnits: [], triggers: [], operations: []}`;
+  assert.throws(() => readCatalog(`categories: ai\nconnectors:${connector}`), /must be a list/);
+  assert.throws(() => readCatalog(`categories: [{id: ai, name: AI, description: x}, {id: ai, name: AI, description: x}]
+connectors:${connector}`), /invalid or repeated/);
+});
 
 test("company directory is the first folder under connectors", () => {
   assert.equal(companyDirectory("connectors/google/gmail"), "google");
@@ -51,12 +149,13 @@ test("catalog text exposes company, UI units, operations, and triggers", () => {
   const connectors = readCatalog(`
 apiVersion: connectors.dex.dev/catalog/v1alpha1
 kind: ConnectorCatalog
-connectors:
+${categoryTaxonomy}connectors:
   - company: Google
     id: gmail
     name: Gmail
     description: Send and read Gmail messages.
     version: v0.8.0
+    categories: [communication]
     directory: connectors/google/gmail
     uiUnits:
       - name: searchQueryInput
@@ -98,12 +197,13 @@ connectors:
 
 test("catalog exposes independent language versions", () => {
   const connectors = readCatalog(`
-connectors:
+${categoryTaxonomy}connectors:
   - company: Google
     id: gmail
     name: Gmail
     description: Mail connector.
     version: v0.2.0
+    categories: [communication]
     languages: {go: v0.2.0, python: v0.1.0, typescript: v0.3.0}
     directory: connectors/google/gmail
     uiUnits: []
@@ -118,12 +218,13 @@ connectors:
 
 function pythonCatalog(pythonPackage) {
   return `
-connectors:
+${categoryTaxonomy}connectors:
   - company: Calendly
     id: calendly
     name: Calendly
     description: Scheduling connector.
     version: v0.2.0
+    categories: [communication]
     languages: {go: v0.2.0, python: v0.1.0}
 ${pythonPackage}
     directory: connectors/calendly
@@ -164,12 +265,13 @@ test("catalog rejects a Python package that differs from the listed Python relea
 
 test("catalog reads per-capability support and language filter composes with search", () => {
   const connectors = readCatalog(`
-connectors:
+${categoryTaxonomy}connectors:
   - company: Google
     id: gmail
     name: Gmail
     description: Mail connector.
     version: v0.2.0
+    categories: [communication]
     languages: {go: v0.2.0, python: v0.1.0, typescript: v0.3.0}
     directory: connectors/google/gmail
     uiUnits: []
@@ -190,12 +292,13 @@ connectors:
 
 test("TypeScript cards omit Go-only Trigger chips while All keeps them", () => {
   const [stripe] = readCatalog(`
-connectors:
+${categoryTaxonomy}connectors:
   - company: Stripe
     id: stripe
     name: Stripe
     description: Payments.
     version: v0.2.0
+    categories: [communication]
     languages: {go: v0.2.0, python: v0.1.0, typescript: v0.1.0}
     directory: connectors/stripe
     uiUnits: []

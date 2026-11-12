@@ -5,6 +5,7 @@ metadata:
   displayName: Resend
   description: Read and act through the Resend public API.
   company: Resend
+  categories: [communication, developer-tools]
   version: v0.2.0
 spec:
   provider: resend

@@ -5,6 +5,7 @@ metadata:
   displayName: Adyen
   description: Read payment link status through Adyen Checkout API.
   company: Adyen
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: adyen

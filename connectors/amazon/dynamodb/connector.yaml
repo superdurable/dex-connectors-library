@@ -5,6 +5,7 @@ metadata:
   displayName: Amazon DynamoDB
   description: Read one DynamoDB item with AWS Signature Version 4.
   company: Amazon
+  categories: [databases-storage]
   version: v0.1.0
 spec:
   provider: amazon-dynamodb

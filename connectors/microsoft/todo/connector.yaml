@@ -5,6 +5,7 @@ metadata:
   displayName: Microsoft To Do
   description: Read the signed-in user's task lists and tasks through Microsoft Graph.
   company: Microsoft
+  categories: [productivity]
   version: v0.1.0
 spec:
   provider: microsoft

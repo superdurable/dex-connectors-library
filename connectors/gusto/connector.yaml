@@ -5,6 +5,7 @@ metadata:
   displayName: Gusto
   description: Read an employee from an authorized Gusto company.
   company: Gusto
+  categories: [hr-recruiting, finance-payments]
   version: v0.1.0
 spec:
   provider: gusto

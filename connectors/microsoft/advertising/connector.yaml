@@ -5,6 +5,7 @@ metadata:
   displayName: Microsoft Advertising
   description: List campaigns in a Microsoft Advertising account through the v13 REST API.
   company: Microsoft
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: microsoft-advertising

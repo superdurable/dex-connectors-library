@@ -5,6 +5,7 @@ metadata:
   displayName: Miro
   description: Read a board ID and name through Miro REST API v2.
   company: Miro
+  categories: [productivity]
   version: v0.1.0
 spec:
   provider: miro

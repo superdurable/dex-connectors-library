@@ -5,6 +5,7 @@ metadata:
   displayName: OpenSearch
   description: Search, replace, and delete documents in an OpenSearch index.
   company: OpenSearch
+  categories: [databases-storage, data-search]
   version: v0.1.0
 spec:
   provider: opensearch

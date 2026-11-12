@@ -5,6 +5,7 @@ metadata:
   displayName: Insightly CRM
   description: Read Insightly contact identity with explicit page controls.
   company: Insightly
+  categories: [crm-sales]
   version: v0.2.0
 spec:
   languages:

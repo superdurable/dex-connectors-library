@@ -5,6 +5,7 @@ metadata:
   displayName: Pipedrive
   description: Search, list, read, create, upsert, and update Pipedrive persons, organizations, and deals, with persons upserted by email and deal stages and owners passed through as Pipedrive IDs.
   company: Pipedrive
+  categories: [crm-sales]
   version: v0.24.0
 spec:
   provider: pipedrive

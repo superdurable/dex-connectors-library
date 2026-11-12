@@ -5,6 +5,7 @@ metadata:
   displayName: Reddit
   description: Read a post from Reddit's approved OAuth Data API.
   company: Reddit
+  categories: [social-media]
   version: v0.1.0
 spec:
   provider: reddit

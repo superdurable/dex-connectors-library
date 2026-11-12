@@ -5,6 +5,7 @@ metadata:
   displayName: Amplitude
   description: Search project users by Amplitude ID, device ID, user ID, or user ID prefix.
   company: Amplitude
+  categories: [analytics]
   version: v0.1.0
 spec:
   provider: amplitude

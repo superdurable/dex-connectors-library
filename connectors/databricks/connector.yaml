@@ -5,6 +5,7 @@ metadata:
   displayName: Databricks
   description: Read the current state of a Databricks job run.
   company: Databricks
+  categories: [analytics, databases-storage]
   version: v0.1.0
 spec:
   provider: databricks

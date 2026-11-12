@@ -5,6 +5,7 @@ metadata:
   displayName: Constant Contact
   description: Read contact details from the Constant Contact V3 API.
   company: Constant Contact
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: constantcontact

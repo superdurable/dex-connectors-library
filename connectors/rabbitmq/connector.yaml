@@ -5,6 +5,7 @@ metadata:
   displayName: RabbitMQ
   description: Inspect one queue through the RabbitMQ Management HTTP API.
   company: RabbitMQ
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: rabbitmq

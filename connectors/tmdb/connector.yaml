@@ -5,6 +5,7 @@ metadata:
   displayName: TMDB
   description: Read and act through the TMDB public API.
   company: TMDB
+  categories: [data-search]
   version: v0.2.0
 spec:
   provider: tmdb

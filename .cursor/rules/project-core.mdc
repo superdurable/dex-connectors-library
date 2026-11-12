@@ -16,6 +16,9 @@ alwaysApply: true
   contains `logo.svg`.
 - `connector.yaml` owns generated Config, Credentials, definitions, factories,
   branches, UI metadata, and defaults. Never edit generated connector code.
+- `metadata.categories` lists one or two IDs from the fixed taxonomy in
+  `schema/connector_categories.go`; the first is the primary category. See
+  `docs/manifest-authoring.md#directory-categories`.
 - Every connector has a runnable Flow example under `go/examples/` with a Worker entrypoint, strict
   FDG 2.0 instructions, deterministic tests, and its static `ConnectionName`.
 - Default fixed provider values, derive verified provider-owned fields, and ask

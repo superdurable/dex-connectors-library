@@ -5,6 +5,7 @@ metadata:
   displayName: Adobe Marketo Engage
   description: Read selected lead profile fields from a Marketo Engage subscription.
   company: Adobe
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: adobe

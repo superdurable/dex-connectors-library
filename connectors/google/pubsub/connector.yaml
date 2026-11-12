@@ -5,6 +5,7 @@ metadata:
   displayName: Google Cloud Pub/Sub
   description: Discover Pub/Sub topics in one Google Cloud project.
   company: Google
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   languages:

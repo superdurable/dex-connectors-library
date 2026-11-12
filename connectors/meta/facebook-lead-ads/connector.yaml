@@ -5,6 +5,7 @@ metadata:
   displayName: Facebook Lead Ads
   description: List Page lead forms and inspect lead identity through Meta Graph API.
   company: Meta
+  categories: [marketing, social-media]
   version: v0.1.0
 spec:
   provider: facebook-lead-ads

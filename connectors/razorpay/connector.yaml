@@ -5,6 +5,7 @@ metadata:
   displayName: Razorpay
   description: Read selected Razorpay payment fields from the Payments API.
   company: Razorpay
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: razorpay

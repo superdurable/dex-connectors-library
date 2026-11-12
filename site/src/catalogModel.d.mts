@@ -14,11 +14,26 @@ export type PythonInstall =
   | { isPyPIPublished: true; command: string }
   | { isPyPIPublished: false; command: string; releaseUrl: string };
 
+export type CatalogCategory = {
+  id: string;
+  name: string;
+  description: string;
+  /** Accent hue in degrees, derived from the category's position in the catalog taxonomy. */
+  hue: number;
+};
+
+export type CatalogDocument = {
+  categories: CatalogCategory[];
+  connectors: CatalogConnector[];
+};
+
 export type CatalogConnector = {
   company: string;
   id: string;
   name: string;
   description: string;
+  /** The connector's categories, primary first; empty when the catalog predates categories. */
+  categories: CatalogCategory[];
   version: string;
   languages: Partial<Record<"go" | "python" | "typescript", string>>;
   pythonPackage: CatalogPythonPackage | null;
@@ -54,7 +69,13 @@ export function companyDirectory(directory: string): string;
 export function connectorManifestUrl(directory: string, version: string): string;
 export function companyLogoUrl(company: string, origin: "local" | "published"): string;
 export function catalogDocumentUrl(isDev: boolean, baseUrl: string): string;
+export const allCategories: "all";
+export const categorySearchParameter: "category";
+export function readCatalogDocument(text: string): CatalogDocument;
 export function readCatalog(text: string): CatalogConnector[];
+export function selectedCategoryID(parameterValue: string | null, categories: CatalogCategory[]): string;
+export function connectorMatchesCategory(connector: CatalogConnector, categoryID: string): boolean;
+export function categoryConnectorCounts(categories: CatalogCategory[], connectors: CatalogConnector[]): Map<string, number>;
 export function pythonInstall(connector: CatalogConnector): PythonInstall | null;
 export function connectorMatchesQuery(connector: CatalogConnector, query: string): boolean;
 export function connectorMatchesLanguage(connector: CatalogConnector, language: "all" | "go" | "python" | "typescript"): boolean;

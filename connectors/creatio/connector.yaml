@@ -5,6 +5,7 @@ metadata:
   displayName: Creatio
   description: Read one contact from a Creatio OData 4 instance.
   company: Creatio
+  categories: [crm-sales]
   version: v0.1.0
 spec:
   provider: creatio

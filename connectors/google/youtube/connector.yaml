@@ -5,6 +5,7 @@ metadata:
   displayName: YouTube
   description: Search YouTube videos, read videos, channels, and playlist pages, and add a video to a playlist at most once through the YouTube Data API v3.
   company: Google
+  categories: [social-media]
   version: v0.4.0
 spec:
   provider: google

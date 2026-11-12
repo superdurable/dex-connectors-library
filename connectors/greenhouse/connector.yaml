@@ -5,6 +5,7 @@ metadata:
   displayName: Greenhouse
   description: Read selected candidate profile fields through Harvest v3.
   company: Greenhouse
+  categories: [hr-recruiting]
   version: v0.1.0
 spec:
   provider: greenhouse

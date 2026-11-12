@@ -5,6 +5,7 @@ metadata:
   displayName: Mailgun
   description: Read Mailgun domain events and account domains.
   company: Mailgun
+  categories: [communication, developer-tools]
   version: v0.2.0
 spec:
   provider: mailgun

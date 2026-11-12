@@ -5,6 +5,7 @@ metadata:
   displayName: Dropbox Sign
   description: Read a signature request's title and completion status without signer or document data.
   company: Dropbox
+  categories: [files-documents]
   version: v0.1.0
 spec:
   provider: dropbox-sign

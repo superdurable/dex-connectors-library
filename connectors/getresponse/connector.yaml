@@ -5,6 +5,7 @@ metadata:
   displayName: GetResponse
   description: List and inspect contact metadata through the GetResponse API v3.
   company: GetResponse
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: getresponse

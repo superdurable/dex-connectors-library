@@ -5,6 +5,7 @@ metadata:
   displayName: Meta Ads Insights
   description: Read Meta Marketing API ad identity and delivery status.
   company: Meta
+  categories: [marketing, social-media]
   version: v0.1.0
 spec:
   provider: meta-ads-insights

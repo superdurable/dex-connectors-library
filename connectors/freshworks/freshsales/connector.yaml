@@ -5,6 +5,7 @@ metadata:
   displayName: Freshsales
   description: Read Freshsales contact views and selected contact identity.
   company: Freshworks
+  categories: [crm-sales]
   version: v0.1.0
 spec:
   languages:

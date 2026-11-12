@@ -307,7 +307,9 @@ that module directory, such as `connectors/github/go/vX.Y.Z` and
 `connectors/google/gmail/go/vX.Y.Z`. Manifests, READMEs, UI, Python, and
 TypeScript packages stay in the connector directory.
 The manifest `metadata.version` is that connector's own release version, and
-moving it releases only that connector. The root `catalog.yaml`
+moving it releases only that connector. `metadata.categories` places the
+connector in one or two directory categories; see
+[Directory categories](docs/manifest-authoring.md#directory-categories). The root `catalog.yaml`
 is the sorted membership allowlist used to generate the public catalog. Adding
 a connector changes no other shared inventory.
 

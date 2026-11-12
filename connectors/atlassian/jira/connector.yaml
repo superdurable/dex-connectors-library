@@ -5,6 +5,7 @@ metadata:
   displayName: Jira
   description: Search and read Jira Cloud issues with bounded JQL, create issues and comments without silent duplicates, and move issues through their workflow.
   company: Atlassian
+  categories: [project-management, developer-tools]
   version: v0.24.0
 spec:
   provider: atlassian

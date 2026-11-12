@@ -5,6 +5,7 @@ metadata:
   displayName: Pinterest
   description: List Pins owned by the connected Pinterest account.
   company: Pinterest
+  categories: [social-media]
   version: v0.1.0
 spec:
   provider: pinterest

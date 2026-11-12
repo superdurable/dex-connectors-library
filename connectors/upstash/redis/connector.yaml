@@ -5,6 +5,7 @@ metadata:
   displayName: Upstash Redis
   description: Read Redis string keys through an Upstash database REST endpoint.
   company: Upstash
+  categories: [databases-storage]
   version: v0.1.0
 spec:
   provider: upstash-redis

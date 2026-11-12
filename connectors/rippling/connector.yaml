@@ -5,6 +5,7 @@ metadata:
   displayName: Rippling
   description: Read selected worker status and title from Rippling.
   company: Rippling
+  categories: [hr-recruiting]
   version: v0.1.0
 spec:
   provider: rippling

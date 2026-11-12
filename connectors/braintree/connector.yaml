@@ -5,6 +5,7 @@ metadata:
   displayName: Braintree
   description: Read one Braintree transaction by GraphQL ID.
   company: Braintree
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: braintree

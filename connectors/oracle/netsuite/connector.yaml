@@ -5,6 +5,7 @@ metadata:
   displayName: Oracle NetSuite
   description: Read a customer record through NetSuite REST Web Services.
   company: Oracle
+  categories: [finance-payments, crm-sales]
   version: v0.1.0
 spec:
   provider: oracle-netsuite

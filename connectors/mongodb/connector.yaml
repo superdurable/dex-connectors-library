@@ -5,6 +5,7 @@ metadata:
   displayName: MongoDB
   description: Find documents in one MongoDB collection through the native wire protocol.
   company: MongoDB
+  categories: [databases-storage]
   version: v0.1.0
 spec:
   provider: mongodb

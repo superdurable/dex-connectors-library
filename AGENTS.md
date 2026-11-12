@@ -53,9 +53,12 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 
 ## Connector Authoring
 
-- `connector.yaml` is the source for company, release version, generated Config,
-  Credentials, definitions, branch fields, operation-specific Step factories,
-  Trigger factories, UI metadata, and defaults.
+- `connector.yaml` is the source for company, directory categories, release
+  version, generated Config, Credentials, definitions, branch fields,
+  operation-specific Step factories, Trigger factories, UI metadata, and defaults.
+- `metadata.categories` lists one or two IDs from the fixed taxonomy in
+  `schema/connector_categories.go`; the first is the primary category. See
+  [manifest authoring](docs/manifest-authoring.md#directory-categories).
 - Normal application APIs use operation-specific factories such as
   `openai.NewCreateResponseStep`. Generic `sdkgo.NewQueryStep` and
   `sdkgo.NewMutationStep` are advanced escape hatches.

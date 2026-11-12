@@ -5,6 +5,7 @@ metadata:
   displayName: Customer.io
   description: Look up Customer.io workspace customers by email address.
   company: Customer.io
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: customerio
