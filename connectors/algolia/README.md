@@ -1,6 +1,6 @@
 # Algolia connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/algolia/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/algolia/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/algolia`.
 
@@ -11,7 +11,7 @@ Algolia index search and repeat-safe record replacement for Dex. The connector u
 | `search` | `POST /1/indexes/{indexName}/query` | `searched` with record IDs and optional names |
 | `saveObject` | `PUT /1/indexes/{indexName}/{objectID}` | `saved` with a queued task ID |
 
-`saveObject` replaces the complete record with the supplied absolute attributes. The explicit `objectID` makes retrying safe for that record; omitted old attributes are removed. The HTTP 200 response means an indexing task was queued, not that the record is searchable yet. `search` returns only `objectID` and optional `name` from each hit to avoid leaking arbitrary record fields into Flow state.
+`saveObject` replaces the complete record with the supplied absolute attributes. The explicit `objectID` makes retrying safe for that record; omitted old attributes are removed. The HTTP 200 response means an indexing task was queued, not that the record is searchable yet. `search` returns only `objectID` and optional `name` from each hit to avoid leaking arbitrary record fields into Flow state. Only `indexName` is required: an omitted or blank `query` matches all records, and an omitted `hitsPerPage` uses Algolia's default.
 
 The Python package is [`dex-connector-algolia`](python/README.md), imported as
 `dex_connectors.algolia`.

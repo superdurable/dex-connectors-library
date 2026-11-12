@@ -12,7 +12,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 /** Go zero value for SearchInput in scripted cases. */
 export const emptySearchInput: SearchInput = SearchInputSchema.parse({
   "indexName": '',
-  "query": '',
 });
 /** Go zero value for SearchHit in scripted cases. */
 export const emptySearchHit: SearchHit = SearchHitSchema.parse({

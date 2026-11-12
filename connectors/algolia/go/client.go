@@ -40,7 +40,7 @@ type SearchInput struct {
 	// IndexName names the Algolia index.
 	IndexName string `json:"indexName"`
 	// Query is the search phrase; blank matches all records.
-	Query string `json:"query"`
+	Query string `json:"query,omitempty"`
 	// HitsPerPage bounds the returned hits; zero uses Algolia's default.
 	HitsPerPage int `json:"hitsPerPage,omitempty"`
 }

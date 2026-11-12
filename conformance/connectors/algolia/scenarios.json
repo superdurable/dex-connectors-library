@@ -56,6 +56,58 @@
       "operation": "search"
     },
     {
+      "callId": "0b993d50-f327-4d93-85a4-70ac791b9127",
+      "exchanges": [
+        {
+          "body": "{\"nbHits\":1,\"hits\":[{\"objectID\":\"product-1\",\"name\":\"Meridian notebook\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/query",
+          "requestBody": {
+            "params": "query="
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "hits": [
+            {
+              "name": "Meridian notebook",
+              "objectID": "product-1"
+            }
+          ],
+          "nbHits": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "products"
+      },
+      "name": "search-indexOnly",
+      "operation": "search"
+    },
+    {
       "callId": "9c32d8f3-cdab-41da-8d1b-6e860f6bb068",
       "exchanges": [
         {
