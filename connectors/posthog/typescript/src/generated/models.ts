@@ -74,8 +74,8 @@ export interface CapturedEvent {
 export interface ListInsightsInput {
   /** ProjectID is the positive ID shown in the PostHog project URL or settings. */
   "projectId": number;
-  /** Offset is the zero-based page offset. */
-  "offset": number;
+  /** Offset is the zero-based page offset; zero starts at the first insight. */
+  "offset"?: number | undefined;
   /** Limit is the maximum count from 1 through 100; zero uses 20. */
   "limit"?: number | undefined;
 }
@@ -115,7 +115,7 @@ export const CapturedEventSchema = z.strictObject({
 /** Runtime validator for ListInsightsInput. */
 export const ListInsightsInputSchema = z.strictObject({
   "projectId": z.number().int(),
-  "offset": z.number().int(),
+  "offset": z.number().int().optional(),
   "limit": z.number().int().optional(),
 }) satisfies z.ZodType<ListInsightsInput>;
 

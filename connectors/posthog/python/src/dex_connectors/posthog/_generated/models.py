@@ -46,8 +46,8 @@ setattr(CapturedEvent, '__module__', 'dex_connectors.posthog.models')
 class ListInsightsInput:
     # ProjectID is the positive ID shown in the PostHog project URL or settings.
     project_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'projectId'})
-    # Offset is the zero-based page offset.
-    offset: int = 0
+    # Offset is the zero-based page offset; zero starts at the first insight.
+    offset: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
     # Limit is the maximum count from 1 through 100; zero uses 20.
     limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 

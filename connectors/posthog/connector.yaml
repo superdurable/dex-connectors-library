@@ -5,16 +5,16 @@ metadata:
   displayName: PostHog
   description: Capture a deduplicated event and list saved insight identities.
   company: PostHog
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: posthog
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [captureEvent, listInsights]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-posthog'
       operations: [captureEvent, listInsights]
       triggers: []
