@@ -58,6 +58,8 @@ github.com/google/jsonschema-go v0.4.3 h1:/DBOLZTfDow7pe2GmaJNhltueGTtDKICi8V8p+
 github.com/google/jsonschema-go v0.4.3/go.mod h1:r5quNTdLOYEz95Ru18zA0ydNbBuYoo9tgaYcxEYhJVE=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
+github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
@@ -74,6 +76,10 @@ github.com/segmentio/encoding v0.5.4 h1:OW1VRern8Nw6ITAtwSZ7Idrl3MXCFwXHPgqESYfv
 github.com/segmentio/encoding v0.5.4/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJnO1gPH1sKt0=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
+github.com/superdurable/dex-connectors-library/connectors/hackernews/go v0.24.0 h1:UfhH1eVqWWMUCBpARr+jBsRgFEH6urSjAtJCDzE9fOo=
+github.com/superdurable/dex-connectors-library/connectors/hackernews/go v0.24.0/go.mod h1:1BzJi1YlHc+Ycmk9EDsKFC3jNLprbtKHBDwKQlTvEVw=
+github.com/superdurable/dex-connectors-library/connectors/slack/go v1.5.1 h1:g6ZyMe36CffZWMaf8yCf5Y0jjudf9FjyOE6/fH7Wuic=
+github.com/superdurable/dex-connectors-library/connectors/slack/go v1.5.1/go.mod h1:V2rRyUt1ULojIMtlS9Lj3fLkvXSdduWY6Ix7YC6HcrQ=
 github.com/superdurable/dex-connectors-library/sdkgo v0.36.0 h1:bfAjw6jQESxwlzl6YrCCs3b4qoy4xgkY5+VRclZ9F2Q=
 github.com/superdurable/dex-connectors-library/sdkgo v0.36.0/go.mod h1:zH3wYOhRcorzF7wGSrhz7V3zptvshZWufDEBReCayfM=
 github.com/superdurable/dex/blob-cache-go v0.1.2 h1:vHwmUZl59GkpTdrcwouj47rnKdx45ETfZdtfxn/vzSM=
