@@ -9,7 +9,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 )
 
-// connectorGoPackage loads once per generate run for all generators; not concurrency-safe.
+// connectorGoPackage loads once per command run for all its model graphs; not concurrency-safe.
 type connectorGoPackage struct {
 	goDirectory string
 	loaded      *gomodel.Package

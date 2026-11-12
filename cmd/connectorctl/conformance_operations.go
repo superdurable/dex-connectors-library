@@ -7,9 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"path/filepath"
-
-	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 )
 
 func conformanceOperationsCommand(manifestPath string, output io.Writer) error {
@@ -23,9 +20,10 @@ func conformanceOperationsCommand(manifestPath string, output io.Writer) error {
 		OptionalInputFields []string `json:"optionalInputFields"`
 	}
 	operations := make(map[string]conformanceOperation, len(manifest.Spec.Operations))
+	goPackage := newConnectorGoPackage(manifestPath)
 	for _, operation := range manifest.Spec.Operations {
 		entry := conformanceOperation{Kind: operation.Kind}
-		entry.OptionalInputFields, err = conformanceOptionalInputFields(manifestPath, operation.InputType)
+		entry.OptionalInputFields, err = conformanceOptionalInputFields(goPackage, operation.InputType)
 		if err != nil {
 			return err
 		}
@@ -37,8 +35,8 @@ func conformanceOperationsCommand(manifestPath string, output io.Writer) error {
 	return json.NewEncoder(output).Encode(operations)
 }
 
-func conformanceOptionalInputFields(manifestPath, inputType string) ([]string, error) {
-	graph, err := gomodel.Load(filepath.Join(filepath.Dir(manifestPath), "go"), []string{inputType})
+func conformanceOptionalInputFields(goPackage *connectorGoPackage, inputType string) ([]string, error) {
+	graph, err := goPackage.graph([]string{inputType})
 	if err != nil {
 		return nil, err
 	}
