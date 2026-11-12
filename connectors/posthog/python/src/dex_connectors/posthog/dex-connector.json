@@ -1,10 +1,10 @@
 {
   "connectorId": "posthog",
-  "releaseTag": "connectors/posthog/go/v0.1.0",
+  "releaseTag": "connectors/posthog/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-posthog",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -116,7 +116,7 @@
             "type": "integer"
           },
           "offset": {
-            "description": "Offset is the zero-based page offset.",
+            "description": "Offset is the zero-based page offset; zero starts at the first insight.",
             "type": "integer"
           },
           "projectId": {
@@ -125,7 +125,6 @@
           }
         },
         "required": [
-          "offset",
           "projectId"
         ],
         "type": "object"

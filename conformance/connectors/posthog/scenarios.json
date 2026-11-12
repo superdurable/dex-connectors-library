@@ -444,6 +444,59 @@
       "operation": "listInsights"
     },
     {
+      "callId": "39bef6ed-58b8-5232-ad67-bd8d24f9588b",
+      "exchanges": [
+        {
+          "body": "{\"next\":\"https://example.test/next\",\"results\":[{\"id\":42,\"name\":\"Signups by day\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/projects/42/insights/",
+          "query": {
+            "limit": [
+              "20"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer phx_synthetic-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": true,
+          "insights": [
+            {
+              "id": 42,
+              "name": "Signups by day"
+            }
+          ],
+          "limit": 20,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": 42
+      },
+      "name": "listInsights-defaults",
+      "operation": "listInsights"
+    },
+    {
       "callId": "8da2c509-308c-55ea-aac1-7ae3e3f5114c",
       "exchanges": [
         {

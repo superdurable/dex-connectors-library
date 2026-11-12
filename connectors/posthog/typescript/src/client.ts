@@ -151,14 +151,15 @@ export class ListInsightsOperation implements Query<ListInsightsInput, InsightsP
   /** Return the generated Query contract. */ definition() { return ListInsightsDefinition; }
   /** Validate, request, and classify one bounded insight page. */
   async invoke(call: Call, input: ListInsightsInput): Promise<QueryAttempt<InsightsPage>> {
+    const offset = input?.offset ?? 0;
     if (!input || !Number.isSafeInteger(input.projectId) || input.projectId <= 0 ||
-      !Number.isSafeInteger(input.offset) || input.offset < 0 ||
+      !Number.isSafeInteger(offset) || offset < 0 ||
       !Number.isSafeInteger(input.limit ?? 0) || (input.limit ?? 0) < 0 || (input.limit ?? 0) > 100)
       return pageFailure('defect', 'VALIDATION', 'project ID, offset, or limit is invalid');
     const limit = input.limit || 20;
     const key = await this.client.personalApiKey(call);
     if (!key) return pageFailure('defect', 'AUTHENTICATION', 'PostHog personal API key is unavailable or invalid');
-    const url = `${this.client.appUrl}/api/projects/${input.projectId}/insights/?limit=${limit}&offset=${input.offset}`;
+    const url = `${this.client.appUrl}/api/projects/${input.projectId}/insights/?limit=${limit}&offset=${offset}`;
     const exchange = await this.client.exchange(call, 'GET', url,
       { Accept: 'application/json', Authorization: `Bearer ${key}` });
     if ('transportFailure' in exchange) return pageRetry('TRANSPORT', 'PostHog insight response is unavailable');
@@ -174,7 +175,7 @@ export class ListInsightsOperation implements Query<ListInsightsInput, InsightsP
     let answer: unknown;
     try { answer = JSON.parse(Buffer.from(response.body).toString('utf8')); }
     catch { return pageFailure('invalidResponse', 'PROTOCOL', 'PostHog returned an invalid insight page'); }
-    const page = decodePage(answer, input.offset, limit);
+    const page = decodePage(answer, offset, limit);
     if (!page) return pageFailure('invalidResponse', 'PROTOCOL', 'PostHog returned an invalid insight page');
     return newQueryBranch('listed', page);
   }

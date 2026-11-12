@@ -23,7 +23,6 @@ export const emptyCapturedEvent: CapturedEvent = CapturedEventSchema.parse({
 /** Go zero value for ListInsightsInput in scripted cases. */
 export const emptyListInsightsInput: ListInsightsInput = ListInsightsInputSchema.parse({
   "projectId": 0,
-  "offset": 0,
 });
 /** Go zero value for InsightMetadata in scripted cases. */
 export const emptyInsightMetadata: InsightMetadata = InsightMetadataSchema.parse({

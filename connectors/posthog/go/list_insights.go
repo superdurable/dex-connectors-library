@@ -20,8 +20,8 @@ import (
 type ListInsightsInput struct {
 	// ProjectID is the positive ID shown in the PostHog project URL or settings.
 	ProjectID int64 `json:"projectId"`
-	// Offset is the zero-based page offset.
-	Offset int `json:"offset"`
+	// Offset is the zero-based page offset; zero starts at the first insight.
+	Offset int `json:"offset,omitempty"`
 	// Limit is the maximum count from 1 through 100; zero uses 20.
 	Limit int `json:"limit,omitempty"`
 }
