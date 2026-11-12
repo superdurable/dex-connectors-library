@@ -75,11 +75,11 @@ cd slack-thread-approval-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/go/v1.5.1/connectors/slack/go/examples/thread-approval/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/go/v1.6.0/connectors/slack/go/examples/thread-approval/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/slack-thread-approval-e2e
-go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.5.1
+go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.6.0
 go mod tidy
 ```
 
@@ -316,7 +316,7 @@ the Dex Server address printed by the current dexcli process:
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/slack/go/examples/thread-approval@v1.5.1
+  github.com/superdurable/dex-connectors-library/connectors/slack/go/examples/thread-approval@v1.6.0
 ```
 
 Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The

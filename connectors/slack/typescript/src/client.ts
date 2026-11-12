@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
-import { GetThreadReplyOperation, GetWorkspaceIdentityOperation, ListChannelsOperation, ListThreadMessagesOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
+import { GetThreadReplyOperation, GetWorkspaceIdentityOperation, ListChannelMessagesOperation, ListChannelsOperation, ListThreadMessagesOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
 
 /** One Slack request exchange, including a status when body decoding failed. */
 export interface SlackExchange {
@@ -50,6 +50,7 @@ export class SlackClient {
   /** Bind the get workspace identity Query. */ getWorkspaceIdentity(): GetWorkspaceIdentityOperation { return new GetWorkspaceIdentityOperation(this); }
   /** Bind the list thread messages Query. */ listThreadMessages(): ListThreadMessagesOperation { return new ListThreadMessagesOperation(this); }
   /** Bind the get thread reply Query. */ getThreadReply(): GetThreadReplyOperation { return new GetThreadReplyOperation(this); }
+  /** Bind the list channel messages Query. */ listChannelMessages(): ListChannelMessagesOperation { return new ListChannelMessagesOperation(this); }
   /** Bind the post channel message Mutation. */ postChannelMessage(): PostChannelMessageOperation { return new PostChannelMessageOperation(this); }
   /** Bind the post thread reply Mutation. */ postThreadReply(): PostThreadReplyOperation { return new PostThreadReplyOperation(this); }
 

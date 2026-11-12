@@ -6,7 +6,7 @@ metadata:
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
   categories: [communication]
-  version: v1.5.1
+  version: v1.6.0
 spec:
   provider: slack
   languages:
@@ -16,9 +16,9 @@ spec:
       operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
     typescript:
-      version: v0.4.1
+      version: v0.5.0
       package: "@superdurable/connector-slack"
-      operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
+      operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply]
       triggers: []
   codegen:
     go:
@@ -359,6 +359,55 @@ spec:
           branch: defect
           description: The reply timestamp is missing, so no request is sent.
           failure: {kind: VALIDATION, message: The reply timestamp is required.}
+    - name: listChannelMessages
+      goName: ListChannelMessages
+      inputType: ListChannelMessagesInput
+      outputType: ListChannelMessagesOutput
+      kind: query
+      description: Read one bounded page of top-level messages from a channel's history, newest first.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The channel history page was read.}
+        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the channel history query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized channel history response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      agent:
+        exposed: true
+        # providerRejected follows Slack's definite refusal; invalidResponse is unlisted because corrected input cannot fix it.
+        branches: {providerRejected: rejected, defect: rejected}
+        description: "Read one page of recent top-level messages in a Slack channel, newest first; thread replies are not included, so use the Slack list_thread_messages tool for a thread. Supply the channel ID, optionally oldestTimestamp and latestTimestamp Slack message timestamps to bound the time range, isInclusive true to include messages at exactly those timestamps, a pageSize of 1 through 15 (blank or 0 reads 15), and the cursor from the previous page to continue while nextCursor is present. When the user names a channel, such as #general, first find its channelId with the Slack list_channels tool for the same connection. The app must be a member of the channel."
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: recentChannelHistory
+          branch: read
+          description: Three newest-first history pages with a message repeated across a page boundary, a channel join to filter out, and the bot's order post on the second page.
+          default: true
+          pages:
+            - messages:
+                - {channelId: C0123456789, timestamp: "1710000030.000900", userId: U0234567890, text: "Is order 1042 still on track?"}
+                - {channelId: C0123456789, timestamp: "1710000020.000800", userId: U0567890123, text: "<@U0567890123> has joined the channel"}
+              nextCursor: cursor-page-2
+            - messages:
+                - {channelId: C0123456789, timestamp: "1710000020.000800", userId: U0567890123, text: "<@U0567890123> has joined the channel"}
+                - {channelId: C0123456789, timestamp: "1710000010.000500", threadTimestamp: "1710000010.000500", userId: U0BOT123456, botId: B0123456789, text: "Order 1042 is ready for review.", replyCount: 2}
+              nextCursor: cursor-page-3
+            - messages:
+                - {channelId: C0123456789, timestamp: "1710000000.000100", userId: U0123456789, text: "Request approval for order 1042."}
+        - name: historyRejected
+          branch: providerRejected
+          description: Slack rejects the history read because the app is not a member of the channel.
+          failure: {kind: PROVIDER_REJECTION, message: Slack rejected the channel history read because the app is not in the channel.}
+        - name: malformedHistory
+          branch: invalidResponse
+          description: Slack returns an invalid channel history response.
+          failure: {kind: PROTOCOL, message: Slack returned an invalid channel history response.}
+        - name: historyPageSizeOutOfRange
+          branch: defect
+          description: The page size is above 15, so no request is sent.
+          failure: {kind: VALIDATION, message: "The channel history page size must be 1 through 15; blank or 0 reads 15."}
     - name: postChannelMessage
       goName: PostChannelMessage
       inputType: PostChannelMessageInput

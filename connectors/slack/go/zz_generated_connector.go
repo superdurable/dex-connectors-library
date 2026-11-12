@@ -59,6 +59,7 @@ type Operations interface {
 	GetWorkspaceIdentity() sdkgo.Query[GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput]
 	ListThreadMessages() sdkgo.Query[ListThreadMessagesInput, ListThreadMessagesOutput]
 	GetThreadReply() sdkgo.Query[GetThreadReplyInput, GetThreadReplyOutput]
+	ListChannelMessages() sdkgo.Query[ListChannelMessagesInput, ListChannelMessagesOutput]
 	PostChannelMessage() sdkgo.Mutation[PostChannelMessageInput, PostMessageOutput]
 	PostThreadReply() sdkgo.Mutation[PostThreadReplyInput, PostMessageOutput]
 }
@@ -76,6 +77,9 @@ func (operations clientOperations) ListThreadMessages() sdkgo.Query[ListThreadMe
 }
 func (operations clientOperations) GetThreadReply() sdkgo.Query[GetThreadReplyInput, GetThreadReplyOutput] {
 	return operations.client.GetThreadReply()
+}
+func (operations clientOperations) ListChannelMessages() sdkgo.Query[ListChannelMessagesInput, ListChannelMessagesOutput] {
+	return operations.client.ListChannelMessages()
 }
 func (operations clientOperations) PostChannelMessage() sdkgo.Mutation[PostChannelMessageInput, PostMessageOutput] {
 	return operations.client.PostChannelMessage()
@@ -672,6 +676,79 @@ func NewGetThreadReplyStep[IN any](config GetThreadReplyStepConfig[IN]) sdkgo.Qu
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetThreadReplyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListChannelMessagesBranchRead sdkgo.BranchID = "read"
+const ListChannelMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListChannelMessagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListChannelMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListChannelMessagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listChannelMessages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListChannelMessagesBranchRead, Description: "The channel history page was read."},
+		{ID: ListChannelMessagesBranchProviderRejected, Description: "Slack conclusively rejected the channel history query.", Optional: true},
+		{ID: ListChannelMessagesBranchInvalidResponse, Description: "Slack returned an invalid or oversized channel history response.", Optional: true},
+		{ID: ListChannelMessagesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListChannelMessagesResult = sdkgo.QueryResult[ListChannelMessagesOutput]
+
+type ListChannelMessagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                     `connector:"connectorId=slack"`
+	operationID                    struct{}                                                     `connector:"operationId=listChannelMessages"`
+	StepType                       string                                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                        `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                               `connector:"configurationUI"`
+	Connection                     Connection                                                   `connector:"connection"`
+	ConnectionName                 string                                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChannelMessagesInput                            `connector:"mapToOperationInput"`
+	Read                           sdkgo.Target[ListChannelMessagesResult]                      `connector:"branch=read"`
+	ProviderRejected               sdkgo.Target[ListChannelMessagesResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListChannelMessagesResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListChannelMessagesResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListChannelMessagesOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewListChannelMessagesStep[IN any](config ListChannelMessagesStepConfig[IN]) sdkgo.QueryStep[IN, ListChannelMessagesInput, ListChannelMessagesOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("slack connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChannelMessagesInput, ListChannelMessagesOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListChannelMessages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListChannelMessagesResult] {
+			branches := make([]sdkgo.BranchTarget[ListChannelMessagesResult], 0, 4)
+			if config.Read.HasStep() {
+				branches = append(branches, config.Read.BranchTarget(ListChannelMessagesBranchRead))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListChannelMessagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListChannelMessagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListChannelMessagesBranchDefect))
 			}
 			return branches
 		}(),

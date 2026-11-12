@@ -22,6 +22,7 @@ type Mock struct {
 	getWorkspaceIdentity *connectormock.Query[slack.GetWorkspaceIdentityInput, slack.GetWorkspaceIdentityOutput]
 	listThreadMessages   *connectormock.Query[slack.ListThreadMessagesInput, slack.ListThreadMessagesOutput]
 	getThreadReply       *connectormock.Query[slack.GetThreadReplyInput, slack.GetThreadReplyOutput]
+	listChannelMessages  *connectormock.Query[slack.ListChannelMessagesInput, slack.ListChannelMessagesOutput]
 	postChannelMessage   *connectormock.Mutation[slack.PostChannelMessageInput, slack.PostMessageOutput]
 	postThreadReply      *connectormock.Mutation[slack.PostThreadReplyInput, slack.PostMessageOutput]
 }
@@ -35,6 +36,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		getWorkspaceIdentity: connectormock.NewQuery[slack.GetWorkspaceIdentityInput, slack.GetWorkspaceIdentityOutput](t, slack.GetWorkspaceIdentityDefinition),
 		listThreadMessages:   connectormock.NewQuery[slack.ListThreadMessagesInput, slack.ListThreadMessagesOutput](t, slack.ListThreadMessagesDefinition),
 		getThreadReply:       connectormock.NewQuery[slack.GetThreadReplyInput, slack.GetThreadReplyOutput](t, slack.GetThreadReplyDefinition),
+		listChannelMessages:  connectormock.NewQuery[slack.ListChannelMessagesInput, slack.ListChannelMessagesOutput](t, slack.ListChannelMessagesDefinition),
 		postChannelMessage:   connectormock.NewMutation[slack.PostChannelMessageInput, slack.PostMessageOutput](t, slack.PostChannelMessageDefinition),
 		postThreadReply:      connectormock.NewMutation[slack.PostThreadReplyInput, slack.PostMessageOutput](t, slack.PostThreadReplyDefinition),
 	}
@@ -42,6 +44,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.getWorkspaceIdentity.Default(GetWorkspaceIdentityDefault())
 	mock.listThreadMessages.Default(ListThreadMessagesDefault())
 	mock.getThreadReply.Default(GetThreadReplyDefault())
+	mock.listChannelMessages.Default(ListChannelMessagesDefault())
 	mock.postChannelMessage.Default(PostChannelMessageDefault())
 	mock.postThreadReply.Default(PostThreadReplyDefault())
 	connection, err := slack.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "slack", Name: connectionName})
@@ -75,6 +78,11 @@ func (mock *Mock) GetThreadReply() *connectormock.Query[slack.GetThreadReplyInpu
 	return mock.getThreadReply
 }
 
+// ListChannelMessages returns the listChannelMessages script.
+func (mock *Mock) ListChannelMessages() *connectormock.Query[slack.ListChannelMessagesInput, slack.ListChannelMessagesOutput] {
+	return mock.listChannelMessages
+}
+
 // PostChannelMessage returns the postChannelMessage script.
 func (mock *Mock) PostChannelMessage() *connectormock.Mutation[slack.PostChannelMessageInput, slack.PostMessageOutput] {
 	return mock.postChannelMessage
@@ -98,6 +106,9 @@ func (operations mockOperations) ListThreadMessages() sdkgo.Query[slack.ListThre
 }
 func (operations mockOperations) GetThreadReply() sdkgo.Query[slack.GetThreadReplyInput, slack.GetThreadReplyOutput] {
 	return operations.mock.getThreadReply
+}
+func (operations mockOperations) ListChannelMessages() sdkgo.Query[slack.ListChannelMessagesInput, slack.ListChannelMessagesOutput] {
+	return operations.mock.listChannelMessages
 }
 func (operations mockOperations) PostChannelMessage() sdkgo.Mutation[slack.PostChannelMessageInput, slack.PostMessageOutput] {
 	return operations.mock.postChannelMessage
@@ -341,6 +352,65 @@ func GetThreadReplyMissingReplyTimestamp() connectormock.Case[slack.GetThreadRep
 // GetThreadReplyDefault is the manifest default, approvalReply, which New installs.
 func GetThreadReplyDefault() connectormock.Case[slack.GetThreadReplyOutput] {
 	return GetThreadReplyApprovalReply()
+}
+
+// ListChannelMessagesRead selects the read branch: The channel history page was read.
+func ListChannelMessagesRead(value slack.ListChannelMessagesOutput, failure *sdkgo.Failure) connectormock.Case[slack.ListChannelMessagesOutput] {
+	return connectormock.Branch(slack.ListChannelMessagesBranchRead, value, failure)
+}
+
+// ListChannelMessagesProviderRejected selects the providerRejected branch: Slack conclusively rejected the channel history query.
+func ListChannelMessagesProviderRejected(value slack.ListChannelMessagesOutput, failure *sdkgo.Failure) connectormock.Case[slack.ListChannelMessagesOutput] {
+	return connectormock.Branch(slack.ListChannelMessagesBranchProviderRejected, value, failure)
+}
+
+// ListChannelMessagesInvalidResponse selects the invalidResponse branch: Slack returned an invalid or oversized channel history response.
+func ListChannelMessagesInvalidResponse(value slack.ListChannelMessagesOutput, failure *sdkgo.Failure) connectormock.Case[slack.ListChannelMessagesOutput] {
+	return connectormock.Branch(slack.ListChannelMessagesBranchInvalidResponse, value, failure)
+}
+
+// ListChannelMessagesDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func ListChannelMessagesDefect(value slack.ListChannelMessagesOutput, failure *sdkgo.Failure) connectormock.Case[slack.ListChannelMessagesOutput] {
+	return connectormock.Branch(slack.ListChannelMessagesBranchDefect, value, failure)
+}
+
+// ListChannelMessagesRetry asks Dex to retry the listChannelMessages Step, after the delay when it is positive.
+func ListChannelMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[slack.ListChannelMessagesOutput] {
+	return connectormock.Retry[slack.ListChannelMessagesOutput](failure, after)
+}
+
+// ListChannelMessagesRecentChannelHistory is the manifest mock recentChannelHistory: Three newest-first history pages with a message repeated across a page boundary, a channel join to filter out, and the bot's order post on the second page.
+func ListChannelMessagesRecentChannelHistory() connectormock.Case[slack.ListChannelMessagesOutput] {
+	pages := []slack.ListChannelMessagesOutput{
+		connectormock.MustDecodeOutput[slack.ListChannelMessagesOutput](`{"messages":[{"channelId":"C0123456789","timestamp":"1710000030.000900","userId":"U0234567890","text":"Is order 1042 still on track?"},{"channelId":"C0123456789","timestamp":"1710000020.000800","userId":"U0567890123","text":"\u003c@U0567890123\u003e has joined the channel"}],"nextCursor":"cursor-page-2"}`),
+		connectormock.MustDecodeOutput[slack.ListChannelMessagesOutput](`{"messages":[{"channelId":"C0123456789","timestamp":"1710000020.000800","userId":"U0567890123","text":"\u003c@U0567890123\u003e has joined the channel"},{"channelId":"C0123456789","timestamp":"1710000010.000500","threadTimestamp":"1710000010.000500","userId":"U0BOT123456","botId":"B0123456789","text":"Order 1042 is ready for review.","replyCount":2}],"nextCursor":"cursor-page-3"}`),
+		connectormock.MustDecodeOutput[slack.ListChannelMessagesOutput](`{"messages":[{"channelId":"C0123456789","timestamp":"1710000000.000100","userId":"U0123456789","text":"Request approval for order 1042."}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[slack.ListChannelMessagesInput]("cursor", "nextCursor", pages)
+	return connectormock.Paged(slack.ListChannelMessagesBranchRead, pageNumber, pages...)
+}
+
+// ListChannelMessagesHistoryRejected is the manifest mock historyRejected: Slack rejects the history read because the app is not a member of the channel.
+func ListChannelMessagesHistoryRejected() connectormock.Case[slack.ListChannelMessagesOutput] {
+	var value slack.ListChannelMessagesOutput
+	return connectormock.Branch(slack.ListChannelMessagesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Slack rejected the channel history read because the app is not in the channel."})
+}
+
+// ListChannelMessagesMalformedHistory is the manifest mock malformedHistory: Slack returns an invalid channel history response.
+func ListChannelMessagesMalformedHistory() connectormock.Case[slack.ListChannelMessagesOutput] {
+	var value slack.ListChannelMessagesOutput
+	return connectormock.Branch(slack.ListChannelMessagesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Slack returned an invalid channel history response."})
+}
+
+// ListChannelMessagesHistoryPageSizeOutOfRange is the manifest mock historyPageSizeOutOfRange: The page size is above 15, so no request is sent.
+func ListChannelMessagesHistoryPageSizeOutOfRange() connectormock.Case[slack.ListChannelMessagesOutput] {
+	var value slack.ListChannelMessagesOutput
+	return connectormock.Branch(slack.ListChannelMessagesBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "The channel history page size must be 1 through 15; blank or 0 reads 15."})
+}
+
+// ListChannelMessagesDefault is the manifest default, recentChannelHistory, which New installs.
+func ListChannelMessagesDefault() connectormock.Case[slack.ListChannelMessagesOutput] {
+	return ListChannelMessagesRecentChannelHistory()
 }
 
 // PostChannelMessageSent selects the sent branch: Slack accepted the message.

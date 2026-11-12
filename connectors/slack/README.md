@@ -1,41 +1,47 @@
 # Slack Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.5.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.6.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
 
 This module finds Slack channels, identifies the connected workspace, reads
-and writes Slack channel threads, and receives Slack Events
+recent channel history, reads and writes Slack channel threads, and receives Slack Events
 API messages through Socket Mode, or from a host that relays them for a shared
 connection (see [Relayed events](#relayed-events)). It supports public and
 private channels, not direct messages.
 
 ## Agent tools
 
-The Python and TypeScript packages offer all six operations to Dex agent
-hosts. Both posts recommend approval and claim no safe retry, so a host runs
-each post once. The two discovery reads need no approval:
+The Go and TypeScript packages offer all seven operations to Dex agent hosts,
+and the Python package offers the six other than `listChannelMessages`. Both
+posts recommend approval and claim no safe retry, so a host runs each post
+once. The reads need no approval:
 
 - `slack_list_channels` (`listChannels`) finds channel IDs from a name such as
   `#general`. The post tools tell the model to look a channel up with it
   instead of asking the user for a raw channel ID.
 - `slack_get_workspace_identity` (`getWorkspaceIdentity`) names the workspace
   and bot that the connection posts as.
+- `slack_list_channel_messages` (`listChannelMessages`) reads one page of a
+  channel's recent top-level messages.
 
 Neither post resolves channel names itself; it still takes an exact channel ID.
 
 From Go v1.4.0, `Connection.AgentTools()` binds the exposed operations to a
 connection as `sdkgo.AgentTool` values, and `ExposedAgentTools()` lists their
-metadata; v1.5.0 adds the two discovery reads. A `slackmock` connection returns
+metadata; v1.5.0 adds the two discovery reads, and v1.6.0 adds
+`listChannelMessages`. A `slackmock` connection returns
 the same tools for host tests.
 
 ## TypeScript package
 
-`@superdurable/connector-slack@0.4.1` implements the channel discovery,
-thread read, and message post operations for TypeScript Dex Flows. Socket Mode Triggers remain
+`@superdurable/connector-slack@0.5.0` implements the channel discovery,
+channel history and thread reads, and message post operations for TypeScript Dex Flows. Socket Mode Triggers remain
 Go-only. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
-uses the static `slack-thread-reader` connection name and obtains OAuth bot and
-user tokens through Dex project credentials. The TypeScript package uses
+uses the static `slack-thread-reader` connection name, and the
+[channel history example](typescript/examples/list-channel-messages/README.md)
+uses `slack-channel-history-reader`; both obtain OAuth bot and user tokens
+through Dex project credentials. The TypeScript package uses
 generated manifest refresh declarations for token rotation. Live Slack OAuth
 and provider behavior have not been verified for this package.
 
@@ -286,6 +292,21 @@ no `binding`. Their runner records go to `slog.Default()`, so call
   URL, the Enterprise Grid ID when present, and the bot user ID, user name,
   and bot ID. It needs no scope.
 - `ListThreadMessages` returns one page and a next cursor. Page size is 1–15.
+- `ListChannelMessages` reads one page of a channel's top-level messages from
+  `conversations.history`, newest first, with the bot token and the existing
+  bot `channels:history` and `groups:history` scopes, so it reads every channel
+  the app can post to. `oldestTimestamp` and `latestTimestamp` bound the range
+  by Slack message timestamp, `isInclusive` keeps messages at exactly those
+  timestamps, `pageSize` is 1 through 15 (blank or 0 reads 15), and `cursor` continues from
+  `nextCursor`. Each message carries its timestamp, poster user and bot IDs,
+  text, and, for a thread parent, its thread timestamp and reply count. Thread
+  replies appear only when also sent to the channel. Slack limits
+  non-Marketplace apps installed since May 2025 to 15 messages per page and one
+  history request per minute, so its 429 responses retry after `Retry-After`.
+  An application whose `PostChannelMessage` selected `uncertain` can search
+  this history for marker text in messages its own bot posted, matching the
+  `GetWorkspaceIdentity` bot ID or bot user ID, before posting again; see
+  [`examples/channel-marker-search`](go/examples/channel-marker-search).
 - `GetThreadReply` reads one reply by timestamp.
 - `PostChannelMessage` creates a top-level channel message.
 - `PostThreadReply` replies to an existing thread.
@@ -294,7 +315,8 @@ Every query classifies the HTTP status before decoding the body, because Slack
 may answer 429 or 5xx without a JSON body. HTTP 429 and 5xx return Retry and
 honor `Retry-After` when present; only then does an oversized or malformed body
 select `invalidResponse`. Go v1.5.1 and the Python and TypeScript v0.4.1
-packages apply this to `ListThreadMessages` and `GetThreadReply`.
+packages apply this to `ListThreadMessages` and `GetThreadReply`; Go v1.6.0
+and TypeScript v0.5.0 also apply it to `ListChannelMessages`.
 
 Posting sends the stable Dex Call ID as Slack `client_msg_id`. [Slack's
 `chat.postMessage` reference](https://docs.slack.dev/reference/methods/chat.postMessage/)
@@ -369,6 +391,8 @@ invalid responses, and uncertain post outcomes.
 `ListThreadMessages`, a typed reply RPC, and `PostThreadReply` in one runnable
 Flow. [`examples/channel-lookup`](go/examples/channel-lookup) reads the
 workspace identity and one filtered channel page.
+[`examples/channel-marker-search`](go/examples/channel-marker-search) pages
+through recent channel history until it finds the bot's own marker post.
 
 ## Python package
 
