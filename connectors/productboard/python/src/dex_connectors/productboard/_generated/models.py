@@ -17,7 +17,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 @dataclass(frozen=True, slots=True)
 class ListFeaturesInput:
     # PageCursor is blank for the first page or a previous NextCursor value.
-    page_cursor: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageCursor'})
+    page_cursor: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageCursor', 'dex_json_omit_default': True})
 
 
 setattr(ListFeaturesInput, '__module__', 'dex_connectors.productboard.models')

@@ -1,10 +1,10 @@
 {
   "connectorId": "productboard",
-  "releaseTag": "connectors/productboard/go/v0.1.0",
+  "releaseTag": "connectors/productboard/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-productboard",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -50,9 +50,6 @@
             "type": "string"
           }
         },
-        "required": [
-          "pageCursor"
-        ],
         "type": "object"
       }
     }

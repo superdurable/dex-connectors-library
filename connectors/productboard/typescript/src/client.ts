@@ -83,9 +83,10 @@ export class ListFeaturesOperation implements Query<ListFeaturesInput, FeaturesP
   /** Return the generated Query contract. */ definition(): QueryDefinition { return ListFeaturesDefinition; }
   /** Classify provider outcomes consistently with the Go implementation. */
   async invoke(call: Call, input: ListFeaturesInput): Promise<QueryAttempt<FeaturesPage>> {
-    if (!isValidCursor(input?.pageCursor))
+    const pageCursor = input?.pageCursor ?? '';
+    if (!input || !isValidCursor(pageCursor))
       return terminal('defect', 'VALIDATION', 'page cursor contains invalid characters or exceeds 2048 bytes');
-    const exchange = await this.client.get(call, input.pageCursor);
+    const exchange = await this.client.get(call, pageCursor);
     if (exchange.error === 'credential') return terminal('defect', 'AUTHENTICATION', 'Productboard credentials are unavailable or invalid');
     if (exchange.error === 'request') return retry('TRANSPORT', 'Productboard request failed');
     if (exchange.status === 429) return retry('RATE_LIMIT', 'Productboard rate limited the request', exchange.retryAfterMs);

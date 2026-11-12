@@ -21,7 +21,7 @@ import (
 // ListFeaturesInput selects a page by its opaque, non-secret cursor.
 type ListFeaturesInput struct {
 	// PageCursor is blank for the first page or a previous NextCursor value.
-	PageCursor string `json:"pageCursor"`
+	PageCursor string `json:"pageCursor,omitempty"`
 }
 
 // FeatureMetadata contains only the feature ID and name.
