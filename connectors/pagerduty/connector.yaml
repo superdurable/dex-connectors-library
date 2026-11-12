@@ -5,16 +5,16 @@ metadata:
   displayName: PagerDuty
   description: Read and act through the PagerDuty public API.
   company: PagerDuty
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: pagerduty
   languages:
     python:
-      version: v0.2.0
+      version: v0.3.0
       operations: [listIncidents, getIncident]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-pagerduty'
       operations: [listIncidents, getIncident]
       triggers: []

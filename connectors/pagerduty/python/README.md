@@ -1,6 +1,6 @@
 # PagerDuty connector for Python
 
-Install with `pip install dex-connector-pagerduty==0.2.0`. The package requires
+Install with `pip install dex-connector-pagerduty==0.3.0`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest Queries `listIncidents` and `getIncident` with the same branches,
 defaults, and failure classification as the Go module.
@@ -12,8 +12,8 @@ defaults, and failure classification as the Go module.
 | `listIncidents` | `new_list_incidents_step` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `getIncident` | `new_get_incident_step` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-`listIncidents` sends `limit` (zero means 25, at most 100) and a nonnegative
-`offset`. `getIncident` unwraps PagerDuty's `incident` envelope and selects
+`listIncidents` sends `limit` (zero or omitted means 25, at most 100) and a
+nonnegative `offset` (zero or omitted starts at the first incident). `getIncident` unwraps PagerDuty's `incident` envelope and selects
 `notFound` for HTTP 404. 408, 429, 5xx, and transport failures retry; other
 non-200 responses select `providerRejected`.
 

@@ -29,7 +29,7 @@ mkdir -p /tmp/pagerduty-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/pagerduty/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/pagerduty/go \
-  --version v0.2.0 --tag connectors/pagerduty/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/pagerduty/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/pagerduty-release/connector-release.json \
   --digest-output /tmp/pagerduty-release/connector-release.json.sha256

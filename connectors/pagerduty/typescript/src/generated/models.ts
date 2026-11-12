@@ -47,10 +47,10 @@ export type CredentialSource = CredentialProvider<Credentials>;
 
 /** ListIncidentsInput chooses one incident page. */
 export interface ListIncidentsInput {
-  /** Limit is the maximum number of incidents requested. */
-  "limit": number;
-  /** Offset is the zero-based page offset. */
-  "offset": number;
+  /** Limit is the maximum number of incidents requested, from 1 through 100; zero selects 25. */
+  "limit"?: number | undefined;
+  /** Offset is the zero-based page offset; zero starts at the first incident. */
+  "offset"?: number | undefined;
 }
 /** Incident contains selected incident fields. */
 export interface Incident {
@@ -80,8 +80,8 @@ export interface GetIncidentInput {
 
 /** Runtime validator for ListIncidentsInput. */
 export const ListIncidentsInputSchema = z.strictObject({
-  "limit": z.number().int(),
-  "offset": z.number().int(),
+  "limit": z.number().int().optional(),
+  "offset": z.number().int().optional(),
 }) satisfies z.ZodType<ListIncidentsInput>;
 
 /** Runtime validator for Incident. */

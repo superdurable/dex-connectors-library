@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-pagerduty",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "PagerDuty incident queries for Dex Flows",
   "license": "MIT",
   "repository": {
