@@ -17,7 +17,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 @dataclass(frozen=True, slots=True)
 class ListAccountsInput:
     # PageToken is Google's opaque cursor; blank selects the first page.
-    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken'})
+    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
 
 
 setattr(ListAccountsInput, '__module__', 'dex_connectors.google_tag_manager.models')
@@ -58,7 +58,7 @@ class ListContainersInput:
     # AccountID is the numeric account ID from listAccounts.
     account_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'accountId'})
     # PageToken is Google's opaque cursor; blank selects the first page.
-    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken'})
+    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
 
 
 setattr(ListContainersInput, '__module__', 'dex_connectors.google_tag_manager.models')
@@ -105,7 +105,7 @@ class ListTagsInput:
     # WorkspaceID is the numeric Tag Manager workspace ID.
     workspace_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'workspaceId'})
     # PageToken is Google's opaque cursor; blank selects the first page.
-    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken'})
+    page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
 
 
 setattr(ListTagsInput, '__module__', 'dex_connectors.google_tag_manager.models')

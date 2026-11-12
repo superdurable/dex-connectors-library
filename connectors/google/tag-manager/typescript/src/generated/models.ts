@@ -83,7 +83,7 @@ export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 /** ListAccountsInput selects one page of accounts visible to the connected user. */
 export interface ListAccountsInput {
   /** PageToken is Google's opaque cursor; blank selects the first page. */
-  "pageToken": string;
+  "pageToken"?: string | undefined;
 }
 /** TagManagerAccount is the stable account path and display name. */
 export interface TagManagerAccount {
@@ -104,7 +104,7 @@ export interface ListContainersInput {
   /** AccountID is the numeric account ID from listAccounts. */
   "accountId": string;
   /** PageToken is Google's opaque cursor; blank selects the first page. */
-  "pageToken": string;
+  "pageToken"?: string | undefined;
 }
 /** TagManagerContainer is the stable container path and display identity. */
 export interface TagManagerContainer {
@@ -131,7 +131,7 @@ export interface ListTagsInput {
   /** WorkspaceID is the numeric Tag Manager workspace ID. */
   "workspaceId": string;
   /** PageToken is Google's opaque cursor; blank selects the first page. */
-  "pageToken": string;
+  "pageToken"?: string | undefined;
 }
 /** TagManagerTag contains a tag's stable path, display name, and type. */
 export interface TagManagerTag {
@@ -152,7 +152,7 @@ export interface TagsPage {
 
 /** Runtime validator for ListAccountsInput. */
 export const ListAccountsInputSchema = z.strictObject({
-  "pageToken": z.string(),
+  "pageToken": z.string().optional(),
 }) satisfies z.ZodType<ListAccountsInput>;
 
 /** Runtime validator for TagManagerAccount. */
@@ -170,7 +170,7 @@ export const AccountsPageSchema = z.strictObject({
 /** Runtime validator for ListContainersInput. */
 export const ListContainersInputSchema = z.strictObject({
   "accountId": z.string(),
-  "pageToken": z.string(),
+  "pageToken": z.string().optional(),
 }) satisfies z.ZodType<ListContainersInput>;
 
 /** Runtime validator for TagManagerContainer. */
@@ -191,7 +191,7 @@ export const ListTagsInputSchema = z.strictObject({
   "accountId": z.string(),
   "containerId": z.string(),
   "workspaceId": z.string(),
-  "pageToken": z.string(),
+  "pageToken": z.string().optional(),
 }) satisfies z.ZodType<ListTagsInput>;
 
 /** Runtime validator for TagManagerTag. */
