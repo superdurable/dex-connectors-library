@@ -42,7 +42,9 @@ export class IncidentReviewFlow implements Flow<ListIncidentsInput> {
 export class PrepareIncidentReview implements Step<ListIncidentsInput> {
   /** Stable Step identity. */ getStepType(): string { return 'PreparePagerDutyIncidentReview'; }
   /** Start the provider query. */ execute(_context: Context, input: ListIncidentsInput): StepDecision {
-    const { limit = 25, offset = 0 } = input;
+    // Zero or omitted limit selects the connector default of 25.
+    const limit = input.limit || 25;
+    const offset = input.offset ?? 0;
     if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0) return forceFail('Invalid incident window');
     return goTo(new StepRef('ListPagerDutyIncidents'), input);
   }
