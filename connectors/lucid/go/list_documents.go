@@ -21,7 +21,7 @@ import (
 // ListDocumentsInput selects a page by its opaque, non-secret token.
 type ListDocumentsInput struct {
 	// PageToken is blank for the first page or a previous NextPageToken value.
-	PageToken string `json:"pageToken"`
+	PageToken string `json:"pageToken,omitempty"`
 }
 
 // DocumentMetadata contains only the document ID and title.

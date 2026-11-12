@@ -64,6 +64,63 @@
       "operation": "listDocuments"
     },
     {
+      "callId": "6e3228dc-4515-5e47-8fb1-9ad20047e1c6",
+      "exchanges": [
+        {
+          "body": "[{\"documentId\":\"110808fd-4553-4316-bccf-4f25ff59a532\",\"title\":\"Example document\",\"owner\":{\"name\":\"private\"}}]",
+          "headers": {
+            "Link": "\u003chttps://api.lucid.co/v1/documents/search?pageSize=200\u0026pageToken=cursor-2\u003e; rel=\"next\""
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/search",
+          "query": {
+            "pageSize": [
+              "200"
+            ]
+          },
+          "requestBody": {
+            "excludeTrashed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "documents": [
+            {
+              "id": "110808fd-4553-4316-bccf-4f25ff59a532",
+              "title": "Example document"
+            }
+          ],
+          "nextPageToken": "cursor-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDocuments-firstPage",
+      "operation": "listDocuments"
+    },
+    {
       "callId": "dfaaa3b4-a799-5780-95c1-1502528b8cf1",
       "exchanges": [
         {

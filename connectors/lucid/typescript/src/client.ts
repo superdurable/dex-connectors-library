@@ -84,9 +84,10 @@ export class ListDocumentsOperation implements Query<ListDocumentsInput, Documen
   /** Return the generated Query contract. */ definition(): QueryDefinition { return ListDocumentsDefinition; }
   /** Classify provider outcomes consistently with the Go implementation. */
   async invoke(call: Call, input: ListDocumentsInput): Promise<QueryAttempt<DocumentsPage>> {
-    if (!isValidCursor(input?.pageToken))
+    const pageToken = input?.pageToken ?? '';
+    if (!input || !isValidCursor(pageToken))
       return terminal('defect', 'VALIDATION', 'page token contains invalid characters or exceeds 2048 bytes');
-    const exchange = await this.client.get(call, input.pageToken);
+    const exchange = await this.client.get(call, pageToken);
     if (exchange.error === 'credential') return terminal('defect', 'AUTHENTICATION', 'Lucid credentials are unavailable or invalid');
     if (exchange.error === 'request') return retry('TRANSPORT', 'Lucid request failed');
     if (exchange.status === 429) return retry('RATE_LIMIT', 'Lucid rate limited the request', exchange.retryAfterMs);
