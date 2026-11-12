@@ -17,7 +17,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 @dataclass(frozen=True, slots=True)
 class ListFormsInput:
     # Offset is the zero-based form offset; zero starts the first page.
-    offset: int = 0
+    offset: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
     # Limit is the maximum form count; zero defaults to 20.
     limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 

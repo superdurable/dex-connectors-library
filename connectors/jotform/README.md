@@ -1,6 +1,6 @@
 # Jotform connector
 
-The Go, Python, and TypeScript connectors list form IDs, titles, and statuses with `listForms` and retrieves one submission's ID, form ID, status, and creation timestamp with `getSubmission`. Submission answers are deliberately excluded because forms can collect secrets and personal data. The API key is sent in the `APIKEY` request header, never in the URL, Flow input, or result.
+The Go, Python, and TypeScript connectors list form IDs, titles, and statuses with `listForms` (an omitted or zero `offset` starts at the first form and an omitted or zero `limit` reads 20) and retrieves one submission's ID, form ID, status, and creation timestamp with `getSubmission`. Submission answers are deliberately excluded because forms can collect secrets and personal data. The API key is sent in the `APIKEY` request header, never in the URL, Flow input, or result.
 
 Create a read-only key in [Jotform My Account > API](https://www.jotform.com/myaccount/api), copy it into the Dex Web secret field, and revoke it there when retired. Use the API base URL for the account's [US, EU, or HIPAA region](https://api.jotform.com/docs/). Blank `baseUrl` uses the US default; blank timeout and response-size fields use their displayed defaults. The [Go](go/examples/form-inspection/README.md), [Python](python/examples/form_inspection/README.md), and [TypeScript](typescript/examples/form-inspection/README.md) form-inspection Flows are runnable consumers.
 

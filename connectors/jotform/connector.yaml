@@ -5,16 +5,16 @@ metadata:
   displayName: Jotform
   description: List forms and inspect submission metadata through the Jotform API.
   company: Jotform
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: jotform
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listForms, getSubmission]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-jotform'
       operations: [listForms, getSubmission]
       triggers: []

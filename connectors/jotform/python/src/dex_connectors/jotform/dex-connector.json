@@ -1,10 +1,10 @@
 {
   "connectorId": "jotform",
-  "releaseTag": "connectors/jotform/go/v0.1.0",
+  "releaseTag": "connectors/jotform/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-jotform",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -54,9 +54,6 @@
             "type": "integer"
           }
         },
-        "required": [
-          "offset"
-        ],
         "type": "object"
       }
     },
