@@ -36,6 +36,71 @@ class LegacyConformanceSelectionTest(unittest.TestCase):
                 connector_conformance.run_connector(connector, ["connectors/legacy/python/client.py"])
 
 
+class MutationSelfTestSelectionTest(unittest.TestCase):
+    """Select only connectors whose conformance-relevant inputs changed."""
+
+    def select(self, paths: list[str], behavior_changed_manifests: set[str] = frozenset()) -> tuple[list[str], list]:
+        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), \
+                patch.object(connector_conformance.subprocess, "check_output") as check_output:
+            root = Path(directory)
+            for name in ("alpha", "beta", "gamma"):
+                (root / "connectors" / name / "go").mkdir(parents=True)
+                (root / "connectors" / name / "connector.yaml").write_text("metadata: {}\n")
+                (root / "conformance/connectors" / name).mkdir(parents=True)
+                (root / "conformance/connectors" / name / "scenarios.json").write_text("{}")
+            check_output.side_effect = lambda command, **_: json.dumps(
+                {path: path in behavior_changed_manifests for path in command[6:]})
+            selected = connector_conformance.mutation_self_test_connectors(paths, "base-sha", "HEAD")
+            return [str(connector.relative_to(root)) for connector in selected], check_output.call_args_list
+
+    def test_display_metadata_only_manifest_change_selects_nothing(self) -> None:
+        selected, calls = self.select(["connectors/alpha/connector.yaml", "connectors/beta/connector.yaml",
+                                       "connectors/alpha/README.md", "connectors/beta/logo.svg",
+                                       "connectors/beta/ui/index.html", "site/src/App.tsx"])
+        self.assertEqual([], selected)
+        self.assertEqual(1, len(calls))
+        self.assertEqual(["go", "run", "./cmd/connectorctl", "conformance-manifest-changes", "base-sha", "HEAD",
+                          "connectors/alpha/connector.yaml", "connectors/beta/connector.yaml"], calls[0].args[0])
+
+    def test_behavior_affecting_manifest_change_selects_connector(self) -> None:
+        selected, _ = self.select(["connectors/alpha/connector.yaml", "connectors/beta/connector.yaml"],
+                                  {"connectors/beta/connector.yaml"})
+        self.assertEqual(["connectors/beta"], selected)
+
+    def test_nested_ui_directory_in_package_selects_connector(self) -> None:
+        selected, calls = self.select(["connectors/alpha/go/ui/x.go"])
+        self.assertEqual(["connectors/alpha"], selected)
+        self.assertEqual([], calls)
+
+    def test_fixture_change_selects_connector(self) -> None:
+        selected, calls = self.select(["conformance/connectors/gamma/scenarios.json"])
+        self.assertEqual(["connectors/gamma"], selected)
+        self.assertEqual([], calls)
+
+    def test_package_source_change_selects_connector_without_manifest_comparison(self) -> None:
+        selected, calls = self.select(["connectors/alpha/python/src/client.py", "connectors/beta/go/client.go",
+                                       "connectors/gamma/typescript/test/conformance.test.ts",
+                                       "connectors/alpha/connector.yaml"])
+        self.assertEqual(["connectors/alpha", "connectors/beta", "connectors/gamma"], selected)
+        self.assertEqual([], calls)
+
+    def test_shared_runner_change_selects_every_fixture(self) -> None:
+        for shared_path in ("script/connector_conformance.py", "conformance/runners/python/runner.py",
+                            "cmd/connectorctl/conformance_operations.go",
+                            "cmd/connectorctl/conformance_manifest_changes.go"):
+            with self.subTest(path=shared_path):
+                selected, calls = self.select([shared_path, "connectors/alpha/connector.yaml"])
+                self.assertEqual(["connectors/alpha", "connectors/beta", "connectors/gamma"], selected)
+                self.assertEqual([], calls)
+
+    def test_sdk_change_keeps_existing_selection(self) -> None:
+        paths = ["sdkpython/src/dex_connector_sdk/conformance.py", "sdkts/src/index.ts", "sdkgo/step.go",
+                 "cmd/connectorctl/main.go"]
+        selected, calls = self.select(paths)
+        self.assertEqual([], selected)
+        self.assertEqual([], calls)
+
+
 class NativeWireExemptionTest(unittest.TestCase):
     def test_reviewed_native_connectors_are_exempt_without_fixtures(self) -> None:
         exemptions = connector_conformance.conformance_exemptions()

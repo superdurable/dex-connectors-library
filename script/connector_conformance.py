@@ -19,6 +19,13 @@ NATIVE_WIRE_CONNECTORS = frozenset({
     "connectors/postgresql", "connectors/mysql", "connectors/mongodb", "connectors/microsoft/sql-server",
     "connectors/superdurable/email",
 })
+# Connector files that no conformance runner builds, reads, or replays.
+MUTATION_IRRELEVANT_CONNECTOR_FILES = frozenset({"README.md", "logo.svg"})
+MUTATION_IRRELEVANT_CONNECTOR_DIRECTORIES = ("ui/",)
+# Selection and operation declarations the self-test depends on beyond the shared runners.
+MUTATION_SHARED_SELECTION_FILES = frozenset({
+    "cmd/connectorctl/conformance_operations.go", "cmd/connectorctl/conformance_manifest_changes.go",
+})
 _CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$")
 
 
@@ -125,13 +132,15 @@ def connector_for_path(path: str) -> Path | None:
     return None
 
 
+def merge_base_revision(base: str, head: str) -> str:
+    """Return the merge base that changed paths and manifest comparisons start from."""
+    return subprocess.check_output(["git", "merge-base", base, head], cwd=ROOT, text=True).strip()
+
+
 def changed_paths(base: str, head: str) -> list[str]:
     """Return paths changed since the merge base, including fixture additions."""
-    merge_base = subprocess.check_output(
-        ["git", "merge-base", base, head], cwd=ROOT, text=True
-    ).strip()
     names = subprocess.check_output(
-        ["git", "diff", "--name-only", "--no-renames", "-z", merge_base, head], cwd=ROOT
+        ["git", "diff", "--name-only", "--no-renames", "-z", merge_base_revision(base, head), head], cwd=ROOT
     )
     return [raw.decode() for raw in names.split(b"\0") if raw]
 
@@ -140,10 +149,44 @@ def changed_connectors(paths: list[str]) -> list[Path]:
     """Select directly changed connectors and fixtures when shared runners change."""
     connectors = {connector for path in paths
                   if (connector := connector_for_path(path)) is not None}
-    if any(path.startswith("conformance/runners/") or path == "script/connector_conformance.py"
-           for path in paths):
+    if has_shared_runner_change(paths):
         connectors.update(ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
                           for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json"))
+    return sorted(connectors)
+
+
+def has_shared_runner_change(paths: list[str]) -> bool:
+    """Report whether a shared conformance runner changed, which affects every fixture."""
+    return any(path.startswith("conformance/runners/") or path == "script/connector_conformance.py"
+               for path in paths)
+
+
+def mutation_self_test_connectors(paths: list[str], base_revision: str, head_revision: str) -> list[Path]:
+    """Select connectors whose conformance inputs changed; display-only manifest metadata edits select none."""
+    if has_shared_runner_change(paths) or any(path in MUTATION_SHARED_SELECTION_FILES for path in paths):
+        return sorted(ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
+                      for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json"))
+    connectors: set[Path] = set()
+    manifest_paths: dict[str, Path] = {}
+    for path in paths:
+        connector = connector_for_path(path)
+        if connector is None:
+            continue
+        connector_relative_path = str(connector.relative_to(ROOT))
+        file_in_connector = path.removeprefix(connector_relative_path + "/")
+        if file_in_connector == "connector.yaml":
+            manifest_paths[path] = connector
+        elif not (file_in_connector in MUTATION_IRRELEVANT_CONNECTOR_FILES
+                  or file_in_connector.startswith(MUTATION_IRRELEVANT_CONNECTOR_DIRECTORIES)):
+            connectors.add(connector)
+    pending_manifests = sorted(path for path, connector in manifest_paths.items() if connector not in connectors)
+    if pending_manifests:
+        changed_manifests = json.loads(subprocess.check_output(
+            ["go", "run", "./cmd/connectorctl", "conformance-manifest-changes", base_revision, head_revision,
+             *pending_manifests],
+            cwd=ROOT, env={**os.environ, "GOWORK": "off"}, text=True,
+        ))
+        connectors.update(manifest_paths[path] for path in pending_manifests if changed_manifests[path])
     return sorted(connectors)
 
 
@@ -520,7 +563,9 @@ def main() -> None:
         if arguments.connector:
             connectors = sorted({(ROOT / path).resolve() for path in arguments.connector})
         elif arguments.base:
-            connectors = changed_connectors(changed_paths(arguments.base, arguments.head))
+            connectors = mutation_self_test_connectors(
+                changed_paths(arguments.base, arguments.head),
+                merge_base_revision(arguments.base, arguments.head), arguments.head)
         else:
             connectors = sorted(
                 ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
