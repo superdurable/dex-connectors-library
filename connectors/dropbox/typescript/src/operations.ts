@@ -95,9 +95,10 @@ export class ListFolderOperation implements Query<ListFolderInput, FolderPage> {
   /** List one folder page. */
   async invoke(call: Call, input: ListFolderInput): Promise<QueryAttempt<FolderPage>> {
     input = ListFolderInputSchema.parse(input);
-    if (!validPath(input.path, true) || !Number.isInteger(input.limit) || input.limit < 1 || input.limit > 2000)
+    const path = input.path ?? '';
+    if (!validPath(path, true) || !Number.isInteger(input.limit) || input.limit < 1 || input.limit > 2000)
       return queryFailure('listFolder', 'defect', 'VALIDATION', 'folder path or page limit is invalid', emptyFolderPage);
-    const exchange = await this.client.postJSON(call, '/2/files/list_folder', { path: input.path, limit: input.limit });
+    const exchange = await this.client.postJSON(call, '/2/files/list_folder', { path, limit: input.limit });
     const decision = queryDecision('listFolder', exchange, emptyFolderPage, 'notFound');
     if (decision) return decision;
     try { return newQueryBranch('listed', decodeFolderPage(exchange.body)); }

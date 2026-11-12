@@ -15,7 +15,7 @@ import (
 // ListFolderInput selects one bounded page of a Dropbox folder.
 type ListFolderInput struct {
 	// Path is an empty string for the root or a Dropbox folder path or ID.
-	Path string `json:"path"`
+	Path string `json:"path,omitempty"`
 	// Limit is the approximate number of entries per page, from 1 to 2000.
 	Limit int `json:"limit"`
 }

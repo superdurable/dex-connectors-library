@@ -11,7 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListFolderInput in scripted cases. */
 export const emptyListFolderInput: ListFolderInput = ListFolderInputSchema.parse({
-  "path": '',
   "limit": 0,
 });
 /** Go zero value for EntryMetadata in scripted cases. */
