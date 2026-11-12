@@ -84,8 +84,9 @@ export class ListContactsOperation implements Query<ListContactsInput, ContactsP
   /** Return the manifest-generated operation definition. */ definition(): QueryDefinition { return ListContactsDefinition; }
   /** Read a bounded contact page. */
   async invoke(call: Call, input: ListContactsInput): Promise<QueryAttempt<ContactsPage>> {
-    if (!input || !Number.isSafeInteger(input.top) || input.top < 1 || input.top > 500 || !Number.isSafeInteger(input.skip) || input.skip < 0) return terminal('listContacts', 'defect', 'VALIDATION', 'contact page size or offset is invalid', emptyPage());
-    const result = await this.client.exchange(call, 'listContacts', `/Contacts?skip=${input.skip}&top=${input.top}`, false);
+    const skip = input?.skip ?? 0;
+    if (!input || !Number.isSafeInteger(input.top) || input.top < 1 || input.top > 500 || !Number.isSafeInteger(skip) || skip < 0) return terminal('listContacts', 'defect', 'VALIDATION', 'contact page size or offset is invalid', emptyPage());
+    const result = await this.client.exchange(call, 'listContacts', `/Contacts?skip=${skip}&top=${input.top}`, false);
     if (result.retry) return newQueryRetry(result.failure!, result.retryAfterMs);
     if (result.failure) return newQueryBranch(result.branch!, emptyPage(), {}, result.failure);
     const document = parseJSON(result.body!);

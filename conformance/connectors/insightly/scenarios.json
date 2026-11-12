@@ -58,6 +58,61 @@
       "operation": "listContacts"
     },
     {
+      "callId": "4e110793-1aca-463d-83c6-c7b76bb6e3ac",
+      "exchanges": [
+        {
+          "body": "[{\"CONTACT_ID\":45678,\"FIRST_NAME\":\"Ada\",\"LAST_NAME\":\"Lovelace\",\"EMAIL_ADDRESS\":\"ada@example.com\",\"CUSTOMFIELDS\":[{\"FIELD_NAME\":\"private\",\"FIELD_VALUE\":\"not-persisted\"}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "skip": [
+              "0"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "emailAddress": "ada@example.com",
+              "firstName": "Ada",
+              "id": 45678,
+              "lastName": "Lovelace"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "top": 20
+      },
+      "name": "listContacts-firstPage",
+      "operation": "listContacts"
+    },
+    {
       "callId": "27c46022-9c92-4ebe-972c-8f1e2e717e40",
       "exchanges": [
         {

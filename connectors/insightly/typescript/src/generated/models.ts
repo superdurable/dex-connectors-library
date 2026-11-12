@@ -49,8 +49,8 @@ export type CredentialSource = CredentialProvider<Credentials>;
 export interface ListContactsInput {
   /** Top is the maximum page size, from 1 to 500 records. */
   "top": number;
-  /** Skip is the nonnegative number of contacts to omit before this page. */
-  "skip": number;
+  /** Skip is the nonnegative number of contacts to omit before this page; zero starts at the first contact. */
+  "skip"?: number | undefined;
 }
 /** ContactMetadata contains public contact identity without custom fields or links. */
 export interface ContactMetadata {
@@ -77,7 +77,7 @@ export interface GetContactInput {
 /** Runtime validator for ListContactsInput. */
 export const ListContactsInputSchema = z.strictObject({
   "top": z.number().int(),
-  "skip": z.number().int(),
+  "skip": z.number().int().optional(),
 }) satisfies z.ZodType<ListContactsInput>;
 
 /** Runtime validator for ContactMetadata. */
