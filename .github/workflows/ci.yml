@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
   schedule:
@@ -25,8 +26,8 @@ jobs:
       site: ${{ steps.plan.outputs.site }}
       connectors_mcp: ${{ steps.plan.outputs.connectors_mcp }}
     env:
-      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
-      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v6
@@ -211,8 +212,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_RELEASE_INVENTORY_PATH: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '/tmp/release-inventory.json' || '' }}
-      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
-      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v6
@@ -234,10 +235,10 @@ jobs:
           node-version: 24
       - run: make test-python-connectors test-typescript-connectors
       - name: Replay Go-verified scenarios for directly changed connectors
-        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push'
         run: make test-connector-conformance
       - name: Prove connector conformance runners reject fixture mutations
-        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push'
         run: python3 script/connector_conformance.py --mutation-self-test
 
   python-connectors-latest-sdk:
@@ -247,8 +248,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # A Python SDK change, schedule, or manual run checks every package; other runs check affected connectors.
-      CONNECTOR_SCOPE: ${{ needs.connector-plan.outputs.sdkpython != 'true' && (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
-      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_SCOPE: ${{ needs.connector-plan.outputs.sdkpython != 'true' && (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v6
@@ -274,7 +275,7 @@ jobs:
       - name: Select exempt database packages
         id: plan
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
         run: |
           args=(--database-ci-matrix)
           if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
@@ -414,7 +415,7 @@ jobs:
       - name: Select exempt email packages
         id: plan
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
         run: |
           args=(--email-ci-matrix)
           if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
@@ -541,8 +542,8 @@ jobs:
       max-parallel: 32
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
-      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
-      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
       CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
@@ -584,8 +585,8 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     env:
-      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
-      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v6
@@ -677,8 +678,8 @@ jobs:
       DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
       DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
       DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
-      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
-      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
       CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
@@ -729,8 +730,8 @@ jobs:
       DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
       DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
       GH_TOKEN: ${{ github.token }}
-      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
-      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
       CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
@@ -791,8 +792,8 @@ jobs:
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
       DEX_GO_SDK_VERSION: ${{ needs.dex-version-plan.outputs.go_sdk_version }}
-      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
-      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
       CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
