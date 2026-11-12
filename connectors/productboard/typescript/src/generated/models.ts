@@ -48,7 +48,7 @@ export type CredentialSource = CredentialProvider<Credentials>;
 /** ListFeaturesInput selects a page by its opaque, non-secret cursor. */
 export interface ListFeaturesInput {
   /** PageCursor is blank for the first page or a previous NextCursor value. */
-  "pageCursor": string;
+  "pageCursor"?: string | undefined;
 }
 /** FeatureMetadata contains only the feature ID and name. */
 export interface FeatureMetadata {
@@ -67,7 +67,7 @@ export interface FeaturesPage {
 
 /** Runtime validator for ListFeaturesInput. */
 export const ListFeaturesInputSchema = z.strictObject({
-  "pageCursor": z.string(),
+  "pageCursor": z.string().optional(),
 }) satisfies z.ZodType<ListFeaturesInput>;
 
 /** Runtime validator for FeatureMetadata. */

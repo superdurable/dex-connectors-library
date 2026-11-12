@@ -11,7 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListFeaturesInput in scripted cases. */
 export const emptyListFeaturesInput: ListFeaturesInput = ListFeaturesInputSchema.parse({
-  "pageCursor": '',
 });
 /** Go zero value for FeatureMetadata in scripted cases. */
 export const emptyFeatureMetadata: FeatureMetadata = FeatureMetadataSchema.parse({

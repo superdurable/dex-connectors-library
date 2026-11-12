@@ -56,6 +56,55 @@
       "operation": "listFeatures"
     },
     {
+      "callId": "aa59c2a2-1fb0-5517-b7ae-5eb8a50c37c9",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"feature-1\",\"type\":\"feature\",\"fields\":{\"name\":\"Example feature\",\"description\":\"private\"}}],\"links\":{\"next\":\"https://api.productboard.com/v2/entities?pageCursor=cursor-2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "type[]": [
+              "feature"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "features": [
+            {
+              "id": "feature-1",
+              "name": "Example feature"
+            }
+          ],
+          "nextCursor": "cursor-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listFeatures-firstPage",
+      "operation": "listFeatures"
+    },
+    {
       "callId": "147cdd76-ed57-5fbf-8fc4-c07e4e71edf9",
       "exchanges": [
         {
