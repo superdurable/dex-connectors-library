@@ -11,7 +11,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 
 /** Go zero value for ListAccountsInput in scripted cases. */
 export const emptyListAccountsInput: ListAccountsInput = ListAccountsInputSchema.parse({
-  "offset": 0,
 });
 /** Go zero value for Account in scripted cases. */
 export const emptyAccount: Account = AccountSchema.parse({

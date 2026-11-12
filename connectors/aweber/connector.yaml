@@ -5,16 +5,16 @@ metadata:
   displayName: AWeber
   description: Discover the connected AWeber account through its REST API.
   company: AWeber
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: aweber
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listAccounts]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-aweber'
       operations: [listAccounts]
       triggers: []

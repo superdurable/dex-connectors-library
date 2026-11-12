@@ -14,17 +14,18 @@ export class ListAccountsOperation implements Query<ListAccountsInput, AccountsP
   /** Return the generated Query contract. */ definition(): QueryDefinition { return ListAccountsDefinition; }
   /** Project account IDs and company names from a bounded JSON response. */
   async invoke(call: Call, input: ListAccountsInput): Promise<QueryAttempt<AccountsPage>> {
-    if (!input || !Number.isSafeInteger(input.offset) || input.offset < 0 ||
+    const offset = input?.offset ?? 0;
+    if (!input || !Number.isSafeInteger(offset) || offset < 0 ||
       (input.limit !== undefined && (!Number.isSafeInteger(input.limit) || input.limit < 0 || input.limit > 100)))
       return branch('defect', 'VALIDATION', 'offset or limit is invalid');
     const limit = input.limit || 100;
-    const query = new URLSearchParams({ 'ws.size': String(limit), 'ws.start': String(input.offset) });
+    const query = new URLSearchParams({ 'ws.size': String(limit), 'ws.start': String(offset) });
     const exchange = await this.client.get(call, `/1.0/accounts?${query.toString()}`);
     const failed = classifyRead(exchange);
     if (failed) return failed;
     const document = parseDocument(exchange.body);
     if (!document || !Array.isArray(document.entries) || typeof document.start !== 'number' || !Number.isSafeInteger(document.start) ||
-      document.start !== input.offset || typeof document.total_size !== 'number' || !Number.isSafeInteger(document.total_size) || document.total_size < document.entries.length)
+      document.start !== offset || typeof document.total_size !== 'number' || !Number.isSafeInteger(document.total_size) || document.total_size < document.entries.length)
       return branch('invalidResponse', 'PROTOCOL', 'AWeber returned invalid account JSON');
     const accounts: AccountsPage['accounts'] = [];
     for (const item of document.entries) {
@@ -32,7 +33,7 @@ export class ListAccountsOperation implements Query<ListAccountsInput, AccountsP
         return branch('invalidResponse', 'PROTOCOL', 'AWeber returned invalid account JSON');
       accounts.push({ id: String(item.id), company: item.company });
     }
-    return newQueryBranch('listed', { accounts, offset: input.offset, limit, total: document.total_size });
+    return newQueryBranch('listed', { accounts, offset, limit, total: document.total_size });
   }
 }
 
