@@ -33,7 +33,7 @@ type RunReportInput struct {
 	// Metrics are one to ten GA4 Data API metric names in requested order.
 	Metrics []string `json:"metrics"`
 	// Limit is the page size from 1 to 10000; zero uses 100.
-	Limit int64 `json:"limit"`
+	Limit int64 `json:"limit,omitempty"`
 	// Offset is the zero-based row offset.
 	Offset int64 `json:"offset"`
 }
@@ -77,7 +77,7 @@ type ListAudiencesInput struct {
 	// PropertyID is the numeric GA4 Property ID from Analytics Admin.
 	PropertyID string `json:"propertyId"`
 	// PageSize is from 1 to 200; zero uses 50.
-	PageSize int64 `json:"pageSize"`
+	PageSize int64 `json:"pageSize,omitempty"`
 	// PageToken is Google's opaque cursor from a prior page.
 	PageToken string `json:"pageToken"`
 }

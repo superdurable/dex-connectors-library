@@ -1,10 +1,10 @@
 {
   "connectorId": "google-analytics-4",
-  "releaseTag": "connectors/google/analytics/go/v0.1.0",
+  "releaseTag": "connectors/google/analytics/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-analytics",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -89,7 +89,6 @@
         "required": [
           "dimensions",
           "endDate",
-          "limit",
           "metrics",
           "offset",
           "propertyId",
@@ -204,7 +203,6 @@
           }
         },
         "required": [
-          "pageSize",
           "pageToken",
           "propertyId"
         ],

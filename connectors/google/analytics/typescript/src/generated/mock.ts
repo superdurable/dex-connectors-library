@@ -16,7 +16,6 @@ export const emptyRunReportInput: RunReportInput = RunReportInputSchema.parse({
   "endDate": '',
   "dimensions": [],
   "metrics": [],
-  "limit": 0,
   "offset": 0,
 });
 /** Go zero value for ReportRow in scripted cases. */
@@ -43,7 +42,6 @@ export const emptyProperty: Property = PropertySchema.parse({
 /** Go zero value for ListAudiencesInput in scripted cases. */
 export const emptyListAudiencesInput: ListAudiencesInput = ListAudiencesInputSchema.parse({
   "propertyId": '',
-  "pageSize": 0,
   "pageToken": '',
 });
 /** Go zero value for Audience in scripted cases. */

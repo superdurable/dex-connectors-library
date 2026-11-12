@@ -5,16 +5,16 @@ metadata:
   displayName: Google Analytics 4
   description: Read a GA4 report, property metadata, and one audience page.
   company: Google
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: google-analytics-4
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [runReport, getProperty, listAudiences]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       operations: [runReport, getProperty, listAudiences]
       triggers: []
   codegen:

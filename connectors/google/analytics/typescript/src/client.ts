@@ -91,13 +91,13 @@ export class RunReportOperation implements Query<RunReportInput, ReportPage> {
   /** Project one bounded report page. */
   async invoke(call: Call, input: RunReportInput): Promise<QueryAttempt<ReportPage>> {
     const operation = 'runReport'; const empty: ReportPage = { rows: [], rowCount: 0 };
-    const dimensions = input?.dimensions ?? []; const metrics = input?.metrics ?? [];
+    const dimensions = input?.dimensions ?? []; const metrics = input?.metrics ?? []; const requestedLimit = input?.limit ?? 0;
     if (!input || !validPropertyID(input.propertyId) || !validDateRange(input.startDate, input.endDate)
       || !validNames(dimensions, maxReportDimensions, false) || !validNames(metrics, maxReportMetrics, true)
-      || !Number.isSafeInteger(input.limit) || input.limit < 0 || input.limit > 10_000
+      || !Number.isSafeInteger(requestedLimit) || requestedLimit < 0 || requestedLimit > 10_000
       || !Number.isSafeInteger(input.offset) || input.offset < 0 || input.offset > 1_000_000_000)
       return queryBranch(operation, 'defect', empty, 'VALIDATION', 'report input is invalid');
-    const limit = input.limit || 100;
+    const limit = requestedLimit || 100;
     const payload = { dateRanges: [{ startDate: input.startDate, endDate: input.endDate }], dimensions: dimensions.map(name => ({ name })), metrics: metrics.map(name => ({ name })), limit: String(limit), offset: String(input.offset) };
     const exchange = await this.client.request(call, 'data', 'POST', `/v1beta/properties/${input.propertyId}:runReport`, payload);
     const decision = classifyRead(operation, exchange, empty);
@@ -146,9 +146,10 @@ export class ListAudiencesOperation implements Query<ListAudiencesInput, Audienc
   /** Project bounded audience names and descriptions. */
   async invoke(call: Call, input: ListAudiencesInput): Promise<QueryAttempt<AudiencesPage>> {
     const operation = 'listAudiences'; const empty: AudiencesPage = { audiences: [], nextPageToken: '' };
-    if (!input || !validPropertyID(input.propertyId) || !Number.isSafeInteger(input.pageSize) || input.pageSize < 0 || input.pageSize > 200 || typeof input.pageToken !== 'string' || Buffer.byteLength(input.pageToken) > 4096 || /[\r\n]/.test(input.pageToken))
+    const requestedPageSize = input?.pageSize ?? 0;
+    if (!input || !validPropertyID(input.propertyId) || !Number.isSafeInteger(requestedPageSize) || requestedPageSize < 0 || requestedPageSize > 200 || typeof input.pageToken !== 'string' || Buffer.byteLength(input.pageToken) > 4096 || /[\r\n]/.test(input.pageToken))
       return queryBranch(operation, 'defect', empty, 'VALIDATION', 'audience page input is invalid');
-    const pageSize = input.pageSize || 50;
+    const pageSize = requestedPageSize || 50;
     const values: Record<string, string[]> = { pageSize: [String(pageSize)] };
     if (input.pageToken) values.pageToken = [input.pageToken];
     const exchange = await this.client.request(call, 'admin', 'GET', `/v1alpha/properties/${input.propertyId}/audiences?${new URLSearchParams(Object.entries(values).map(([key, value]) => [key, value[0] ?? ""])).toString()}`);
