@@ -38,6 +38,8 @@ func TestClientAgentToolsClassifyProviderOutcomes(t *testing.T) {
 			body = `{"ok":true,"messages":[{"ts":"3.0","thread_ts":"1.0","user":"U2","text":"other"}]}`
 		case request.URL.Path == "/conversations.replies":
 			body = `{"ok":true,"messages":[{"ts":"2.0","thread_ts":"1.0","user":"U2","text":"approve"}]}`
+		case request.URL.Path == "/conversations.history":
+			body = `{"ok":true,"messages":[{"ts":"4.0","user":"UBOT","bot_id":"B123","text":"posted"}]}`
 		case request.URL.Path == "/chat.postMessage":
 			body = `{"ok":true,"channel":"C123","ts":"4.0","message":{"ts":"4.0","user":"UBOT","text":"posted"}}`
 		default:
@@ -52,17 +54,19 @@ func TestClientAgentToolsClassifyProviderOutcomes(t *testing.T) {
 
 	tools, err := connection.AgentTools()
 	require.NoError(t, err)
-	require.Equal(t, []string{"slack_list_channels", "slack_get_workspace_identity", "slack_list_thread_messages", "slack_get_thread_reply", "slack_post_channel_message", "slack_post_thread_reply"}, agentToolNames(tools))
+	require.Equal(t, []string{"slack_list_channels", "slack_get_workspace_identity", "slack_list_thread_messages", "slack_get_thread_reply", "slack_list_channel_messages", "slack_post_channel_message", "slack_post_thread_reply"}, agentToolNames(tools))
 	require.Equal(t, agentToolNames(tools), agentToolMetadataNames(slack.ExposedAgentTools()))
 	effects := make([]sdkgo.AgentToolEffect, 0, len(tools))
 	for _, tool := range tools {
 		effects = append(effects, tool.Metadata().Effect())
 		require.Equal(t, connection.Reference(), tool.Connection())
 	}
-	require.Equal(t, []sdkgo.AgentToolEffect{sdkgo.AgentToolEffectRead, sdkgo.AgentToolEffectRead, sdkgo.AgentToolEffectRead, sdkgo.AgentToolEffectRead, sdkgo.AgentToolEffectNonIdempotentWrite, sdkgo.AgentToolEffectNonIdempotentWrite}, effects)
-	listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, postChannelMessage, postThreadReply := tools[0], tools[1], tools[2], tools[3], tools[4], tools[5]
+	require.Equal(t, []sdkgo.AgentToolEffect{sdkgo.AgentToolEffectRead, sdkgo.AgentToolEffectRead, sdkgo.AgentToolEffectRead, sdkgo.AgentToolEffectRead, sdkgo.AgentToolEffectRead, sdkgo.AgentToolEffectNonIdempotentWrite, sdkgo.AgentToolEffectNonIdempotentWrite}, effects)
+	listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply := tools[0], tools[1], tools[2], tools[3], tools[4], tools[5], tools[6]
 	require.False(t, listChannels.Metadata().IsApprovalRecommended)
 	require.False(t, getWorkspaceIdentity.Metadata().IsApprovalRecommended)
+	require.False(t, listChannelMessages.Metadata().IsApprovalRecommended)
+	require.Contains(t, listChannelMessages.Metadata().Description, "list_channels tool")
 	require.True(t, postChannelMessage.Metadata().IsApprovalRecommended)
 	require.Contains(t, postChannelMessage.Metadata().Description, "list_channels tool")
 	require.Contains(t, postThreadReply.Metadata().Description, "list_channels tool")
@@ -82,6 +86,9 @@ func TestClientAgentToolsClassifyProviderOutcomes(t *testing.T) {
 		{"listThreadMessages providerRejected", listThreadMessages, `{"channelId":"C404","threadTimestamp":"1.0","pageSize":15}`, sdkgo.AgentToolAttemptRejected, slack.ListThreadMessagesBranchProviderRejected},
 		{"getThreadReply found", getThreadReply, `{"channelId":"C123","threadTimestamp":"1.0","replyTimestamp":"2.0"}`, sdkgo.AgentToolAttemptSucceeded, slack.GetThreadReplyBranchFound},
 		{"getThreadReply notFound", getThreadReply, `{"channelId":"C123","threadTimestamp":"1.0","replyTimestamp":"9.0"}`, sdkgo.AgentToolAttemptRejected, slack.GetThreadReplyBranchNotFound},
+		{"listChannelMessages read", listChannelMessages, `{"channelId":"C123","oldestTimestamp":"1.0"}`, sdkgo.AgentToolAttemptSucceeded, slack.ListChannelMessagesBranchRead},
+		{"listChannelMessages providerRejected", listChannelMessages, `{"channelId":"C404"}`, sdkgo.AgentToolAttemptRejected, slack.ListChannelMessagesBranchProviderRejected},
+		{"listChannelMessages defect", listChannelMessages, `{"channelId":"C123","pageSize":16}`, sdkgo.AgentToolAttemptRejected, slack.ListChannelMessagesBranchDefect},
 		{"postChannelMessage sent", postChannelMessage, `{"channelId":"C123","text":"posted"}`, sdkgo.AgentToolAttemptSucceeded, slack.PostChannelMessageBranchSent},
 		// The singledispatch Fence claimed a dispatch, so even a definite Slack refusal is unknown.
 		{"postChannelMessage providerRejected", postChannelMessage, `{"channelId":"C404","text":"posted"}`, sdkgo.AgentToolAttemptUnknown, slack.PostChannelMessageBranchProviderRejected},
@@ -127,13 +134,18 @@ func TestMockConnectionAgentToolsRunScriptedBranches(t *testing.T) {
 	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome)
 	require.Equal(t, slack.GetThreadReplyBranchNotFound, attempt.Branch)
 
+	attempt, err = tools[4].RunAttempt(newSlackDexContext("mock-history"), json.RawMessage(`{"channelId":"C0123456789"}`))
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptSucceeded, attempt.Outcome)
+	require.Equal(t, slack.ListChannelMessagesBranchRead, attempt.Branch)
+
 	// The mock uses no singledispatch Fence, so the listed rejected outcome applies.
-	attempt, err = tools[4].RunAttempt(newSlackDexContext("mock-post"), json.RawMessage(`{"channelId":"C404","text":"posted"}`))
+	attempt, err = tools[5].RunAttempt(newSlackDexContext("mock-post"), json.RawMessage(`{"channelId":"C404","text":"posted"}`))
 	require.NoError(t, err)
 	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome)
 	require.Equal(t, slack.PostChannelMessageBranchProviderRejected, attempt.Branch)
 
-	attempt, err = tools[5].RunAttempt(newSlackDexContext("mock-reply"), json.RawMessage(`{"channelId":"C123","threadTimestamp":"1.0","text":"posted"}`))
+	attempt, err = tools[6].RunAttempt(newSlackDexContext("mock-reply"), json.RawMessage(`{"channelId":"C123","threadTimestamp":"1.0","text":"posted"}`))
 	require.NoError(t, err)
 	require.Equal(t, sdkgo.AgentToolAttemptSucceeded, attempt.Outcome)
 }

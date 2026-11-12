@@ -4180,6 +4180,743 @@
       },
       "name": "getThreadReply-service-unavailable-empty-body",
       "operation": "getThreadReply"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"type\":\"message\",\"ts\":\"1710000030.000900\",\"user\":\"U2\",\"text\":\"Is order 1042 still on track?\"},{\"type\":\"message\",\"ts\":\"1710000010.000500\",\"thread_ts\":\"1710000010.000500\",\"reply_count\":2,\"user\":\"UBOT\",\"bot_id\":\"B123\",\"text\":\"Order 1042 is ready for review. ref:flow-1042\"},{\"type\":\"message\",\"subtype\":\"bot_message\",\"ts\":\"1710000005.000300\",\"bot_id\":\"B999\",\"text\":\"Deploy finished\"}],\"has_more\":true,\"response_metadata\":{\"next_cursor\":\"page-3\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "messages": [
+            {
+              "channelId": "C123",
+              "text": "Is order 1042 still on track?",
+              "timestamp": "1710000030.000900",
+              "userId": "U2"
+            },
+            {
+              "botId": "B123",
+              "channelId": "C123",
+              "replyCount": 2,
+              "text": "Order 1042 is ready for review. ref:flow-1042",
+              "threadTimestamp": "1710000010.000500",
+              "timestamp": "1710000010.000500",
+              "userId": "UBOT"
+            },
+            {
+              "botId": "B999",
+              "channelId": "C123",
+              "text": "Deploy finished",
+              "timestamp": "1710000005.000300"
+            }
+          ],
+          "nextCursor": "page-3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-success",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"type\":\"message\",\"ts\":\"1710000000.000100\",\"user\":\"U1\",\"text\":\"Request approval for order 1042.\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "limit": [
+              "15"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "messages": [
+            {
+              "channelId": "C123",
+              "text": "Request approval for order 1042.",
+              "timestamp": "1710000000.000100",
+              "userId": "U1"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123"
+      },
+      "name": "listChannelMessages-first-page-defaults",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"not_in_channel\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-provider-rejected",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"channel_not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C404"
+            ],
+            "limit": [
+              "15"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C404"
+      },
+      "name": "listChannelMessages-channel-not-found",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-invalid-response",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"ts\":\"1710000010.000500\",\"text\":\"x\",\"reply_count\":\"2\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-wrong-type",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"user\":\"U1\",\"text\":\"no timestamp\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-missing-timestamp",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"ratelimited\"}",
+          "headers": {
+            "Retry-After": "60"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-rate-limited",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"internal_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-server-failure",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-transport-before-send",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messages": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 16
+      },
+      "name": "listChannelMessages-defect",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messages": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "oldestTimestamp": "yesterday"
+      },
+      "name": "listChannelMessages-invalid-timestamp",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "12"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 12000,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-rate-limited-empty-body",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5c1f6e8a-3b2d-5f47-9a0e-8d4c2b7e6a19",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.history",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "page-2"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000099.000100"
+            ],
+            "limit": [
+              "10"
+            ],
+            "oldest": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "page-2",
+        "isInclusive": true,
+        "latestTimestamp": "1710000099.000100",
+        "oldestTimestamp": "1710000000.000100",
+        "pageSize": 10
+      },
+      "name": "listChannelMessages-service-unavailable-empty-body",
+      "operation": "listChannelMessages"
     }
   ],
   "schemaVersion": 1

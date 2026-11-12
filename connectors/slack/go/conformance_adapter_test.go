@@ -52,6 +52,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getWorkspaceIdentity": newConformanceQueryInvocation(t, scenario.Input, context, client.GetWorkspaceIdentity(), slackConnection),
 		"listThreadMessages":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListThreadMessages(), slackConnection),
 		"getThreadReply":       newConformanceQueryInvocation(t, scenario.Input, context, client.GetThreadReply(), slackConnection),
+		"listChannelMessages":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListChannelMessages(), slackConnection),
 		"postChannelMessage":   newConformanceMutationInvocation(t, scenario.Input, context, client.PostChannelMessage(), slackConnection, scenario.CallID),
 		"postThreadReply":      newConformanceMutationInvocation(t, scenario.Input, context, client.PostThreadReply(), slackConnection, scenario.CallID),
 	}}

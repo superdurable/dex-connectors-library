@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { ListChannelsInput, Channel, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, Message, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
-import { ListChannelsInputSchema, ChannelSchema, ListChannelsOutputSchema, GetWorkspaceIdentityInputSchema, GetWorkspaceIdentityOutputSchema, ListThreadMessagesInputSchema, MessageSchema, ListThreadMessagesOutputSchema, GetThreadReplyInputSchema, GetThreadReplyOutputSchema, PostChannelMessageInputSchema, PostMessageOutputSchema, PostThreadReplyInputSchema } from './models.js';
-import { ProviderID, ConnectorID, ListChannelsDefinition, GetWorkspaceIdentityDefinition, ListThreadMessagesDefinition, GetThreadReplyDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './definitions.js';
+import type { ListChannelsInput, Channel, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, Message, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, ListChannelMessagesInput, ChannelMessage, ListChannelMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
+import { ListChannelsInputSchema, ChannelSchema, ListChannelsOutputSchema, GetWorkspaceIdentityInputSchema, GetWorkspaceIdentityOutputSchema, ListThreadMessagesInputSchema, MessageSchema, ListThreadMessagesOutputSchema, GetThreadReplyInputSchema, GetThreadReplyOutputSchema, ListChannelMessagesInputSchema, ChannelMessageSchema, ListChannelMessagesOutputSchema, PostChannelMessageInputSchema, PostMessageOutputSchema, PostThreadReplyInputSchema } from './models.js';
+import { ProviderID, ConnectorID, ListChannelsDefinition, GetWorkspaceIdentityDefinition, ListThreadMessagesDefinition, GetThreadReplyDefinition, ListChannelMessagesDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for ListChannelsInput in scripted cases. */
@@ -60,6 +60,20 @@ export const emptyGetThreadReplyInput: GetThreadReplyInput = GetThreadReplyInput
 /** Go zero value for GetThreadReplyOutput in scripted cases. */
 export const emptyGetThreadReplyOutput: GetThreadReplyOutput = GetThreadReplyOutputSchema.parse({
   "message": emptyMessage,
+});
+/** Go zero value for ListChannelMessagesInput in scripted cases. */
+export const emptyListChannelMessagesInput: ListChannelMessagesInput = ListChannelMessagesInputSchema.parse({
+  "channelId": '',
+});
+/** Go zero value for ChannelMessage in scripted cases. */
+export const emptyChannelMessage: ChannelMessage = ChannelMessageSchema.parse({
+  "channelId": '',
+  "timestamp": '',
+  "text": '',
+});
+/** Go zero value for ListChannelMessagesOutput in scripted cases. */
+export const emptyListChannelMessagesOutput: ListChannelMessagesOutput = ListChannelMessagesOutputSchema.parse({
+  "messages": [],
 });
 /** Go zero value for PostChannelMessageInput in scripted cases. */
 export const emptyPostChannelMessageInput: PostChannelMessageInput = PostChannelMessageInputSchema.parse({
@@ -216,6 +230,39 @@ export function getThreadReplyMissingReplyTimestamp(): Case<GetThreadReplyOutput
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "getThreadReply", message: "The reply timestamp is required." });
 }
 
+/** Script the read branch. */
+export function listChannelMessagesRead(value: ListChannelMessagesOutput, failure?: Failure): Case<ListChannelMessagesOutput> { return branchCase("read", value, failure); }
+/** Script the providerRejected branch. */
+export function listChannelMessagesProviderRejected(value: ListChannelMessagesOutput, failure?: Failure): Case<ListChannelMessagesOutput> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listChannelMessagesInvalidResponse(value: ListChannelMessagesOutput, failure?: Failure): Case<ListChannelMessagesOutput> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listChannelMessagesDefect(value: ListChannelMessagesOutput, failure?: Failure): Case<ListChannelMessagesOutput> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listChannelMessages. */
+export function listChannelMessagesRetry(failure: Failure, retryAfterMs = 0): Case<ListChannelMessagesOutput> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario recentChannelHistory for listChannelMessages. */
+export function listChannelMessagesRecentChannelHistory(): Case<ListChannelMessagesOutput> {
+  const value = emptyListChannelMessagesOutput;
+  return branchCase("read", value);
+}
+/** Default listChannelMessages scenario. */
+export function listChannelMessagesDefault(): Case<ListChannelMessagesOutput> { return listChannelMessagesRecentChannelHistory(); }
+/** Manifest scenario historyRejected for listChannelMessages. */
+export function listChannelMessagesHistoryRejected(): Case<ListChannelMessagesOutput> {
+  const value = emptyListChannelMessagesOutput;
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "listChannelMessages", message: "Slack rejected the channel history read because the app is not in the channel." });
+}
+/** Manifest scenario malformedHistory for listChannelMessages. */
+export function listChannelMessagesMalformedHistory(): Case<ListChannelMessagesOutput> {
+  const value = emptyListChannelMessagesOutput;
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "listChannelMessages", message: "Slack returned an invalid channel history response." });
+}
+/** Manifest scenario historyPageSizeOutOfRange for listChannelMessages. */
+export function listChannelMessagesHistoryPageSizeOutOfRange(): Case<ListChannelMessagesOutput> {
+  const value = emptyListChannelMessagesOutput;
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "listChannelMessages", message: "The channel history page size must be 1 through 15; blank or 0 reads 15." });
+}
+
 /** Script the sent branch. */
 export function postChannelMessageSent(value: PostMessageOutput, failure?: Failure): Case<PostMessageOutput> { return branchCase("sent", value, failure); }
 /** Script the providerRejected branch. */
@@ -288,6 +335,7 @@ export class GeneratedMock implements Operations {
   readonly #getWorkspaceIdentity: MockQuery<GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput>;
   readonly #listThreadMessages: MockQuery<ListThreadMessagesInput, ListThreadMessagesOutput>;
   readonly #getThreadReply: MockQuery<GetThreadReplyInput, GetThreadReplyOutput>;
+  readonly #listChannelMessages: MockQuery<ListChannelMessagesInput, ListChannelMessagesOutput>;
   readonly #postChannelMessage: MockMutation<PostChannelMessageInput, PostMessageOutput>;
   readonly #postThreadReply: MockMutation<PostThreadReplyInput, PostMessageOutput>;
   readonly #connection: Connection;
@@ -297,6 +345,7 @@ export class GeneratedMock implements Operations {
     this.#getWorkspaceIdentity = newQuery<GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput>(GetWorkspaceIdentityDefinition).default(getWorkspaceIdentityDefault());
     this.#listThreadMessages = newQuery<ListThreadMessagesInput, ListThreadMessagesOutput>(ListThreadMessagesDefinition).default(listThreadMessagesDefault());
     this.#getThreadReply = newQuery<GetThreadReplyInput, GetThreadReplyOutput>(GetThreadReplyDefinition).default(getThreadReplyDefault());
+    this.#listChannelMessages = newQuery<ListChannelMessagesInput, ListChannelMessagesOutput>(ListChannelMessagesDefinition).default(listChannelMessagesDefault());
     this.#postChannelMessage = newMutation<PostChannelMessageInput, PostMessageOutput>(PostChannelMessageDefinition).default(postChannelMessageDefault());
     this.#postThreadReply = newMutation<PostThreadReplyInput, PostMessageOutput>(PostThreadReplyDefinition).default(postThreadReplyDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
@@ -307,6 +356,7 @@ export class GeneratedMock implements Operations {
   getWorkspaceIdentity(): MockQuery<GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput> { return this.#getWorkspaceIdentity; }
   listThreadMessages(): MockQuery<ListThreadMessagesInput, ListThreadMessagesOutput> { return this.#listThreadMessages; }
   getThreadReply(): MockQuery<GetThreadReplyInput, GetThreadReplyOutput> { return this.#getThreadReply; }
+  listChannelMessages(): MockQuery<ListChannelMessagesInput, ListChannelMessagesOutput> { return this.#listChannelMessages; }
   postChannelMessage(): MockMutation<PostChannelMessageInput, PostMessageOutput> { return this.#postChannelMessage; }
   postThreadReply(): MockMutation<PostThreadReplyInput, PostMessageOutput> { return this.#postThreadReply; }
   assertNoFailures(): void {
@@ -314,6 +364,7 @@ export class GeneratedMock implements Operations {
     this.#getWorkspaceIdentity.assertNoFailures();
     this.#listThreadMessages.assertNoFailures();
     this.#getThreadReply.assertNoFailures();
+    this.#listChannelMessages.assertNoFailures();
     this.#postChannelMessage.assertNoFailures();
     this.#postThreadReply.assertNoFailures();
   }

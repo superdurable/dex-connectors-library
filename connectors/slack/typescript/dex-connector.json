@@ -1,10 +1,10 @@
 {
   "connectorId": "slack",
-  "releaseTag": "connectors/slack/go/v1.5.1",
+  "releaseTag": "connectors/slack/go/v1.6.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-slack",
-    "version": "0.4.1"
+    "version": "0.5.0"
   },
   "factories": [
     {
@@ -266,6 +266,82 @@
           "channelId",
           "replyTimestamp",
           "threadTimestamp"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newListChannelMessagesStep",
+      "kind": "query",
+      "operationId": "listChannelMessages",
+      "inputType": "ListChannelMessagesInput",
+      "description": "Read one page of recent top-level messages in a Slack channel, newest first; thread replies are not included, so use the Slack list_thread_messages tool for a thread. Supply the channel ID, optionally oldestTimestamp and latestTimestamp Slack message timestamps to bound the time range, isInclusive true to include messages at exactly those timestamps, a pageSize of 1 through 15 (blank or 0 reads 15), and the cursor from the previous page to continue while nextCursor is present. When the user names a channel, such as #general, first find its channelId with the Slack list_channels tool for the same connection. The app must be a member of the channel.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "read",
+          "field": "read",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListChannelMessagesInput selects one page of a Slack channel's top-level message history.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID is the Slack channel identifier, such as C0123456789, from listChannels or the channel picker.",
+            "type": "string"
+          },
+          "cursor": {
+            "description": "Cursor is the nextCursor from the previous page. Blank reads the newest page.",
+            "type": "string"
+          },
+          "isInclusive": {
+            "description": "IsInclusive also keeps messages whose timestamp equals OldestTimestamp or LatestTimestamp. Slack ignores it when both timestamps are blank.",
+            "type": "boolean"
+          },
+          "latestTimestamp": {
+            "description": "LatestTimestamp keeps only messages before this Slack message timestamp, such as 1710000099.000100. Blank reads up to the newest message.",
+            "type": "string"
+          },
+          "oldestTimestamp": {
+            "description": "OldestTimestamp keeps only messages after this Slack message timestamp, such as 1710000000.000100. Blank reads from the start of the channel's history.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the maximum number of messages on this page: 1 through 15; blank or 0 reads 15, the most Slack returns to a non-Marketplace app. Slack may return fewer messages while NextCursor continues the history.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "channelId"
         ],
         "type": "object"
       }

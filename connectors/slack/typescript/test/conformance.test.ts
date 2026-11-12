@@ -6,7 +6,7 @@ import { RetryError, runMutation, SecretString, type Call, type Mutation } from 
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type HeartbeatContext, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { SlackClient } from '../src/client.js';
-import { GetThreadReplyInputSchema, GetWorkspaceIdentityInputSchema, ListChannelsInputSchema, ListThreadMessagesInputSchema, PostChannelMessageInputSchema, PostThreadReplyInputSchema } from '../src/generated/models.js';
+import { GetThreadReplyInputSchema, GetWorkspaceIdentityInputSchema, ListChannelMessagesInputSchema, ListChannelsInputSchema, ListThreadMessagesInputSchema, PostChannelMessageInputSchema, PostThreadReplyInputSchema } from '../src/generated/models.js';
 
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/slack/scenarios.json', import.meta.url));
 const connection = { provider: 'slack', name: 'workspace' };
@@ -30,6 +30,7 @@ async function invokeSlack(scenario: Scenario, recorder: ExchangeRecorder, conte
   if (scenario.operation === 'getWorkspaceIdentity') return client.getWorkspaceIdentity().invoke(call, GetWorkspaceIdentityInputSchema.parse(scenario.input));
   if (scenario.operation === 'listThreadMessages') return client.listThreadMessages().invoke(call, ListThreadMessagesInputSchema.parse(scenario.input));
   if (scenario.operation === 'getThreadReply') return client.getThreadReply().invoke(call, GetThreadReplyInputSchema.parse(scenario.input));
+  if (scenario.operation === 'listChannelMessages') return client.listChannelMessages().invoke(call, ListChannelMessagesInputSchema.parse(scenario.input));
   if (scenario.operation === 'postChannelMessage') return productionMutation(client.postChannelMessage(), call, PostChannelMessageInputSchema.parse(scenario.input), scenario.idempotencyKey!);
   if (scenario.operation === 'postThreadReply') return productionMutation(client.postThreadReply(), call, PostThreadReplyInputSchema.parse(scenario.input), scenario.idempotencyKey!);
   throw new Error(`unknown Slack operation ${scenario.operation}`);

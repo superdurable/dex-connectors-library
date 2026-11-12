@@ -199,6 +199,52 @@ export interface GetThreadReplyOutput {
   /** Message is the message returned by Slack. */
   "message": Message;
 }
+/** ListChannelMessagesInput selects one page of a Slack channel's top-level message history. */
+export interface ListChannelMessagesInput {
+  /** ChannelID is the Slack channel identifier, such as C0123456789, from listChannels or the channel picker. */
+  "channelId": string;
+  /** OldestTimestamp keeps only messages after this Slack message timestamp, such as 1710000000.000100.
+   * Blank reads from the start of the channel's history. */
+  "oldestTimestamp"?: string | undefined;
+  /** LatestTimestamp keeps only messages before this Slack message timestamp, such as 1710000099.000100.
+   * Blank reads up to the newest message. */
+  "latestTimestamp"?: string | undefined;
+  /** IsInclusive also keeps messages whose timestamp equals OldestTimestamp or LatestTimestamp.
+   * Slack ignores it when both timestamps are blank. */
+  "isInclusive"?: boolean | undefined;
+  /** PageSize is the maximum number of messages on this page: 1 through 15; blank or 0 reads 15, the most
+   * Slack returns to a non-Marketplace app. Slack may return fewer messages while NextCursor continues the history. */
+  "pageSize"?: number | undefined;
+  /** Cursor is the nextCursor from the previous page. Blank reads the newest page. */
+  "cursor"?: string | undefined;
+}
+/** ChannelMessage is one top-level message from a Slack channel's history. */
+export interface ChannelMessage {
+  /** ChannelID is the Slack channel identifier that was read. */
+  "channelId": string;
+  /** Timestamp is the Slack message timestamp, which identifies the message within its channel. */
+  "timestamp": string;
+  /** ThreadTimestamp is the parent timestamp of the message's thread: equal to Timestamp for a thread parent,
+   * different for a thread reply that was also sent to the channel, and blank for a message without a thread. */
+  "threadTimestamp"?: string | undefined;
+  /** UserID is the Slack user identifier of the poster, such as the bot user for the app's own posts.
+   * Blank for messages posted by integrations without a user. */
+  "userId"?: string | undefined;
+  /** BotID is the Slack bot identifier when an app or integration posted the message; blank for people. */
+  "botId"?: string | undefined;
+  /** Text is the message text in Slack's markup. */
+  "text": string;
+  /** ReplyCount is the number of thread replies when the message starts a thread; zero otherwise. */
+  "replyCount"?: number | undefined;
+}
+/** ListChannelMessagesOutput contains one newest-first page of a channel's top-level messages. */
+export interface ListChannelMessagesOutput {
+  /** Messages are the page's top-level messages, newest first. A thread reply appears only when its poster
+   * also sent it to the channel; read the other replies with ListThreadMessages. */
+  "messages": Array<ChannelMessage> | null;
+  /** NextCursor continues to older messages when non-blank; blank means the requested range ended. */
+  "nextCursor"?: string | undefined;
+}
 /** PostChannelMessageInput contains the provider request fields for post channel message. */
 export interface PostChannelMessageInput {
   /** ChannelID is the Slack channel identifier. */
@@ -295,6 +341,33 @@ export const GetThreadReplyInputSchema = z.strictObject({
 export const GetThreadReplyOutputSchema = z.strictObject({
   "message": MessageSchema,
 }) satisfies z.ZodType<GetThreadReplyOutput>;
+
+/** Runtime validator for ListChannelMessagesInput. */
+export const ListChannelMessagesInputSchema = z.strictObject({
+  "channelId": z.string(),
+  "oldestTimestamp": z.string().optional(),
+  "latestTimestamp": z.string().optional(),
+  "isInclusive": z.boolean().optional(),
+  "pageSize": z.number().int().optional(),
+  "cursor": z.string().optional(),
+}) satisfies z.ZodType<ListChannelMessagesInput>;
+
+/** Runtime validator for ChannelMessage. */
+export const ChannelMessageSchema = z.strictObject({
+  "channelId": z.string(),
+  "timestamp": z.string(),
+  "threadTimestamp": z.string().optional(),
+  "userId": z.string().optional(),
+  "botId": z.string().optional(),
+  "text": z.string(),
+  "replyCount": z.number().int().optional(),
+}) satisfies z.ZodType<ChannelMessage>;
+
+/** Runtime validator for ListChannelMessagesOutput. */
+export const ListChannelMessagesOutputSchema = z.strictObject({
+  "messages": z.array(ChannelMessageSchema).nullable(),
+  "nextCursor": z.string().optional(),
+}) satisfies z.ZodType<ListChannelMessagesOutput>;
 
 /** Runtime validator for PostChannelMessageInput. */
 export const PostChannelMessageInputSchema = z.strictObject({

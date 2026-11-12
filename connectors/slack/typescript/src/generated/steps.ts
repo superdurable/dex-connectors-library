@@ -5,7 +5,7 @@
 import { goToBranch, newMutationStep, type Mutation, type MutationResult, type MutationStep, type MutationStepConfig, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { ListChannelsInput, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
+import type { ListChannelsInput, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, ListChannelMessagesInput, ListChannelMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
 
 /** Configuration for the listChannels connector Step. */
 export interface ListChannelsStepConfig<StepInput, OperationInput = ListChannelsInput, OperationOutput = ListChannelsOutput> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -116,6 +116,34 @@ export function newGetThreadReplyStep<StepInput, OperationInput = GetThreadReply
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getThreadReply(), connection: connection.reference, branches: [
     goToBranch("found", found),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the listChannelMessages connector Step. */
+export interface ListChannelMessagesStepConfig<StepInput, OperationInput = ListChannelMessagesInput, OperationOutput = ListChannelMessagesOutput> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ listChannelMessages(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** The channel history page was read. */
+  read: StepTarget<QueryResult<OperationOutput>>;
+  /** Slack conclusively rejected the channel history query. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Slack returned an invalid or oversized channel history response. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the listChannelMessages Step from a named connection. */
+export function newListChannelMessagesStep<StepInput, OperationInput = ListChannelMessagesInput, OperationOutput = ListChannelMessagesOutput>(configuration: ListChannelMessagesStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, read, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.listChannelMessages(), connection: connection.reference, branches: [
+    goToBranch("read", read),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),

@@ -20,6 +20,7 @@ func ExposedAgentTools() []sdkgo.AgentToolMetadata {
 		getWorkspaceIdentityAgentToolMetadata(),
 		listThreadMessagesAgentToolMetadata(),
 		getThreadReplyAgentToolMetadata(),
+		listChannelMessagesAgentToolMetadata(),
 		postChannelMessageAgentToolMetadata(),
 		postThreadReplyAgentToolMetadata(),
 	}
@@ -49,6 +50,10 @@ func (connection Connection) AgentTools() ([]sdkgo.AgentTool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("slack agent tool getThreadReply: %w", err)
 	}
+	listChannelMessagesAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.ListChannelMessages(), connection.reference, listChannelMessagesAgentToolMetadata())
+	if err != nil {
+		return nil, fmt.Errorf("slack agent tool listChannelMessages: %w", err)
+	}
 	postChannelMessageAgentTool, err := sdkgo.NewMutationAgentTool(connection.operations.PostChannelMessage(), connection.reference, postChannelMessageAgentToolMetadata())
 	if err != nil {
 		return nil, fmt.Errorf("slack agent tool postChannelMessage: %w", err)
@@ -57,7 +62,7 @@ func (connection Connection) AgentTools() ([]sdkgo.AgentTool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("slack agent tool postThreadReply: %w", err)
 	}
-	return []sdkgo.AgentTool{listChannelsAgentTool, getWorkspaceIdentityAgentTool, listThreadMessagesAgentTool, getThreadReplyAgentTool, postChannelMessageAgentTool, postThreadReplyAgentTool}, nil
+	return []sdkgo.AgentTool{listChannelsAgentTool, getWorkspaceIdentityAgentTool, listThreadMessagesAgentTool, getThreadReplyAgentTool, listChannelMessagesAgentTool, postChannelMessageAgentTool, postThreadReplyAgentTool}, nil
 }
 
 // Operations returns the operations this connection's Step factories and agent tools invoke.
@@ -141,6 +146,25 @@ func getThreadReplyAgentToolMetadata() sdkgo.AgentToolMetadata {
 		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"GetThreadReplyInput contains the provider request fields for get thread reply.\",\"properties\":{\"channelId\":{\"description\":\"ChannelID is the Slack channel identifier.\",\"type\":\"string\"},\"replyTimestamp\":{\"description\":\"ReplyTimestamp is the Slack reply message timestamp.\",\"type\":\"string\"},\"threadTimestamp\":{\"description\":\"ThreadTimestamp is the Slack parent message timestamp.\",\"type\":\"string\"}},\"required\":[\"channelId\",\"replyTimestamp\",\"threadTimestamp\"],\"type\":\"object\"}"),
 		Branches:     GetThreadReplyDefinition.Branches,
 		StepDefaults: GetThreadReplyDefinition.StepDefaults,
+	}
+}
+
+func listChannelMessagesAgentToolMetadata() sdkgo.AgentToolMetadata {
+	return sdkgo.AgentToolMetadata{
+		Operation:             ListChannelMessagesDefinition.Operation,
+		Kind:                  sdkgo.AgentOperationKindQuery,
+		ToolName:              "slack_list_channel_messages",
+		Description:           "Read one page of recent top-level messages in a Slack channel, newest first; thread replies are not included, so use the Slack list_thread_messages tool for a thread. Supply the channel ID, optionally oldestTimestamp and latestTimestamp Slack message timestamps to bound the time range, isInclusive true to include messages at exactly those timestamps, a pageSize of 1 through 15 (blank or 0 reads 15), and the cursor from the previous page to continue while nextCursor is present. When the user names a channel, such as #general, first find its channelId with the Slack list_channels tool for the same connection. The app must be a member of the channel.",
+		IsApprovalRecommended: false,
+		IsRetrySafe:           false,
+		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
+			ListChannelMessagesBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
+			ListChannelMessagesBranchDefect:           sdkgo.AgentBranchOutcomeRejected,
+		},
+		InputType:    "ListChannelMessagesInput",
+		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"ListChannelMessagesInput selects one page of a Slack channel's top-level message history.\",\"properties\":{\"channelId\":{\"description\":\"ChannelID is the Slack channel identifier, such as C0123456789, from listChannels or the channel picker.\",\"type\":\"string\"},\"cursor\":{\"description\":\"Cursor is the nextCursor from the previous page. Blank reads the newest page.\",\"type\":\"string\"},\"isInclusive\":{\"description\":\"IsInclusive also keeps messages whose timestamp equals OldestTimestamp or LatestTimestamp. Slack ignores it when both timestamps are blank.\",\"type\":\"boolean\"},\"latestTimestamp\":{\"description\":\"LatestTimestamp keeps only messages before this Slack message timestamp, such as 1710000099.000100. Blank reads up to the newest message.\",\"type\":\"string\"},\"oldestTimestamp\":{\"description\":\"OldestTimestamp keeps only messages after this Slack message timestamp, such as 1710000000.000100. Blank reads from the start of the channel's history.\",\"type\":\"string\"},\"pageSize\":{\"description\":\"PageSize is the maximum number of messages on this page: 1 through 15; blank or 0 reads 15, the most Slack returns to a non-Marketplace app. Slack may return fewer messages while NextCursor continues the history.\",\"type\":\"integer\"}},\"required\":[\"channelId\"],\"type\":\"object\"}"),
+		Branches:     ListChannelMessagesDefinition.Branches,
+		StepDefaults: ListChannelMessagesDefinition.StepDefaults,
 	}
 }
 

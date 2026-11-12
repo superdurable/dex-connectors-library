@@ -4,14 +4,15 @@
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { CheckpointError, InsufficientTimeError, newFence, type Marker } from '@superdurable/connectors-sdk/singledispatch';
 import { failure, isCredentialRejected, retryAfter, type SlackClient, type SlackExchange } from './client.js';
-import { GetThreadReplyDefinition, GetWorkspaceIdentityDefinition, ListChannelsDefinition, ListThreadMessagesDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './generated/definitions.js';
-import type { Channel, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './generated/models.js';
+import { GetThreadReplyDefinition, GetWorkspaceIdentityDefinition, ListChannelMessagesDefinition, ListChannelsDefinition, ListThreadMessagesDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './generated/definitions.js';
+import type { Channel, ChannelMessage, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelMessagesInput, ListChannelMessagesOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './generated/models.js';
 
 const emptyMessage: Message = { channelId: '', timestamp: '', text: '' };
 const emptyReply: GetThreadReplyOutput = { message: emptyMessage };
 const emptyPost: PostMessageOutput = { message: emptyMessage };
 const emptyList: ListThreadMessagesOutput = { messages: [] };
 const emptyChannels: ListChannelsOutput = { channels: [] };
+const emptyChannelHistory: ListChannelMessagesOutput = { messages: [] };
 const emptyIdentity: GetWorkspaceIdentityOutput = { teamId: '', teamName: '', workspaceUrl: '', botUserId: '', botUserName: '', botId: '' };
 
 /** Read one Slack channel page with the bot token and filter it by name. */
@@ -105,6 +106,38 @@ export class GetThreadReplyOperation implements Query<GetThreadReplyInput, GetTh
   }
 }
 
+/** Read one bounded, newest-first page of a channel's top-level messages with the bot token. */
+export class ListChannelMessagesOperation implements Query<ListChannelMessagesInput, ListChannelMessagesOutput> {
+  /** Bind the provider client. */ constructor(private readonly client: SlackClient) {}
+  /** Return the manifest definition. */ definition() { return ListChannelMessagesDefinition; }
+  /** Invoke the Slack conversations.history query. */
+  async invoke(call: Call, input: ListChannelMessagesInput): Promise<QueryAttempt<ListChannelMessagesOutput>> {
+    const operation = 'listChannelMessages';
+    const pageSize = input.pageSize ?? 0;
+    const timestamps = [input.oldestTimestamp ?? '', input.latestTimestamp ?? ''];
+    if (!input.channelId.trim() || !Number.isInteger(pageSize) || pageSize < 0 || pageSize > maximumChannelHistoryPageSize ||
+      timestamps.some(timestamp => timestamp !== '' && !slackTimestampPattern.test(timestamp))) {
+      return newQueryBranch('defect', emptyChannelHistory, {}, failure(operation, 'VALIDATION', 'channel, valid Slack message timestamps, and page size 1 through 15 (blank or 0 reads 15) are required'));
+    }
+    const credential = await this.client.resolveToken(call, 'bot');
+    if (!credential.token) return newQueryBranch('defect', emptyChannelHistory, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
+    const query = new URLSearchParams({ channel: input.channelId, limit: String(pageSize || maximumChannelHistoryPageSize) });
+    if (input.oldestTimestamp) query.set('oldest', input.oldestTimestamp);
+    if (input.latestTimestamp) query.set('latest', input.latestTimestamp);
+    if (input.isInclusive) query.set('inclusive', 'true');
+    if (input.cursor) query.set('cursor', input.cursor);
+    const response = await this.client.get(call, credential.token, 'conversations.history', query, 'bot');
+    const classified = classifyQuery(this.client, call, operation, response, emptyChannelHistory, 'Slack channel history is temporarily unavailable', 'Slack rate limited the channel history query');
+    if (classified) return classified;
+    const body = response.body as SlackBody;
+    const messages = decodeChannelHistory(input.channelId, (response.body as Record<string, unknown>).messages);
+    if (!messages) return newQueryBranch('invalidResponse', emptyChannelHistory, this.client.receipt(call, response), failure(operation, 'PROTOCOL', 'Slack returned an invalid channel history'));
+    if (messages.some(message => !message.timestamp)) return newQueryBranch('invalidResponse', emptyChannelHistory, this.client.receipt(call, response), failure(operation, 'PROTOCOL', 'Slack returned a channel message without a timestamp'));
+    const nextCursor = body.response_metadata?.next_cursor;
+    return newQueryBranch('read', { messages, ...(nextCursor ? { nextCursor } : {}) }, this.client.receipt(call, response));
+  }
+}
+
 /** Post a top-level channel message with a durable single-dispatch fence. */
 export class PostChannelMessageOperation implements Mutation<PostChannelMessageInput, PostMessageOutput> {
   /** Bind the provider client. */ constructor(private readonly client: SlackClient) {}
@@ -122,6 +155,10 @@ export class PostThreadReplyOperation implements Mutation<PostThreadReplyInput, 
   /** Invoke the Slack chat.postMessage mutation. */
   invoke(call: Call, input: PostThreadReplyInput): Promise<MutationAttempt<PostMessageOutput>> { return postMessage(this.client, call, 'postThreadReply', input.channelId, input.threadTimestamp, input.text); }
 }
+
+// Slack caps conversations.history at 15 messages for non-Marketplace apps installed since May 2025.
+const maximumChannelHistoryPageSize = 15;
+const slackTimestampPattern = /^[0-9]+(\.[0-9]+)?$/;
 
 const channelTypesByVisibility: Record<string, string> = { '': 'public_channel,private_channel', public: 'public_channel', private: 'private_channel' };
 
@@ -153,6 +190,29 @@ function decodeChannels(value: unknown): Channel[] | undefined {
     channels.push({ channelId, name, isPrivate, isMember, ...(topicValue ? { topic: topicValue } : {}), ...(purposeValue ? { purpose: purposeValue } : {}) });
   }
   return channels;
+}
+
+/** Decode conversations.history messages with Go-compatible type checks for the fields shared decoding skips. */
+function decodeChannelHistory(channelId: string, value: unknown): ChannelMessage[] | undefined {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) return undefined;
+  const messages: ChannelMessage[] = [];
+  for (const raw of value) {
+    const item = (raw ?? {}) as Record<string, unknown>;
+    if (typeof item !== 'object' || Array.isArray(item)) return undefined;
+    const fields = [
+      optionalField(item, 'ts', 'string', ''), optionalField(item, 'thread_ts', 'string', ''), optionalField(item, 'user', 'string', ''),
+      optionalField(item, 'bot_id', 'string', ''), optionalField(item, 'text', 'string', ''),
+    ] as const;
+    const replyCount = item.reply_count ?? 0;
+    if (fields.some(field => field === undefined) || !Number.isSafeInteger(replyCount)) return undefined;
+    const [timestamp, threadTimestamp, userId, botId, text] = fields as unknown as [string, string, string, string, string];
+    messages.push({
+      channelId, timestamp, ...(threadTimestamp ? { threadTimestamp } : {}), ...(userId ? { userId } : {}), ...(botId ? { botId } : {}), text,
+      ...(replyCount ? { replyCount: replyCount as number } : {}),
+    });
+  }
+  return messages;
 }
 
 /** Decode the auth.test identity with Go-compatible type checks. */

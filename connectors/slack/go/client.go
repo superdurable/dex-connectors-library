@@ -246,6 +246,11 @@ func (client *Client) GetThreadReply() GetThreadReplyOperation {
 	return GetThreadReplyOperation{client: client}
 }
 
+// ListChannelMessages returns the ListChannelMessages operation bound to this client.
+func (client *Client) ListChannelMessages() ListChannelMessagesOperation {
+	return ListChannelMessagesOperation{client: client}
+}
+
 // PostChannelMessage returns the PostChannelMessage operation bound to this client.
 func (client *Client) PostChannelMessage() PostChannelMessageOperation {
 	return PostChannelMessageOperation{client: client}

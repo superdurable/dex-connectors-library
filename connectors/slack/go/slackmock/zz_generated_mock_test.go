@@ -48,6 +48,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[slack.GetThreadReplyOutput](`{"message":{"channelId":"C0123456789","timestamp":"1710000003.000400","threadTimestamp":"1710000000.000100","userId":"U0456789012","text":"Approved for dispatch."}}`)
 			return err
 		}},
+		{name: "listChannelMessages/recentChannelHistory/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[slack.ListChannelMessagesOutput](`{"messages":[{"channelId":"C0123456789","timestamp":"1710000030.000900","userId":"U0234567890","text":"Is order 1042 still on track?"},{"channelId":"C0123456789","timestamp":"1710000020.000800","userId":"U0567890123","text":"\u003c@U0567890123\u003e has joined the channel"}],"nextCursor":"cursor-page-2"}`)
+			return err
+		}},
+		{name: "listChannelMessages/recentChannelHistory/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[slack.ListChannelMessagesOutput](`{"messages":[{"channelId":"C0123456789","timestamp":"1710000020.000800","userId":"U0567890123","text":"\u003c@U0567890123\u003e has joined the channel"},{"channelId":"C0123456789","timestamp":"1710000010.000500","threadTimestamp":"1710000010.000500","userId":"U0BOT123456","botId":"B0123456789","text":"Order 1042 is ready for review.","replyCount":2}],"nextCursor":"cursor-page-3"}`)
+			return err
+		}},
+		{name: "listChannelMessages/recentChannelHistory/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[slack.ListChannelMessagesOutput](`{"messages":[{"channelId":"C0123456789","timestamp":"1710000000.000100","userId":"U0123456789","text":"Request approval for order 1042."}]}`)
+			return err
+		}},
 		{name: "postChannelMessage/messageSent/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[slack.PostMessageOutput](`{"message":{"channelId":"C0123456789","timestamp":"1710000010.000500","userId":"U0BOT123456","text":"Order 1042 is ready for review."}}`)
 			return err
@@ -77,6 +89,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetThreadReply().Definition().Operation.OperationID != "getThreadReply" {
 		t.Errorf("getThreadReply mock has another definition")
+	}
+	if mock.ListChannelMessages().Definition().Operation.OperationID != "listChannelMessages" {
+		t.Errorf("listChannelMessages mock has another definition")
 	}
 	if mock.PostChannelMessage().Definition().Operation.OperationID != "postChannelMessage" {
 		t.Errorf("postChannelMessage mock has another definition")

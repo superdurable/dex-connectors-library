@@ -129,6 +129,35 @@ export const GetThreadReplyDefinition: QueryDefinition = {
 /** Manifest metadata for getThreadReply. */
 export const GetThreadReplyMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
 
+/** Branch IDs for listChannelMessages. */
+export const ListChannelMessagesBranch = {
+  Read: "read",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** The channel history page was read. */
+export const ListChannelMessagesBranchRead = ListChannelMessagesBranch.Read;
+/** Slack conclusively rejected the channel history query. */
+export const ListChannelMessagesBranchProviderRejected = ListChannelMessagesBranch.ProviderRejected;
+/** Slack returned an invalid or oversized channel history response. */
+export const ListChannelMessagesBranchInvalidResponse = ListChannelMessagesBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const ListChannelMessagesBranchDefect = ListChannelMessagesBranch.Defect;
+/** Manifest definition for listChannelMessages. */
+export const ListChannelMessagesDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "listChannelMessages" },
+  branches: [
+    { id: "read", description: "The channel history page was read." },
+    { id: "providerRejected", description: "Slack conclusively rejected the channel history query.", optional: true },
+    { id: "invalidResponse", description: "Slack returned an invalid or oversized channel history response.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for listChannelMessages. */
+export const ListChannelMessagesMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
 /** Branch IDs for postChannelMessage. */
 export const PostChannelMessageBranch = {
   Sent: "sent",
