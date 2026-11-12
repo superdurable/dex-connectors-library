@@ -275,6 +275,10 @@ func TestToolingConsumerGuardRejectsSyntheticConsumers(t *testing.T) {
 			[]string{".github/workflows/other.yml references language_publish"}},
 		{"connector test", "connectors/acme/python/tests/test_x.py", "import language_publish\n",
 			[]string{"connectors/acme/python/tests/test_x.py references language_publish"}},
+		{"GNUmakefile", "GNUmakefile", "test-typescript-connectors:\n\tpython3 script/release/language_publish.py select\n",
+			[]string{"GNUmakefile references language_publish"}},
+		{"extensionless include", "ci-targets", "test-release-tool:\n\tpython3 script/release/language_publish.py select\n",
+			[]string{"ci-targets references language_publish"}},
 		{"composite action", ".github/actions/connector-check/action.yml", "runs:\n  steps:\n    - run: python3 script/release/language_publish.py\n",
 			[]string{".github/actions/connector-check/action.yml references language_publish"}},
 		{"YAML outside .github", "tools/connector-check/action.yaml", "run: python3 script/release/language_publish.py\n",
@@ -317,6 +321,8 @@ func TestToolingConsumerGuardRejectsSyntheticConsumers(t *testing.T) {
 
 // reviewedNonConnectorToolingReferences name listed tooling from files that never run in connector CI.
 var reviewedNonConnectorToolingReferences = map[string]bool{
+	// Local hook installer, run only by `make githooks`.
+	"script/install-githooks references commit-msg": true,
 	// Local Codex and Cursor branch hooks.
 	".codex/hooks/validate-branch-off-main.sh references branch_off_main_policy":  true,
 	".cursor/hooks/validate-branch-off-main.sh references branch_off_main_policy": true,
@@ -335,20 +341,13 @@ var reviewedNonConnectorToolingReferences = map[string]bool{
 }
 
 func isToolingConsumerCandidatePath(path string) bool {
-	switch {
-	case strings.HasPrefix(path, ".github/") || strings.HasPrefix(path, ".githooks/"):
-		return true
-	case path == "Makefile" || strings.HasSuffix(path, "/Makefile"):
-		return true
-	case path == "package.json" || strings.HasSuffix(path, "/package.json") || strings.HasSuffix(path, ".json") && strings.Contains(path, "hooks"):
-		return true
-	}
-	for _, extension := range []string{".py", ".mts", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".sh", ".go", ".txt", ".toml", ".yml", ".yaml", ".mk"} {
-		if strings.HasSuffix(path, extension) {
-			return true
+	// Scan every file except prose and images, so new build inputs such as GNUmakefile or includes are covered.
+	for _, extension := range []string{".md", ".mdx", ".mdc", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp"} {
+		if strings.HasSuffix(strings.ToLower(path), extension) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // findUnlistedToolingReferencesInFiles applies the candidate filter that the repository scan uses.
