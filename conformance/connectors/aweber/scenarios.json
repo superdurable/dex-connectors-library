@@ -56,6 +56,57 @@
       "operation": "listAccounts"
     },
     {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{\"entries\":[{\"id\":123,\"company\":\"Example Company\",\"analytics_src\":\"discard-me\"}],\"start\":0,\"total_size\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1.0/accounts",
+          "query": {
+            "ws.size": [
+              "100"
+            ],
+            "ws.start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-aweber-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "accounts": [
+            {
+              "company": "Example Company",
+              "id": "123"
+            }
+          ],
+          "limit": 100,
+          "offset": 0,
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listAccounts-defaults",
+      "operation": "listAccounts"
+    },
+    {
       "callId": "1c1bfd8b-75f2-508c-8fa1-cb8fd37d46a9",
       "exchanges": [
         {
