@@ -1,10 +1,10 @@
 {
   "connectorId": "azure-devops",
-  "releaseTag": "connectors/microsoft/azure-devops/go/v0.1.0",
+  "releaseTag": "connectors/microsoft/azure-devops/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-microsoft-azure-devops",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -46,7 +46,7 @@
         "description": "ListProjectsInput selects a bounded page of accessible projects.",
         "properties": {
           "skip": {
-            "description": "Skip is the nonnegative number of projects omitted before this page.",
+            "description": "Skip is the nonnegative number of projects omitted before this page; zero starts at the first project.",
             "type": "integer"
           },
           "top": {
@@ -55,7 +55,6 @@
           }
         },
         "required": [
-          "skip",
           "top"
         ],
         "type": "object"

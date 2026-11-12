@@ -16,8 +16,8 @@ import (
 type ListProjectsInput struct {
 	// Top is the maximum number of projects in this page, from 1 to 100.
 	Top int `json:"top"`
-	// Skip is the nonnegative number of projects omitted before this page.
-	Skip int `json:"skip"`
+	// Skip is the nonnegative number of projects omitted before this page; zero starts at the first project.
+	Skip int `json:"skip,omitempty"`
 }
 
 // ProjectMetadata contains stable project identity and state.

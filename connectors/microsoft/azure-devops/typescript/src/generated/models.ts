@@ -49,8 +49,8 @@ export type CredentialSource = CredentialProvider<Credentials>;
 export interface ListProjectsInput {
   /** Top is the maximum number of projects in this page, from 1 to 100. */
   "top": number;
-  /** Skip is the nonnegative number of projects omitted before this page. */
-  "skip": number;
+  /** Skip is the nonnegative number of projects omitted before this page; zero starts at the first project. */
+  "skip"?: number | undefined;
 }
 /** ProjectMetadata contains stable project identity and state. */
 export interface ProjectMetadata {
@@ -90,7 +90,7 @@ export interface WorkItemMetadata {
 /** Runtime validator for ListProjectsInput. */
 export const ListProjectsInputSchema = z.strictObject({
   "top": z.number().int(),
-  "skip": z.number().int(),
+  "skip": z.number().int().optional(),
 }) satisfies z.ZodType<ListProjectsInput>;
 
 /** Runtime validator for ProjectMetadata. */

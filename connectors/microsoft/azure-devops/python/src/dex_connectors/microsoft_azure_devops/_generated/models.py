@@ -18,8 +18,8 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 class ListProjectsInput:
     # Top is the maximum number of projects in this page, from 1 to 100.
     top: int = 0
-    # Skip is the nonnegative number of projects omitted before this page.
-    skip: int = 0
+    # Skip is the nonnegative number of projects omitted before this page; zero starts at the first project.
+    skip: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
 
 setattr(ListProjectsInput, '__module__', 'dex_connectors.microsoft_azure_devops.models')

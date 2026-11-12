@@ -12,7 +12,6 @@ import { newConnectionWithOperations, type Connection, type Operations } from '.
 /** Go zero value for ListProjectsInput in scripted cases. */
 export const emptyListProjectsInput: ListProjectsInput = ListProjectsInputSchema.parse({
   "top": 0,
-  "skip": 0,
 });
 /** Go zero value for ProjectMetadata in scripted cases. */
 export const emptyProjectMetadata: ProjectMetadata = ProjectMetadataSchema.parse({

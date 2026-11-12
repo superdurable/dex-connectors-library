@@ -62,6 +62,65 @@
       "operation": "listProjects"
     },
     {
+      "callId": "67853049-2440-4511-837e-1665e563b7cc",
+      "exchanges": [
+        {
+          "body": "{\"count\":1,\"value\":[{\"id\":\"eb6e4656-77fc-42a1-9181-4c6d8e9da5d1\",\"name\":\"Example\",\"state\":\"wellFormed\",\"url\":\"not-persisted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/projects",
+          "query": {
+            "$skip": [
+              "0"
+            ],
+            "$top": [
+              "2"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "id": "eb6e4656-77fc-42a1-9181-4c6d8e9da5d1",
+              "name": "Example",
+              "state": "wellFormed"
+            }
+          ],
+          "skip": 0,
+          "top": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "top": 2
+      },
+      "name": "listProjects-firstPage",
+      "operation": "listProjects"
+    },
+    {
       "callId": "7689b229-e7cf-4ff0-8b93-a91240c76551",
       "exchanges": [
         {
