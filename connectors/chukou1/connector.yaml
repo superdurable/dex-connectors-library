@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: chukou1
+  displayName: Chukou1
+  description: List overseas warehouse codes, names, and countries from the Chukou1 OpenAPI.
+  company: Chukou1
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: chukou1
+  codegen:
+    go:
+      package: chukou1
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Chukou1 production OpenAPI. Leave blank for the displayed production endpoint; override only for a trusted test server or provider-approved proxy.
+        default: https://openapi.chukou1.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one warehouse query as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum warehouse response size in bytes as a positive integer. Leave blank for the displayed default; raise only if the authorized catalog exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: chukou1-access-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Secret fixed token for a self-developed system from https://yewu.chukou1.cn/Client/Index.aspx > Account > Customer Authorization Management > Authorize > View Token. Copy the token without Bearer; blank prevents requests. Update it after expiry or rotation.
+        required: true
+    guide:
+      startURL: https://openapi.chukou1.cn/v1/Help/SelfAuthorization
+      steps:
+        - For a self-developed integration, sign in at https://yewu.chukou1.cn/Client/Index.aspx and open Account > Customer Authorization Management. Choose Authorize, View Token, and set the token expiry as needed. Third-party ERP applications require the separate OAuth2 developer approval and consent flow.
+        - Copy the fixed Access Token into the protected access_token field without Bearer. The token is required and sent only in the Authorization header; update the Dex connection when it expires or is rotated.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed production defaults. The documented demo environment uses HTTP and is not a safe credentialed override.
+  operations:
+    - name: listWarehouses
+      goName: ListWarehouses
+      inputType: ListWarehousesInput
+      outputType: WarehousePage
+      kind: query
+      description: List authorized overseas warehouse codes, names, and countries without order or customer data.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Chukou1 returned overseas warehouses, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Chukou1 rejected the token or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Chukou1 returned malformed or oversized warehouse data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local configuration or token is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedWarehouse
+          branch: listed
+          description: Synthetic overseas warehouse for local Dex Flow verification.
+          default: true
+          output: {warehouses: [{id: US, name: San Francisco Warehouse, country: United States, countryCode: US}]}
