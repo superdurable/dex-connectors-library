@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: youzan
+  displayName: Youzan
+  description: Read basic information for the shop authorized to a Youzan Cloud application.
+  company: Youzan
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: youzan
+  codegen:
+    go:
+      package: youzan
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Youzan Cloud Open API root. Blank uses the displayed production endpoint; override only for a trusted compatible test gateway. Do not include the API path or access token.
+        default: https://open.youzanyun.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one shop query as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete shop JSON response in bytes as a positive integer. Blank uses the displayed default; increase only if a provider response exceeds it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: youzan-access-token
+    fields:
+      - name: accessToken
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret shop access_token from https://diy.youzanyun.com/application/list under Application Center > application overview; obtain it through the documented POST /auth/token silent grant with the authorized shop kdt_id. Paste the full opaque token, not client_secret. Blank prevents calls. It normally expires after seven days; replace it with a newly acquired token when expired.
+    guide:
+      startURL: https://diy.youzanyun.com/application/list
+      steps:
+        - Sign in at https://diy.youzanyun.com/application/list, open Application Center > Applications, and create or select a self-use application authorized by the intended shop. Under Application Center > Category Capabilities > Category Management, request 店铺管理 > 单店信息同步 or 连锁店铺信息同步 for youzan.shop.basic.get. For a locally deployed app, configure its server IP allowlist in application settings.
+        - In Application Center > Applications > application overview, find client_id and secret client_secret. Follow https://doc.youzanyun.com/v2/doc/cloud/token/IO94wN9p3icgDgkxJbfcap5XnQd.md to obtain a shop access_token with authorize_type=silent and grant_id set to the authorized shop kdt_id. Store only the resulting opaque access_token in this secret field; blank prevents calls. The token normally expires after seven days.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The getShopBasic Query has no operation input and reads only the shop bound to the token. This API is metered by Youzan; review its billing in the application console.
+  operations:
+    - name: getShopBasic
+      goName: GetShopBasic
+      inputType: GetShopBasicInput
+      outputType: ShopBasic
+      kind: query
+      description: Read the authorized shop's ID, name, URL, and organization role.
+      idempotency: none
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: billedOperation, explanation: "Youzan meters this API call, so the retry budget limits charges during a prolonged provider outage."}}
+      branches:
+        - {id: found, goName: Found, description: Youzan returned the authorized shop.}
+        - {id: providerRejected, goName: ProviderRejected, description: Youzan conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Youzan returned malformed or oversized shop JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local access token is missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample authorized shop is returned.
+          output: {shopID: 59931296, name: Sample Shop, role: 1, lineOfBusiness: 70000, url: "https://h5.youzan.com/v2/showcase/homepage?alias=sample"}
