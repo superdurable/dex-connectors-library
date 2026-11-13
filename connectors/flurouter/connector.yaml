@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: flurouter
+  displayName: 川流 Token
+  description: List models available to the connected FluRouter API Key.
+  company: flurouter
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: flurouter
+  codegen:
+    go:
+      package: flurouter
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one model-list HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only for a large authorized model catalog.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: flurouter-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret sk-il- API Key from https://flurouter.net/guide > Console > API Keys. Create a Key and copy it when first shown; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://flurouter.net/guide
+      steps:
+        - Sign in to the console from https://flurouter.net/guide, open API Keys, select Create API Key, set its name and model permissions, and immediately copy the secret sk-il- Key shown once. Enter it in Dex Connections; blank prevents requests. A redemption code is not an API Key.
+        - Start ListModels with empty JSON {}. The fixed HTTPS endpoint uses a Bearer header. Results are the IDs visible to this Key, which can differ from the public model catalog. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Use the returned IDs in model requests. If the list omits a desired model, change the Key's permissions in Console > API Keys or request access. Keep Keys out of Flow input and rotate a compromised Key in the console.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List model IDs currently visible to the connected Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: FluRouter returned the Key-visible model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: FluRouter rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: FluRouter returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: personWaiting, explanation: "A user waits for available model IDs, so transient failures are retried at most twice before the Flow fails."}}
+      mocks:
+        - name: availableModels
+          branch: found
+          description: Two model IDs available to this Key.
+          default: true
+          output: {modelIDs: [demo-chat, demo-embedding]}
+        - name: noModels
+          branch: found
+          description: No models available to this Key.
+          output: {modelIDs: []}
