@@ -1,0 +1,78 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: hesi
+  displayName: Hesi
+  description: List one page of department IDs, names, and active states.
+  company: Hesi
+  categories: [finance-payments]
+  version: v0.1.0
+spec:
+  provider: hesi
+  codegen:
+    go:
+      package: hesi
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Hesi HTTPS API origin for your enterprise, found with its address-prefix lookup using the corporate ID from desktop Enterprise Information. Leave blank for the displayed standalone-platform default; override for a documented DingTalk, WeCom, Cloud Hub, or Feishu tenant origin. See https://ekuaibao.github.io/open-platform-docs/docs/open-api/getting-started/origin.
+        default: https://app.ekuaibao.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for each authorization or department request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow response.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum size in bytes of each authorization or department response as a positive integer. Leave blank for the displayed default; raise only for a legitimate larger page.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: hesi-api
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        required: true
+        description: AppKey from Hesi desktop > 合思+ > 开放接口(新) > created or existing key. Copy its account identifier into this secret field; blank prevents requests. See https://ekuaibao.github.io/open-platform-docs/docs/open-api/getting-started/question-answer.
+      - name: app_security
+        goName: AppSecurity
+        type: secretString
+        required: true
+        description: AppSecurity paired with AppKey in Hesi desktop > 合思+ > 开放接口(新) > created or existing key. Copy into this secret field; blank prevents requests. Rotate it there if disclosed. See https://ekuaibao.github.io/open-platform-docs/docs/open-api/getting-started/question-answer.
+    guide:
+      startURL: https://app.ekuaibao.com
+      steps:
+        - Ask your Hesi implementation consultant to enable 开放接口(新). In Hesi desktop open 合思+ > 开放接口(新), create or inspect a key, and copy AppKey and AppSecurity into secret app_key and app_security. Both are required. Scope that key to only the enterprise departments needed by this Flow.
+        - In desktop 企业信息 find your corporate ID, use the documented address-prefix lookup, and enter only the returned HTTPS origin in baseUrl if it differs from the displayed standalone-platform default. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - This Query obtains a short-lived accessToken automatically and uses it only for the department request. It returns only department ID, name, code, and active state; it omits cost centers, legal entity, and employee details.
+  operations:
+    - name: listDepartments
+      goName: ListDepartments
+      inputType: ListDepartmentsInput
+      outputType: ListDepartmentsOutput
+      kind: query
+      description: List one bounded page of department metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Hesi returned department metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Hesi rejected credentials or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Hesi returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleDepartments
+          branch: listed
+          description: Synthetic department metadata for local Flow verification, not live Hesi data.
+          default: true
+          output:
+            departments:
+              - {id: "corp:dept", name: Example Department, code: "001", active: true}
+            total: 1
+            nextStart: 0
