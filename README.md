@@ -1,8 +1,13 @@
+
+[![Dex Connectors directory](https://connectors.superdurable.io/card.png)](https://connectors.superdurable.io/)
+
 # [Dex Connectors](https://connectors.superdurable.io/)
 
 ## Overview
 
-[![Dex Connectors directory](https://connectors.superdurable.io/card.png)](https://connectors.superdurable.io/)
+
+
+[<img width="1146" height="826" alt="what-is-connectors" src="https://github.com/user-attachments/assets/90050abb-6a5a-41d9-8333-3c773f40bde2" />](https://connectors.superdurable.io/)
 
 Dex Connectors Library is the open-source library that connects [Dex](https://github.com/superdurable/dex)
 applications to products and services across the internet.
@@ -14,7 +19,6 @@ retry policy, persisting read results in Attributes, and streaming progress
 from long-running operations. In addition, connectors include reusable UI
 units for configuring and using those products.
 
-[![How Trigger events, Connector Steps, and UI units connect products with Dex](docs/assets/dex-connectors-overview.png)]((https://connectors.superdurable.io/))
 
 The directory lists each published connector, its company, reusable UI units,
 triggers, and operations. Search matches all of those names and descriptions.
