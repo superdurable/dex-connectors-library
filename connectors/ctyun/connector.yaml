@@ -1,0 +1,81 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: ctyun
+  displayName: CTYun
+  description: List CTYun Knowledge Base Q&A resource IDs, names, and file counts.
+  company: CTYun
+  categories: [ai, productivity]
+  version: v0.1.0
+spec:
+  provider: ctyun
+  codegen:
+    go:
+      package: ctyun
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: CTYun Knowledge Base Q&A production HTTPS origin. Leave blank for the displayed default; override only after the official endpoint document changes.
+        default: https://kqa-global.ctapi.ctyun.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for the knowledge-base list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow response.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum knowledge-base response size in bytes. Leave blank for the displayed default; increase only for a legitimately larger resource directory.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: ctyun-aksk
+    fields:
+      - name: access_key
+        goName: AccessKey
+        type: secretString
+        required: true
+        description: CTYun AK from https://www.ctyun.cn/ console > 账号中心 > 安全设置 > 登录保护 > 用户AccessKey > 新建. Enter the identifier as a secret; blank prevents authorization.
+      - name: security_key
+        goName: SecurityKey
+        type: secretString
+        required: true
+        description: CTYun SK paired with the AK from https://www.ctyun.cn/ console > 账号中心 > 安全设置 > 登录保护 > 用户AccessKey > 新建. Keep secret; blank prevents authorization.
+      - name: tenant_id
+        goName: TenantID
+        type: secretString
+        required: true
+        description: Knowledge Base Q&A tenantId visible after https://www.ctyun.cn/ console > 知识库问答 > 开始使用 > 访问 > 对话页面. Copy the displayed string into this secret field; blank prevents authorization.
+    guide:
+      startURL: https://www.ctyun.cn/document/11032279/11074496
+      steps:
+        - Open CTYun account center > 安全设置 > 登录保护 > 用户AccessKey > 新建; copy the AK and SK into secret access_key and security_key. Both are required. Grant that account access to the Knowledge Base Q&A tenant.
+        - Open Knowledge Base Q&A console > 开始使用 > 访问; the dialogue page displays tenantId. Copy it into secret tenant_id. Blank prevents listing the tenant's knowledge bases.
+        - The connector signs each request with Eop-Authorization and a fresh request ID and Beijing-time eop-date. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults; output omits document contents.
+  operations:
+    - name: listKnowledgeBases
+      goName: ListKnowledgeBases
+      inputType: ListKnowledgeBasesInput
+      outputType: ListKnowledgeBasesOutput
+      kind: query
+      description: List accessible knowledge-base resource metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "CTYun returned knowledge-base metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "CTYun rejected credentials or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "CTYun returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleKnowledgeBases
+          branch: listed
+          description: Synthetic knowledge-base metadata for local Flow verification, not live CTYun data.
+          default: true
+          output:
+            knowledgeBases:
+              - {id: 280, name: Example knowledge base, fileCount: 4}
