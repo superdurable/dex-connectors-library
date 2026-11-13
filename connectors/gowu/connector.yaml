@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: gowu
+  displayName: Gowu
+  description: Describe the currently authorized Gowu API application and its call count.
+  company: Gowu
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: gowu
+  codegen:
+    go:
+      package: gowu
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Gowu OpenAPI. Leave blank for the displayed production endpoint; override only for a provider-issued HTTPS endpoint.
+        default: https://api.gowu.net
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one application-info request as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum application-info response size in bytes as a positive integer. Leave blank for the displayed default; raise only if provider responses exceed it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: gowu-app-key
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: string
+        description: App Key from https://open.gowu.net/console > application details > 凭证. Copy exactly; blank prevents requests.
+        required: true
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        description: Signing secret generated under application details > 凭证. Copy when displayed into this protected field; blank prevents requests. Regenerate if lost.
+        required: true
+    guide:
+      startURL: https://www.gowu.net/open/docs/rest
+      steps:
+        - Sign in to https://open.gowu.net/console and open the application details page. Under 凭证, copy the displayed App Key into app_key and generate the signing secret for the protected app_secret field. Blank prevents requests; the signing secret is shown only once and resetting it invalidates the old one.
+        - On the same application page, check 权限 for access to GET /v1/access-clients/me. An experience application may be available for seven days with a daily call quota; request formal access before production use.
+        - This Query signs each request with a fresh nonce and timestamp. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults; use a provider-issued HTTPS endpoint only when overriding the production origin.
+  operations:
+    - name: getAccessClient
+      goName: GetAccessClient
+      inputType: GetAccessClientInput
+      outputType: AccessClientResult
+      kind: query
+      description: Read the authorized app's remark and API call count without returning its App Key or signing secret.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Gowu returned the authorized application's information."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Gowu rejected the key or permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Gowu returned malformed or oversized application data.", optional: true}
+        - {id: defect, goName: Defect, description: "The local connection is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundApp
+          branch: found
+          description: Synthetic app information for local Dex Flow verification.
+          default: true
+          output: {remark: Example integration, apiCallCount: 42}
