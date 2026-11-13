@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jisuapi
+  displayName: JisuAPI
+  description: List Chinese province identifiers and names from the administrative-area API.
+  company: JisuAPI
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: jisuapi
+  codegen:
+    go:
+      package: jisuapi
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one province-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only if the administrative-area response grows. Other provider fields are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: jisuapi-appkey
+    fields:
+      - name: appkey
+        goName: AppKey
+        type: secretString
+        required: true
+        description: "Secret appkey from https://www.jisuapi.com/my/ > 个人中心 after registering and applying for 全国省市县行政区划分. Copy its opaque value exactly; blank prevents requests. The provider requires it as an HTTPS query parameter."
+    guide:
+      startURL: https://www.jisuapi.com/
+      steps:
+        - Register at https://www.jisuapi.com/, open 全国省市县行政区划分 at https://www.jisuapi.com/api/area/, and click 立即申请 for an appropriate plan. Open 个人中心 by clicking your registered phone number in the top-left area and copy the secret appkey into Dex. Blank prevents requests.
+        - The provider requires appkey in the HTTPS query string. This connector disables redirects and never includes the request URL, appkey, or raw provider message in Flow results, receipts, or failures. If you configure an IP whitelist at 个人中心 > IP白名单, allow the Dex worker's outbound address.
+        - Start ListProvinces with empty JSON {}. No region selection is needed. Leave timeout and maxResponseBytes blank for displayed defaults. The official page lists 100 free calls per day for free members; higher daily allowances depend on membership. Successful status 0 generally counts as a call.
+  operations:
+    - name: listProvinces
+      goName: ListProvinces
+      inputType: ListProvincesInput
+      outputType: ListProvincesOutput
+      kind: query
+      description: List province IDs and names without personal data.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: JisuAPI returned province identifiers and names.}
+        - {id: providerRejected, goName: ProviderRejected, description: JisuAPI rejected the key or access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: JisuAPI returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local appkey is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "A successful province query consumes a plan call, so an unconfirmed request is retried at most twice."}}
+      mocks:
+        - name: oneProvince
+          branch: listed
+          description: The province catalog includes Beijing.
+          default: true
+          output: {provinces: [{id: '1', name: Beijing}]}
