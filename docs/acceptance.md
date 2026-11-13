@@ -8,6 +8,10 @@ Run the repository-wide shared and catalog checks:
 make test-common catalog-check
 ```
 
+`make test-common` runs `test-common-repository-checks`, `test-common-sdkgo`,
+`test-common-root-go`, `test-common-python-scripts`, and
+`test-common-typescript-conformance`; each also runs alone.
+
 Run every registered connector, Studio bundle, and React package:
 
 ```bash
@@ -62,14 +66,25 @@ CI behavior is accepted when:
 - pull requests and pushes to `main` test affected connector shards and their dependents;
 - scheduled and manual runs test the full catalog;
 - shared contract changes select the complete catalog;
-- documentation and agent-rule-only changes run common and the CI summary
-  without connector module jobs; directory-site-only changes also run the site suite;
+- the repository-wide source, manifest, and tooling checks run on every change;
+- documentation and agent-rule-only changes run the common Python suite and
+  the CI summary without connector module jobs; directory-site-only changes run
+  only the site suite, the repository checks, and the CI summary;
 - changes only to listed common-only repository tooling, such as release
-  publishing scripts and their tests, run common and the CI summary without
-  connector module jobs; a change that also touches code generation, an SDK,
-  or any unlisted shared path selects the complete catalog;
-- common, SDK, React, and site suites run when their inputs change on a
-  pull request or push to `main`;
+  publishing scripts and their tests, run the common Python suite and the CI
+  summary without connector module jobs; a change that also touches code
+  generation, an SDK, or any unlisted shared path selects the complete catalog;
+- each common block (`sdkgo`, root Go module, Python scripts, TypeScript
+  conformance) and the SDK, React, and site suites run when their inputs change
+  on a pull request or push to `main`; an unlisted path runs every block;
+- pull requests skip jobs that need a Dex stack, service containers, or Docker,
+  and the merge queue requires every one of them that the plan selects;
+- every event replays the conformance scenarios of every selected connector,
+  in a job parallel to the package tests; the conformance mutation self-test
+  never runs in the merge queue;
+- a Python or TypeScript package without conformance scenarios fails replay
+  on every event, base commit, diff, and scope, unless
+  `conformance/exemptions.yaml` exempts its connector;
 - the `ci-summary` check reports a result even when a matrix is empty;
 - scheduled compatibility selects the complete catalog;
 - no matrix creates more than 256 jobs and Connector jobs cap parallelism at 32.

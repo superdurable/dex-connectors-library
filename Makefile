@@ -1,4 +1,4 @@
-.PHONY: check download-root-go-modules test test-common test-connectors-mcp test-connectors-mcp-example test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-python-connectors-latest-sdk test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check download-root-go-modules test test-common test-common-repository-checks test-common-sdkgo test-common-root-go test-common-python-scripts test-common-typescript-conformance test-connectors-mcp test-connectors-mcp-example test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-python-connectors-latest-sdk test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -19,15 +19,48 @@ check: test studio-bundle-theme react
 
 test: test-common test-connectors catalog-check
 
-test-common:
-	cd sdkgo && GOWORK=off go test -race -count=1 ./...
+# CI runs the repository checks on every change and each other block when a change touches its inputs.
+test-common: test-common-repository-checks test-common-sdkgo test-common-root-go test-common-python-scripts test-common-typescript-conformance
+
+# These read every source file, manifest, or tracked file, so no path rule can safely skip them.
+ROOT_GO_REPOSITORY_CHECK_PACKAGES = ./internal/compliance ./schema
+ROOT_GO_REPOSITORY_CHECK_TESTS = ^TestRepositoryToolingTestOnlyPathsExistAndNeverRunPerConnector$$
+
+test-common-repository-checks:
+	GOWORK=off go test -race $(ROOT_GO_REPOSITORY_CHECK_PACKAGES)
+	GOWORK=off go test -count=1 -run '$(ROOT_GO_REPOSITORY_CHECK_TESTS)' ./cmd/connectorctl
+
+# Go's test cache cannot see the testdata this test compiles through a `go test` subprocess.
+SDKGO_UNCACHED_TESTS = ^TestWrongFactoryTargetInputDoesNotCompile$$
+
+test-common-sdkgo:
+	cd sdkgo && GOWORK=off go test -race -skip '$(SDKGO_UNCACHED_TESTS)' ./...
+	cd sdkgo && GOWORK=off go test -race -count=1 -run '$(SDKGO_UNCACHED_TESTS)' .
 	cd sdkgo && GOWORK=off go vet ./...
-	python3 -m unittest script/release/component_release_test.py script/release/connectors_mcp_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py script/python_latest_sdk_test.py script/go_download_retry_test.py
+
+# These packages read only files that Go's test cache tracks. Every other package runs git, python3,
+# go, tsc, or tsx subprocesses whose inputs the cache cannot see, so it always reruns.
+ROOT_GO_CACHEABLE_TEST_PACKAGES = ./internal/codegen/gomodel
+
+test-common-root-go:
+	npm ci --prefix connectors/stripe/typescript
+	npm ci --prefix connectors/google/gmail/typescript
+	@cacheable="$$(GOWORK=off go list $(ROOT_GO_CACHEABLE_TEST_PACKAGES))" || exit 1; \
+	repository_checks="$$(GOWORK=off go list $(ROOT_GO_REPOSITORY_CHECK_PACKAGES))" || exit 1; \
+	all="$$(GOWORK=off go list ./...)" || exit 1; \
+	uncached="$$(printf '%s\n' "$$all" | grep -vxF "$$cacheable" | grep -vxF "$$repository_checks")" || exit 1; \
+	TS_CODEGEN_COMPILE=1 GOWORK=off go test -race $$cacheable & cacheable_pid=$$!; \
+	uncached_status=0; TS_CODEGEN_COMPILE=1 GOWORK=off go test -race -count=1 $$uncached || uncached_status=$$?; \
+	cacheable_status=0; wait $$cacheable_pid || cacheable_status=$$?; \
+	test $$uncached_status -eq 0 && test $$cacheable_status -eq 0
+	GOWORK=off go vet ./...
+
+test-common-python-scripts:
+	python3 -m unittest script/release/component_release_test.py script/release/connectors_mcp_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/ci_summary_test.py script/set_mtimes_from_git_objects_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py script/python_latest_sdk_test.py script/go_download_retry_test.py
+
+test-common-typescript-conformance:
 	npm ci --prefix connectors/stripe/typescript
 	connectors/stripe/typescript/node_modules/.bin/tsx --test conformance/runners/typescript/connector_scenarios.test.mjs
-	npm ci --prefix connectors/google/gmail/typescript
-	TS_CODEGEN_COMPILE=1 GOWORK=off go test -race ./...
-	GOWORK=off go vet ./...
 
 # The temporary workspace links this commit's sdkgo, so an SDK change is tested against the server
 # before release. The release workflow builds the server with GOWORK=off against released modules.
@@ -48,11 +81,16 @@ test-connectors-mcp-example:
 test-conformance:
 	cd sdkgo && GOWORK=off go test ./... -run '^TestConformance' -count=1
 
-test-connector-conformance:
+# Replays every connector the plan selects, plus every fixture after a shared runner change.
+test-connector-conformance: download-root-go-modules
 	@if [ -n "$(CONNECTOR_DIRECTORY)" ]; then \
 		python3 script/connector_conformance.py --connector "$(CONNECTOR_DIRECTORY)"; \
 	else \
-		python3 script/connector_conformance.py --base "$(CONNECTOR_BASE)" --head "$(CONNECTOR_HEAD)"; \
+		directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
+		arguments=""; \
+		for directory in $$directories; do arguments="$$arguments --include-connector $$directory"; done; \
+		if [ "$(CONNECTOR_SCOPE)" != all ]; then arguments="$$arguments --base $(CONNECTOR_BASE) --head $(CONNECTOR_HEAD)"; fi; \
+		python3 script/connector_conformance.py $$arguments; \
 	fi
 
 # Connector targets run connectorctl from the root module; download its modules first.

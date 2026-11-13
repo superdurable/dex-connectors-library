@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Guard the transition from legacy packages to required provider scenarios."""
+"""Guard required provider scenarios for every Python and TypeScript connector package."""
 
 import contextlib
 import io
@@ -14,28 +14,6 @@ from unittest.mock import patch
 
 from script import connector_conformance
 
-
-
-class LegacyConformanceSelectionTest(unittest.TestCase):
-    def test_go_only_change_warns_for_existing_package(self) -> None:
-        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), patch.object(connector_conformance, "conformance_exemptions", return_value={}):
-            connector = Path(directory) / "connectors/legacy"
-            (connector / "python").mkdir(parents=True)
-            (connector / "connector.yaml").write_text("metadata: legacy\n")
-            (connector / "python/pyproject.toml").write_text("[project]\n")
-            warnings = io.StringIO()
-            with contextlib.redirect_stderr(warnings):
-                connector_conformance.run_connector(connector, ["connectors/legacy/go/client.go"])
-            self.assertIn("missing conformance (legacy)", warnings.getvalue())
-
-    def test_language_change_requires_fixture(self) -> None:
-        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), patch.object(connector_conformance, "conformance_exemptions", return_value={}):
-            connector = Path(directory) / "connectors/legacy"
-            (connector / "python").mkdir(parents=True)
-            (connector / "connector.yaml").write_text("metadata: legacy\n")
-            (connector / "python/pyproject.toml").write_text("[project]\n")
-            with self.assertRaisesRegex(ValueError, "has no conformance scenarios"):
-                connector_conformance.run_connector(connector, ["connectors/legacy/python/client.py"])
 
 
 class MutationSelfTestSelectionTest(unittest.TestCase):
@@ -387,6 +365,101 @@ class CoverageValidationTest(unittest.TestCase):
         scenario = self.scenario("read", [200], False)
         scenario["pending"] = True
         self.validate_fixture([scenario], "unsupported pending")
+
+
+class ReplaySelectionTest(unittest.TestCase):
+    """CI replays every connector its plan selected plus what the changed paths select."""
+
+    ROOT = connector_conformance.ROOT
+
+    def run_main(self, changed: list[str], *arguments: str) -> list[Path]:
+        replayed: list[Path] = []
+        with patch.object(connector_conformance, "run_connector", side_effect=lambda connector, *_: replayed.append(connector)), \
+                patch.object(connector_conformance, "changed_paths", return_value=changed), \
+                patch("sys.argv", ["connector_conformance.py", *arguments]), contextlib.redirect_stdout(io.StringIO()):
+            connector_conformance.main()
+        return replayed
+
+    def test_plan_selected_connectors_replay_even_when_no_path_selects_them(self) -> None:
+        replayed = self.run_main(["sdkgo/step.go"], "--base", "base-sha", "--head", "HEAD",
+                                 "--include-connector", "connectors/stripe", "--include-connector", "connectors/newsapi")
+        self.assertEqual([self.ROOT / "connectors/newsapi", self.ROOT / "connectors/stripe"], replayed)
+
+    def test_included_and_changed_connectors_replay_once(self) -> None:
+        replayed = self.run_main(["connectors/stripe/go/client.go"], "--base", "base-sha", "--head", "HEAD",
+                                 "--include-connector", "connectors/stripe")
+        self.assertEqual([self.ROOT / "connectors/stripe"], replayed)
+
+    def test_included_connectors_replay_without_a_base(self) -> None:
+        self.assertEqual([self.ROOT / "connectors/stripe"], self.run_main([], "--include-connector", "connectors/stripe"))
+
+    def test_shared_runner_change_still_replays_every_fixture(self) -> None:
+        replayed = self.run_main(["script/connector_conformance.py"], "--base", "base-sha", "--head", "HEAD")
+        fixtures = (self.ROOT / "conformance/connectors").rglob("scenarios.json")
+        self.assertEqual(sorted(self.ROOT / "connectors" / fixture.relative_to(self.ROOT / "conformance/connectors").parent
+                                for fixture in fixtures), replayed)
+
+
+class PackagesWithoutScenariosTest(unittest.TestCase):
+    """Every language package needs scenarios on every event, scope, and diff unless its connector is exempt."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        for connector, package in (("acme/python-only", "python/pyproject.toml"), ("acme/typescript-only", "typescript/package.json"),
+                                   ("acme/native", "python/pyproject.toml")):
+            (self.root / "connectors" / connector / package).parent.mkdir(parents=True)
+            (self.root / "connectors" / connector / "connector.yaml").write_text("kind: Connector\n")
+            (self.root / "connectors" / connector / package).write_text("{}\n")
+        (self.root / "connectors/acme/go-only").mkdir(parents=True)
+        (self.root / "connectors/acme/go-only/connector.yaml").write_text("kind: Connector\n")
+        (self.root / "conformance/connectors").mkdir(parents=True)
+        self.exemptions = {"connectors/acme/native": "native wire protocol"}
+
+    def run_connector(self, connector: str, paths: list[str]) -> str:
+        output = io.StringIO()
+        with patch.object(connector_conformance, "ROOT", self.root), contextlib.redirect_stdout(output), \
+                contextlib.redirect_stderr(output):
+            connector_conformance.run_connector(self.root / "connectors" / connector, paths, self.exemptions)
+        return output.getvalue()
+
+    def test_package_without_scenarios_fails_for_every_diff(self) -> None:
+        # Scope all, an empty diff, and an unknown base reach replay with no changed paths.
+        for connector in ("acme/python-only", "acme/typescript-only"):
+            for paths in ([], ["catalog.yaml"], [f"connectors/{connector}/go/client.go"], [f"connectors/{connector}/python/x.py"]):
+                with self.subTest(connector=connector, paths=paths), self.assertRaisesRegex(
+                        ValueError, f"connectors/{connector} has no conformance scenarios; add "
+                                    f"conformance/connectors/{connector}/scenarios.json or exempt the connector"):
+                    self.run_connector(connector, paths)
+
+    def test_exempt_connector_passes_without_scenarios(self) -> None:
+        for paths in ([], ["connectors/acme/native/python/x.py"]):
+            with self.subTest(paths=paths):
+                self.assertIn("connectors/acme/native: exempt (native wire protocol)", self.run_connector("acme/native", paths))
+
+    def test_connector_without_language_packages_needs_no_scenarios(self) -> None:
+        self.assertEqual("", self.run_connector("acme/go-only", ["connectors/acme/go-only/go/client.go"]))
+
+    def test_removed_language_package_or_partial_fixture_still_requires_scenarios(self) -> None:
+        for path in ("connectors/acme/go-only/python/pyproject.toml", "conformance/connectors/acme/go-only/README.md"):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, "connectors/acme/go-only has no conformance scenarios"):
+                self.run_connector("acme/go-only", [path])
+
+    def test_every_repository_language_package_has_scenarios_or_an_exemption(self) -> None:
+        root = connector_conformance.ROOT
+        exemptions = connector_conformance.conformance_exemptions()
+        missing = []
+        tracked = subprocess.run(["git", "ls-files", "-z", "connectors"], cwd=root, capture_output=True, text=True, check=True).stdout
+        for path in filter(None, tracked.split("\0")):
+            if not path.endswith(("/python/pyproject.toml", "/typescript/package.json")):
+                continue
+            manifest = root / path
+            if not (manifest.parents[1] / "connector.yaml").is_file():
+                continue
+            connector = manifest.parents[1].relative_to(root)
+            fixture = root / "conformance" / connector / "scenarios.json"
+            if str(connector) not in exemptions and not fixture.is_file():
+                missing.append(str(manifest.relative_to(root)))
+        self.assertEqual([], sorted(missing))
 
 
 if __name__ == "__main__":
