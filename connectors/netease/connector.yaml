@@ -1,0 +1,51 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: netease
+  displayName: NetEase Yunxin
+  description: Read a Yunxin IM user's account ID and nickname.
+  company: NetEase Yunxin
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: netease
+  codegen:
+    go:
+      package: netease
+  configuration:
+    fields:
+      - {name: baseUrl, goName: BaseURL, type: url, default: 'https://open.yunxinapi.com', description: 'HTTPS origin of the domestic IM v2 API, without a path. Leave blank for the displayed mainland primary domain; override only for the documented backup domain or an approved proxy.'}
+      - {name: timeout, goName: Timeout, type: duration, default: 10s, description: 'Maximum time for one profile request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow approved proxy.'}
+      - {name: maxResponseBytes, goName: MaxResponseBytes, type: integer, default: 262144, description: 'Maximum response body size in bytes as a positive integer. Leave blank for the displayed default; raise only if a valid profile response exceeds it.'}
+  auth:
+    type: apiKey
+    connectionKind: netease-im
+    fields:
+      - {name: app_key, goName: AppKey, type: secretString, required: true, description: 'App Key from https://app.yunxin.163.com > your application > App Key 管理. Copy its exact string; it is sent only in the AppKey request header. Treat it as a credential; blank prevents requests.'}
+      - {name: app_secret, goName: AppSecret, type: secretString, required: true, description: 'App Secret from https://app.yunxin.163.com > your application > App Key 管理. Copy its exact string; it is secret and used locally to sign each request, never sent or returned. Blank prevents requests.'}
+    guide:
+      startURL: https://app.yunxin.163.com
+      steps:
+        - Sign in at https://app.yunxin.163.com, create or select an application with IM enabled, and open the application > App Key 管理 page.
+        - Copy its App Key and App Secret into the two secret fields. Keep the App Secret on the server; rotate it in App Key 管理 if exposed.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults. For overseas IM data, select the documented overseas service domain in baseUrl.
+  operations:
+    - name: getUserProfile
+      goName: GetUserProfile
+      inputType: GetUserProfileInput
+      outputType: GetUserProfileOutput
+      kind: query
+      description: Get an IM account ID and nickname, without private contact fields.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: "Yunxin returned the user's profile."}
+        - {id: notFound, goName: NotFound, description: 'The account or its profile does not exist.', optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: 'Yunxin rejected the request or credentials.', optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: 'Yunxin returned malformed or oversized data.', optional: true}
+        - {id: defect, goName: Defect, description: 'Local input or connection configuration is invalid.', optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - {name: sampleUser, branch: fetched, description: 'Synthetic user profile for local Flow verification; not live user data.', default: true, output: {accountId: sample-user, name: Sample User}}
