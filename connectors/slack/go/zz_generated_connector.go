@@ -62,6 +62,7 @@ type Operations interface {
 	ListChannelMessages() sdkgo.Query[ListChannelMessagesInput, ListChannelMessagesOutput]
 	PostChannelMessage() sdkgo.Mutation[PostChannelMessageInput, PostMessageOutput]
 	PostThreadReply() sdkgo.Mutation[PostThreadReplyInput, PostMessageOutput]
+	PostButtonMessage() sdkgo.Mutation[PostButtonMessageInput, PostMessageOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -86,6 +87,9 @@ func (operations clientOperations) PostChannelMessage() sdkgo.Mutation[PostChann
 }
 func (operations clientOperations) PostThreadReply() sdkgo.Mutation[PostThreadReplyInput, PostMessageOutput] {
 	return operations.client.PostThreadReply()
+}
+func (operations clientOperations) PostButtonMessage() sdkgo.Mutation[PostButtonMessageInput, PostMessageOutput] {
+	return operations.client.PostButtonMessage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -383,6 +387,52 @@ func NewThreadReplyCreatedTrigger(config ThreadReplyCreatedTriggerConfig) sdkgo.
 	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MessageEvent]{
 		Definition: ThreadReplyCreatedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.threadReplyCreatedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+var ButtonClickedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "buttonClicked"},
+	Description: "Receive a matching click on a message button that postButtonMessage posted, through Socket Mode.",
+}
+
+type ButtonClickedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=slack"`
+	triggerName                             struct{}                       `connector:"triggerName=buttonClicked"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineButtonClickedTriggerBinding(config ButtonClickedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: ButtonClickedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type ButtonClickedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                              `connector:"connectorId=slack"`
+	triggerName                      struct{}                              `connector:"triggerName=buttonClicked"`
+	Connection                       Connection                            `connector:"connection"`
+	ConnectionName                   string                                `connector:"connectionName"`
+	BindingName                      string                                `connector:"bindingName"`
+	Configuration                    ButtonClickedTriggerConfiguration     `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[ButtonClickEvent] `connector:"triggerTarget"`
+}
+
+func NewButtonClickedTrigger(config ButtonClickedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("slack connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ButtonClickedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[ButtonClickEvent]{
+		Definition: ButtonClickedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.buttonClickedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
 	})
 }
 
@@ -895,6 +945,79 @@ func NewPostThreadReplyStep[IN any](config PostThreadReplyStepConfig[IN]) sdkgo.
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(PostThreadReplyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PostButtonMessageBranchSent sdkgo.BranchID = "sent"
+const PostButtonMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PostButtonMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const PostButtonMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PostButtonMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "postButtonMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PostButtonMessageBranchSent, Description: "Slack accepted the message."},
+		{ID: PostButtonMessageBranchProviderRejected, Description: "Slack conclusively rejected the message.", Optional: true},
+		{ID: PostButtonMessageBranchUncertain, Description: "The dispatched message outcome cannot be confirmed.", Optional: true},
+		{ID: PostButtonMessageBranchDefect, Description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+}
+
+type PostButtonMessageResult = sdkgo.MutationResult[PostMessageOutput]
+
+type PostButtonMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=slack"`
+	operationID                       struct{}                                                `connector:"operationId=postButtonMessage"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) PostButtonMessageInput                         `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[PostButtonMessageResult]                   `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[PostButtonMessageResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[PostButtonMessageResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[PostButtonMessageResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostMessageOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewPostButtonMessageStep[IN any](config PostButtonMessageStepConfig[IN]) sdkgo.MutationStep[IN, PostButtonMessageInput, PostMessageOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("slack connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostButtonMessageInput, PostMessageOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.PostButtonMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PostButtonMessageResult] {
+			branches := make([]sdkgo.BranchTarget[PostButtonMessageResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(PostButtonMessageBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PostButtonMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(PostButtonMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PostButtonMessageBranchDefect))
 			}
 			return branches
 		}(),

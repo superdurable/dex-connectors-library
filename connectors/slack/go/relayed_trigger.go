@@ -42,16 +42,20 @@ func RelayedTriggerPath(connectionName string) string {
 // relayedMessageReceiver receives one connection's relayed Events API callbacks and delivers them to the
 // runner's routes, as Socket Mode does.
 type relayedMessageReceiver struct {
-	project  *projectconfig.LoadedProject
-	key      projectconfig.ConnectionKey
+	project *projectconfig.LoadedProject
+	key     projectconfig.ConnectionKey
+	// identity names the connection in credential reads and log records.
+	identity *triggerBindingIdentity
 	routes   []messageTriggerRoute
 	endpoint *webhooktrigger.Endpoint[struct{}, []pendingMessageTriggerDelivery]
 	source   sdkgo.TriggerSource[[]pendingMessageTriggerDelivery]
 }
 
-func newRelayedMessageReceiver(project *projectconfig.LoadedProject, connection Connection, routes []messageTriggerRoute) (*relayedMessageReceiver, error) {
+func newRelayedMessageReceiver(
+	project *projectconfig.LoadedProject, connection Connection, identity *triggerBindingIdentity, routes []messageTriggerRoute,
+) (*relayedMessageReceiver, error) {
 	receiver := &relayedMessageReceiver{
-		project: project, routes: routes,
+		project: project, identity: identity, routes: routes,
 		key: projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: connection.reference.Name},
 	}
 	endpoint, err := webhooktrigger.NewEndpoint(webhooktrigger.EndpointConfig[struct{}, []pendingMessageTriggerDelivery]{
@@ -75,7 +79,7 @@ func newRelayedMessageReceiver(project *projectconfig.LoadedProject, connection 
 // selectRelayedMode reads the connection's credential, retrying with the Socket Mode backoff while it is
 // unavailable, and reports whether the connection lacks an app_token and so receives relayed events.
 func (receiver *relayedMessageReceiver) selectRelayedMode(ctx context.Context) (bool, error) {
-	source := receiver.routes[0].source
+	source := receiver.identity
 	for failures := 1; ; failures++ {
 		credentials, err := sdkgo.ResolveCredential(ctx, source.client.credentials, source.credentialCall(), source.client.refreshDriver)
 		switch {
@@ -134,7 +138,7 @@ func (receiver *relayedMessageReceiver) run(ctx context.Context) error {
 // register waits until the source runs, then registers the connection name, retrying while the host is
 // unavailable. It returns early with the source's error when the source stops.
 func (receiver *relayedMessageReceiver) register(ctx context.Context, sourceDone <-chan error) error {
-	source := receiver.routes[0].source
+	source := receiver.identity
 	for receiver.endpoint.RunningSourceCount() == 0 {
 		select {
 		case err := <-sourceDone:
@@ -183,7 +187,7 @@ func (receiver *relayedMessageReceiver) verifyRequest(ctx context.Context, reque
 		level, reason = slog.LevelWarn, "verification_unavailable"
 		err = fmt.Errorf("%w: %w", webhooktrigger.ErrVerificationUnavailable, err)
 	}
-	source := receiver.routes[0].source
+	source := receiver.identity
 	source.log(ctx, level, "slack relayed request refused", source.connectionAttrs(), slog.String("reason", reason))
 	return err
 }

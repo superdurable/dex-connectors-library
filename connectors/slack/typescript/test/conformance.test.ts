@@ -8,7 +8,13 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { SlackClient } from '../src/client.js';
 import { GetThreadReplyInputSchema, GetWorkspaceIdentityInputSchema, ListChannelMessagesInputSchema, ListChannelsInputSchema, ListThreadMessagesInputSchema, PostChannelMessageInputSchema, PostThreadReplyInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/slack/scenarios.json', import.meta.url));
+// postButtonMessage is Go only; replay just the operations this package implements.
+const typescriptOperations = new Set([
+  'listChannels', 'getWorkspaceIdentity', 'listThreadMessages', 'getThreadReply', 'listChannelMessages',
+  'postChannelMessage', 'postThreadReply',
+]);
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/slack/scenarios.json', import.meta.url))
+  .filter(scenario => typescriptOperations.has(scenario.operation));
 const connection = { provider: 'slack', name: 'workspace' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSlack, '/api'));

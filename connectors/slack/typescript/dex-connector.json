@@ -1,6 +1,6 @@
 {
   "connectorId": "slack",
-  "releaseTag": "connectors/slack/go/v1.6.0",
+  "releaseTag": "connectors/slack/go/v1.7.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-slack",

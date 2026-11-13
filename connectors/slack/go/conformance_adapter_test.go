@@ -17,7 +17,8 @@ const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	if scenario.Name == "postChannelMessage-transport-before-send" || scenario.Name == "postThreadReply-transport-before-send" {
+	if scenario.Name == "postChannelMessage-transport-before-send" || scenario.Name == "postThreadReply-transport-before-send" ||
+		scenario.Name == "postButtonMessage-transport-before-send" {
 		wrapped := *transport
 		wrapped.Transport = beforeSendConformanceTransport{transport.Transport}
 		transport = &wrapped
@@ -55,6 +56,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listChannelMessages":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListChannelMessages(), slackConnection),
 		"postChannelMessage":   newConformanceMutationInvocation(t, scenario.Input, context, client.PostChannelMessage(), slackConnection, scenario.CallID),
 		"postThreadReply":      newConformanceMutationInvocation(t, scenario.Input, context, client.PostThreadReply(), slackConnection, scenario.CallID),
+		"postButtonMessage":    newConformanceMutationInvocation(t, scenario.Input, context, client.PostButtonMessage(), slackConnection, scenario.CallID),
 	}}
 }
 

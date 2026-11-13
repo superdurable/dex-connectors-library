@@ -411,8 +411,8 @@ func TestSharedRunnerConsumesUndeliverableReplyAndKeepsReading(t *testing.T) {
 	requireNoSentinel(t, logs)
 }
 
-// projectSlackFixture holds one connection's project configuration, with one root and one reply binding
-// for channel C1, and the bindings' durable inboxes in memory.
+// projectSlackFixture holds one connection's project configuration, with one root, one reply, and one button
+// binding for channel C1, and the bindings' durable inboxes in memory.
 type projectSlackFixture struct {
 	endpoint      string
 	configuration projectconfig.Configuration
@@ -434,6 +434,8 @@ func newProjectSlackFixture(t *testing.T) *projectSlackFixture {
 				Configuration: json.RawMessage(`{"channelId":"C1","threadTriggerMatcher":{"messageContains":"request approval"}}`)},
 			{ConnectorID: ConnectorID, ConnectionName: "workspace", TriggerName: "threadReplyCreated", BindingName: "approval-reply",
 				Configuration: json.RawMessage(`{"channelId":"C1","threadReplyMatcher":{"messageContains":"approve","posterUserIds":["U2"]}}`)},
+			{ConnectorID: ConnectorID, ConnectionName: "workspace", TriggerName: "buttonClicked", BindingName: "approval-decision",
+				Configuration: json.RawMessage(`{"channelId":"C1","actionIds":["approve","reject"],"clickerUserIds":["U2"]}`)},
 		}},
 		objects: testsupport.NewObjectStore(),
 	}
@@ -453,6 +455,14 @@ func (fixture *projectSlackFixture) newRunner(t *testing.T, config ProjectMessag
 	runner, err := newDurableMessageTriggerRunner(connection, fixture.configuration, config, func(
 		key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[MessageEvent],
 	) (sdkgo.TriggerTarget[MessageEvent], error) {
+		inbox, err := fixture.openInbox(key)
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(connection.client.logger))
+	}, func(
+		key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[ButtonClickEvent],
+	) (sdkgo.TriggerTarget[ButtonClickEvent], error) {
 		inbox, err := fixture.openInbox(key)
 		if err != nil {
 			return nil, err
@@ -483,6 +493,22 @@ func (fixture *projectSlackFixture) pendingEventIDs(t *testing.T) []string {
 		for _, event := range pending {
 			eventIDs = append(eventIDs, event.ID)
 		}
+	}
+	return eventIDs
+}
+
+// pendingButtonEventIDs lists the event IDs waiting in the button binding's durable inbox.
+func (fixture *projectSlackFixture) pendingButtonEventIDs(t *testing.T) []string {
+	t.Helper()
+	inbox, err := fixture.openInbox(projectconfig.TriggerInboxKey{
+		ConnectorID: ConnectorID, ConnectionName: "workspace", TriggerName: "buttonClicked", BindingName: "approval-decision",
+	})
+	require.NoError(t, err)
+	pending, err := inbox.Pending(context.Background())
+	require.NoError(t, err)
+	eventIDs := []string{}
+	for _, event := range pending {
+		eventIDs = append(eventIDs, event.ID)
 	}
 	return eventIDs
 }
@@ -997,9 +1023,9 @@ func TestSocketModeConnectionFailuresNameTheCause(t *testing.T) {
 			}, WithLogger(logs.Logger()))
 			require.NoError(t, err)
 			source := client.channelThreadCreatedTriggerSource(connectionReference, ChannelThreadCreatedTriggerConfiguration{ChannelID: "C123"})
-			healthy, err := runMessageTriggerConnection(context.Background(), []messageTriggerRoute{{
+			healthy, err := runSocketModeConnection(context.Background(), socketModeRoutes{messages: []messageTriggerRoute{{
 				source: source, target: sdkgo.TriggerTargetFunc[MessageEvent](func(context.Context, sdkgo.TriggerEvent[MessageEvent]) error { return nil }),
-			}}, false)
+			}}}, false)
 			require.False(t, healthy)
 			require.EqualError(t, err, testCase.expected)
 			require.NotContains(t, err.Error(), "SENTINEL")
@@ -1012,9 +1038,11 @@ func TestMessageTriggerDeliveriesLogIgnoredMessagesAtDebug(t *testing.T) {
 	logs := testlog.NewLogRecorder()
 	client := &Client{logger: logs.Logger()}
 	source := &messageTriggerSource{
-		client: client, connection: sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"}, channelID: "C123", requiresThread: true,
-		matcher: MessageMatcher{MessageContains: "approve", PosterUserIDs: []string{"U2"}}, triggerName: "threadReplyCreated",
-		bindingName: "approval-reply",
+		triggerBindingIdentity: triggerBindingIdentity{
+			client: client, connection: sdkgo.ConnectionRef{Provider: "slack", Name: "workspace"},
+			triggerName: "threadReplyCreated", bindingName: "approval-reply",
+		},
+		channelID: "C123", requiresThread: true, matcher: MessageMatcher{MessageContains: "approve", PosterUserIDs: []string{"U2"}},
 	}
 	routes := []messageTriggerRoute{{source: source, target: sdkgo.TriggerTargetFunc[MessageEvent](
 		func(context.Context, sdkgo.TriggerEvent[MessageEvent]) error { return nil },
@@ -1267,6 +1295,8 @@ func TestProjectConnectionRunnerReadsItsCredentialAndOpensSocketMode(t *testing.
 			}),
 		}},
 	}, func(_ projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[MessageEvent]) (sdkgo.TriggerTarget[MessageEvent], error) {
+		return target, nil
+	}, func(_ projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[ButtonClickEvent]) (sdkgo.TriggerTarget[ButtonClickEvent], error) {
 		return target, nil
 	})
 	require.NoError(t, err)

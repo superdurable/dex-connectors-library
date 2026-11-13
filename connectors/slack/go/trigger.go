@@ -68,16 +68,21 @@ type socketConnection interface {
 
 type socketDialer func(context.Context, string) (socketConnection, error)
 
-type messageTriggerSource struct {
-	client         *Client
-	connection     sdkgo.ConnectionRef
-	channelID      string
-	matcher        MessageMatcher
-	requiresThread bool
+// triggerBindingIdentity names a Trigger source's connection and binding in credential reads and log records.
+type triggerBindingIdentity struct {
+	client     *Client
+	connection sdkgo.ConnectionRef
 	// triggerName and bindingName identify the source in log records. A source built by a generated
 	// per-Trigger factory has no binding name.
 	triggerName string
 	bindingName string
+}
+
+type messageTriggerSource struct {
+	triggerBindingIdentity
+	channelID      string
+	matcher        MessageMatcher
+	requiresThread bool
 }
 
 var (
@@ -92,6 +97,12 @@ var (
 	// socketModeControlWriteTimeout bounds the pong that answers a ping.
 	socketModeControlWriteTimeout = 10 * time.Second
 )
+
+// slackInteractiveAcknowledgementLimit is Slack's interactive acknowledgement deadline; later, the clicker sees an error.
+const slackInteractiveAcknowledgementLimit = 3 * time.Second
+
+// socketModeDeliveryQueueCapacity bounds the queue; the reader's held envelope and the one in delivery add two.
+var socketModeDeliveryQueueCapacity = 256
 
 type messageTriggerRoute struct {
 	source *messageTriggerSource
@@ -178,14 +189,112 @@ func (matcher MessageMatcher) validate(requiresPoster bool) error {
 
 // Run processes provider events until cancellation or an unrecoverable error.
 func (source *messageTriggerSource) Run(ctx context.Context, target sdkgo.TriggerTarget[MessageEvent]) error {
-	return runMessageTriggerRoutes(ctx, []messageTriggerRoute{{source: source, target: target}})
+	return runSocketModeRoutes(ctx, socketModeRoutes{messages: []messageTriggerRoute{{source: source, target: target}}})
 }
 
-func runMessageTriggerRoutes(ctx context.Context, routes []messageTriggerRoute) error {
-	if len(routes) == 0 {
-		return fmt.Errorf("Slack message Trigger routes are required")
+// socketModeRoutes share one socket, because Slack sends each envelope to only one app connection.
+type socketModeRoutes struct {
+	messages []messageTriggerRoute
+	buttons  []buttonClickedTriggerRoute
+}
+
+// identity returns the first route's identity, which names the shared connection.
+func (routes socketModeRoutes) identity() *triggerBindingIdentity {
+	if len(routes.messages) > 0 {
+		return &routes.messages[0].source.triggerBindingIdentity
 	}
-	source := routes[0].source
+	return &routes.buttons[0].source.triggerBindingIdentity
+}
+
+func (routes socketModeRoutes) isEmpty() bool {
+	return len(routes.messages) == 0 && len(routes.buttons) == 0
+}
+
+// hasDurableInboxes reports whether every route's target records and replays events, so queued deliveries lose none.
+func (routes socketModeRoutes) hasDurableInboxes() bool {
+	for _, route := range routes.messages {
+		if !hasDurableInbox(route.target) {
+			return false
+		}
+	}
+	for _, route := range routes.buttons {
+		if !hasDurableInbox(route.target) {
+			return false
+		}
+	}
+	return true
+}
+
+// hasDurableInbox reports whether target is a durable inbox, such as provider.NewDurableTriggerTarget builds.
+func hasDurableInbox[E any](target sdkgo.TriggerTarget[E]) bool {
+	_, isPreparer := target.(sdkgo.TriggerDeliveryPreparer[E])
+	_, isReplayer := target.(sdkgo.TriggerDeliveryReplayer)
+	return isPreparer && isReplayer
+}
+
+// replay delivers pending inbox events: roots, then replies, then button clicks.
+func (routes socketModeRoutes) replay(ctx context.Context) error {
+	if err := replayMessageTriggerRoutes(ctx, routes.messages); err != nil {
+		return err
+	}
+	return replayButtonClickedTriggerRoutes(ctx, routes.buttons)
+}
+
+// decode sends interactive envelopes to button routes, when any, and every other envelope to message routes.
+func (routes socketModeRoutes) decode(ctx context.Context, envelope socketEnvelope) (socketModeDeliveries, error) {
+	switch {
+	case envelope.Type == "interactive" && strings.TrimSpace(envelope.EnvelopeID) != "" && len(routes.buttons) > 0:
+		buttons, err := decodeButtonClickedDeliveries(ctx, routes.buttons, envelope)
+		return socketModeDeliveries{buttons: buttons}, err
+	case len(routes.messages) > 0:
+		messages, err := decodeMessageTriggerDeliveries(ctx, routes.messages, envelope)
+		return socketModeDeliveries{messages: messages}, err
+	}
+	if identity := routes.identity(); identity.client.triggerLogger().Enabled(ctx, slog.LevelDebug) {
+		identity.log(ctx, slog.LevelDebug, "slack socket mode envelope ignored", identity.connectionAttrs(),
+			slog.String("type", envelope.Type), slog.String("envelope_id", envelope.EnvelopeID))
+	}
+	return socketModeDeliveries{}, nil
+}
+
+// socketModeDeliveries are one envelope's matched deliveries; at most one list is non-empty.
+type socketModeDeliveries struct {
+	messages []pendingMessageTriggerDelivery
+	buttons  []pendingButtonClickedDelivery
+}
+
+func (deliveries socketModeDeliveries) isEmpty() bool {
+	return len(deliveries.messages) == 0 && len(deliveries.buttons) == 0
+}
+
+// prepare records the deliveries in their durable inboxes before acknowledgement.
+func (deliveries socketModeDeliveries) prepare(ctx context.Context) error {
+	for _, delivery := range deliveries.messages {
+		if err := sdkgo.PrepareTriggerDelivery(ctx, delivery.target, delivery.event); err != nil {
+			return err
+		}
+	}
+	for _, delivery := range deliveries.buttons {
+		if err := sdkgo.PrepareTriggerDelivery(ctx, delivery.target, delivery.event); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// deliver hands the deliveries to their targets in route order until each is consumed.
+func (deliveries socketModeDeliveries) deliver(ctx context.Context) error {
+	if err := deliverMessageTriggerDeliveries(ctx, deliveries.messages); err != nil {
+		return err
+	}
+	return deliverButtonClickedDeliveries(ctx, deliveries.buttons)
+}
+
+func runSocketModeRoutes(ctx context.Context, routes socketModeRoutes) error {
+	if routes.isEmpty() {
+		return fmt.Errorf("Slack Trigger routes are required")
+	}
+	source := routes.identity()
 	reconnecting := false
 	// failures counts the connection attempts that failed since the last one that received an envelope.
 	failures := 0
@@ -193,7 +302,7 @@ func runMessageTriggerRoutes(ctx context.Context, routes []messageTriggerRoute) 
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		healthy, err := runMessageTriggerConnection(ctx, routes, reconnecting)
+		healthy, err := runSocketModeConnection(ctx, routes, reconnecting)
 		reconnecting = true
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -245,19 +354,22 @@ func replayMessageTriggerRoutes(ctx context.Context, routes []messageTriggerRout
 	return nil
 }
 
-// runMessageTriggerConnection serves one Socket Mode connection until it fails or Slack asks for a
+// runSocketModeConnection serves one Socket Mode connection until it fails or Slack asks for a
 // reconnect, which it reports as a *socketModeDisconnect. It reports whether the connection received an
 // envelope, such as Slack's hello, so the caller can count consecutive failed connection attempts.
-func runMessageTriggerConnection(ctx context.Context, routes []messageTriggerRoute, reconnecting bool) (bool, error) {
+//
+// With durable inboxes, a goroutine delivers a bounded queue in arrival order, so retries delay no
+// acknowledgement until it fills; returning waits for it. Otherwise the reader delivers inline.
+func runSocketModeConnection(ctx context.Context, routes socketModeRoutes, reconnecting bool) (bool, error) {
 	if reconnecting {
 		// A connection can end after an event was persisted but before it was delivered, for example when its
 		// acknowledgement could not be written. Deliver it before reading newer envelopes, so a reply cannot
 		// overtake its root.
-		if err := replayMessageTriggerRoutes(ctx, routes); err != nil {
+		if err := routes.replay(ctx); err != nil {
 			return false, err
 		}
 	}
-	source := routes[0].source
+	source := routes.identity()
 	credentials, err := sdkgo.ResolveCredential(ctx, source.client.credentials, source.credentialCall(), source.client.refreshDriver)
 	if err != nil {
 		// A credential provider's error may quote what it read, so only its absence is reported.
@@ -275,11 +387,32 @@ func runMessageTriggerConnection(ctx context.Context, routes []messageTriggerRou
 		return false, fmt.Errorf("connect Slack Socket Mode: %w", redactSocketURL(err, socketURL))
 	}
 	defer closeSocketConnection(connection)
+	connectionCtx, cancelConnection := context.WithCancel(ctx)
+	defer cancelConnection()
 	// Pings extend the read deadline, so a quiet connection can read for as long as Slack keeps it open.
 	// Close it as soon as ctx ends, so Run returns at once instead of waiting for Slack to disconnect.
-	stopClosingOnCancel := context.AfterFunc(ctx, func() { closeSocketConnection(connection) })
+	stopClosingOnCancel := context.AfterFunc(connectionCtx, func() { closeSocketConnection(connection) })
 	defer stopClosingOnCancel()
 	source.log(ctx, slog.LevelInfo, "slack socket mode connected", source.connectionAttrs(), slog.Bool("reconnect", reconnecting))
+	if !routes.hasDurableInboxes() {
+		// Only one acknowledged event can then wait for delivery, so a stopped process loses at most one.
+		return readSocketModeEnvelopes(ctx, connection, routes, nil)
+	}
+	queue := make(chan socketModeDeliveries, socketModeDeliveryQueueCapacity)
+	deliveryResult := make(chan error, 1)
+	go func() { deliveryResult <- deliverQueuedSocketModeDeliveries(ctx, queue, cancelConnection) }()
+	received, readErr := readSocketModeEnvelopes(connectionCtx, connection, routes, queue)
+	close(queue)
+	if deliveryErr := <-deliveryResult; deliveryErr != nil {
+		return received, deliveryErr
+	}
+	return received, readErr
+}
+
+// readSocketModeEnvelopes records and acknowledges envelopes until the connection ends. It queues their
+// deliveries, waiting while the queue is full, or delivers them inline when queue is nil.
+func readSocketModeEnvelopes(ctx context.Context, connection socketConnection, routes socketModeRoutes, queue chan<- socketModeDeliveries) (bool, error) {
+	source := routes.identity()
 	received := false
 	for {
 		if err := connection.SetReadDeadline(time.Now().Add(socketModeReadTimeout)); err != nil {
@@ -289,11 +422,12 @@ func runMessageTriggerConnection(ctx context.Context, routes []messageTriggerRou
 		if err := connection.ReadJSON(&envelope); err != nil {
 			return received, fmt.Errorf("read Slack Socket Mode envelope: %w", err)
 		}
+		receivedAt := time.Now()
 		received = true
 		if envelope.Type == "disconnect" {
 			return true, &socketModeDisconnect{reason: slackCode(envelope.Reason)}
 		}
-		deliveries, err := decodeMessageTriggerDeliveries(ctx, routes, envelope)
+		deliveries, err := routes.decode(ctx, envelope)
 		if err != nil {
 			source.log(ctx, slog.LevelWarn, "trigger event skipped: undecodable", source.connectionAttrs(),
 				slog.String("envelope_id", envelope.EnvelopeID), slog.String("error", err.Error()))
@@ -302,24 +436,51 @@ func runMessageTriggerConnection(ctx context.Context, routes []messageTriggerRou
 			}
 			continue
 		}
-		if len(deliveries) == 0 {
+		if deliveries.isEmpty() {
 			if err := acknowledgeEnvelope(connection, envelope.EnvelopeID); err != nil {
 				return true, err
 			}
 			continue
 		}
-		for _, delivery := range deliveries {
-			if err := sdkgo.PrepareTriggerDelivery(ctx, delivery.target, delivery.event); err != nil {
-				return true, err
-			}
+		if err := deliveries.prepare(ctx); err != nil {
+			return true, err
 		}
 		if err := acknowledgeEnvelope(connection, envelope.EnvelopeID); err != nil {
 			return true, err
 		}
-		if err := deliverMessageTriggerDeliveries(ctx, deliveries); err != nil {
-			return true, err
+		if elapsed := time.Since(receivedAt); envelope.Type == "interactive" && elapsed > slackInteractiveAcknowledgementLimit {
+			// Slack has already shown the clicker an error, but the recorded click is still delivered.
+			source.log(ctx, slog.LevelWarn, "slack interactive envelope acknowledged late", source.connectionAttrs(),
+				slog.String("envelope_id", envelope.EnvelopeID), slog.Duration("elapsed", elapsed))
+		}
+		if queue == nil {
+			if err := deliveries.deliver(ctx); err != nil {
+				return true, err
+			}
+			continue
+		}
+		// A full queue pauses reading; the inboxes hold what was acknowledged, and Slack resends the rest.
+		select {
+		case queue <- deliveries:
+		case <-ctx.Done():
+			return true, ctx.Err()
 		}
 	}
+}
+
+// deliverQueuedSocketModeDeliveries delivers queued deliveries in order until queue is closed. After a delivery
+// error, which is ctx.Err(), it stops the connection and discards the rest, which stay in their inboxes.
+func deliverQueuedSocketModeDeliveries(ctx context.Context, queue <-chan socketModeDeliveries, stopConnection context.CancelFunc) error {
+	var deliveryErr error
+	for deliveries := range queue {
+		if deliveryErr != nil {
+			continue
+		}
+		if deliveryErr = deliveries.deliver(ctx); deliveryErr != nil {
+			stopConnection()
+		}
+	}
+	return deliveryErr
 }
 
 // deliverMessageTriggerDeliveries delivers one event's deliveries inline in route order, so a root is delivered
@@ -340,7 +501,7 @@ func deliverMessageTriggerDeliveries(ctx context.Context, deliveries []pendingMe
 
 // credentialCall identifies the source's credential reads. A project connection's provider refuses a call
 // without the connector ID.
-func (source *messageTriggerSource) credentialCall() sdkgo.Call {
+func (source *triggerBindingIdentity) credentialCall() sdkgo.Call {
 	return sdkgo.Call{
 		Connection: source.connection, Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: source.triggerName},
 	}
@@ -469,7 +630,7 @@ func closeSocketConnection(connection socketConnection) {
 
 // logger returns the client's logger, or slog.Default() as of the call, with the source's binding
 // attributes.
-func (source *messageTriggerSource) logger() *slog.Logger {
+func (source *triggerBindingIdentity) logger() *slog.Logger {
 	logger := source.client.triggerLogger()
 	attrs := source.bindingAttrs()
 	values := make([]any, 0, len(attrs))
@@ -480,12 +641,12 @@ func (source *messageTriggerSource) logger() *slog.Logger {
 }
 
 // connectionAttrs identify the shared Socket Mode connection.
-func (source *messageTriggerSource) connectionAttrs() []slog.Attr {
+func (source *triggerBindingIdentity) connectionAttrs() []slog.Attr {
 	return []slog.Attr{slog.String("connector", ConnectorID), slog.String("connection", source.connection.Name)}
 }
 
 // bindingAttrs identify the source's Trigger binding.
-func (source *messageTriggerSource) bindingAttrs() []slog.Attr {
+func (source *triggerBindingIdentity) bindingAttrs() []slog.Attr {
 	attrs := append(source.connectionAttrs(), slog.String("trigger", source.triggerName))
 	if source.bindingName != "" {
 		attrs = append(attrs, slog.String("binding", source.bindingName))
@@ -495,7 +656,7 @@ func (source *messageTriggerSource) bindingAttrs() []slog.Attr {
 
 // log writes one record when the client's logger is enabled for level. It builds the record itself, so a
 // handler with AddSource reports the function that called log rather than this helper.
-func (source *messageTriggerSource) log(ctx context.Context, level slog.Level, message string, base []slog.Attr, attrs ...slog.Attr) {
+func (source *triggerBindingIdentity) log(ctx context.Context, level slog.Level, message string, base []slog.Attr, attrs ...slog.Attr) {
 	logger := source.client.triggerLogger()
 	if !logger.Enabled(ctx, level) {
 		return
