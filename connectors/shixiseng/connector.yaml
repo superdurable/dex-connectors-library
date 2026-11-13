@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: shixiseng
+  displayName: Shixiseng
+  description: List public internship industry categories from Shixiseng.
+  company: shixiseng
+  categories: [hr-recruiting]
+  version: v0.1.0
+spec:
+  provider: shixiseng
+  codegen:
+    go:
+      package: shixiseng
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one Shixiseng HTTPS request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum industry-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if provider taxonomy grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: shixiseng-merchant-credentials
+    fields:
+      - name: appID
+        goName: AppID
+        type: secretString
+        required: true
+        description: Secret APP_ID issued by Shixiseng business onboarding at https://open.shixiseng.com/ > Merchant Access Guide. Copy its exact string; blank prevents requests.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret APP_SECRET issued with the merchant APP_ID at https://open.shixiseng.com/ > Merchant Access Guide. Copy its exact string; blank prevents requests.
+    guide:
+      startURL: https://open.shixiseng.com/
+      steps:
+        - Open https://open.shixiseng.com/ > Merchant Access Guide and contact Shixiseng business onboarding to obtain APP_ID and APP_SECRET. Both are secret and blank prevents requests.
+        - Ask Shixiseng business onboarding to allowlist the Dex Worker outbound IP address. Start ListIndustries with empty input; it returns only the industry names, not applicant or résumé data.
+        - Each request uses a Unix-seconds timestamp, an uppercase MD5 signature, and a Base64 Authorization header. Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: listIndustries
+      goName: ListIndustries
+      inputType: ListIndustriesInput
+      outputType: ListIndustriesOutput
+      kind: query
+      description: List public Shixiseng industry names for internship filters.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Shixiseng returned industry names.}
+        - {id: providerRejected, goName: ProviderRejected, description: Shixiseng rejected merchant credentials or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Shixiseng returned malformed or oversized industry data., optional: true}
+        - {id: defect, goName: Defect, description: Local merchant credentials are missing or invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: industries
+          branch: found
+          description: Example internship industry names.
+          default: true
+          output: {industries: [互联网/游戏/软件, 教育/培训]}
