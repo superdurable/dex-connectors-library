@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: huaweicloud
+  displayName: Huawei Cloud IAM
+  description: List IAM projects accessible to a Huawei Cloud user.
+  company: Huawei Cloud
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: huaweicloud
+  codegen:
+    go:
+      package: huaweicloud
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for each IAM token or project request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for slow approved networks.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum size of each IAM response in bytes as a positive integer. Blank uses the displayed default; raise only for accounts with unusually many projects.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: huaweicloud-iam-user
+    fields:
+      - name: account_name
+        goName: AccountName
+        type: secretString
+        required: true
+        description: "Account name from https://console.huaweicloud.com/ > My Credentials > Account Name, as text (not an account ID). This is stored as a Dex credential and sent only to Huawei Cloud IAM. Blank prevents authentication."
+      - name: iam_username
+        goName: IAMUsername
+        type: secretString
+        required: true
+        description: "IAM username from https://console.huaweicloud.com/ > My Credentials > IAM User Name, as text (not your HUAWEI ID). This is stored as a Dex credential and sent only to Huawei Cloud IAM. Blank prevents authentication."
+      - name: iam_password
+        goName: IAMPassword
+        type: secretString
+        required: true
+        description: "Password for that IAM user, created or reset at https://console.huaweicloud.com/ > Identity and Access Management > Users > select the user > Security Settings. This secret is stored only as a Dex credential and sent in the token request. Blank prevents authentication."
+    guide:
+      startURL: https://support.huaweicloud.com/intl/en-us/api-iam/iam_30_0001.html
+      steps:
+        - Sign in at https://console.huaweicloud.com/ with the account that owns the IAM user. Open My Credentials and copy Account Name and IAM User Name. A HUAWEI ID cannot obtain this password token directly; create an IAM user under Identity and Access Management > Users if needed.
+        - Under Identity and Access Management > Users, create or select an IAM user with a password for programmatic access. Copy its account name, username, and password into the three Dex credential fields. The password is secret and should be rotated in the IAM console.
+        - Leave timeout and maxResponseBytes blank for the displayed defaults. The connector requests a domain-scoped token and sends it to the read-only project-list API automatically; it never puts the password or token in Flow results.
+  operations:
+    - name: listAccessibleProjects
+      goName: ListAccessibleProjects
+      inputType: ListAccessibleProjectsInput
+      outputType: ListAccessibleProjectsOutput
+      kind: query
+      description: List IAM projects where this user can access resources.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Huawei Cloud returned the user's accessible projects.}
+        - {id: providerRejected, goName: ProviderRejected, description: Huawei Cloud rejected token acquisition or project access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Huawei Cloud returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local connection credentials or settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: twoProjects
+          branch: found
+          description: Two accessible IAM projects are returned.
+          default: true
+          output:
+            projects:
+              - {id: 06f1cbbaf280106b2f14c00313a9d065, name: af-south-1, enabled: true, domainId: d78cbac186b744899480f25bd022f000}
+              - {id: 065a7c66da0010992ff7c0031e5a5e7d, name: ap-southeast-1, enabled: true, domainId: d78cbac186b744899480f25bd022f000}
