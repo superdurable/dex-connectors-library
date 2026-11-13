@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: bmob
+  displayName: Bmob
+  description: Count objects in a Bmob class without reading record contents.
+  company: Bmob
+  categories: [databases-storage]
+  version: v0.1.0
+spec:
+  provider: bmob
+  codegen:
+    go:
+      package: bmob
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Required HTTPS API domain for your Bmob application. In https://www.bmobapp.com/ open your app > 控制台 > 应用设置 > 域名管理 > API域名; copy its root URL without /1. Blank is invalid; do not use another app's domain.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one class count as a positive Go duration, such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Bmob response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate count response exceeds it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: bmob-rest
+    fields:
+      - name: application_id
+        goName: ApplicationID
+        type: secretString
+        required: true
+        description: Application ID from https://www.bmobapp.com/ > your app > 设置 > 应用密钥. Copy the exact ID for this app; Dex stores it only as a credential. Blank prevents requests.
+      - name: rest_api_key
+        goName: RESTAPIKey
+        type: secretString
+        required: true
+        description: REST API Key paired with the Application ID at https://www.bmobapp.com/ > your app > 设置 > 应用密钥. Copy its exact string, never Master Key; Dex stores it only as a credential. Blank prevents requests.
+    guide:
+      startURL: https://www.bmobapp.com/
+      steps:
+        - Sign in at https://www.bmobapp.com/ and create or select your app. Open 设置 > 应用密钥 and copy Application ID and REST API Key into their secret fields; do not use the Master Key.
+        - Open 控制台 > 应用设置 > 域名管理 > API域名 and copy your app's HTTPS API domain into baseUrl, without a /1 path. Configure and verify the domain there before using it.
+        - In the app's 数据 (Data) section, select an existing class whose objects you may count. Grant only the read permissions needed for that class; the connector never reads record fields or writes data.
+  operations:
+    - name: countClassObjects
+      goName: CountClassObjects
+      inputType: CountClassObjectsInput
+      outputType: CountClassObjectsOutput
+      kind: query
+      description: Count objects in one Bmob class without returning records.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: counted, goName: Counted, description: "Bmob returned the class object count."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Bmob rejected credentials, class access, or the class name.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Bmob returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleCount
+          branch: counted
+          description: Synthetic class count for local Flow verification, not live Bmob data.
+          default: true
+          output: {count: 42}
