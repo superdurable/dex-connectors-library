@@ -260,7 +260,10 @@ def conformance_operations_output(connectorctl: Path, manifest: str) -> str:
 
 
 def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] | None = None) -> None:
-    """Require each language runner and execute Go, Python, and TypeScript replay."""
+    """Require each language runner and execute Go, Python, and TypeScript replay.
+
+    Every Python and TypeScript package needs scenarios unless conformance/exemptions.yaml exempts its connector.
+    """
     python_package = connector / "python"
     typescript_package = connector / "typescript"
     relative = connector.relative_to(ROOT / "connectors")
@@ -273,11 +276,11 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
     if not fixture.is_file():
         prefix = str(connector.relative_to(ROOT)) + "/"
         fixture_prefix = "conformance/connectors/" + str(relative) + "/"
-        if any(path.startswith(prefix + "python/") or path.startswith(prefix + "typescript/")
-               or path.startswith(fixture_prefix) for path in paths):
-            raise ValueError(f"{connector.relative_to(ROOT)} has no conformance scenarios")
-        if (python_package / "pyproject.toml").is_file() or (typescript_package / "package.json").is_file():
-            print(f"warning: {connector.relative_to(ROOT)} missing conformance (legacy)", file=sys.stderr)
+        has_language_package = (python_package / "pyproject.toml").is_file() or (typescript_package / "package.json").is_file()
+        if has_language_package or any(path.startswith(prefix + "python/") or path.startswith(prefix + "typescript/")
+                                       or path.startswith(fixture_prefix) for path in paths):
+            raise ValueError(f"{connector.relative_to(ROOT)} has no conformance scenarios; add "
+                             f"{fixture.relative_to(ROOT)} or exempt the connector in conformance/exemptions.yaml")
         return
     document = json.loads(fixture.read_text())
     if document.get("schemaVersion") != 1 or not document.get("scenarios"):
@@ -615,6 +618,8 @@ def main() -> None:
     parser.add_argument("--base", default=os.environ.get("CONNECTOR_BASE"))
     parser.add_argument("--head", default=os.environ.get("CONNECTOR_HEAD", "HEAD"))
     parser.add_argument("--connector", action="append", default=[])
+    parser.add_argument("--include-connector", action="append", default=[],
+                        help="also replay this connector, such as one the CI plan selected; works with or without --base")
     parser.add_argument("--mutation-self-test", action="store_true")
     parser.add_argument("--database-ci-matrix", action="store_true")
     parser.add_argument("--email-ci-matrix", action="store_true")
@@ -646,11 +651,11 @@ def main() -> None:
     if arguments.connector:
         connectors = sorted({(ROOT / path).resolve() for path in arguments.connector})
         paths = []
-    elif arguments.base:
-        paths = changed_paths(arguments.base, arguments.head)
-        connectors = changed_connectors(paths)
+    elif arguments.base or arguments.include_connector:
+        paths = changed_paths(arguments.base, arguments.head) if arguments.base else []
+        connectors = sorted({*changed_connectors(paths), *(ROOT / path for path in arguments.include_connector)})
     else:
-        parser.error("supply --base or --connector")
+        parser.error("supply --base, --connector, or --include-connector")
     for connector in connectors:
         if not (connector / "connector.yaml").is_file():
             parser.error(f"{connector} is not a connector directory")

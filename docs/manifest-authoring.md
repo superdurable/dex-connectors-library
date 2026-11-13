@@ -153,7 +153,7 @@ files. Generated TypeScript files depend only on other files in `src/generated/`
 and the connector SDK; hand-written adapters import them. Generated Step
 factories and connections accept typed operation adapters when the public
 TypeScript input or result differs from the Go JSON model.
-`make test-common` installs the Stripe compiler dependencies and runs the
+`make test-common-root-go` installs the Stripe compiler dependencies and runs the
 golden and catalog compile tests in CI. For a focused local run, after
 `npm ci --prefix connectors/stripe/typescript`, run
 `TS_CODEGEN_COMPILE=1 GOWORK=off go test ./internal/codegen ./cmd/connectorctl -run 'TestCatalogGeneratedTypeScriptCompiles|TestNonLegacyTypeScriptGoldenDefaultGeneration'`

@@ -29,12 +29,19 @@ type connectorTestShard struct {
 }
 
 type ciJobSelection struct {
-	Common           bool
-	SDKPython        bool
-	SDKTypeScript    bool
-	SDKGoIntegration bool
-	React            bool
-	Site             bool
+	// CommonSDKGo runs the sdkgo module's unit tests and vet.
+	CommonSDKGo bool
+	// CommonRootGo runs the root module's tests, which also read sdkgo and the Stripe and Gmail TypeScript packages.
+	CommonRootGo bool
+	// CommonPythonScripts runs the repository tooling unittest suite.
+	CommonPythonScripts bool
+	// CommonTypeScriptConformance runs the TypeScript conformance runner's own tests.
+	CommonTypeScriptConformance bool
+	SDKPython                   bool
+	SDKTypeScript               bool
+	SDKGoIntegration            bool
+	React                       bool
+	Site                        bool
 	// ConnectorsMCP tests the connectorsmcp module against the repository's sdkgo.
 	ConnectorsMCP bool
 }
@@ -45,18 +52,20 @@ type changedPathImpact struct {
 	ciJobs                  ciJobSelection
 }
 
-// repositoryToolingTestOnlyPaths run only in common or release workflows; unlisted new files fan out.
+// repositoryToolingTestOnlyPaths run only in the common Python suite or release workflows; unlisted new files fan out.
 var repositoryToolingTestOnlyPaths = map[string]bool{
 	".githooks/commit-msg":                              true,
 	".github/PULL_REQUEST_TEMPLATE.md":                  true,
 	"script/agent_rules_test.py":                        true,
 	"script/branch_off_main_policy.py":                  true,
 	"script/branch_off_main_policy_test.py":             true,
+	"script/ci_summary_test.py":                         true,
 	"script/ci_workflow_test.py":                        true,
 	"script/connector_conformance_test.py":              true,
 	"script/dex_compatibility_test.py":                  true,
 	"script/python_latest_sdk_test.py":                  true,
 	"script/python_timestamp_parity_test.py":            true,
+	"script/set_mtimes_from_git_objects_test.py":        true,
 	"script/studio_bundle_theme_check_test.py":          true,
 	"script/verify_go_subdir_migration.py":              true,
 	"script/verify_go_subdir_migration_test.py":         true,
@@ -70,6 +79,12 @@ var repositoryToolingTestOnlyPaths = map[string]bool{
 	"script/release/npm_publish_test.py":                true,
 	"script/release/retitle_connector_releases.py":      true,
 	"script/release/retitle_connector_releases_test.py": true,
+}
+
+// repositoryToolingRootGoTestInputs are listed tooling files that root-module Go tests also execute.
+var repositoryToolingRootGoTestInputs = map[string]bool{
+	"script/python_timestamp_parity_test.py": true,
+	"script/release/language_publish.py":     true,
 }
 
 func testMatrixCommand(args []string) error {
@@ -136,7 +151,7 @@ func testMatrixCommand(args []string) error {
 		return err
 	}
 	ciJobs := selectCIJobsForPaths(*scope, changedPaths)
-	contents := fmt.Sprintf("matrix=%s\ncount=%d\njobs=%d\ncommon=%t\nsdkpython=%t\nsdkts=%t\nsdkgo_integration=%t\nreact=%t\nsite=%t\nconnectors_mcp=%t\n", encoded, len(directories), len(matrix.Include), ciJobs.Common, ciJobs.SDKPython, ciJobs.SDKTypeScript, ciJobs.SDKGoIntegration, ciJobs.React, ciJobs.Site, ciJobs.ConnectorsMCP)
+	contents := fmt.Sprintf("matrix=%s\ncount=%d\njobs=%d\n%s", encoded, len(directories), len(matrix.Include), ciJobs.githubOutputLines())
 	if err := os.WriteFile(*githubOutputPath, []byte(contents), 0o644); err != nil {
 		return fmt.Errorf("write GitHub output: %w", err)
 	}
@@ -256,19 +271,34 @@ func selectCIJobsForPaths(scope string, changedPaths []string) ciJobSelection {
 }
 
 func selectAllCIJobs() ciJobSelection {
-	return ciJobSelection{Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, React: true, Site: true, ConnectorsMCP: true}
+	return ciJobSelection{
+		CommonSDKGo: true, CommonRootGo: true, CommonPythonScripts: true, CommonTypeScriptConformance: true,
+		SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, React: true, Site: true, ConnectorsMCP: true,
+	}
 }
 
 func (selection ciJobSelection) combinedWith(other ciJobSelection) ciJobSelection {
 	return ciJobSelection{
-		Common:           selection.Common || other.Common,
-		SDKPython:        selection.SDKPython || other.SDKPython,
-		SDKTypeScript:    selection.SDKTypeScript || other.SDKTypeScript,
-		SDKGoIntegration: selection.SDKGoIntegration || other.SDKGoIntegration,
-		React:            selection.React || other.React,
-		Site:             selection.Site || other.Site,
-		ConnectorsMCP:    selection.ConnectorsMCP || other.ConnectorsMCP,
+		CommonSDKGo:                 selection.CommonSDKGo || other.CommonSDKGo,
+		CommonRootGo:                selection.CommonRootGo || other.CommonRootGo,
+		CommonPythonScripts:         selection.CommonPythonScripts || other.CommonPythonScripts,
+		CommonTypeScriptConformance: selection.CommonTypeScriptConformance || other.CommonTypeScriptConformance,
+		SDKPython:                   selection.SDKPython || other.SDKPython,
+		SDKTypeScript:               selection.SDKTypeScript || other.SDKTypeScript,
+		SDKGoIntegration:            selection.SDKGoIntegration || other.SDKGoIntegration,
+		React:                       selection.React || other.React,
+		Site:                        selection.Site || other.Site,
+		ConnectorsMCP:               selection.ConnectorsMCP || other.ConnectorsMCP,
 	}
+}
+
+// githubOutputLines names one GitHub Actions output per CI job input; ci.yml reads each by name.
+func (selection ciJobSelection) githubOutputLines() string {
+	return fmt.Sprintf(
+		"common_sdkgo=%t\ncommon_root_go=%t\ncommon_python_scripts=%t\ncommon_typescript_conformance=%t\nsdkpython=%t\nsdkts=%t\nsdkgo_integration=%t\nreact=%t\nsite=%t\nconnectors_mcp=%t\n",
+		selection.CommonSDKGo, selection.CommonRootGo, selection.CommonPythonScripts, selection.CommonTypeScriptConformance,
+		selection.SDKPython, selection.SDKTypeScript, selection.SDKGoIntegration, selection.React, selection.Site, selection.ConnectorsMCP,
+	)
 }
 
 func selectConnectorDirectoriesForPaths(
@@ -331,33 +361,47 @@ func longestConnectorDirectoryPrefix(directories []string, changedPath string) s
 }
 
 // changedPathTestImpact tests everything for unlisted paths, such as component_release.py, which connector checks run.
+// Each case lists every job whose tests read the path; a path no case lists selects every job. The repository-wide
+// checks (internal/compliance, schema, and the tooling consumer scan) read every path and run on every change.
 func changedPathTestImpact(changedPath string) changedPathImpact {
 	switch {
 	case strings.HasPrefix(changedPath, "sdkgo/"):
 		// The server links sdkgo, so an SDK change is tested against the server before release.
+		// Root-module code generation tests run Go programs inside sdkgo; Python tests scan its build tags.
 		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{
-			Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, ConnectorsMCP: true,
+			CommonSDKGo: true, CommonRootGo: true, CommonPythonScripts: true,
+			SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, ConnectorsMCP: true,
 		}}
 	case strings.HasPrefix(changedPath, connectorsMCPServerDirectory+"/"):
-		return changedPathImpact{ciJobs: ciJobSelection{ConnectorsMCP: true}}
+		// script/release/connectors_mcp_release_test.py reads the generated registry.
+		return changedPathImpact{ciJobs: ciJobSelection{ConnectorsMCP: true, CommonPythonScripts: true}}
+	// Python tooling tests read SDK sources, such as the Studio theme in sdk/react/src/studio-theme.ts.
 	case strings.HasPrefix(changedPath, "sdkpython/"):
-		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{SDKPython: true}}
+		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{SDKPython: true, CommonPythonScripts: true}}
 	case strings.HasPrefix(changedPath, "sdkts/"):
-		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{SDKTypeScript: true}}
+		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{SDKTypeScript: true, CommonPythonScripts: true}}
 	case strings.HasPrefix(changedPath, "sdk/react/"):
-		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{React: true}}
-	case strings.HasPrefix(changedPath, "site/") || changedPath == "catalog.yaml":
+		return changedPathImpact{shouldTestAllConnectors: true, ciJobs: ciJobSelection{React: true, CommonPythonScripts: true}}
+	case strings.HasPrefix(changedPath, "site/"):
 		return changedPathImpact{ciJobs: ciJobSelection{Site: true}}
-	case strings.HasPrefix(changedPath, "connectors/stripe/typescript/"):
-		return changedPathImpact{ciJobs: ciJobSelection{Common: true}}
-	case strings.HasPrefix(changedPath, "docs/") || strings.HasPrefix(changedPath, ".cursor/") || strings.HasPrefix(changedPath, ".codex/"):
-		return changedPathImpact{ciJobs: ciJobSelection{Common: true}}
-	case changedPath == "README.md" || changedPath == "AGENTS.md" || changedPath == "CLAUDE.md":
-		return changedPathImpact{ciJobs: ciJobSelection{Common: true}}
+	case changedPath == "catalog.yaml":
+		// Root-module catalog, model, and generated TypeScript tests read every catalog entry.
+		return changedPathImpact{ciJobs: ciJobSelection{Site: true, CommonRootGo: true}}
+	case strings.HasPrefix(changedPath, "connectors/") || strings.HasPrefix(changedPath, "conformance/connectors/"):
+		// Root-module tests read every manifest, README, package, and fixture; Python tests read
+		// connector build tags, exemptions, and fixtures. Both TypeScript suites run tsx and tsc
+		// from the Stripe package, and both clock tests read the Airtable scenarios.
+		return changedPathImpact{ciJobs: ciJobSelection{
+			CommonRootGo: true, CommonPythonScripts: true,
+			CommonTypeScriptConformance: strings.HasPrefix(changedPath, "connectors/stripe/typescript/") ||
+				strings.HasPrefix(changedPath, "conformance/connectors/airtable/"),
+		}}
+	case strings.HasPrefix(changedPath, "docs/") || strings.HasPrefix(changedPath, ".cursor/") || strings.HasPrefix(changedPath, ".codex/") ||
+		changedPath == "README.md" || changedPath == "AGENTS.md" || changedPath == "CLAUDE.md":
+		// script/agent_rules_test.py reads agent rules, hooks, README, and docs.
+		return changedPathImpact{ciJobs: ciJobSelection{CommonPythonScripts: true}}
 	case repositoryToolingTestOnlyPaths[changedPath]:
-		return changedPathImpact{ciJobs: ciJobSelection{Common: true}}
-	case strings.HasPrefix(changedPath, "connectors/") || strings.HasPrefix(changedPath, "conformance/connectors/") || strings.HasPrefix(changedPath, "examples/"):
-		return changedPathImpact{}
+		return changedPathImpact{ciJobs: ciJobSelection{CommonPythonScripts: true, CommonRootGo: repositoryToolingRootGoTestInputs[changedPath]}}
 	case changedPath == ".gitignore" || changedPath == "CODE_OF_CONDUCT.md" || changedPath == "CONTRIBUTING.md":
 		return changedPathImpact{}
 	default:
