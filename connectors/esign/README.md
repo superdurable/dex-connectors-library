@@ -1,0 +1,7 @@
+# eSign connector
+
+This connector reads one existing [eSign V3 signing flow](https://open.esign.cn/doc/opendoc/pdf-sign3/xxk4q6) through `GET https://openapi.esign.cn/v3/sign-flow/{signFlowId}/detail`. It returns only the requested flow ID and numeric `signFlowStatus`. Signing documents, contract content, and signer details from the provider response are discarded.
+
+Create or select an application in the [eSign developer console](https://open.esign.cn/my-apps/home) under **正式服务 > 应用管理 > 我的应用**. Copy its AppID and AppSecret into Dex Web Connections. The connector uses [HmacSHA256 signature authentication](https://open.esign.cn/doc/opendoc/dev-guide3/tggw2e); AppSecret is a secret and must never be placed in Flow input. Production requests use eSign's fixed HTTPS OpenAPI host. Use an existing `signFlowId` from your signing workflow. An empty ID is invalid.
+
+The [eSign API service plans](https://open.esign.cn/prices) are paid. The status endpoint's documentation does not identify a separate per-request charge; confirm your application's access and plan entitlements with eSign. Live eSign credentials are required to verify authorization and current status values. The checked-in [Flow example](go/examples/get-sign-flow-status/) uses the generated mock by default and can be run with a real Dex worker.
