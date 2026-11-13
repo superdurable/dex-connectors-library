@@ -32,6 +32,7 @@ func TestPublishedInputSchemasAcceptConformanceInputs(t *testing.T) {
 			require.NoError(t, packageManifestSchema.Validate(document), path)
 			var manifest struct {
 				Factories []struct {
+					Kind        string          `json:"kind"`
 					OperationID string          `json:"operationId"`
 					InputType   string          `json:"inputType"`
 					Description string          `json:"description"`
@@ -44,6 +45,10 @@ func TestPublishedInputSchemasAcceptConformanceInputs(t *testing.T) {
 			}
 			require.NoError(t, json.Unmarshal(contents, &manifest), path)
 			for _, factory := range manifest.Factories {
+				if factory.Kind == "trigger" {
+					// A Trigger binding factory has no operation input; the package schema validated it above.
+					continue
+				}
 				require.NotEmpty(t, factory.InputType, "%s %s", path, factory.OperationID)
 				require.NotEmpty(t, factory.Description, "%s %s", path, factory.OperationID)
 				if factory.Agent != nil {
