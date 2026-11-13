@@ -1,0 +1,79 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: seniverse
+  displayName: Seniverse
+  description: Read the current weather for a specified city from Seniverse.
+  company: Seniverse
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: seniverse
+  codegen:
+    go:
+      package: seniverse
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Seniverse Weather API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.seniverse.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one current-weather request as a positive Go duration, such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Seniverse response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate current-weather result exceeds it.
+        default: 262144
+      - name: language
+        goName: Language
+        type: string
+        description: Weather text language code listed at https://docs.seniverse.com/api/start/common.html, such as en or zh-Hant. Leave blank for the displayed Simplified Chinese default; override when the consuming Flow needs another supported language.
+        default: zh-Hans
+      - name: unit
+        goName: Unit
+        type: string
+        description: Temperature unit code from https://docs.seniverse.com/api/start/unit.html; c means Celsius and f means Fahrenheit. Leave blank for the displayed default; override to f only when the consuming Flow expects Fahrenheit.
+        default: c
+  auth:
+    type: apiKey
+    connectionKind: seniverse-weather
+    fields:
+      - name: private_key
+        goName: PrivateKey
+        type: secretString
+        description: Secret private key from https://www.seniverse.com/login > 产品管理 (Product Management) > your Weather API product > 密钥 (Keys). Copy the private key string, not the public uid; Seniverse requires it in the key query parameter. Dex stores it only as a credential and never returns it in a result. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://www.seniverse.com/login
+      steps:
+        - Sign in at https://www.seniverse.com/login and open 产品管理 (Product Management). Add or select a Weather API product with access to 天气实况 (current weather).
+        - Open that product's 密钥 (Keys) details. Copy the 私钥 (private key) into the secret private_key field; do not use the 公钥 uid. Restrict and rotate the key in the product console if exposed.
+        - Leave baseUrl, timeout, maxResponseBytes, language, and unit blank for the displayed defaults. Each Weather API call consumes one API access from the product quota.
+  operations:
+    - name: getCurrentWeather
+      goName: GetCurrentWeather
+      inputType: GetCurrentWeatherInput
+      outputType: GetCurrentWeatherOutput
+      kind: query
+      description: Get current weather text, code, and temperature for one location.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: "Seniverse returned current weather for the location."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Seniverse rejected the key, permission, quota, or location.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Seniverse returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: beijingCurrentWeather
+          branch: fetched
+          description: Synthetic Beijing weather sample for local Flow verification, not live data.
+          default: true
+          output: {locationId: "WX4FBXXFKE4F", locationName: "北京", country: "CN", weatherText: "晴", weatherCode: "0", temperature: "20", temperatureUnit: "c", lastUpdate: "2026-01-01T12:00:00+08:00"}
