@@ -181,6 +181,7 @@ directories:
   - connectors/surveymonkey
   - connectors/teamwork
   - connectors/telegram
+  - connectors/tencent/wecom
   - connectors/tiktok
   - connectors/tmdb
   - connectors/twilio/messaging
