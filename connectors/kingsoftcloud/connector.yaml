@@ -1,0 +1,84 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: kingsoftcloud
+  displayName: Kingsoft Cloud
+  description: List one page of Kingsoft Cloud IAM users without exposing contact details.
+  company: KingsoftCloud
+  categories: [security-identity]
+  version: v0.1.0
+spec:
+  provider: kingsoftcloud
+  codegen:
+    go:
+      package: kingsoftcloud
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin for Kingsoft Cloud IAM OpenAPI, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://iam.api.ksyun.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one IAM ListUsers request, as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum IAM response size in bytes as a positive integer. Leave blank for the displayed default; raise only when a legitimate user page exceeds it.
+        default: 262144
+      - name: region
+        goName: Region
+        type: string
+        description: IAM request region identifier from https://docs.ksyun.com/documents/1406, normally the displayed fixed signing region. Leave blank for the displayed default; override only if Kingsoft Cloud documents a different IAM region.
+        default: cn-beijing-6
+      - name: service
+        goName: Service
+        type: string
+        description: IAM signing service identifier from https://docs.ksyun.com/documents/1406, normally the displayed fixed service. Leave blank for the displayed default; override only if Kingsoft Cloud changes the IAM OpenAPI service name.
+        default: iam
+  auth:
+    type: apiKey
+    connectionKind: kingsoftcloud-iam
+    fields:
+      - name: access_key_id
+        goName: AccessKeyID
+        type: secretString
+        description: AccessKeyID from https://console.ksyun.com > 访问控制 > 人员管理 > 子用户 > selected subuser > 安全管理 > 创建秘钥. Copy the generated ID exactly; it is included in signed requests and Dex stores it only as a credential. Blank prevents requests.
+        required: true
+      - name: secret_access_key
+        goName: SecretAccessKey
+        type: secretString
+        description: SecretAccessKey shown once at https://console.ksyun.com > 访问控制 > 人员管理 > 子用户 > selected subuser > 安全管理 > 创建秘钥. Copy the generated secret exactly; Dex uses it only for HMAC signing and never returns it. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://console.ksyun.com
+      steps:
+        - Sign in at https://console.ksyun.com and open 访问控制 > 人员管理 > 子用户; select a least-privilege subuser allowed to call IAM ListUsers.
+        - Open that subuser's 安全管理 page and choose 创建秘钥. Copy the AccessKeyID and one-time SecretAccessKey into the two secret credential fields.
+        - Leave baseUrl, timeout, maxResponseBytes, region, and service blank for the displayed defaults. Dex generates the UTC Timestamp and HMAC-SHA256 Signature for each request.
+  operations:
+    - name: listUsers
+      goName: ListUsers
+      inputType: ListUsersInput
+      outputType: ListUsersOutput
+      kind: query
+      description: List one bounded page of IAM user IDs and names, with an optional Marker for the next page.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "IAM returned one user page, which may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "IAM rejected the access key, permissions, or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: IAM returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleUserPage
+          branch: listed
+          description: Illustrative IAM user page with synthetic IDs and names; no real customer data.
+          default: true
+          output: {users: [{userId: "example-user-001", userName: "example-user"}], hasMore: false, nextMarker: ""}
