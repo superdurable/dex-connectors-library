@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: fit2cloud
+  displayName: Halo (FIT2CLOUD)
+  description: List article metadata from a Halo CMS installation.
+  company: Fit2cloud
+  categories: [marketing]
+  version: v0.1.0
+spec:
+  provider: fit2cloud
+  codegen:
+    go:
+      package: fit2cloud
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: HTTPS origin of your Halo CMS site, copied from its browser address bar after your administrator enables HTTPS. Include scheme and host only, without /apis; blank prevents connection. See https://docs.halo.run/developer-guide/restful-api/introduction.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one article-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow Halo site.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum article-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate larger page.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: fit2cloud-halo-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Personal access token from your Halo HTTPS site > personal center > Personal Access Tokens. Create a token with read permission for posts, copy its pat_ prefixed value into this secret field, and set an expiry. Dex stores it only as a credential; blank prevents requests. See https://docs.halo.run/guide/use/user-center.
+    guide:
+      startURL: https://docs.halo.run/guide/use/user-center
+      steps:
+        - On your HTTPS Halo site, open personal center > Personal Access Tokens. Create a token with the minimum article read permission, copy the pat_ prefixed value into secret api_key, and set an expiry. The token inherits only permissions your Halo account already has; revoke it there if disclosed.
+        - Set baseUrl to the HTTPS origin of your Halo site without /apis. Leave timeout and maxResponseBytes blank for displayed defaults. Do not use an HTTP site for credentialed API access.
+        - The Query returns one page of article names, titles, slugs, publication state, visibility, and next-page number. It does not expose article body, authors, or account details.
+  operations:
+    - name: listPosts
+      goName: ListPosts
+      inputType: ListPostsInput
+      outputType: ListPostsOutput
+      kind: query
+      description: List one page of Halo article metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Halo returned an article page."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Halo rejected the token or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Halo returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: samplePosts
+          branch: listed
+          description: Synthetic article metadata for local Flow verification, not live Halo content.
+          default: true
+          output:
+            posts:
+              - {name: example-post, title: Example Post, slug: example-post, published: true, visibility: PUBLIC}
+            nextPage: 0
