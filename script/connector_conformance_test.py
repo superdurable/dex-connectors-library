@@ -5,6 +5,8 @@
 import contextlib
 import io
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -95,10 +97,108 @@ class MutationSelfTestSelectionTest(unittest.TestCase):
 
     def test_sdk_change_keeps_existing_selection(self) -> None:
         paths = ["sdkpython/src/dex_connector_sdk/conformance.py", "sdkts/src/index.ts", "sdkgo/step.go",
-                 "cmd/connectorctl/main.go"]
-        selected, calls = self.select(paths)
+                 "cmd/connectorctl/main_test.go"]
+        with patch.object(connector_conformance, "operation_discovery_changed_connectors") as compare:
+            selected, calls = self.select(paths)
         self.assertEqual([], selected)
         self.assertEqual([], calls)
+        compare.assert_not_called()
+
+    def test_operation_discovery_input_classification(self) -> None:
+        for path in ("schema/manifest.go", "cmd/connectorctl/main.go", "cmd/connectorctl/python_codegen.py",
+                     "internal/codegen/gomodel/model.go", "go.mod", "go.sum"):
+            with self.subTest(path=path):
+                self.assertTrue(connector_conformance.is_operation_discovery_input(path))
+        for path in ("schema/manifest_test.go", "cmd/connectorctl/main_test.go",
+                     "cmd/connectorctl/testdata/conformance_alias/connector.yaml", "sdkgo/go.mod",
+                     "connectors/alpha/go/go.sum", "cmd/other/main.go", "docs/x.md"):
+            with self.subTest(path=path):
+                self.assertFalse(connector_conformance.is_operation_discovery_input(path))
+
+    def test_discovery_change_adds_connectors_whose_operations_differ(self) -> None:
+        with patch.object(connector_conformance, "operation_discovery_changed_connectors",
+                          side_effect=lambda base, head, connectors: [connectors[1]]) as compare:
+            selected, calls = self.select(["schema/manifest.go", "conformance/connectors/gamma/scenarios.json"])
+        self.assertEqual(["connectors/beta", "connectors/gamma"], selected)
+        self.assertEqual([], calls)
+        base, head, connectors = compare.call_args.args
+        self.assertEqual(("base-sha", "HEAD"), (base, head))
+        self.assertEqual(["alpha", "beta", "gamma"], [connector.name for connector in connectors])
+
+
+class OperationDiscoveryComparisonTest(unittest.TestCase):
+    """Compare base and head connectorctl conformance-operations output over fixture connectors."""
+
+    def compare(self, outputs: dict[tuple[str, str], object]) -> list[str]:
+        def run(connectorctl: Path, manifest: str) -> str:
+            output = outputs[(connectorctl.name, Path(manifest).parent.name)]
+            if isinstance(output, Exception):
+                raise output
+            return output
+
+        root = connector_conformance.ROOT
+        with patch.object(connector_conformance, "build_connectorctl_at_revision",
+                          side_effect=lambda revision, directory: Path(revision)), \
+                patch.object(connector_conformance, "conformance_operations_output", side_effect=run), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            selected = connector_conformance.operation_discovery_changed_connectors(
+                "base", "head", [root / "connectors/alpha", root / "connectors/beta"])
+        return [connector.name for connector in selected]
+
+    def test_identical_output_selects_nothing(self) -> None:
+        same = '{"read":{"kind":"query","branches":["read"],"optionalInputFields":[]}}\n'
+        self.assertEqual([], self.compare({(binary, name): same for binary in ("base", "head")
+                                           for name in ("alpha", "beta")}))
+
+    def test_differing_output_selects_connector(self) -> None:
+        same = '{"read":{"kind":"query","branches":["read"],"optionalInputFields":["limit"]}}\n'
+        dropped = '{"read":{"kind":"query","branches":["read"],"optionalInputFields":[]}}\n'
+        self.assertEqual(["beta"], self.compare({("base", "alpha"): same, ("head", "alpha"): same,
+                                                 ("base", "beta"): same, ("head", "beta"): dropped}))
+
+    def test_head_failure_raises(self) -> None:
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.compare({("base", "alpha"): "{}\n", ("head", "alpha"): "{}\n", ("base", "beta"): "{}\n",
+                          ("head", "beta"): subprocess.CalledProcessError(1, ["connectorctl"])})
+
+    def test_base_failure_selects_connector(self) -> None:
+        self.assertEqual(["alpha"], self.compare({
+            ("base", "alpha"): subprocess.CalledProcessError(1, ["connectorctl"]), ("head", "alpha"): "{}\n",
+            ("base", "beta"): "{}\n", ("head", "beta"): "{}\n"}))
+
+    def test_source_directories_cover_every_connectorctl_root_module_package(self) -> None:
+        root = connector_conformance.ROOT
+        listing = subprocess.check_output(
+            ["go", "list", "-deps", "-f",
+             '{{if .Module}}{{if .Module.Main}}{{.Dir}}{{range .EmbedFiles}}|{{.}}{{end}}{{"\\n"}}{{end}}{{end}}',
+             "./cmd/connectorctl"],
+            cwd=root, env={**os.environ, "GOWORK": "off"}, text=True)
+        source_files = []
+        for line in listing.splitlines():
+            package_directory, *embed_files = line.split("|")
+            relative = Path(package_directory).relative_to(root)
+            source_files.append((relative / "source.go").as_posix())
+            source_files.extend((relative / embed_file).as_posix() for embed_file in embed_files)
+        self.assertIn("cmd/connectorctl/source.go", source_files)
+        for path in source_files:
+            with self.subTest(path=path):
+                self.assertTrue(connector_conformance.is_operation_discovery_input(path))
+
+    def test_build_archives_the_discovery_source_directories(self) -> None:
+        self.assertEqual(("go.mod", "go.sum", *connector_conformance.OPERATION_DISCOVERY_SOURCE_DIRECTORIES),
+                         connector_conformance.operation_discovery_archive_paths())
+        with patch.object(connector_conformance.subprocess, "run") as run, \
+                tempfile.TemporaryDirectory() as directory:
+            connector_conformance.build_connectorctl_at_revision("base-sha", Path(directory) / "base")
+        self.assertEqual(["git", "archive", "base-sha", *connector_conformance.operation_discovery_archive_paths()],
+                         run.call_args_list[0].args[0])
+
+    def test_build_failure_raises(self) -> None:
+        with patch.object(connector_conformance.subprocess, "run",
+                          side_effect=subprocess.CalledProcessError(128, ["git"])), \
+                tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(subprocess.CalledProcessError):
+                connector_conformance.build_connectorctl_at_revision("missing", Path(directory) / "base")
 
 
 class NativeWireExemptionTest(unittest.TestCase):
