@@ -1,0 +1,81 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: xiaoetech
+  displayName: XiaoeTech (小鹅通)
+  description: Read top-level goods categories from a XiaoeTech store.
+  company: XiaoeTech
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: xiaoetech
+  codegen:
+    go:
+      package: xiaoetech
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the XiaoeTech Open API without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.xiaoe-tech.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one token or category request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Leave blank for the displayed default; raise only when a legitimate category list exceeds it.
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: xiaoetech-api
+    fields:
+      - name: app_id
+        goName: AppID
+        type: string
+        required: true
+        description: Store business App ID from https://admin.cloud.xiaoe-tech.com/ > Cloud Service Console > Application Information. Copy the opaque app_id for the authorized store. This is not secret. Blank prevents token exchange.
+      - name: client_id
+        goName: ClientID
+        type: string
+        required: true
+        description: Application Client ID from https://admin.cloud.xiaoe-tech.com/ > Cloud Service Console > Application Information. Copy the opaque client_id for the authorized application. This is not secret. Blank prevents token exchange.
+      - name: secret_key
+        goName: SecretKey
+        type: secretString
+        required: true
+        description: Secret key from https://admin.cloud.xiaoe-tech.com/ > Cloud Service Console > Application Information. Copy the opaque secret_key and keep it private; Dex stores it only as a credential. Blank prevents token exchange.
+    guide:
+      startURL: https://admin.cloud.xiaoe-tech.com/
+      steps:
+        - In the XiaoeTech store admin, open Marketing Center > API Self Development > Cloud Service Console at https://admin.cloud.xiaoe-tech.com/. Create an application for your store and have a store administrator confirm its authorization.
+        - In Application Information, copy app_id, client_id, and the secret_key into this connection. Add the Dex Worker outbound IP to the application IP allowlist before the first call; the token endpoint rejects other IPs.
+        - Request the Product Management - Query permission set for the application. The connector refreshes its 2-hour access_token automatically. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
+        - Xiaoe Cloud Open API is subject to store edition and billing rules. This operation only reads the root goods categories and does not change products or orders.
+  operations:
+    - name: listRootGoodsCategories
+      goName: ListRootGoodsCategories
+      inputType: ListRootGoodsCategoriesInput
+      outputType: ListRootGoodsCategoriesOutput
+      kind: query
+      description: Read root goods category IDs, titles, and child availability.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "XiaoeTech returned the root goods categories."}
+        - {id: providerRejected, goName: ProviderRejected, description: "XiaoeTech rejected credentials, permissions, or the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "XiaoeTech returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or connection configuration are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 1h, reason: {kind: billedOperation, explanation: "Open API usage is billed under the store plan; retries are limited even for this read-only category call."}}
+      mocks:
+        - name: sampleRootCategories
+          branch: listed
+          description: Synthetic category names for local Flow verification, not live XiaoeTech data.
+          default: true
+          output: {categories: [{id: 16510, title: Sample food, hasChildren: true}, {id: 18237, title: Sample beauty, hasChildren: false}]}
