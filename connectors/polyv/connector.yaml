@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: polyv
+  displayName: Polyv
+  description: List Polyv live channel IDs available to an account.
+  company: Polyv
+  categories: [social-media]
+  version: v0.1.0
+spec:
+  provider: polyv
+  codegen:
+    go:
+      package: polyv
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one Polyv channel-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum channel-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for an account with many channels.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: polyv-api
+    fields:
+      - name: app_id
+        goName: AppID
+        type: string
+        required: true
+        description: Polyv live AppId from https://console.polyv.net/live/index.html#/develop/app-id after sign-in. This account identifier is not a secret; copy its exact letters and digits. Blank prevents requests.
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Polyv live AppSecret from https://console.polyv.net/live/index.html#/develop/app-id. Copy the exact secret into this credential field; Dex stores it as a secret and uses it only to sign requests. Blank prevents requests.
+    guide:
+      startURL: https://help.polyv.net/live/api/getSecretKey/
+      steps:
+        - Sign in to https://console.polyv.net/live/index.html#/develop/app-id and open the live console Development Settings > App ID page. Copy AppId to app_id and AppSecret to app_secret; keep the secret server-side and rotate it in the console if disclosed.
+        - Leave timeout and maxResponseBytes blank for the displayed defaults. The connector signs each HTTPS request with the documented uppercase MD5 signature and a fresh millisecond timestamp.
+        - The Query lists channel IDs only. Account permissions determine which channels are visible; no channel passwords, watch URLs, or viewers are included in Flow results.
+  operations:
+    - name: listChannels
+      goName: ListChannels
+      inputType: ListChannelsInput
+      outputType: ListChannelsOutput
+      kind: query
+      description: List all live channel IDs visible to this Polyv account.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Polyv returned channel IDs."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Polyv rejected the signed request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Polyv returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials are unavailable or invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleChannels
+          branch: listed
+          description: Synthetic channel IDs for local Flow verification, not live account data.
+          default: true
+          output:
+            channelIds: ["2139283", "2139268"]
