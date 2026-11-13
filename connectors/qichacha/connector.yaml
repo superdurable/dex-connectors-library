@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: qichacha
+  displayName: Qichacha
+  description: Read basic mainland enterprise registration details from Qichacha.
+  company: Qichacha
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: qichacha
+  codegen:
+    go:
+      package: qichacha
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Qichacha API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.qichacha.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one enterprise lookup as a positive Go duration, such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Qichacha response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate result exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: qichacha-openapi
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        description: AppKey from https://openapi.qcc.com/ > 账号安全 (Account Security), after enterprise verification and API 410 approval. Copy its exact string; Dex stores it only as a credential. Blank prevents requests.
+        required: true
+      - name: secret_key
+        goName: SecretKey
+        type: secretString
+        description: SecretKey paired with the AppKey at https://openapi.qcc.com/ > 账号安全 (Account Security). Copy its exact string; Dex stores it only as a credential and signs each request. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://openapi.qcc.com/dataApi/410
+      steps:
+        - Sign in at https://openapi.qcc.com/, complete enterprise real-name verification, then open 企业工商信息 (API 410) and submit the required application-scenario review before purchasing or starting its trial.
+        - Open the account menu > 账号安全 (Account Security) and copy the paired AppKey and SecretKey into the two secret fields. Keep the case and characters exact; rotate or revoke the pair from the same account page.
+        - API 410 is billed per lookup, including repeat attempts when the first response is lost. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: getEnterpriseBasicDetails
+      goName: GetEnterpriseBasicDetails
+      inputType: GetEnterpriseBasicDetailsInput
+      outputType: GetEnterpriseBasicDetailsOutput
+      kind: query
+      description: Get enterprise name, registration status, and mainland unified social credit code.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: "Qichacha returned enterprise registration details."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Qichacha rejected the credentials, API entitlement, quota, or search term.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Qichacha returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 20s, maximumAttempts: 2, totalDuration: 1m, reason: {kind: billedOperation, explanation: "A repeated lookup can incur another charge when the first response was lost; at most two attempts are made."}}
+      mocks:
+        - name: sampleMainlandEnterprise
+          branch: fetched
+          description: Synthetic mainland enterprise data for local Flow verification, not live Qichacha data.
+          default: true
+          output: {name: "示例科技有限公司", creditCode: "91110101000000000X", registrationStatus: "存续"}
