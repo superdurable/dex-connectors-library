@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: lingxing
+  displayName: 领星 ERP
+  description: List authorized Amazon store identifiers and statuses from Lingxing ERP.
+  company: Lingxing
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: lingxing
+  codegen:
+    go:
+      package: lingxing
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Lingxing OpenAPI. Leave blank for the displayed production endpoint; override only for a trusted test server or provider-approved proxy.
+        default: https://openapi.lingxing.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of each token or store request as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes in each token or store response as a positive integer. Leave blank for the displayed default; raise only for a documented larger store list.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: lingxing-app-credentials
+    fields:
+      - name: app_id
+        goName: AppID
+        type: secretString
+        description: AppID from https://www.lingxing.com/ ERP > Settings > Business Configuration > Global > Open Interface > Open Backend > API Information. Required 16-, 24-, or 32-byte ASCII AES key; treated as secret because it signs requests. Blank prevents requests.
+        required: true
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        description: Matching AppSecret from https://www.lingxing.com/ ERP > Settings > Business Configuration > Global > Open Interface > Open Backend > API Information. Secret and required for short-lived token acquisition; blank prevents requests. Update the connection after rotation.
+        required: true
+    guide:
+      startURL: https://apidoc.lingxing.com/new/guides/app-id/
+      steps:
+        - Sign in to Lingxing ERP as a super administrator. Open Settings > Business Configuration > Global > Open Interface, enter the notification email, then Open Backend > API Information to obtain AppID and AppSecret. An approved account is required.
+        - Configure the outbound public IP in the same Open Interface page's IP allowlist. Copy AppID and AppSecret into the protected app_id and app_secret fields. Both are required; the connector obtains and caches the access token in memory and never asks you to paste it.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed production defaults. This Query reads authorized Amazon stores and returns only store ID, display name, region, country, and status; the access token is sent in a Bearer header.
+  operations:
+    - name: listStores
+      goName: ListStores
+      inputType: ListStoresInput
+      outputType: StoreList
+      kind: query
+      description: List authorized Amazon stores, excluding account identifiers and personal details.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Lingxing returned authorized Amazon stores, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Lingxing rejected credentials, allowlist, plan, or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Lingxing returned malformed or oversized token/store data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local AppID or AppSecret is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedStore
+          branch: listed
+          description: Synthetic authorized store for local Dex Flow verification.
+          default: true
+          output: {stores: [{storeID: 1519, name: "Sample EU Store", region: EU, country: Spain, status: 1}], truncated: false}
