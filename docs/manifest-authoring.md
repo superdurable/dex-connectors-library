@@ -184,7 +184,11 @@ validation rejects missing or misplaced files.
 
 The manifest's `releaseTag` is the **Go connector release tag**
 `connectors/<connector-directory>/go/<metadata.version>`. Dex Web reads that
-release's `connector-release.json` and UI assets for Connections. The `package`
+release's `connector-release.json` and UI assets for Connections. Each Python
+and TypeScript release also carries its own `connector-release.json`, which a
+host resolves from the package name and exact version; see
+[Python and TypeScript connector release metadata](versioning-and-releases.md#python-and-typescript-connector-release-metadata).
+The `package`
 object separately records the PyPI or npm package name and its own version.
 Before a language package is published, release validation requires that Go tag
 to be reachable from `main` and its GitHub release to contain

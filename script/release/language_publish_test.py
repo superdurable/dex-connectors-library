@@ -3,9 +3,11 @@
 
 """Tests for language release selection and PyPI project-creation deferral."""
 
+import fnmatch
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 import textwrap
@@ -548,6 +550,25 @@ class VerifyReleaseArchivesTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "differs from the release manifest"):
                 self.verify(directory)
 
+    def test_pending_upload_downloads_skip_connector_release_assets(self) -> None:
+        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text(
+            encoding="utf-8")
+        upload_job = workflow.split("\n  upload-pending-pypi:\n", 1)[1].split("\n\n  ", 1)[0]
+        download = upload_job.split("gh release download", 1)[1].split("python3", 1)[0]
+        patterns = re.findall(r"--pattern '([^']+)'", download)
+        self.assertTrue(patterns)
+        with tempfile.TemporaryDirectory() as temporary, tempfile.TemporaryDirectory() as downloaded:
+            release = Path(temporary)
+            self.write_release(release)
+            for name in ("connector-release.json", "connector-release.json.sha256", "connector-ui.tgz",
+                         "connector-ui.tgz.sha256", "language-release.complete"):
+                (release / name).write_text(name, encoding="utf-8")
+            for asset in release.iterdir():
+                if any(fnmatch.fnmatchcase(asset.name, pattern) for pattern in patterns):
+                    (Path(downloaded) / asset.name).write_bytes(asset.read_bytes())
+            self.assertEqual([Path(downloaded) / self.wheel, Path(downloaded) / self.sdist],
+                             self.verify(Path(downloaded)))
+
 
 class ReleaseMutationTests(unittest.TestCase):
     built = "a" * 40
@@ -905,6 +926,433 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertIn("release_state=incomplete\n", (directory / "output").read_text())
             self.assertFalse((directory / "gh.log").exists())
+
+
+COMPLETE_WITHOUT_METADATA = ["dex_connector_acme-0.1.0-py3-none-any.whl", "language-release.complete"]
+
+
+class SelectConnectorReleaseRepairsTests(unittest.TestCase):
+    @staticmethod
+    def select(inventory: dict[str, list[str]], limit: int = 20, *, directory: str | None = None,
+               created_at: dict[str, str] | None = None, unsupported: dict[str, str] | None = None,
+               checked: list[str] | None = None) -> dict[str, list[dict[str, str]]]:
+        def unsupported_reason(item: dict[str, str]) -> str | None:
+            if checked is not None:
+                checked.append(item["tag"])
+            return (unsupported or {}).get(item["tag"])
+        return language_publish.select_connector_release_repairs(
+            inventory, limit, release_created_at=created_at or {}, directory=directory,
+            unsupported_reason=unsupported_reason)
+
+    def test_selects_only_complete_connector_language_releases_without_metadata(self) -> None:
+        inventory = {
+            "connectors/slack/typescript/v0.5.0": COMPLETE_WITHOUT_METADATA,
+            "connectors/google/gmail/python/v0.2.1": ["language-release.complete", "connector-release.json"],
+            "connectors/acme/python/v0.1.0": ["language-release.complete", "connector-release.json",
+                                              "connector-release.json.sha256"],
+            "connectors/acme/typescript/v0.2.0": ["acme.tgz"],
+            "connectors/acme/typescript/v0.3.0-rc.1": COMPLETE_WITHOUT_METADATA,
+            "connectors/acme/go/v0.1.0": ["connector-release.complete"],
+            "sdkpython/v0.1.0": COMPLETE_WITHOUT_METADATA,
+            "sdkts/v0.1.0": COMPLETE_WITHOUT_METADATA,
+            "_inventory_unavailable": [],
+        }
+        selection = self.select(inventory)
+        self.assertEqual(
+            [{"directory": "connectors/slack", "language": "typescript", "version": "v0.5.0",
+              "tag": "connectors/slack/typescript/v0.5.0"},
+             {"directory": "connectors/google/gmail", "language": "python", "version": "v0.2.1",
+              "tag": "connectors/google/gmail/python/v0.2.1"}],
+            selection["selected"])
+        self.assertEqual([], selection["waiting"])
+
+    def test_orders_newest_release_first_and_caps_untargeted_runs(self) -> None:
+        inventory = {f"connectors/acme/python/v0.{minor}.0": COMPLETE_WITHOUT_METADATA for minor in range(4)}
+        created_at = {"connectors/acme/python/v0.0.0": "2026-01-01T00:00:00Z",
+                      "connectors/acme/python/v0.2.0": "2026-03-01T00:00:00Z",
+                      "connectors/acme/python/v0.3.0": "2026-02-01T00:00:00Z"}
+        checked: list[str] = []
+        selection = self.select(inventory, 2, created_at=created_at, checked=checked)
+        self.assertEqual(["connectors/acme/python/v0.2.0", "connectors/acme/python/v0.3.0"],
+                         [item["tag"] for item in selection["selected"]])
+        # An undated tag sorts last; tags past the cap wait unchecked.
+        self.assertEqual(["connectors/acme/python/v0.0.0", "connectors/acme/python/v0.1.0"],
+                         [item["tag"] for item in selection["waiting"]])
+        self.assertEqual(["connectors/acme/python/v0.2.0", "connectors/acme/python/v0.3.0"], checked)
+
+    def test_unsupported_legacy_sources_never_take_a_slot(self) -> None:
+        inventory = {"connectors/acme/python/v0.1.0": COMPLETE_WITHOUT_METADATA,
+                     "connectors/acme/python/v0.2.0": COMPLETE_WITHOUT_METADATA}
+        selection = self.select(inventory, 1, created_at={"connectors/acme/python/v0.2.0": "2026-02-01T00:00:00Z",
+                                                          "connectors/acme/python/v0.1.0": "2026-01-01T00:00:00Z"},
+                                unsupported={"connectors/acme/python/v0.2.0": "metadata.categories must list 1 or 2"})
+        self.assertEqual(["connectors/acme/python/v0.1.0"], [item["tag"] for item in selection["selected"]])
+        self.assertEqual([{"directory": "connectors/acme", "language": "python", "version": "v0.2.0",
+                           "tag": "connectors/acme/python/v0.2.0", "reason": "metadata.categories must list 1 or 2"}],
+                         selection["unsupported"])
+
+    def test_bounds_checks_per_run_and_skips_cached_unsupported_tags(self) -> None:
+        tags = [f"connectors/acme/python/v0.{minor}.0" for minor in range(10)]
+        inventory = {tag: COMPLETE_WITHOUT_METADATA for tag in tags}
+        created_at = {tag: f"2026-01-{minor + 1:02d}T00:00:00Z" for minor, tag in enumerate(tags)}
+        unsupported = {tag: "metadata.categories must list 1 or 2" for tag in tags[2:]}
+        checked: list[str] = []
+
+        def run(known: dict[str, str]) -> dict[str, list[dict[str, str]]]:
+            checked.clear()
+            return language_publish.select_connector_release_repairs(
+                inventory, 20, release_created_at=created_at, directory=None, check_limit=3, known_unsupported=known,
+                unsupported_reason=lambda item: checked.append(item["tag"]) or unsupported.get(item["tag"]))
+
+        # Newest first: v0.9.0..v0.7.0 are checked and rejected, the rest wait unchecked.
+        first = run({})
+        self.assertEqual(tags[9:6:-1], checked)
+        self.assertEqual([], first["selected"])
+        self.assertEqual(7, len(first["waiting"]))
+        known = {item["tag"]: item["reason"] for item in first["unsupported"]}
+        second = run(known)
+        self.assertEqual(tags[6:3:-1], checked, "cached tags are not checked again")
+        known |= {item["tag"]: item["reason"] for item in second["unsupported"]}
+        third = run(known)
+        self.assertEqual([tags[3], tags[2], tags[1]], checked)
+        self.assertEqual([tags[1]], [item["tag"] for item in third["selected"]])
+        self.assertEqual([tags[0]], [item["tag"] for item in third["waiting"]])
+        self.assertEqual(8, len(third["unsupported"]))
+        with self.assertRaisesRegex(ValueError, "check limit must be positive"):
+            language_publish.select_connector_release_repairs(
+                inventory, 20, release_created_at={}, directory=None, check_limit=0, unsupported_reason=lambda _: None)
+
+    def test_unsupported_cache_round_trips_and_rejects_invalid_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary) / "unsupported.json"
+            self.assertEqual({}, language_publish.read_known_unsupported(cache))
+            language_publish.write_known_unsupported(cache, {"unsupported": [
+                {"tag": "connectors/acme/python/v0.1.0", "reason": "pkce"}]})
+            self.assertEqual({"connectors/acme/python/v0.1.0": "pkce"}, language_publish.read_known_unsupported(cache))
+            cache.write_text('["connectors/acme/python/v0.1.0"]', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "must map release tags"):
+                language_publish.read_known_unsupported(cache)
+
+    def test_targeted_repair_takes_the_directorys_whole_backlog(self) -> None:
+        inventory = {f"connectors/acme/python/v0.{minor}.0": COMPLETE_WITHOUT_METADATA for minor in range(3)}
+        inventory["connectors/acme/chat/python/v0.1.0"] = COMPLETE_WITHOUT_METADATA
+        selection = self.select(inventory, 1, directory="connectors/acme")
+        self.assertEqual(3, len(selection["selected"]))
+        self.assertTrue(all(item["directory"] == "connectors/acme" for item in selection["selected"]))
+        with self.assertRaisesRegex(ValueError, "not a connector directory"):
+            self.select(inventory, directory="sdkpython")
+        with self.assertRaisesRegex(ValueError, "must be positive"):
+            self.select(inventory, 0)
+
+    def test_runs_release_artifact_on_the_tagged_manifest(self) -> None:
+        item = {"directory": "connectors/acme", "language": "python", "version": "v0.1.0",
+                "tag": "connectors/acme/python/v0.1.0"}
+        calls: list[tuple[str, ...]] = []
+
+        def run(arguments, **_options):
+            calls.append(tuple(arguments))
+            if arguments[:2] == ("git", "ls-tree"):
+                present = ["catalog.yaml", "connectors/acme/connector.yaml", "connectors/acme/python/pyproject.toml"]
+                if has_ui:
+                    present.append("connectors/acme/ui/package-lock.json")
+                return subprocess.CompletedProcess(arguments, 0, "\n".join(present) + "\n", "")
+            if arguments[0] == "git":
+                path = arguments[2].split(":", 1)[1]
+                self.assertNotIn("package.json", path, "only files the tag has are read")
+                contents = manifest_text if path.endswith("connector.yaml") else path
+                return subprocess.CompletedProcess(arguments, 0, contents.encode(), b"")
+            options = dict(zip(arguments[2::2], arguments[3::2]))
+            manifest = Path(options["--manifest"])
+            self.assertEqual(manifest_text.encode(), manifest.read_bytes())
+            self.assertEqual(b"catalog.yaml", (manifest.parents[2] / "catalog.yaml").read_bytes())
+            self.assertFalse((manifest.parent / "typescript").exists())
+            self.assertEqual(("python", "v0.1.0", item["tag"]),
+                             (options["--language"], options["--version"], options["--tag"]))
+            if "--ui-artifact" not in options:
+                # connectorctl parses the manifest, so Studio UI is found at any indentation.
+                if "studio:" in manifest_text:
+                    return subprocess.CompletedProcess(arguments, 4, "", "manifest declares Studio UI but no UI artifact\n")
+            else:
+                self.assertIn("studio:", manifest_text)
+                placeholder = Path(options["--ui-artifact"]).read_bytes()
+                self.assertEqual(f"{hashlib.sha256(placeholder).hexdigest()}  connector-ui.tgz\n",
+                                 Path(options["--ui-digest"]).read_text())
+            return subprocess.CompletedProcess(arguments, returncode, "", stderr.replace("ROOT", str(manifest.parents[2])))
+
+        for manifest_text, has_ui, returncode, stderr, expected, connectorctl_runs in (
+                ("spec:\n", False, 0, "", None, 1),
+                ("spec:\n  studio:\n", True, 0, "", None, 2),
+                ("spec:\n    studio:\n", True, 0, "", None, 2),
+                ("spec:\n    studio:\n", False, 0, "", "connectors/acme/python/v0.1.0 declares spec.studio without "
+                                                       "connectors/acme/ui/package-lock.json", 1),
+                ("spec:\n", False, 3, "validate ROOT/connectors/acme/connector.yaml: invalid connector manifest: pkce\n",
+                 "validate connectors/acme/connector.yaml: invalid connector manifest: pkce", 1)):
+            with self.subTest(manifest=manifest_text, has_ui=has_ui, returncode=returncode):
+                calls.clear()
+                self.assertEqual(expected, language_publish.connector_release_unsupported_reason(
+                    "/bin/connectorctl", item, run=run))
+                self.assertIn(("git", "show", "connectors/acme/python/v0.1.0:connectors/acme/connector.yaml"), calls)
+                self.assertEqual(connectorctl_runs, sum(1 for call in calls if call[0] == "/bin/connectorctl"))
+        # Any other connectorctl exit is a tool failure, not a verdict on the tag.
+        manifest_text, has_ui, returncode, stderr = "spec:\n", False, 1, "write release artifact: disk full\n"
+        with self.assertRaisesRegex(language_publish.ReleaseSourceCheckError, "exited 1.*disk full"):
+            language_publish.connector_release_unsupported_reason("/bin/connectorctl", item, run=run)
+
+    def test_a_declared_language_without_package_metadata_is_rejected_only_when_the_tag_lacks_it(self) -> None:
+        item = {"directory": "connectors/acme", "language": "python", "version": "v0.1.0",
+                "tag": "connectors/acme/python/v0.1.0"}
+        tag_files = ["catalog.yaml", "connectors/acme/connector.yaml", "connectors/acme/python/pyproject.toml"]
+
+        def run_with(listed: list[str], missing: str = "connectors/acme/typescript/package.json"):
+            def run(arguments, **_options):
+                if arguments[:2] == ("git", "ls-tree"):
+                    return subprocess.CompletedProcess(arguments, 0, "\n".join(listed) + "\n", "")
+                if arguments[0] == "git":
+                    return subprocess.CompletedProcess(arguments, 0, b"spec:\n", b"")
+                root = Path(arguments[3]).parents[2]
+                return subprocess.CompletedProcess(arguments, 5, "", f"validate {root}/connectors/acme/connector.yaml: "
+                                                   f"spec.languages.x requires {root}/{missing}: missing\n")
+            return run
+
+        # The tag itself lacks the file connectorctl names, so the rejection is definite and cacheable.
+        self.assertEqual("connectors/acme/python/v0.1.0 declares a language without connectors/acme/typescript/package.json",
+                         language_publish.connector_release_unsupported_reason("/bin/connectorctl", item,
+                                                                               run=run_with(tag_files)))
+        # The tag has the named file, so the snapshot lost it: retry next run.
+        for listed, missing in (([*tag_files, "connectors/acme/typescript/package.json"],
+                                 "connectors/acme/typescript/package.json"),
+                                (tag_files, "connectors/acme/python/pyproject.toml")):
+            with self.subTest(missing=missing), self.assertRaisesRegex(language_publish.ReleaseSourceCheckError, "exited 5"):
+                language_publish.connector_release_unsupported_reason("/bin/connectorctl", item,
+                                                                      run=run_with(listed, missing))
+
+    def test_a_tag_without_catalog_yaml_is_rejected_before_connectorctl_runs(self) -> None:
+        item = {"directory": "connectors/acme", "language": "python", "version": "v0.1.0",
+                "tag": "connectors/acme/python/v0.1.0"}
+        calls: list[tuple[str, ...]] = []
+
+        def run(arguments, **_options):
+            calls.append(tuple(arguments))
+            return subprocess.CompletedProcess(arguments, 0, "connectors/acme/connector.yaml\n", "")
+
+        self.assertEqual("connectors/acme/python/v0.1.0 has no catalog.yaml",
+                         language_publish.connector_release_unsupported_reason("/bin/connectorctl", item, run=run))
+        self.assertEqual(1, len(calls))
+
+    def test_git_failures_raise_instead_of_rejecting_the_tag(self) -> None:
+        item = {"directory": "connectors/acme", "language": "python", "version": "v0.1.0",
+                "tag": "connectors/acme/python/v0.1.0"}
+        for failing in ("ls-tree", "show"):
+            def run(arguments, **_options):
+                if arguments[1] == failing:
+                    return subprocess.CompletedProcess(arguments, 128, "", "fatal: unable to read tree")
+                if arguments[1] == "ls-tree":
+                    return subprocess.CompletedProcess(arguments, 0, "catalog.yaml\nconnectors/acme/connector.yaml\n", "")
+                return subprocess.CompletedProcess(arguments, 0, b"spec:\n", b"")
+            with self.subTest(failing=failing), self.assertRaises(language_publish.ReleaseSourceCheckError):
+                language_publish.connector_release_unsupported_reason("/bin/connectorctl", item, run=run)
+
+    def test_a_failed_check_is_not_cached_and_the_tag_recovers_next_run(self) -> None:
+        tag = "connectors/acme/python/v0.1.0"
+        inventory = {tag: COMPLETE_WITHOUT_METADATA}
+        attempts: list[str] = []
+
+        def unsupported_reason(item: dict[str, str]) -> str | None:
+            attempts.append(item["tag"])
+            if len(attempts) == 1:
+                raise language_publish.ReleaseSourceCheckError("git show failed")
+            return None
+
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary) / "unsupported.json"
+            for expected_selected in ([], [tag]):
+                selection = language_publish.select_connector_release_repairs(
+                    inventory, 20, release_created_at={}, directory=None, unsupported_reason=unsupported_reason,
+                    known_unsupported=language_publish.read_known_unsupported(cache))
+                language_publish.write_known_unsupported(cache, selection)
+                self.assertEqual(expected_selected, [item["tag"] for item in selection["selected"]])
+                self.assertEqual({}, json.loads(cache.read_text()))
+            self.assertEqual([tag, tag], attempts)
+            self.assertEqual([], selection["check_failed"])
+
+
+class AttachMissingReleaseAssetsTests(unittest.TestCase):
+    def attach(self, directory: Path, published: dict[str, bytes] | None, names: list[str],
+               complete: bool = True) -> tuple[list[str], list[str]]:
+        assets = []
+        for name in names:
+            (directory / name).write_bytes(name.encode())
+            assets.append(directory / name)
+        uploads: list[str] = []
+        published_names = None
+        if published is not None:
+            published_names = frozenset(published) | ({"language-release.complete"} if complete else frozenset())
+        uploaded = language_publish.attach_missing_release_assets(
+            "connectors/acme/typescript/v0.1.0", assets, published_names,
+            download=lambda _tag, name: published[name], upload=lambda _tag, asset: uploads.append(asset.name))
+        return uploaded, uploads
+
+    def test_uploads_absent_assets_in_order(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            uploaded, uploads = self.attach(Path(temporary), {}, ["connector-release.json",
+                                                                  "connector-release.json.sha256"])
+            self.assertEqual(["connector-release.json", "connector-release.json.sha256"], uploads)
+            self.assertEqual(uploads, uploaded)
+
+    def test_rerun_skips_identical_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            published = {"connector-ui.tgz": b"connector-ui.tgz", "connector-release.json": b"connector-release.json"}
+            uploaded, uploads = self.attach(Path(temporary), published, [
+                "connector-ui.tgz", "connector-release.json", "connector-release.json.sha256"])
+            self.assertEqual(["connector-release.json.sha256"], uploads)
+            self.assertEqual(uploads, uploaded)
+
+    def test_differing_existing_asset_fails_before_any_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(ValueError, "already has a different connector-release.json.sha256"):
+                self.attach(Path(temporary), {"connector-release.json.sha256": b"other digest"},
+                            ["connector-release.json", "connector-release.json.sha256"])
+
+    def test_requires_a_complete_existing_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(ValueError, "does not exist"):
+                self.attach(Path(temporary), None, ["connector-release.json"])
+            with self.assertRaisesRegex(ValueError, "has no language-release.complete"):
+                self.attach(Path(temporary), {}, ["connector-release.json"], complete=False)
+
+
+class ConnectorReleaseWorkflowTests(unittest.TestCase):
+    workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text(
+        encoding="utf-8")
+    candidate_workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-candidate.yml").read_text(
+        encoding="utf-8")
+
+    @staticmethod
+    def job(workflow: str, name: str) -> str:
+        """Returns one top-level job, up to the next job header."""
+        body = workflow.split(f"\n  {name}:\n", 1)[1]
+        following = re.search(r"(?m)^  [a-z][a-z0-9-]*:\s*$", body)
+        return body[:following.start()] if following else body
+
+    @staticmethod
+    def step_names(job: str) -> list[str]:
+        return re.findall(r"(?m)^      - name: (.*)$", job)
+
+    @staticmethod
+    def step(job: str, name: str) -> str:
+        return job.split(f"      - name: {name}\n", 1)[1].split("\n      - ", 1)[0]
+
+    def test_language_release_uploads_connector_release_before_its_completion_marker(self) -> None:
+        for workflow, job_name, metadata_step, create_step, complete_step, first_publish_step in (
+                (self.workflow, "publish-language", "Build trusted connector release metadata",
+                 "Create or repair language release", "Mark language release complete", "Publish Python package"),
+                (self.candidate_workflow, "publish-language", "Build connector release metadata with main's tooling",
+                 "Create or repair language pre-release", "Mark language candidate complete",
+                 "Publish Python pre-release")):
+            with self.subTest(workflow=job_name + create_step):
+                job = self.job(workflow, job_name)
+                names = self.step_names(job)
+                # Metadata is built before any registry upload and attached before the marker.
+                self.assertLess(names.index(metadata_step), names.index(first_publish_step))
+                self.assertLess(names.index(create_step), names.index(complete_step))
+                metadata = self.step(job, metadata_step)
+                self.assertIn("release-artifact", metadata)
+                self.assertIn('--language "${', metadata)
+                self.assertIn('--package "${', metadata)
+                create = self.step(job, create_step)
+                self.assertEqual(2, create.count('"${RUNNER_TEMP}"/connector-release/*'), "create and repair both attach it")
+                self.assertNotIn("connector-release", self.step(job, complete_step))
+
+    def test_publish_job_describes_the_trusted_source_with_mains_connectorctl(self) -> None:
+        job = self.job(self.workflow, "publish-language")
+        regenerate = self.step(job, "Regenerate trusted release metadata")
+        self.assertLess(regenerate.index('go build -o "${RUNNER_TEMP}/connectorctl"'), regenerate.index("git checkout"))
+        self.assertIn('"${RUNNER_TEMP}/connectorctl" release-artifact',
+                      self.step(job, "Build trusted connector release metadata"))
+        self.assertIn("actions/setup-go", job)
+        build = self.job(self.workflow, "build-language")
+        names = self.step_names(build)
+        self.assertLess(names.index("Inspect language release state"), names.index("Restore tagged language source for repair"))
+        self.assertIn('go build -o "${RUNNER_TEMP}/connectorctl"', self.step(build, "Inspect language release state"))
+        self.assertLess(names.index("Check connector release metadata before publication"),
+                        names.index("Plan language release and notes"))
+        ui_step = self.step(build, "Build and test Connector Studio UI")
+        self.assertIn('--output "${RUNNER_TEMP}/language-work/connector-ui/connector-ui.tgz"', ui_step)
+        self.assertNotIn("language-work/dist/", ui_step, "dist/ holds only package archives")
+
+    def test_repair_job_only_adds_assets_to_complete_releases(self) -> None:
+        job = self.job(self.workflow, "repair-language-connector-release")
+        self.assertIn("needs: [plan]", job)
+        self.assertIn("inputs.dry_run != true", job)
+        self.assertIn("contents: write", job)
+        self.assertNotIn("--clobber", job)
+        self.assertNotIn("language-release.complete\" >", job)
+        self.assertNotIn("gh release upload", job, "uploads go through attach-missing-release-assets")
+        self.assertNotIn("gh release create", job)
+        attach = self.step(job, "Attach the missing connector release assets")
+        self.assertIn("attach-missing-release-assets", attach)
+        self.assertLess(attach.index("connector-release.json\""), attach.index("connector-release.json.sha256"))
+        catalog = self.job(self.workflow, "build-catalog")
+        self.assertNotIn("repair-language-connector-release", catalog)
+
+    def test_plan_scans_tagged_manifests_only_on_schedule_drain_or_targeted_repair(self) -> None:
+        plan = self.job(self.workflow, "plan")
+        selection_step = "Select complete language releases that lack connector-release.json"
+        step = self.step(plan, selection_step)
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        self.assertIn("CONNECTOR_RELEASE_REPAIR_LIMIT: ${{ vars.CONNECTOR_RELEASE_REPAIR_LIMIT || '20' }}", step)
+        self.assertIn("CONNECTOR_RELEASE_CHECK_LIMIT: ${{ vars.CONNECTOR_RELEASE_CHECK_LIMIT || '100' }}", step)
+        names = self.step_names(plan)
+        self.assertEqual(names.index(selection_step) - 1, names.index("Restore the tags that main's tooling cannot describe"))
+        self.assertEqual(names.index(selection_step) + 1, names.index("Save the tags that main's tooling cannot describe"))
+        self.assertIn("if: steps.connector-release-repairs.outputs.unsupported_cache == 'written'",
+                      self.step(plan, "Save the tags that main's tooling cannot describe"))
+        empty = 'connector_release_repair_matrix={"include":[]}\nconnector_release_repair_count=0\n'
+        selected = 'connector_release_repair_matrix={"include":[{"tag":"t"}]}\nconnector_release_repair_count=1\n'
+        cache_arguments = ["--unsupported-cache", "CACHE", "--unsupported-cache-output", "CACHE.next"]
+        for event, directory, drain, failing, expected in (
+                ("push", "", "false", "", None),
+                ("workflow_dispatch", "", "false", "", None),
+                ("schedule", "", "false", "", cache_arguments),
+                ("workflow_dispatch", "", "true", "", cache_arguments),
+                ("workflow_dispatch", "connectors/acme", "false", "", ["--directory", "connectors/acme"]),
+                ("schedule", "", "false", "python3", cache_arguments),
+                ("schedule", "", "false", "go", None)):
+            with self.subTest(event=event, directory=directory, drain=drain, failing=failing), \
+                    tempfile.TemporaryDirectory() as temporary:
+                directory_path = Path(temporary)
+                bin_directory = directory_path / "bin"
+                bin_directory.mkdir()
+                cache = f"{temporary}/connector-release-unsupported.json"
+                for command in ("go", "python3"):
+                    # The fake selection writes its outputs and, when asked, the next unsupported cache.
+                    body = (f"printf '%s\\n' \"$*\" >> {directory_path}/{command}.log\n"
+                            + ("exit 1\n" if command == failing else "")
+                            + ("while [ $# -gt 0 ]; do\n"
+                               f"  [ \"$1\" = --github-output ] && printf '%s' '{selected}' > \"$2\"\n"
+                               "  [ \"$1\" = --unsupported-cache-output ] && printf '{}' > \"$2\"\n"
+                               "  shift\ndone\nexit 0\n" if command == "python3" else ""))
+                    (bin_directory / command).write_text("#!/bin/sh\n" + body, encoding="utf-8")
+                    (bin_directory / command).chmod(0o755)
+                output = directory_path / "output"
+                subprocess.run(("bash", "-e", "-c", script), check=True, env=dict(
+                    os.environ, PATH=f"{bin_directory}:{os.environ['PATH']}", RUNNER_TEMP=temporary,
+                    GITHUB_OUTPUT=str(output), EVENT_NAME=event, REPAIR_DIRECTORY=directory,
+                    DRAIN_FIRST_PUBLISHES=drain, CONNECTOR_RELEASE_REPAIR_LIMIT="20",
+                    CONNECTOR_RELEASE_CHECK_LIMIT="100"), capture_output=True)
+                writes_cache = expected == cache_arguments and not failing
+                expected_output = empty if expected is None or failing else selected
+                if writes_cache:
+                    expected_output += "unsupported_cache=written\n"
+                self.assertEqual(expected_output, output.read_text())
+                self.assertEqual(writes_cache, Path(cache).is_file())
+                if expected is None:
+                    self.assertFalse((directory_path / "python3.log").exists())
+                else:
+                    arguments = (directory_path / "python3.log").read_text().replace(cache, "CACHE").split()
+                    self.assertEqual("select-connector-release-repairs", arguments[1])
+                    self.assertEqual(["--limit", "20", "--check-limit", "100", *expected],
+                                     arguments[-4 - len(expected):])
 
 
 if __name__ == "__main__":

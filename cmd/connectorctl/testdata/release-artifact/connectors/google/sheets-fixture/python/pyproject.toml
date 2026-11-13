@@ -1,0 +1,3 @@
+[project]
+name = "dex-connector-google-sheets-fixture"
+version = "0.2.1"

@@ -13,6 +13,7 @@ import posixpath
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 import urllib.error
@@ -21,9 +22,9 @@ import urllib.request
 from pathlib import Path
 
 if __package__:
-    from .github_release_inventory import github_json, next_page_url, release_inventory
+    from .github_release_inventory import github_json, next_page_url, release_assets, release_inventory
 else:
-    from github_release_inventory import github_json, next_page_url, release_inventory
+    from github_release_inventory import github_json, next_page_url, release_assets, release_inventory
 
 PYPI_FIRST_PUBLISH_LIMIT = 3
 GITHUB_FIRST_RELEASE_LIMIT = 15
@@ -40,6 +41,23 @@ PENDING_PYPI_NOTES_END = "<!-- pypi-upload-pending:end -->"
 STABLE_VERSION_PATTERN = re.compile(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
 PYTHON_TAG_SEPARATOR = "/python/"
 SOURCE_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
+LANGUAGE_RELEASE_COMPLETE = "language-release.complete"
+CONNECTOR_RELEASE_METADATA = "connector-release.json"
+CONNECTOR_UI_ARTIFACT = "connector-ui.tgz"
+# A complete language release that lacks either file gets both from the repair job.
+CONNECTOR_RELEASE_METADATA_ASSETS = (CONNECTOR_RELEASE_METADATA, CONNECTOR_RELEASE_METADATA + ".sha256")
+CONNECTOR_RELEASE_REPAIR_LIMIT = 20
+# Each check runs git show and connectorctl once, about 0.1 s.
+CONNECTOR_RELEASE_CHECK_LIMIT = 100
+# connectorctl release-artifact exits with this code only when the manifest rules reject the release source.
+RELEASE_SOURCE_REJECTED_EXIT_CODE = 3
+# It exits with this code when the manifest declares Studio UI and no UI artifact was passed.
+UI_ARTIFACT_REQUIRED_EXIT_CODE = 4
+# It exits with this code when a declared language's pyproject.toml or package.json does not exist.
+LANGUAGE_PACKAGE_FILE_MISSING_EXIT_CODE = 5
+CONNECTOR_LANGUAGE_TAG_PATTERN = re.compile(
+    r"(?P<directory>.+)/(?P<language>python|typescript)/(?P<version>v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))")
+LANGUAGE_PACKAGE_FILES = {"python": "python/pyproject.toml", "typescript": "typescript/package.json"}
 
 
 def has_registry_project(language: str, package: str) -> bool:
@@ -514,6 +532,207 @@ def verify_existing_archives(existing_directory: Path, dist_directory: Path) -> 
                              "rebuild it, because a GitHub-first release has no registry copy to compare")
 
 
+def split_connector_language_tag(tag: str) -> tuple[str, str, str] | None:
+    """Return the connector directory, language, and stable version of a connector language release tag, or None."""
+    match = CONNECTOR_LANGUAGE_TAG_PATTERN.fullmatch(tag)
+    if match is None or not is_connector_directory(match["directory"]):
+        return None
+    return match["directory"], match["language"], match["version"]
+
+
+def select_connector_release_repairs(inventory: dict[str, list[str]], limit: int, *,
+                                     release_created_at: dict[str, str], directory: str | None,
+                                     unsupported_reason, check_limit: int = CONNECTOR_RELEASE_CHECK_LIMIT,
+                                     known_unsupported: dict[str, str] | None = None) -> dict[str, list[dict[str, str]]]:
+    """Queue complete connector language releases that lack connector-release.json, newest release first.
+
+    ``unsupported_reason(item)`` returns why main's tooling cannot describe the tagged source, or None. Such
+    releases predate a manifest rule and stay without the file. ``known_unsupported`` maps tags an earlier run
+    with the same tooling found unsupported to their reasons; they are not checked again, because a tag's source
+    never changes. At most ``check_limit`` tags are checked per run, so each plan stays bounded. Without
+    ``directory``, at most ``limit`` releases are selected; a targeted repair selects the directory's whole
+    backlog up to the GitHub job limit. Unselected, unchecked tags wait for a later run.
+    """
+    if limit < 1:
+        raise ValueError("connector release repair limit must be positive")
+    if check_limit < 1:
+        raise ValueError("connector release check limit must be positive")
+    if directory is not None and not is_connector_directory(directory):
+        raise ValueError(f"repair directory is not a connector directory: {directory}")
+    candidates: list[dict[str, str]] = []
+    for tag, assets in inventory.items():
+        release = split_connector_language_tag(tag)
+        if (release is None or LANGUAGE_RELEASE_COMPLETE not in assets
+                or all(name in assets for name in CONNECTOR_RELEASE_METADATA_ASSETS)
+                or directory not in (None, release[0])):
+            continue
+        candidates.append({"directory": release[0], "language": release[1], "version": release[2], "tag": tag})
+    # A tag without a recorded creation time sorts after every dated tag.
+    candidates.sort(key=lambda item: (release_created_at.get(item["tag"], ""), item["tag"]), reverse=True)
+    capacity = MAXIMUM_GITHUB_MATRIX_JOBS if directory is not None else min(limit, MAXIMUM_GITHUB_MATRIX_JOBS)
+    selected: list[dict[str, str]] = []
+    waiting: list[dict[str, str]] = []
+    unsupported: list[dict[str, str]] = []
+    check_failed: list[dict[str, str]] = []
+    checked_count = 0
+    for item in candidates:
+        known_reason = (known_unsupported or {}).get(item["tag"])
+        if known_reason is not None:
+            unsupported.append({**item, "reason": known_reason})
+            continue
+        if len(selected) >= capacity or checked_count >= check_limit:
+            waiting.append(item)
+            continue
+        checked_count += 1
+        try:
+            reason = unsupported_reason(item)
+        except ReleaseSourceCheckError as error:
+            # Never cached: the next run checks the tag again.
+            print(f"::warning::{error}; checking {item['tag']} again next run", file=sys.stderr)
+            check_failed.append({**item, "reason": str(error)})
+            continue
+        if reason is None:
+            selected.append(item)
+        else:
+            unsupported.append({**item, "reason": reason})
+    return {"selected": selected, "waiting": waiting, "unsupported": unsupported, "check_failed": check_failed}
+
+
+def read_known_unsupported(path: Path) -> dict[str, str]:
+    """Read the tag-to-reason map an earlier run cached, or an empty map when there is none."""
+    if not path.is_file():
+        return {}
+    known = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(known, dict) or any(not isinstance(tag, str) or not isinstance(reason, str)
+                                          for tag, reason in known.items()):
+        raise ValueError(f"{path} must map release tags to unsupported reasons")
+    return known
+
+
+def write_known_unsupported(path: Path, selection: dict[str, list[dict[str, str]]]) -> None:
+    """Cache every unsupported candidate of this run; tags that left the backlog drop out."""
+    known = {item["tag"]: item["reason"] for item in selection["unsupported"]}
+    path.write_text(json.dumps(known, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+class ReleaseSourceCheckError(RuntimeError):
+    """Git, the file system, or connectorctl failed, so the check says nothing about the tagged source."""
+
+
+def connector_release_unsupported_reason(connectorctl: str, item: dict[str, str], *, run=subprocess.run) -> str | None:
+    """Run main's release-artifact on the tagged manifest, as the repair job does, and return why it rejects it.
+
+    Returns None when the tag is repairable. Only a definite rejection returns a reason: connectorctl exits with
+    RELEASE_SOURCE_REJECTED_EXIT_CODE, or ``git ls-tree`` shows the tag lacks a file the repair needs. Any other
+    failure raises ReleaseSourceCheckError, so the tag is checked again next run. connectorctl reads Studio UI from
+    the parsed manifest: when it exits with UI_ARTIFACT_REQUIRED_EXIT_CODE, a placeholder stands in for the UI
+    tarball, which only the repair job builds.
+    """
+    tag, directory = item["tag"], item["directory"]
+    paths = ["catalog.yaml", f"{directory}/connector.yaml", f"{directory}/ui/package-lock.json",
+             *(f"{directory}/{package_file}" for package_file in LANGUAGE_PACKAGE_FILES.values())]
+    listing = run(("git", "ls-tree", "--name-only", tag, "--", *paths), capture_output=True, text=True, check=False)
+    if listing.returncode != 0:
+        raise ReleaseSourceCheckError(f"git ls-tree {tag} failed: {listing.stderr.strip()[:200]}")
+    present = set(listing.stdout.splitlines())
+    for required in ("catalog.yaml", f"{directory}/connector.yaml"):
+        if required not in present:
+            return f"{tag} has no {required}"
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary) / "source"
+        for path in sorted(present - {f"{directory}/ui/package-lock.json"}):
+            source = run(("git", "show", f"{tag}:{path}"), capture_output=True, check=False)
+            if source.returncode != 0:
+                raise ReleaseSourceCheckError(f"git show {tag}:{path} failed")
+            destination = root / path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(source.stdout)
+        manifest = root / directory / "connector.yaml"
+        check = Path(temporary) / "release-check"
+        check.mkdir()
+        arguments = [connectorctl, "release-artifact", "--manifest", str(manifest), "--language", item["language"],
+                     "--version", item["version"], "--tag", tag, "--source-sha", "0" * 40,
+                     "--output", str(check / CONNECTOR_RELEASE_METADATA),
+                     "--digest-output", str(check / (CONNECTOR_RELEASE_METADATA + ".sha256"))]
+        result = run(tuple(arguments), capture_output=True, text=True, check=False)
+        if result.returncode == UI_ARTIFACT_REQUIRED_EXIT_CODE:
+            if f"{directory}/ui/package-lock.json" not in present:
+                return f"{tag} declares spec.studio without {directory}/ui/package-lock.json"
+            placeholder = check / CONNECTOR_UI_ARTIFACT
+            placeholder.write_bytes(b"placeholder")
+            (check / (CONNECTOR_UI_ARTIFACT + ".sha256")).write_text(
+                f"{hashlib.sha256(b'placeholder').hexdigest()}  {CONNECTOR_UI_ARTIFACT}\n", encoding="utf-8")
+            arguments += ["--ui-artifact", str(placeholder), "--ui-digest", str(placeholder) + ".sha256"]
+            result = run(tuple(arguments), capture_output=True, text=True, check=False)
+    message = (result.stderr.strip().splitlines() or ["connectorctl reported no error"])[-1].replace(str(root) + "/", "")
+    if result.returncode == 0:
+        return None
+    if result.returncode == RELEASE_SOURCE_REJECTED_EXIT_CODE:
+        return message
+    missing_package_files = [f"{directory}/{package_file}" for package_file in LANGUAGE_PACKAGE_FILES.values()
+                             if f"{directory}/{package_file}" not in present and f"{directory}/{package_file}" in message]
+    if result.returncode == LANGUAGE_PACKAGE_FILE_MISSING_EXIT_CODE and missing_package_files:
+        # git ls-tree confirms the tag lacks the file connectorctl names; otherwise the snapshot lost it.
+        return f"{tag} declares a language without {missing_package_files[0]}"
+    raise ReleaseSourceCheckError(f"connectorctl release-artifact exited {result.returncode} for {tag}: {message}")
+
+
+def write_connector_release_repair_outputs(output_path: Path, selection: dict[str, list[dict[str, str]]]) -> None:
+    with output_path.open("a", encoding="utf-8") as output:
+        output.write("connector_release_repair_matrix="
+                     f"{json.dumps({'include': selection['selected']}, separators=(',', ':'))}\n")
+        output.write(f"connector_release_repair_count={len(selection['selected'])}\n")
+
+
+def write_connector_release_repair_summary(path: Path, selection: dict[str, list[dict[str, str]]]) -> None:
+    with path.open("a", encoding="utf-8") as output:
+        output.write("## Connector release metadata repairs\n\n")
+        for status in ("selected", "waiting", "check_failed"):
+            tags = [item["tag"] for item in selection[status]]
+            output.write(f"- {status}: {len(tags)} — {', '.join(tags) or 'none'}\n")
+        output.write(f"- unsupported: {len(selection['unsupported'])}\n")
+        for item in selection["unsupported"]:
+            output.write(f"  - {item['tag']}: {item['reason']}\n")
+        output.write("\n")
+
+
+def attach_missing_release_assets(tag: str, assets: list[Path], published_names: frozenset[str] | None, *,
+                                  download, upload) -> list[str]:
+    """Upload, in order, each asset a complete language release lacks; return the uploaded names.
+
+    An asset the release already has must equal the local file byte for byte. Every existing asset is compared
+    before any upload, so a mismatch fails without changing the release; existing assets are never replaced.
+    """
+    if published_names is None:
+        raise ValueError(f"release {tag} does not exist")
+    if LANGUAGE_RELEASE_COMPLETE not in published_names:
+        raise ValueError(f"release {tag} has no {LANGUAGE_RELEASE_COMPLETE}; its publish job completes it instead")
+    if len({asset.name for asset in assets}) != len(assets):
+        raise ValueError("release assets must have distinct names")
+    missing: list[Path] = []
+    for asset in assets:
+        if asset.name not in published_names:
+            missing.append(asset)
+        elif download(tag, asset.name) != asset.read_bytes():
+            raise ValueError(f"{tag} already has a different {asset.name}; existing release assets are never "
+                             "replaced, so inspect the release and delete that asset to repair it")
+    for asset in missing:
+        upload(tag, asset)
+    return [asset.name for asset in missing]
+
+
+def download_release_asset(repository: str, tag: str, name: str) -> bytes:
+    with tempfile.TemporaryDirectory() as temporary:
+        subprocess.run(("gh", "release", "download", tag, "--repo", repository, "--dir", temporary,
+                        "--pattern", name), check=True)
+        return (Path(temporary) / name).read_bytes()
+
+
+def upload_release_asset(repository: str, tag: str, asset: Path) -> None:
+    # Without --clobber, an asset another run added meanwhile fails the upload instead of being replaced.
+    subprocess.run(("gh", "release", "upload", tag, "--repo", repository, str(asset)), check=True)
+
+
 def pypi_published_language_tags(items: list[dict[str, str]], completed_tags: set[str], *,
                                  release_exists=has_pypi_release_files) -> set[str]:
     """Return each package's latest completed Python tag that PyPI serves; a failed lookup omits it."""
@@ -613,6 +832,21 @@ def main() -> int:
     select_parser.add_argument("--go-release-limit", type=int, default=GO_RELEASE_LIMIT)
     select_parser.add_argument("--pending-upload-directory",
                                help="upload only this connector directory's pending PyPI versions")
+    repairs_parser = commands.add_parser("select-connector-release-repairs")
+    repairs_parser.add_argument("--connectorctl", required=True, help="main's connectorctl binary")
+    repairs_parser.add_argument("--github-output", type=Path, required=True)
+    repairs_parser.add_argument("--limit", type=int, default=CONNECTOR_RELEASE_REPAIR_LIMIT)
+    repairs_parser.add_argument("--directory", help="repair only this connector directory's releases, all of them")
+    repairs_parser.add_argument("--check-limit", type=int, default=CONNECTOR_RELEASE_CHECK_LIMIT,
+                                help="maximum tagged manifests to check in this run")
+    repairs_parser.add_argument("--unsupported-cache", type=Path,
+                                help="tags that an earlier run with the same tooling found unsupported")
+    repairs_parser.add_argument("--unsupported-cache-output", type=Path,
+                                help="where an untargeted run writes every unsupported tag it knows")
+    attach_parser = commands.add_parser("attach-missing-release-assets")
+    attach_parser.add_argument("--repository", required=True)
+    attach_parser.add_argument("--tag", required=True)
+    attach_parser.add_argument("assets", nargs="+", type=Path, help="files in upload order")
     completed_parser = commands.add_parser("completed-language-tags")
     completed_parser.add_argument("--output", type=Path, required=True)
     pypi_tags_parser = commands.add_parser("pypi-published-language-tags")
@@ -700,6 +934,32 @@ def main() -> int:
                   f"{len(selection['first'])} first publishes, {len(selection['github_first'])} GitHub-first "
                   f"Python releases, {len(selection['pypi_pending'])} pending PyPI uploads, "
                   f"{len(selection['deferred'])} deferred")
+        elif args.command == "select-connector-release-repairs":
+            try:
+                inventory = read_release_inventory()
+            except RuntimeError as error:
+                print(f"::warning::{error}; a later run repairs connector release metadata", file=sys.stderr)
+                inventory = {}
+            known_unsupported = read_known_unsupported(args.unsupported_cache) if args.unsupported_cache else {}
+            repairs = select_connector_release_repairs(
+                inventory, args.limit, release_created_at=read_release_created_at(), directory=args.directory,
+                unsupported_reason=lambda item: connector_release_unsupported_reason(args.connectorctl, item),
+                check_limit=args.check_limit, known_unsupported=known_unsupported)
+            if args.unsupported_cache_output and args.directory is None and inventory:
+                # A targeted run sees one directory and an unavailable inventory sees none, so neither writes it.
+                write_known_unsupported(args.unsupported_cache_output, repairs)
+            write_connector_release_repair_outputs(args.github_output, repairs)
+            if os.environ.get("GITHUB_STEP_SUMMARY"):
+                write_connector_release_repair_summary(Path(os.environ["GITHUB_STEP_SUMMARY"]), repairs)
+            print(f"Connector release metadata repairs: {len(repairs['selected'])} selected, "
+                  f"{len(repairs['waiting'])} waiting, {len(repairs['unsupported'])} unsupported, "
+                  f"{len(repairs['check_failed'])} check failures")
+        elif args.command == "attach-missing-release-assets":
+            uploaded = attach_missing_release_assets(
+                args.tag, args.assets, release_assets(args.tag),
+                download=lambda tag, name: download_release_asset(args.repository, tag, name),
+                upload=lambda tag, asset: upload_release_asset(args.repository, tag, asset))
+            print(f"Attached to {args.tag}: {', '.join(uploaded) or 'nothing; every asset was already identical'}")
         elif args.command == "completed-language-tags":
             completed_tags = list_completed_language_tags()
             args.output.write_text("\n".join(sorted(completed_tags)) + "\n", encoding="utf-8")
@@ -735,7 +995,8 @@ def main() -> int:
             state = release_mutation_state(
                 asset_names, json.loads(args.built_plan.read_text(encoding="utf-8"))["source_sha"],
                 json.loads(args.trusted_plan.read_text(encoding="utf-8"))["source_sha"], args.remote_tag_sha)
-            has_archives = any(name.endswith((".whl", ".tar.gz", ".tgz")) for name in asset_names or [])
+            has_archives = any(name.endswith((".whl", ".tar.gz", ".tgz")) and name != CONNECTOR_UI_ARTIFACT
+                               for name in asset_names or [])
             with args.github_output.open("a", encoding="utf-8") as output:
                 output.write(f"release_state={state}\nhas_archives={str(has_archives).lower()}\n")
             print(f"Release state: {state}")
@@ -752,7 +1013,8 @@ def main() -> int:
                 output.write(f"published_count={len(summary['published'])}\n")
             write_step_summary(Path(os.environ["GITHUB_STEP_SUMMARY"]), summary)
             print(json.dumps(summary))
-    except (OSError, ValueError, RuntimeError, KeyError, json.JSONDecodeError) as error:
+    except (OSError, ValueError, RuntimeError, KeyError, json.JSONDecodeError,
+            subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1
     return 0

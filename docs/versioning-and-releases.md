@@ -391,6 +391,12 @@ always runs. It takes a slot unless its release already has
 from the commit its tag points to and never changes a complete release. If a
 release fails after creating its tag, every later push, hourly, or drain run
 selects it again until it completes, so its language packages can publish.
+The release inventory reads every release through GitHub GraphQL cursor
+pagination, one point per 100 releases. The REST release list answers
+HTTP 422 after 1,000 results for an unauthenticated caller, and this
+repository has more releases than that. A GraphQL rate limit, which GitHub can
+report as HTTP 200 with errors, waits for the reported reset within the same
+20-minute budget as a REST rate limit; any other GraphQL error fails at once.
 When the release inventory is unavailable, a run skips this detection, and the
 next run with an inventory selects the release. Versions beyond the cap stay
 untagged and are deferred with `go_release_cap`. The next push, hourly, or
@@ -605,6 +611,120 @@ nothing. `connectorctl release-artifact` fails the release build when an
 entry is missing, has no `hostKeptCredentials`, or has `null` instead of an
 array, so every release, candidate, and compatibility build carries the key. A
 host fails closed on a release without it.
+
+### Python and TypeScript connector release metadata
+
+Every Python and TypeScript connector release, tagged
+`<connector directory>/<language>/vX.Y.Z` such as
+`connectors/slack/typescript/v0.5.0`, also carries `connector-release.json`
+and `connector-release.json.sha256`. A connector with Connector Studio UI also
+carries `connector-ui.tgz` and `connector-ui.tgz.sha256`, built from the same
+source, so the `ui` entry names an asset of that release. The digest file is one
+`sha256sum` line, `<hex SHA-256>  connector-release.json`. The publish job
+uploads these files in the same `gh release create` or upload call as the
+package archives, and writes `language-release.complete` in a later step. A
+host treats a language release as usable only when `language-release.complete`
+exists, and every such release built by this workflow already has
+`connector-release.json`. Backfilled releases are the exception described
+below.
+
+`connectorctl release-artifact --language python|typescript` writes the file
+with `main`'s tooling from `connector.yaml` at the release source commit. It
+has the Go schema with two additions and one omission:
+
+- `language` is `python` or `typescript`, and `package` is the PyPI or npm
+  package name. Both are absent from Go releases.
+- `modulePath` is omitted. A Go release always carries it.
+- `version` and `tag` are the language release's, such as `v0.5.0` and
+  `connectors/slack/typescript/v0.5.0`. They are not the Go version.
+- `manifest`, `manifestSha256`, `sourceSha`, `ui`, and `authMethods` are
+  computed as for Go releases. `manifest.spec.languages.<language>` lists the
+  operations and Triggers that the package implements.
+
+Before the file is written, the command requires several conditions:
+
+- the manifest declares `spec.languages.<language>`;
+- `version` equals that declaration's version, or is a release candidate of
+  it;
+- the tag is `<connector directory>/<language>/<version>`;
+- any `--package` given equals the manifest's effective package name.
+
+Go output is unchanged byte for byte. The golden files in
+`cmd/connectorctl/testdata/release-artifact/` pin all three shapes. The build
+job checks the file before any registry upload, so a manifest that `main`'s
+tooling rejects publishes nothing.
+
+A `dex-app.yaml` declares a Python or TypeScript connector by package and exact
+version, such as `package: "@superdurable/connector-slack"` and
+`version: "0.5.0"`. A host resolves the declaration in these steps:
+
+1. It reads `https://connectors.superdurable.io/catalog.json` and finds the
+   one connector whose `languagePackages` maps a language to that package.
+   `languagePackages` lists each Python and TypeScript language that the
+   catalog lists in `languages`, with its effective PyPI or npm name.
+2. It builds the tag `<directory>/<language>/v<version>`, adding the `v`
+   prefix to the version: `connectors/slack/typescript/v0.5.0`.
+3. It reads that release's `connector-release.json.sha256` and then
+   `connector-release.json`, verifies the SHA-256, and checks
+   `language`, `package`, `version`, and `tag`.
+4. It requires `language-release.complete` on the same release.
+
+Catalog generation, including `connectorctl catalog --check` in CI, fails
+when two connector directories declare the same package name. PyPI names
+compare as PEP 503 canonical names, so `dex-connector-acme-chat_api` and
+`dex-connector-acme-chat-api` collide. npm names compare without case. Each
+package name in the catalog therefore maps to exactly one directory.
+
+Language releases published before this metadata existed are backfilled by the
+`repair-language-connector-release` job. Scheduled runs, manual drains, and a
+manual run with `connector_directory` select it; push runs skip it. The plan
+selects complete connector language releases, those with
+`language-release.complete`, that lack `connector-release.json` or its digest.
+It excludes SDK releases and release candidates, and orders the releases
+newest first by GitHub creation time. It runs `main`'s `connectorctl
+release-artifact` on each tagged manifest, at most
+`CONNECTOR_RELEASE_CHECK_LIMIT` tags per run, 100 by default, about 10 seconds.
+Unchecked tags wait for a later run. `release-artifact` exits with code 3 only
+when the manifest's content fails a schema, version, tag, package, or
+`authMethods` rule. A missing or unreadable file exits with 1, and a Studio
+manifest without `--ui-artifact` exits with 4, so the check retries with a
+placeholder tarball. A declared language whose `pyproject.toml` or
+`package.json` is missing exits with 5. The check decides from `git ls-tree`
+whether the tag has `catalog.yaml`, `connector.yaml`, that package metadata,
+and, for Studio UI, `ui/package-lock.json`, and rejects a tag that lacks one. A tag's source never changes, so
+scheduled and drain runs keep only these rejected tags in an Actions cache
+keyed by a hash of `go.mod`, `go.sum`, and the tooling sources. Later runs skip
+those tags until the tooling changes. A Git, file system, or other
+`connectorctl` failure is never cached: the plan reports the tag as
+`check_failed` with a warning and checks it again next run. It starts at most
+`CONNECTOR_RELEASE_REPAIR_LIMIT` repairs per run, 20 by default, three at a
+time. Each repair uses about six REST requests of the shared `GITHUB_TOKEN`
+budget. A targeted repair takes that directory's whole backlog. Each repair job:
+
+1. restores the tagged source in a worktree;
+2. reuses the release's `connector-ui.tgz`, or builds the UI at the tagged
+   source;
+3. builds the file with `main`'s `release-artifact`;
+4. uploads only the missing assets, the metadata digest last, without
+   `--clobber`.
+
+An asset the release already has must equal the rebuilt one byte for byte,
+or the job fails without changing the release. Rerunning a repair therefore
+does nothing once the assets are present. Backfilled files arrive after
+`language-release.complete`, the one exception to the upload order. A host
+that sees the marker without `connector-release.json` treats the release as
+not yet resolvable.
+
+Some older releases stay without `connector-release.json`: those whose tagged
+manifest `main`'s tooling rejects, for example one written before
+`metadata.categories` or OAuth PKCE was required. The plan job summary lists
+them as `unsupported`. Release a new patch version of such a package to make
+it resolvable. The catalog still lists these releases, because language
+completeness remains `language-release.complete` alone.
+
+Python and TypeScript release candidates carry the same files, built with
+`main`'s tooling from the candidate commit, before their
+`language-release.complete`.
 
 ### Breaking change markers
 

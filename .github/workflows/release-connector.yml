@@ -60,6 +60,8 @@ jobs:
       pypi_pending_matrix: ${{ steps.matrix.outputs.pypi_pending_matrix }}
       pypi_pending_count: ${{ steps.matrix.outputs.pypi_pending_count }}
       pending_count: ${{ steps.matrix.outputs.pending_count }}
+      connector_release_repair_matrix: ${{ steps.connector-release-repairs.outputs.connector_release_repair_matrix }}
+      connector_release_repair_count: ${{ steps.connector-release-repairs.outputs.connector_release_repair_count }}
       dex_cli_tag: ${{ steps.dex-versions.outputs.cli_tag }}
       dex_cli_asset_url: ${{ steps.dex-versions.outputs.cli_asset_url }}
       dex_cli_sha256: ${{ steps.dex-versions.outputs.cli_sha256 }}
@@ -147,6 +149,57 @@ jobs:
             --first-publish-limit "${FIRST_PUBLISH_LIMIT}" \
             --github-release-limit "${PYTHON_GITHUB_FIRST_RELEASE_LIMIT}" \
             "${select_arguments[@]}"
+      # A tag's source never changes, so tags that this tooling rejected stay rejected until the tooling changes.
+      - name: Restore the tags that main's tooling cannot describe
+        if: github.event_name == 'schedule' || inputs.drain_first_publishes == true
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/connector-release-unsupported.json
+          key: connector-release-unsupported-${{ hashFiles('go.mod', 'go.sum', 'cmd/connectorctl/**/*.go', 'schema/**/*.go', 'internal/**/*.go', 'script/release/language_publish.py') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: connector-release-unsupported-${{ hashFiles('go.mod', 'go.sum', 'cmd/connectorctl/**/*.go', 'schema/**/*.go', 'internal/**/*.go', 'script/release/language_publish.py') }}-
+      - name: Select complete language releases that lack connector-release.json
+        id: connector-release-repairs
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REPAIR_DIRECTORY: ${{ inputs.connector_directory }}
+          DRAIN_FIRST_PUBLISHES: ${{ inputs.drain_first_publishes }}
+          GH_RELEASE_INVENTORY_PATH: ${{ runner.temp }}/release-inventory.json
+          GH_RELEASE_CREATED_AT_PATH: ${{ runner.temp }}/release-created-at.json
+          CONNECTOR_RELEASE_REPAIR_LIMIT: ${{ vars.CONNECTOR_RELEASE_REPAIR_LIMIT || '20' }}
+          CONNECTOR_RELEASE_CHECK_LIMIT: ${{ vars.CONNECTOR_RELEASE_CHECK_LIMIT || '100' }}
+        run: |
+          unsupported_cache="${RUNNER_TEMP}/connector-release-unsupported.json"
+          repair_arguments=(--limit "${CONNECTOR_RELEASE_REPAIR_LIMIT}" --check-limit "${CONNECTOR_RELEASE_CHECK_LIMIT}")
+          if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -n "${REPAIR_DIRECTORY}" ]; then
+            repair_arguments+=(--directory "${REPAIR_DIRECTORY}")
+          elif [ "${EVENT_NAME}" = schedule ] || [ "${DRAIN_FIRST_PUBLISHES}" = true ]; then
+            repair_arguments+=(--unsupported-cache "${unsupported_cache}"
+              --unsupported-cache-output "${unsupported_cache}.next")
+          else
+            # Push runs leave the backfill to the hourly run.
+            printf 'connector_release_repair_matrix={"include":[]}\nconnector_release_repair_count=0\n' >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          # A failed backfill selection never blocks Go releases, language releases, or the catalog.
+          repair_output="${RUNNER_TEMP}/connector-release-repairs-output"
+          if GOWORK=off go build -o "${RUNNER_TEMP}/connectorctl" ./cmd/connectorctl \
+            && python3 script/release/language_publish.py select-connector-release-repairs \
+              --connectorctl "${RUNNER_TEMP}/connectorctl" --github-output "${repair_output}" "${repair_arguments[@]}"; then
+            cat "${repair_output}" >> "${GITHUB_OUTPUT}"
+            if [ -f "${unsupported_cache}.next" ]; then
+              mv "${unsupported_cache}.next" "${unsupported_cache}"
+              echo 'unsupported_cache=written' >> "${GITHUB_OUTPUT}"
+            fi
+          else
+            echo '::warning::Connector release metadata repair selection failed; a later run selects the repairs.'
+            printf 'connector_release_repair_matrix={"include":[]}\nconnector_release_repair_count=0\n' >> "${GITHUB_OUTPUT}"
+          fi
+      - name: Save the tags that main's tooling cannot describe
+        if: steps.connector-release-repairs.outputs.unsupported_cache == 'written'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/connector-release-unsupported.json
+          key: connector-release-unsupported-${{ hashFiles('go.mod', 'go.sum', 'cmd/connectorctl/**/*.go', 'schema/**/*.go', 'internal/**/*.go', 'script/release/language_publish.py') }}-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/upload-artifact@v4
         with:
           name: release-inventory
@@ -420,6 +473,7 @@ jobs:
       RELEASE_VERSION: ${{ matrix.version }}
       PACKAGE_NAME: ${{ matrix.package }}
       LANGUAGE: ${{ matrix.language }}
+      MANIFEST_PATH: ${{ matrix.manifest_path }}
       RELEASE_DRY_RUN: ${{ inputs.dry_run }}
     steps:
       - uses: actions/checkout@v6
@@ -456,8 +510,8 @@ jobs:
           token: ''
       - uses: astral-sh/setup-uv@v7
         if: matrix.language == 'python'
+      # Every language release builds the connector's Studio UI, so Python jobs need Node too.
       - uses: actions/setup-node@v6
-        if: matrix.language == 'typescript'
         with:
           node-version: 24
       - name: Inspect language release state
@@ -480,6 +534,9 @@ jobs:
           if [ "${RELEASE_DRY_RUN}" = true ]; then required=true; fi
           if [ "${required}" = false ]; then
             touch "${RUNNER_TEMP}/language-work/skip" "${RUNNER_TEMP}/language-work/completed-release"
+          else
+            # A repair restores the tagged source next, whose connectorctl may predate language release metadata.
+            GOWORK=off go build -o "${RUNNER_TEMP}/connectorctl" ./cmd/connectorctl
           fi
           {
             echo "release_required=${required}"
@@ -521,6 +578,43 @@ jobs:
           npm run build --prefix "${COMPONENT_PATH}"
           mkdir -p "${RUNNER_TEMP}/language-work/dist"
           npm pack "./${COMPONENT_PATH}" --pack-destination "${RUNNER_TEMP}/language-work/dist"
+      - name: Build and test Connector Studio UI
+        if: steps.state.outputs.release_required == 'true'
+        env:
+          CONNECTOR_DIRECTORY: ${{ matrix.directory }}
+        run: |
+          # The UI tarball stays outside dist/, so language-release.json and registry uploads never list it.
+          if [ -f "${CONNECTOR_DIRECTORY}/ui/package-lock.json" ]; then
+            npm ci --prefix sdk/react
+            npm run build --prefix sdk/react
+            npm ci --prefix "${CONNECTOR_DIRECTORY}/ui"
+            npm test --prefix "${CONNECTOR_DIRECTORY}/ui"
+            npm run build --prefix "${CONNECTOR_DIRECTORY}/ui"
+            mkdir -p "${RUNNER_TEMP}/language-work/connector-ui"
+            "${RUNNER_TEMP}/connectorctl" ui-artifact \
+              --manifest "${MANIFEST_PATH}" \
+              --ui-root "${CONNECTOR_DIRECTORY}/ui/dist" \
+              --output "${RUNNER_TEMP}/language-work/connector-ui/connector-ui.tgz" \
+              --digest-output "${RUNNER_TEMP}/language-work/connector-ui/connector-ui.tgz.sha256"
+          fi
+      - name: Check connector release metadata before publication
+        if: steps.state.outputs.release_required == 'true'
+        env:
+          SOURCE_SHA: ${{ steps.state.outputs.source_sha }}
+        run: |
+          # The publish job regenerates this file; failing here keeps a rejected manifest out of the registry.
+          ui_arguments=()
+          if [ -f "${RUNNER_TEMP}/language-work/connector-ui/connector-ui.tgz" ]; then
+            ui_arguments+=(--ui-artifact "${RUNNER_TEMP}/language-work/connector-ui/connector-ui.tgz"
+              --ui-digest "${RUNNER_TEMP}/language-work/connector-ui/connector-ui.tgz.sha256")
+          fi
+          mkdir -p "${RUNNER_TEMP}/connector-release-check"
+          "${RUNNER_TEMP}/connectorctl" release-artifact \
+            --manifest "${MANIFEST_PATH}" --language "${LANGUAGE}" --package "${PACKAGE_NAME}" \
+            --version "${RELEASE_VERSION}" --tag "${TAG_PREFIX}${RELEASE_VERSION}" --source-sha "${SOURCE_SHA}" \
+            --output "${RUNNER_TEMP}/connector-release-check/connector-release.json" \
+            --digest-output "${RUNNER_TEMP}/connector-release-check/connector-release.json.sha256" \
+            "${ui_arguments[@]}"
       - name: Plan language release and notes
         if: steps.state.outputs.release_required == 'true'
         env:
@@ -573,6 +667,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - uses: astral-sh/setup-uv@v7
         if: matrix.language == 'python'
       - uses: actions/setup-node@v6
@@ -634,6 +733,7 @@ jobs:
           cp script/release/component_release.py script/release/github_release_inventory.py "${RUNNER_TEMP}/"
           cp script/release/npm_publish.py "${RUNNER_TEMP}/npm_publish.py"
           cp script/release/language_publish.py "${RUNNER_TEMP}/language_publish.py"
+          GOWORK=off go build -o "${RUNNER_TEMP}/connectorctl" ./cmd/connectorctl
           if git show-ref --verify --quiet "refs/tags/${tag}"; then
             git merge-base --is-ancestor "${tag}" HEAD || { echo "Language tag is not reachable from main: ${tag}" >&2; exit 1; }
             git checkout --detach "$(git rev-parse "${tag}^{commit}")"
@@ -658,6 +758,25 @@ jobs:
             --output "${RUNNER_TEMP}/language-work/dist/language-release.json" \
             --language "${LANGUAGE}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
             --tag "${tag}" --source-sha "$(git rev-parse HEAD)" "${arguments[@]}"
+      - name: Build trusted connector release metadata
+        if: steps.state.outputs.release_required == 'true'
+        env:
+          MANIFEST_PATH: ${{ matrix.manifest_path }}
+        run: |
+          # The previous step left the trusted release source checked out; main's connectorctl describes it.
+          metadata="${RUNNER_TEMP}/connector-release"
+          rm -rf "${metadata}"
+          mkdir -p "${metadata}"
+          ui_arguments=()
+          if [ -f "${RUNNER_TEMP}/language-work/connector-ui/connector-ui.tgz" ]; then
+            cp "${RUNNER_TEMP}"/language-work/connector-ui/connector-ui.tgz "${RUNNER_TEMP}"/language-work/connector-ui/connector-ui.tgz.sha256 "${metadata}/"
+            ui_arguments+=(--ui-artifact "${metadata}/connector-ui.tgz" --ui-digest "${metadata}/connector-ui.tgz.sha256")
+          fi
+          "${RUNNER_TEMP}/connectorctl" release-artifact \
+            --manifest "${MANIFEST_PATH}" --language "${LANGUAGE}" --package "${PACKAGE_NAME}" \
+            --version "${RELEASE_VERSION}" --tag "${TAG_PREFIX}${RELEASE_VERSION}" --source-sha "$(git rev-parse HEAD)" \
+            --output "${metadata}/connector-release.json" --digest-output "${metadata}/connector-release.json.sha256" \
+            "${ui_arguments[@]}"
       - name: Publish Python package
         id: python-publish
         if: steps.state.outputs.release_required == 'true' && steps.first-limit.outputs.status != 'deferred' && matrix.language == 'python'
@@ -735,11 +854,13 @@ jobs:
               edit_arguments+=(--notes-file "${RUNNER_TEMP}/language-work/notes.md")
             fi
             gh release edit "${tag}" "${edit_arguments[@]}"
-            gh release upload "${tag}" --clobber "${RUNNER_TEMP}"/language-work/dist/*
+            gh release upload "${tag}" --clobber "${RUNNER_TEMP}"/language-work/dist/* "${RUNNER_TEMP}"/connector-release/*
           else
+            # connector-release.json ships with the archives, so language-release.complete always follows it.
             gh release create "${tag}" --target "${SOURCE_SHA}" \
               --title "${title}" \
-              --notes-file "${RUNNER_TEMP}/language-work/notes.md" "${RUNNER_TEMP}"/language-work/dist/*
+              --notes-file "${RUNNER_TEMP}/language-work/notes.md" "${RUNNER_TEMP}"/language-work/dist/* \
+              "${RUNNER_TEMP}"/connector-release/*
           fi
       - name: Mark language release complete
         if: steps.state.outputs.release_required == 'true' && steps.guard.outputs.release_state != 'complete'
@@ -871,8 +992,10 @@ jobs:
           git merge-base --is-ancestor "${tag}" HEAD || { echo "Language tag is not reachable from main: ${tag}" >&2; exit 1; }
           dist="${RUNNER_TEMP}/pypi-work/dist"
           mkdir -p "${dist}"
+          # Narrow patterns leave out connector-release.json.sha256 and connector-ui.tgz.sha256.
           gh release download "${tag}" --repo "${GITHUB_REPOSITORY}" --dir "${dist}" \
-            --pattern '*.whl' --pattern '*.tar.gz' --pattern '*.sha256' --pattern 'language-release.json'
+            --pattern '*.whl' --pattern '*.whl.sha256' --pattern '*.tar.gz' --pattern '*.tar.gz.sha256' \
+            --pattern 'language-release.json' --pattern 'language-release.json.sha256'
           python3 script/release/language_publish.py verify-release-archives \
             --directory "${dist}" --tag "${tag}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
             --source-sha "$(git rev-parse "${tag}^{commit}")"
@@ -944,6 +1067,112 @@ jobs:
           name: language-result-pypi-${{ strategy.job-index }}
           path: ${{ runner.temp }}/release-result/release-result.json
           retention-days: 1
+
+  repair-language-connector-release:
+    needs: [plan]
+    # Never gates the catalog: the catalog reads language-release.complete, which these releases already have.
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.connector_release_repair_count != '0' && inputs.dry_run != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      # Bounds GitHub content-creation bursts; the per-run count is capped in plan.
+      max-parallel: 3
+      matrix: ${{ fromJSON(needs.plan.outputs.connector_release_repair_matrix) }}
+    env:
+      RELEASE_TAG: ${{ matrix.tag }}
+      CONNECTOR_DIRECTORY: ${{ matrix.directory }}
+      LANGUAGE: ${{ matrix.language }}
+      RELEASE_VERSION: ${{ matrix.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+          check-latest: false
+          token: ''
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Restore the tagged release source beside main's tooling
+        id: source
+        run: |
+          git merge-base --is-ancestor "${RELEASE_TAG}" HEAD || { echo "Release tag is not reachable from main: ${RELEASE_TAG}" >&2; exit 1; }
+          GOWORK=off go build -o "${RUNNER_TEMP}/connectorctl" ./cmd/connectorctl
+          git worktree add --detach "${RUNNER_TEMP}/source" "${RELEASE_TAG}^{commit}"
+          echo "source_sha=$(git rev-parse "${RELEASE_TAG}^{commit}")" >> "${GITHUB_OUTPUT}"
+      - name: Inspect the live release
+        id: state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets="$(python3 script/release/github_release_inventory.py --tag "${RELEASE_TAG}" --live)"
+          jq -e 'type == "array" and index("language-release.complete") != null' <<< "${assets}" >/dev/null || {
+            echo "Only a complete language release is repaired here: ${RELEASE_TAG}" >&2
+            exit 1
+          }
+          has_ui_artifact=false
+          if jq -e 'index("connector-ui.tgz") != null' <<< "${assets}" >/dev/null; then has_ui_artifact=true; fi
+          echo "has_ui_artifact=${has_ui_artifact}" >> "${GITHUB_OUTPUT}"
+      - name: Reuse the release's Studio UI artifact
+        if: steps.state.outputs.has_ui_artifact == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # An earlier partial repair uploaded it; a rebuild could produce different bytes.
+          ui="${RUNNER_TEMP}/connector-ui"
+          mkdir -p "${ui}"
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --dir "${ui}" --pattern connector-ui.tgz
+          (cd "${ui}" && sha256sum connector-ui.tgz > connector-ui.tgz.sha256)
+      - name: Build the Studio UI artifact at the tagged source
+        if: steps.state.outputs.has_ui_artifact != 'true'
+        working-directory: ${{ runner.temp }}/source
+        run: |
+          if [ -f "${CONNECTOR_DIRECTORY}/ui/package-lock.json" ]; then
+            npm ci --prefix sdk/react
+            npm run build --prefix sdk/react
+            npm ci --prefix "${CONNECTOR_DIRECTORY}/ui"
+            npm run build --prefix "${CONNECTOR_DIRECTORY}/ui"
+            mkdir -p "${RUNNER_TEMP}/connector-ui"
+            "${RUNNER_TEMP}/connectorctl" ui-artifact \
+              --manifest "${CONNECTOR_DIRECTORY}/connector.yaml" \
+              --ui-root "${CONNECTOR_DIRECTORY}/ui/dist" \
+              --output "${RUNNER_TEMP}/connector-ui/connector-ui.tgz" \
+              --digest-output "${RUNNER_TEMP}/connector-ui/connector-ui.tgz.sha256"
+          fi
+      - name: Build connector release metadata with main's tooling
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
+        run: |
+          metadata="${RUNNER_TEMP}/connector-release"
+          mkdir -p "${metadata}"
+          ui_arguments=()
+          if [ -f "${RUNNER_TEMP}/connector-ui/connector-ui.tgz" ]; then
+            ui_arguments+=(--ui-artifact "${RUNNER_TEMP}/connector-ui/connector-ui.tgz"
+              --ui-digest "${RUNNER_TEMP}/connector-ui/connector-ui.tgz.sha256")
+          fi
+          "${RUNNER_TEMP}/connectorctl" release-artifact \
+            --manifest "${RUNNER_TEMP}/source/${CONNECTOR_DIRECTORY}/connector.yaml" --language "${LANGUAGE}" \
+            --version "${RELEASE_VERSION}" --tag "${RELEASE_TAG}" --source-sha "${SOURCE_SHA}" \
+            --output "${metadata}/connector-release.json" --digest-output "${metadata}/connector-release.json.sha256" \
+            "${ui_arguments[@]}"
+      - name: Attach the missing connector release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Uploads only absent assets, the metadata digest last, and fails on any existing asset that differs.
+          assets=()
+          if [ -f "${RUNNER_TEMP}/connector-ui/connector-ui.tgz" ]; then
+            assets+=("${RUNNER_TEMP}/connector-ui/connector-ui.tgz" "${RUNNER_TEMP}/connector-ui/connector-ui.tgz.sha256")
+          fi
+          assets+=("${RUNNER_TEMP}/connector-release/connector-release.json"
+            "${RUNNER_TEMP}/connector-release/connector-release.json.sha256")
+          python3 script/release/language_publish.py attach-missing-release-assets \
+            --repository "${GITHUB_REPOSITORY}" --tag "${RELEASE_TAG}" "${assets[@]}"
 
   summarize-language:
     needs: [plan, build-language, publish-language, publish-language-first, publish-language-github-first, upload-pending-pypi]

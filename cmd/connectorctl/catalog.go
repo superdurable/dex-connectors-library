@@ -57,6 +57,10 @@ type connectorCatalogItem struct {
 	Categories []string          `yaml:"categories" json:"categories"`
 	Version    string            `yaml:"version" json:"version"`
 	Languages  map[string]string `yaml:"languages,omitempty" json:"languages,omitempty"`
+	// LanguagePackages maps each listed Python or TypeScript language to its PyPI or npm package name. A package
+	// name belongs to exactly one connector directory, so a host resolves an exact package version to the release
+	// tag <directory>/<language>/v<version>.
+	LanguagePackages map[string]string `yaml:"languagePackages,omitempty" json:"languagePackages,omitempty"`
 	// PythonPackage locates the listed Python release when the catalog knows which tags PyPI serves.
 	PythonPackage *catalogPythonPackage `yaml:"pythonPackage,omitempty" json:"pythonPackage,omitempty"`
 	Directory     string                `yaml:"directory" json:"directory"`
@@ -146,6 +150,9 @@ func catalogCommand(args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := validateUniqueLanguagePackageNames(entries); err != nil {
+		return err
+	}
 	if *check {
 		return nil
 	}
@@ -185,6 +192,51 @@ func catalogCommand(args []string) error {
 			return fmt.Errorf("write JSON catalog: %w", err)
 		}
 	}
+	return nil
+}
+
+var pythonPackageNameSeparators = regexp.MustCompile(`[-_.]+`)
+
+// validateUniqueLanguagePackageNames requires every declared PyPI and npm package name to belong to one connector
+// directory, so a host can map an exact package version to one release tag. PyPI names compare as PEP 503
+// canonical names; npm names compare case-insensitively.
+func validateUniqueLanguagePackageNames(entries []connectorDirectoryEntry) error {
+	directoriesByPackage := make(map[string]string)
+	for _, entry := range entries {
+		if entry.Manifest.Spec.Languages == nil {
+			continue
+		}
+		for _, language := range []struct {
+			name        string
+			declaration *schema.LanguagePackage
+		}{
+			{name: "python", declaration: entry.Manifest.Spec.Languages.Python},
+			{name: "typescript", declaration: entry.Manifest.Spec.Languages.TypeScript},
+		} {
+			if language.declaration == nil {
+				continue
+			}
+			packageName := languagePackageName(entry.Directory, language.name, language.declaration.Package)
+			if err := claimLanguagePackageName(directoriesByPackage, language.name, packageName, entry.Directory); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// claimLanguagePackageName records that directory owns packageName, or fails when another directory owns it.
+func claimLanguagePackageName(directoriesByPackage map[string]string, language, packageName, directory string) error {
+	comparedName := strings.ToLower(packageName)
+	if language == "python" {
+		comparedName = pythonPackageNameSeparators.ReplaceAllString(comparedName, "-")
+	}
+	key := language + "\x00" + comparedName
+	if otherDirectory, exists := directoriesByPackage[key]; exists && otherDirectory != directory {
+		return fmt.Errorf("%s package %s of %s is also the package of %s; each package name must belong to one connector directory",
+			language, packageName, directory, otherDirectory)
+	}
+	directoriesByPackage[key] = directory
 	return nil
 }
 
@@ -659,8 +711,10 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 		}
 		if releasedLanguages != nil && (releasedLanguages.Python != nil || releasedLanguages.TypeScript != nil) {
 			item.Languages = map[string]string{"go": metadata.Version}
+			item.LanguagePackages = make(map[string]string, 2)
 			if python := releasedLanguages.Python; python != nil {
 				item.Languages["python"] = python.Version
+				item.LanguagePackages["python"] = languagePackageName(entry.Directory, "python", python.Package)
 				if pypiPublishedLanguageTags != nil {
 					tag := entry.Directory + "/python/" + python.Version
 					item.PythonPackage = &catalogPythonPackage{
@@ -671,6 +725,7 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 			}
 			if typeScript := releasedLanguages.TypeScript; typeScript != nil {
 				item.Languages["typescript"] = typeScript.Version
+				item.LanguagePackages["typescript"] = languagePackageName(entry.Directory, "typescript", typeScript.Package)
 			}
 		}
 		if entry.Manifest.HasMocks() {
@@ -678,6 +733,17 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 			item.Mocks = catalogMocks(entry.Manifest)
 		}
 		catalog.Connectors = append(catalog.Connectors, item)
+	}
+	// Released declarations can differ from the current ones, so the published names are checked as well.
+	directoriesByPackage := make(map[string]string)
+	for _, item := range catalog.Connectors {
+		for _, language := range []string{"python", "typescript"} {
+			if packageName, isListed := item.LanguagePackages[language]; isListed {
+				if err := claimLanguagePackageName(directoriesByPackage, language, packageName, item.Directory); err != nil {
+					return nil, err
+				}
+			}
+		}
 	}
 	encoded, err := yaml.Marshal(catalog)
 	if err != nil {
@@ -709,9 +775,8 @@ func releasedLanguageDeclaration(entry connectorDirectoryEntry, language string,
 		return nil, nil
 	}
 	selectedVersion := strings.TrimPrefix(selectedTag, prefix)
-	if selectedVersion == current.Version {
-		return current, nil
-	}
+	// Even at the current version, the tag holds the released package name and capabilities; the working tree
+	// may already rename the package before its next release.
 	command := exec.Command("git", "show", selectedTag+":"+entry.ManifestPath)
 	command.Dir = repositoryRoot
 	contents, err := command.Output()

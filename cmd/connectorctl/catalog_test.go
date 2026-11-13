@@ -455,6 +455,15 @@ func replaceInFile(t *testing.T, path, old, replacement string) {
 	require.NoError(t, os.WriteFile(path, []byte(strings.Replace(string(contents), old, replacement, 1)), 0o600))
 }
 
+// tagConnectorRelease tags the fixture repository's HEAD.
+func tagConnectorRelease(t *testing.T, repositoryRoot, tag string) {
+	t.Helper()
+	command := exec.Command("git", "tag", tag)
+	command.Dir = repositoryRoot
+	output, err := command.CombinedOutput()
+	require.NoError(t, err, "%s", output)
+}
+
 func initializeConnectorReleaseRepository(t *testing.T, repositoryRoot, tag string) string {
 	t.Helper()
 	for _, args := range [][]string{
@@ -546,6 +555,8 @@ func TestCatalogJSONListsLanguageVersions(t *testing.T) {
 		[]byte(`{"name":"@superdurable/connector-acme-chat","version":"0.1.0"}`), 0o600))
 	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
 	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n"), 0o600))
+	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/python/v0.1.0")
+	tagConnectorRelease(t, repositoryRoot, directory+"/typescript/v0.1.0")
 	outputDirectory := t.TempDir()
 	jsonPath := filepath.Join(outputDirectory, "catalog.json")
 	completedTagsPath := filepath.Join(outputDirectory, "completed-tags")
@@ -556,14 +567,17 @@ func TestCatalogJSONListsLanguageVersions(t *testing.T) {
 	require.NoError(t, err)
 	var document struct {
 		Connectors []struct {
-			Languages  map[string]string `json:"languages"`
-			Operations []struct {
+			Languages        map[string]string `json:"languages"`
+			LanguagePackages map[string]string `json:"languagePackages"`
+			Operations       []struct {
 				Languages []string `json:"languages"`
 			} `json:"operations"`
 		} `json:"connectors"`
 	}
 	require.NoError(t, json.Unmarshal(contents, &document))
 	require.Equal(t, map[string]string{"go": "v0.1.0", "python": "v0.1.0"}, document.Connectors[0].Languages)
+	require.Equal(t, map[string]string{"python": "dex-connector-acme-chat"}, document.Connectors[0].LanguagePackages,
+		"only completed languages list their package")
 	require.Equal(t, []string{"go", "python"}, document.Connectors[0].Operations[0].Languages)
 	require.NoError(t, os.WriteFile(completedTagsPath,
 		[]byte(directory+"/python/v0.1.0\n"+directory+"/typescript/v0.1.0\n"), 0o600))
@@ -574,8 +588,9 @@ func TestCatalogJSONListsLanguageVersions(t *testing.T) {
 	document.Connectors = nil
 	require.NoError(t, json.Unmarshal(contents, &document))
 	require.Equal(t, map[string]string{"go": "v0.1.0", "python": "v0.1.0", "typescript": "v0.1.0"}, document.Connectors[0].Languages)
+	require.Equal(t, map[string]string{"python": "dex-connector-acme-chat", "typescript": "@superdurable/connector-acme-chat"},
+		document.Connectors[0].LanguagePackages)
 	require.Equal(t, []string{"go", "python", "typescript"}, document.Connectors[0].Operations[0].Languages)
-	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/python/v0.1.0")
 	replaceInFile(t, manifestPath,
 		"python: {version: v0.1.0, operations: [appendRows], triggers: []}",
 		"python: {version: v0.2.0, operations: [appendRows], triggers: []}")
@@ -594,7 +609,133 @@ func TestCatalogJSONListsLanguageVersions(t *testing.T) {
 	document.Connectors = nil
 	require.NoError(t, json.Unmarshal(contents, &document))
 	require.Empty(t, document.Connectors[0].Languages)
+	require.Empty(t, document.Connectors[0].LanguagePackages)
 	require.Empty(t, document.Connectors[0].Operations[0].Languages)
+}
+
+func TestCatalogRejectsALanguagePackageNameThatTwoDirectoriesDeclare(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		directories                         []string
+		firstDeclaration, secondDeclaration string
+		message                             string
+	}{
+		"same npm override": {
+			directories:       []string{"connectors/acme/chat", "connectors/beta/chat"},
+			firstDeclaration:  "typescript: {version: v0.1.0, package: '@superdurable/connector-chat', operations: [appendRows], triggers: []}",
+			secondDeclaration: "typescript: {version: v0.1.0, package: '@superdurable/connector-chat', operations: [appendRows], triggers: []}",
+			message:           "typescript package @superdurable/connector-chat of connectors/beta/chat is also the package of connectors/acme/chat",
+		},
+		"override equal to a default name": {
+			directories:       []string{"connectors/acme/chat", "connectors/beta/chat"},
+			firstDeclaration:  "python: {version: v0.1.0, operations: [appendRows], triggers: []}",
+			secondDeclaration: "python: {version: v0.1.0, package: dex-connector-acme-chat, operations: [appendRows], triggers: []}",
+			message:           "python package dex-connector-acme-chat of connectors/beta/chat is also the package of connectors/acme/chat",
+		},
+		"PEP 503 equivalent default Python names": {
+			directories:       []string{"connectors/acme/chat-api", "connectors/acme/chat_api"},
+			firstDeclaration:  "python: {version: v0.1.0, operations: [appendRows], triggers: []}",
+			secondDeclaration: "python: {version: v0.1.0, operations: [appendRows], triggers: []}",
+			message:           "python package dex-connector-acme-chat_api of connectors/acme/chat_api is also the package of connectors/acme/chat-api",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			repositoryRoot := t.TempDir()
+			directories := testCase.directories
+			for index, directory := range directories {
+				writeConnectorFixture(t, repositoryRoot, directory, "example.com/"+directory)
+				manifestPath := filepath.Join(repositoryRoot, directory, "connector.yaml")
+				replaceInFile(t, manifestPath, "name: fixture-connector", fmt.Sprintf("name: fixture-connector-%d", index))
+				declaration := []string{testCase.firstDeclaration, testCase.secondDeclaration}[index]
+				replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    "+declaration+"\n")
+				writeLanguagePackageFixture(t, repositoryRoot, directory, declaration)
+			}
+			catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+			require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\n"+
+				"kind: ConnectorCatalogSource\ndirectories:\n  - "+directories[0]+"\n  - "+directories[1]+"\n"), 0o600))
+			require.ErrorContains(t, catalogCommand([]string{"--catalog", catalogPath, "--check"}), testCase.message)
+			require.ErrorContains(t, catalogCommand([]string{"--catalog", catalogPath, "--output", filepath.Join(t.TempDir(), "catalog.yaml")}),
+				testCase.message)
+		})
+	}
+}
+
+func TestCatalogEncodingRejectsAPublishedPackageNameOfTwoDirectories(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	declaration := "spec:\n  languages:\n    typescript: {version: v0.1.0, package: '@superdurable/connector-chat', operations: [], triggers: []}\n"
+	var entries []connectorDirectoryEntry
+	for _, directory := range []string{"connectors/acme/chat", "connectors/beta/chat"} {
+		manifestPath := filepath.Join(repositoryRoot, filepath.FromSlash(directory), "connector.yaml")
+		require.NoError(t, os.MkdirAll(filepath.Dir(manifestPath), 0o755))
+		require.NoError(t, os.WriteFile(manifestPath, []byte(declaration), 0o600))
+		entries = append(entries, connectorDirectoryEntry{Directory: directory, ManifestPath: directory + "/connector.yaml",
+			Manifest: schema.Manifest{
+				Metadata: schema.Metadata{Name: directory, DisplayName: "Chat", Description: "Chat.", Company: "Acme",
+					Categories: []string{"productivity"}, Version: "v0.1.0"},
+				Spec: schema.Spec{Languages: &schema.Languages{TypeScript: &schema.LanguagePackage{
+					Version: "v0.1.0", Package: "@superdurable/connector-chat", Operations: []string{}, Triggers: []string{}}}},
+			}})
+	}
+	initializeConnectorReleaseRepository(t, repositoryRoot, "connectors/acme/chat/typescript/v0.1.0")
+	tagConnectorRelease(t, repositoryRoot, "connectors/beta/chat/typescript/v0.1.0")
+	completed := map[string]bool{"connectors/acme/chat/typescript/v0.1.0": true, "connectors/beta/chat/typescript/v0.1.0": true}
+	_, err := encodeConnectorCatalog(entries, completed, nil, repositoryRoot)
+	require.ErrorContains(t, err, "typescript package @superdurable/connector-chat of connectors/beta/chat is also the package of connectors/acme/chat")
+	encoded, err := encodeConnectorCatalog(entries[:1], completed, nil, repositoryRoot)
+	require.NoError(t, err)
+	require.Contains(t, string(encoded), "languagePackages:\n        typescript: '@superdurable/connector-chat'\n")
+}
+
+func TestCatalogListsTheReleasedPackageNameWhenTheWorkingTreeRenamesItAtTheSameVersion(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	directory := "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, directory, "example.com/connectors/acme/chat")
+	manifestPath := filepath.Join(repositoryRoot, directory, "connector.yaml")
+	declaration := "typescript: {version: v0.1.0, operations: [appendRows], triggers: []}"
+	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    "+declaration+"\n")
+	writeLanguagePackageFixture(t, repositoryRoot, directory, declaration)
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\n"+
+		"kind: ConnectorCatalogSource\ndirectories:\n  - "+directory+"\n"), 0o600))
+	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/typescript/v0.1.0")
+	// main renames the package but defers its release, so v0.1.0 still names the released package.
+	renamed := "typescript: {version: v0.1.0, package: '@superdurable/connector-acme-chat-next', operations: [appendRows], triggers: []}"
+	replaceInFile(t, manifestPath, declaration, renamed)
+	writeLanguagePackageFixture(t, repositoryRoot, directory, renamed)
+	outputDirectory := t.TempDir()
+	completedTagsPath := filepath.Join(outputDirectory, "completed-tags")
+	require.NoError(t, os.WriteFile(completedTagsPath, []byte(directory+"/typescript/v0.1.0\n"), 0o600))
+	jsonPath := filepath.Join(outputDirectory, "catalog.json")
+	require.NoError(t, catalogCommand([]string{"--catalog", catalogPath, "--output", filepath.Join(outputDirectory, "catalog.yaml"),
+		"--json-output", jsonPath, "--completed-language-tags", completedTagsPath}))
+	contents, err := os.ReadFile(jsonPath)
+	require.NoError(t, err)
+	var document struct {
+		Connectors []struct {
+			LanguagePackages map[string]string `json:"languagePackages"`
+		} `json:"connectors"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &document))
+	require.Equal(t, map[string]string{"typescript": "@superdurable/connector-acme-chat"}, document.Connectors[0].LanguagePackages)
+}
+
+// writeLanguagePackageFixture writes the pyproject.toml or package.json whose name and version a one-line
+// spec.languages declaration requires.
+func writeLanguagePackageFixture(t *testing.T, repositoryRoot, directory, declaration string) {
+	t.Helper()
+	language, rest, _ := strings.Cut(declaration, ": ")
+	packageName := languagePackageName(directory, language, "")
+	if _, override, hasOverride := strings.Cut(rest, "package: "); hasOverride {
+		packageName = strings.Trim(strings.SplitN(override, ",", 2)[0], "'")
+	}
+	componentDirectory := filepath.Join(repositoryRoot, filepath.FromSlash(directory), language)
+	require.NoError(t, os.MkdirAll(componentDirectory, 0o755))
+	if language == "python" {
+		require.NoError(t, os.WriteFile(filepath.Join(componentDirectory, "pyproject.toml"),
+			[]byte("[project]\nname = \""+packageName+"\"\nversion = \"0.1.0\"\n"), 0o600))
+		return
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(componentDirectory, "package.json"),
+		[]byte(`{"name":"`+packageName+`","version":"0.1.0"}`), 0o600))
 }
 
 func TestCatalogJSONReportsPendingAndPublishedPyPIPackages(t *testing.T) {
@@ -610,6 +751,8 @@ func TestCatalogJSONReportsPendingAndPublishedPyPIPackages(t *testing.T) {
 		[]byte(`{"name":"@superdurable/connector-acme-chat","version":"0.1.0"}`), 0o600))
 	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
 	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n"), 0o600))
+	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/python/v0.1.0")
+	tagConnectorRelease(t, repositoryRoot, directory+"/typescript/v0.1.0")
 	outputDirectory := t.TempDir()
 	jsonPath := filepath.Join(outputDirectory, "catalog.json")
 	completedTagsPath := filepath.Join(outputDirectory, "completed-tags")
