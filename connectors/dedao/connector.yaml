@@ -1,0 +1,73 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: dedao
+  displayName: Dedao Brain
+  description: Read the processing status of a Get Note task.
+  company: dedao
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: dedao
+  codegen:
+    go:
+      package: dedao
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one Get Note HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum task-status response size in bytes as a positive integer. Blank uses the displayed default; increase only if provider metadata grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: dedao-openapi-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret gk_live_ API Key from https://www.biji.com/openapi > Create Application > API Key. Copy the full key into Dex; blank prevents requests.
+      - name: clientID
+        goName: ClientID
+        type: secretString
+        required: true
+        description: Secret cli_ Client ID paired with the API Key at https://www.biji.com/openapi > Create Application. Copy it into Dex for the X-Client-ID header; blank prevents requests.
+    guide:
+      startURL: https://doc.biji.com/docs/WOxgwObNNiyMHWk1dl0cJqSxnEd/
+      steps:
+        - Sign in at https://www.biji.com/openapi, create an application, and copy its gk_live_ API Key and paired cli_ Client ID into Dex Connections. Both are secrets; blank prevents requests.
+        - When a prior note-save call returns data.tasks[0].task_id, supply that exact task ID as the Flow input. The status Query never reads note content and returns only status plus a note ID when complete.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. Task status can be pending, processing, success, or failed; poll only at the official recommended interval of 10–30 seconds.
+  operations:
+    - name: getNoteTaskStatus
+      goName: GetNoteTaskStatus
+      inputType: GetNoteTaskStatusInput
+      outputType: GetNoteTaskStatusOutput
+      kind: query
+      description: Read status of an existing asynchronous Get Note task.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Get Note returned the task status.}
+        - {id: providerRejected, goName: ProviderRejected, description: Get Note rejected the credentials or task request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Get Note returned malformed or oversized status data., optional: true}
+        - {id: defect, goName: Defect, description: Local credentials or task ID are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: completedTask
+          branch: found
+          description: A completed example note task.
+          default: true
+          output: {taskID: 69c3995e99f5a67e, status: success, noteID: "1907975006118548200"}
+        - name: pendingTask
+          branch: found
+          description: An existing task still processing.
+          output: {taskID: 69c3995e99f5a67e, status: pending, noteID: ""}
