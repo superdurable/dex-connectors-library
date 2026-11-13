@@ -1,0 +1,73 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: weiban
+  displayName: Weiban Assistant
+  description: List a bounded page of customer tag metadata from Weiban Assistant.
+  company: Weiban
+  categories: [marketing]
+  version: v0.1.0
+spec:
+  provider: weiban
+  codegen:
+    go:
+      package: weiban
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Weiban OpenAPI. Leave blank for the displayed production endpoint; override only for a trusted provider-issued test origin.
+        default: https://open.weibanzhushou.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of each token or tag-list request as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum size of each token or tag-list response in bytes as a positive integer. Leave blank for the displayed default.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: weiban-corp-key
+    fields:
+      - name: corp_id
+        goName: CorpID
+        type: string
+        description: Required enterprise identifier from https://openapi.weibanzhushou.com/doc-370558 > Weiban backend > Application Management > API Access. Copy exactly; blank prevents requests.
+        required: true
+      - name: secret
+        goName: Secret
+        type: secretString
+        description: Required secret from the same API Access page. Create or reveal it after accepting the OpenAPI terms; copy into this protected field. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://openapi.weibanzhushou.com/doc-370558
+      steps:
+        - In the Weiban backend open Application Management > API Access. Accept the OpenAPI terms, copy the enterprise corp_id, create the secret, and store it in Dex's protected secret field. Both values are required. Reissue a lost secret in that same page and update this connection.
+        - Purchase the basic seat required by the access-token and tag-list APIs. The connector POSTs corp_id and secret to the documented token endpoint, then uses the short-lived access_token to read the first 10 tags. Leave baseUrl, timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listTags
+      goName: ListTags
+      inputType: ListTagsInput
+      outputType: TagsResult
+      kind: query
+      description: Read the first 10 tag IDs, names, groups, and total count without customer records.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Weiban returned the first tag page."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Weiban rejected the credentials or query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Weiban returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "The connection is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedTags
+          branch: listed
+          description: Synthetic tag metadata for local Dex Flow verification.
+          default: true
+          output: {total: 1, tags: [{id: tag_123, name: Returning, group: Lifecycle}]}

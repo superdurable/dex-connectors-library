@@ -1,0 +1,7 @@
+# Weiban Assistant customer tags
+
+`ListTags` reads the first 10 customer tag definitions and the total count. It returns only tag IDs, names and group names, without customers, staff or department assignments. The [official tag-list API](https://openapi.weibanzhushou.com/api-9075864) defines `GET /open-api/tag/list?limit=10&offset=0&access_token=...`, response fields and errors. The [official token API](https://openapi.weibanzhushou.com/api-8233537) uses a JSON POST with corp_id and secret and returns a short-lived token. The [setup guide](https://openapi.weibanzhushou.com/doc-370558) identifies the administration page and basic-seat requirement. Weiban is a [MingLue product](https://www.mininglamp.com/weibanzhushou/).
+
+The connector obtains a fresh token for each operation call, then fetches one tag page. It does not store or expose the token. The token appears in the provider-required HTTPS query parameter; redirect following is disabled and URL-bearing errors are replaced with fixed messages. HTTP 429, 408 and 5xx, transport failures, and documented busy codes retry. Other provider rejections take optional branches. Each response is bounded to 256 KiB.
+
+The [runnable Dex Flow](go/examples/tags/README.md) demonstrates a static connection, typed result, strict FDG, and mock-backed real Dex integration. Live authorization and production responses remain unverified. The logo uses an [official Weiban page asset](https://assets.weibanzhushou.com/web/we-work-webapp/weiban-logo_logo-no-word-3.45d3d34536da.png).
