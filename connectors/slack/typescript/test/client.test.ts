@@ -26,5 +26,8 @@ describe('Slack provider response decoding', () => {
   it('rejects unsafe HTTP endpoints and invalid response limits during construction', () => {
     expect(() => new SlackClient({ endpoint: 'http://example.com/api' }, credentials)).toThrow('HTTPS');
     expect(() => new SlackClient({ maxResponseBytes: -1 }, credentials)).toThrow('positive integers');
+    // ws would turn a Socket Mode limit beyond a signed 32-bit integer into no limit.
+    expect(() => new SlackClient({ maxResponseBytes: 2 ** 31 }, credentials)).toThrow(TypeError);
+    expect(new SlackClient({ maxResponseBytes: 2 ** 31 - 1 }, credentials).maxResponseBytes).toBe(2 ** 31 - 1);
   });
 });

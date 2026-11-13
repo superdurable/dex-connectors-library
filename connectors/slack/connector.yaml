@@ -16,10 +16,10 @@ spec:
       operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
     typescript:
-      version: v0.5.0
+      version: v0.6.0
       package: "@superdurable/connector-slack"
       operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply]
-      triggers: []
+      triggers: [channelThreadCreated, threadReplyCreated]
   codegen:
     go:
       package: slack
@@ -88,6 +88,7 @@ spec:
       steps:
         - Create or select a Slack app; under OAuth & Permissions add the displayed bot and user token scopes, then add the exact Redirect URI shown below.
         - Under Socket Mode, enable Socket Mode; under Basic Information > App-Level Tokens, generate an xapp- token with connections:write.
+        - Under Event Subscriptions, turn Enable Events on and under Subscribe to bot events add message.channels and message.groups, which the channelThreadCreated and threadReplyCreated Triggers receive through the channels:history and groups:history scopes; with Socket Mode no Request URL is needed.
         - Under Interactivity & Shortcuts, turn Interactivity on so button clicks reach the buttonClicked Trigger through Socket Mode; no Request URL or extra scope is needed, and connections that never post buttons can leave it off.
         - Copy Client ID and Client Secret from Basic Information > App Credentials and paste them below; also paste the xapp- token in app_token, which Triggers need to receive events through Socket Mode.
         - Under OAuth & Permissions enable Token Rotation only after this release is deployed; rotating bot and user access tokens expire after 12 hours and each refresh token is one-use.

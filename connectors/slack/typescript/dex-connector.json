@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-slack",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "factories": [
     {
@@ -475,6 +475,26 @@
           "threadTimestamp"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineChannelThreadCreatedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "channelThreadCreated",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
+      }
+    },
+    {
+      "name": "defineThreadReplyCreatedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "threadReplyCreated",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

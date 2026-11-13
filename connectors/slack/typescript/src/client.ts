@@ -3,7 +3,8 @@
 
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { MaxSlackSocketMessageBytes, dialSlackSocket, type SlackSocketDialer } from './socket_mode.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { GetThreadReplyOperation, GetWorkspaceIdentityOperation, ListChannelMessagesOperation, ListChannelsOperation, ListThreadMessagesOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
@@ -16,10 +17,29 @@ export interface SlackExchange {
   error?: 'transport' | 'notSent' | 'tooLarge' | 'invalid';
 }
 
-/** Override the provider sender and receipt clock for local tests. */
+/** Socket Mode and relay timings in milliseconds; tests shorten them. */
+export interface SlackTriggerTimings {
+  /** Wait after the first failed connection and after Slack asks for a reconnect; doubles per consecutive failure. */ reconnectDelayMs: number;
+  /** Cap of the doubled reconnect wait. */ reconnectMaxDelayMs: number;
+  /** A connection that receives neither an envelope nor a ping for this long is reconnected. */ readTimeoutMs: number;
+}
+
+/** Default Socket Mode timings, matching the Go connector. */
+export const DefaultSlackTriggerTimings: Readonly<SlackTriggerTimings> = Object.freeze({ reconnectDelayMs: 1_000, reconnectMaxDelayMs: 30_000, readTimeoutMs: 45_000 });
+
+/** Override the provider sender and receipt clock for local tests, and configure Trigger logging. */
 export interface SlackClientOptions {
-  send?: (request: ProviderRequest) => Promise<ProviderResponse>;
-  now?: () => Date;
+  /** Provider HTTP sender; omitted uses the SDK's address-checked sender. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>;
+  /** Receipt and relayed-request clock. */ now?: () => Date;
+  /** Receives Trigger records: Socket Mode connections, ignored messages at DEBUG, and delivery retries; omitted uses defaultTriggerLogger. */ logger?: TriggerLogger;
+  /** Opens Socket Mode WebSockets; omitted uses the ws package. */ socketDialer?: SlackSocketDialer;
+  /** Socket Mode timings; omitted fields use DefaultSlackTriggerTimings. */ triggerTimings?: Partial<SlackTriggerTimings>;
+  /**
+   * Acknowledged Socket Mode envelopes that may await delivery on one connection; omitted uses 256, as in Go. A full
+   * queue stops reading the socket after the network chunk being parsed, so Slack holds the rest until delivery
+   * catches up.
+   */
+  socketModeDeliveryQueueCapacity?: number;
 }
 
 /** Slack Web API client with host-owned renewable bot and user credentials. */
@@ -27,8 +47,12 @@ export class SlackClient {
   readonly endpoint: string;
   readonly maxResponseBytes: number;
   readonly maxMessageCharacters: number;
+  /** Trigger record destination. */ readonly triggerLogger: TriggerLogger;
+  /** Socket Mode WebSocket dialer. */ readonly socketDialer: SlackSocketDialer;
+  /** Socket Mode timings. */ readonly triggerTimings: Readonly<SlackTriggerTimings>;
+  /** Acknowledged Socket Mode envelopes that may await delivery on one connection. */ readonly socketModeDeliveryQueueCapacity: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
-  private readonly now: () => Date;
+  /** Receipt and relayed-request clock. */ readonly now: () => Date;
   private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Slack', auth: Authorization, credentialFields: CredentialFields });
 
   /** Validate configuration and bind a host credential source. */
@@ -42,8 +66,47 @@ export class SlackClient {
     this.maxResponseBytes = config.maxResponseBytes || 4_194_304;
     this.maxMessageCharacters = config.maxMessageCharacters || 40_000;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1 || !Number.isSafeInteger(this.maxMessageCharacters) || this.maxMessageCharacters < 1) throw new TypeError('Slack limits must be positive integers');
+    // The Socket Mode message limit uses maxResponseBytes, and ws would silently drop a limit beyond a signed 32-bit integer.
+    if (this.maxResponseBytes > MaxSlackSocketMessageBytes) throw new TypeError('Slack maxResponseBytes must be at most 2147483647');
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
+    this.socketDialer = options.socketDialer ?? ((url, signal) => dialSlackSocket(url, signal, this.maxResponseBytes));
+    this.socketModeDeliveryQueueCapacity = options.socketModeDeliveryQueueCapacity ?? 256;
+    if (!Number.isSafeInteger(this.socketModeDeliveryQueueCapacity) || this.socketModeDeliveryQueueCapacity < 1) throw new TypeError('Slack Socket Mode delivery queue capacity must be a positive integer');
+    this.triggerTimings = Object.freeze({ ...DefaultSlackTriggerTimings, ...options.triggerTimings });
+    if (Object.values(this.triggerTimings).some(value => !Number.isSafeInteger(value) || value < 1)) throw new TypeError('Slack Trigger timings must be positive integer milliseconds');
+  }
+
+  /** Read the connection's credential for a Trigger source outside a Dex Step, refreshing it when needed. */
+  async resolveTriggerCredentials(call: Call, signal: AbortSignal): Promise<Credentials> {
+    return resolveCredential(this.credentials, call, this.refreshDriver, signal);
+  }
+
+  /**
+   * Ask Slack for a Socket Mode WebSocket URL with the app-level token. The rejection names Slack's error
+   * code and HTTP status, never the token or URL.
+   */
+  async openSocketModeConnection(appToken: string, signal: AbortSignal): Promise<string> {
+    if (!isHeaderSafeCredential(appToken)) throw new Error('Slack Socket Mode credentials are unavailable: credential app_token is invalid');
+    let received: ProviderResponse;
+    try {
+      received = await this.send({ url: `${this.endpoint}/apps.connections.open`, method: 'POST', headers: { Authorization: `Bearer ${appToken}` }, maxResponseBytes: this.maxResponseBytes,
+        addressPolicy: this.endpoint.startsWith('https://slack.com/') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs: 25_000, signal });
+    } catch (error) {
+      if (error instanceof BodyTooLargeError) throw new Error('read Slack Socket Mode open response');
+      throw new Error('open Slack Socket Mode connection: transport failure');
+    }
+    let decoded: { ok?: unknown; error?: unknown; url?: unknown } = {};
+    let isDecoded = true;
+    try { decoded = JSON.parse(Buffer.from(received.body).toString('utf8')) as typeof decoded; } catch { isDecoded = false; }
+    const isSuccessStatus = received.status >= 200 && received.status < 300;
+    if (isSuccessStatus && (!isDecoded || !decoded || typeof decoded !== 'object')) throw new Error('decode Slack Socket Mode open response');
+    if (!isSuccessStatus || decoded.ok !== true || typeof decoded.url !== 'string' || !decoded.url) {
+      throw new Error(`Slack rejected the Socket Mode connection: ${slackCode(typeof decoded?.error === 'string' ? decoded.error : '')} (HTTP ${received.status})`);
+    }
+    if (!/^wss:\/\//.test(decoded.url) && !/^ws:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(decoded.url)) throw new Error('Slack returned an invalid Socket Mode URL');
+    return decoded.url;
   }
 
   /** Bind the list channels Query. */ listChannels(): ListChannelsOperation { return new ListChannelsOperation(this); }
@@ -128,6 +191,11 @@ export function header(response: SlackExchange, name: string): string {
 export function isCredentialRejected(response: SlackExchange): boolean {
   const body = response.body as Record<string, unknown> | undefined;
   return response.status === 401 || ['invalid_auth', 'token_expired', 'token_revoked'].includes(String(body?.error ?? ''));
+}
+
+/** Return a short snake_case Slack error or reason code, or "unknown", so a record never carries arbitrary response text. */
+export function slackCode(code: string): string {
+  return code && code.length <= 64 && /^[a-z0-9_]+$/.test(code) ? code : 'unknown';
 }
 
 /** Construct the provider-safe failure contract. */
