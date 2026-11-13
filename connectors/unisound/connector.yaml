@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: unisound
+  displayName: Unisound
+  description: List the system text-to-speech voices available on Unisound MaaS.
+  company: unisound
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: unisound
+  codegen:
+    go:
+      package: unisound
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one voice-list HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum voice-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider's voice catalog grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: unisound-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API Key from https://maas.unisound.com > 控制台 > 按量计费 > API Key 管理 > 创建 API Key. Copy it exactly; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://maas.unisound.com/docs/guide/quickstart
+      steps:
+        - Sign in at https://maas.unisound.com, complete developer verification, then open 控制台 > 按量计费 > API Key 管理 > 创建 API Key. Copy the secret Key into Dex Connections. Blank prevents requests. A U Plan Key is distinct from an on-demand Key; use a Key authorized for voice catalog access.
+        - Start ListSystemVoices with an empty object {}. The connector fixes voice_type=system and returns at most 25 system voice IDs, names, and supported language codes. Leave timeout and maxResponseBytes blank for the displayed defaults.
+        - The provider returns voice IDs for subsequent text-to-speech calls. This Query does not synthesize audio or expose user-cloned voices. Replace a compromised Key in API Key 管理.
+  operations:
+    - name: listSystemVoices
+      goName: ListSystemVoices
+      inputType: ListSystemVoicesInput
+      outputType: ListSystemVoicesOutput
+      kind: query
+      description: List up to 25 predefined text-to-speech voices.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Unisound returned the system voice catalog.}
+        - {id: providerRejected, goName: ProviderRejected, description: Unisound rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Unisound returned malformed or oversized voice data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: personWaiting, explanation: "Voice selection is interactive, so transient failures are retried at most twice before surfacing to the user."}}
+      mocks:
+        - name: systemVoices
+          branch: found
+          description: One available predefined Chinese voice.
+          default: true
+          output: {voices: [{voiceID: cn_male_chenyu, name: 晨宇, languages: [zh]}]}
+        - name: noVoices
+          branch: found
+          description: The account has no available system voices.
+          output: {voices: []}
