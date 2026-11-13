@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: emq
+  displayName: EMQX Cloud
+  description: List EMQX Cloud deployments available to a Platform API key.
+  company: EMQ
+  categories: [developer-tools, communication]
+  version: v0.1.0
+spec:
+  provider: emq
+  codegen:
+    go:
+      package: emq
+  configuration:
+    fields:
+      - name: platformEndpoint
+        goName: PlatformEndpoint
+        type: url
+        required: true
+        description: "Platform API endpoint copied from EMQX Cloud Console https://cloud.emqx.com/console/ > Settings > Platform API Key. Enter its absolute HTTPS URL ending in /public_api/v1, without a trailing slash, URL credentials, query, or fragment. The endpoint identifies the account and region and is not secret. Blank prevents requests."
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one deployment-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum deployment-list response size in bytes as a positive integer. Blank uses the displayed default; raise only for a legitimate larger deployment list.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: emqx-cloud-platform-api
+    fields:
+      - name: platform_api_key
+        goName: PlatformAPIKey
+        type: secretString
+        required: true
+        description: "Platform API Key from https://cloud.emqx.com/console/ > Settings > Platform API Key > Create New Key. Copy the opaque key shown after selecting Deployment Management and project scopes. Dex stores it as a secret credential and sends it only as the HTTP Basic username to the configured Platform API endpoint. Blank prevents requests."
+      - name: platform_api_secret
+        goName: PlatformAPISecret
+        type: secretString
+        required: true
+        description: "Platform API Secret shown once with the key at https://cloud.emqx.com/console/ > Settings > Platform API Key > Create New Key. Copy its opaque value when created; it cannot be retrieved later. Dex stores it as a secret credential and sends it only as the HTTP Basic password. Blank prevents requests."
+    guide:
+      startURL: https://docs.emqx.com/en/cloud/latest/api/api_platform.html
+      steps:
+        - Sign in at https://cloud.emqx.com/console/ as a Root User or Administrator, then open Settings > Platform API Key.
+        - Click Create New Key, select Deployment Management in Functionality Scope and only the projects you need in Project Scope, then copy the Platform API Key and Secret shown once. Store both as Dex secrets.
+        - Copy the Platform API endpoint ending in /public_api/v1 from the same Console page into platformEndpoint. Do not use a Broker Deployment API endpoint or its App ID and App Secret.
+        - Leave timeout and maxResponseBytes blank for displayed defaults. List Deployments is limited by EMQX Cloud to 60 calls per 60 minutes. To revoke access, delete the key from Settings > Platform API Key.
+  operations:
+    - name: listDeployments
+      goName: ListDeployments
+      inputType: ListDeploymentsInput
+      outputType: ListDeploymentsOutput
+      kind: query
+      description: List deployments within the Platform API key's selected project scope.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: EMQX Cloud returned zero or more deployments.}
+        - {id: providerRejected, goName: ProviderRejected, description: EMQX Cloud rejected the key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: EMQX Cloud returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local connection settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: twoDeployments
+          branch: listed
+          description: Two projects contain broker deployments with different status values.
+          default: true
+          output: {deployments: [{deploymentId: mdfba81f, deploymentName: deployment-mdfba81f, deploymentType: serverless, projectName: default, region: N. Virginia (us-east-1), status: stopped, version: v5, platform: AWS, connections: 1000, tps: 1000, createdAt: "2024-11-21 02:51"}, {deploymentId: b1f77113, deploymentName: deployment-b1f77113, deploymentType: dedicatedFlex, projectName: test, region: N. Virginia (us-east-1), status: running, version: v5, platform: AWS, connections: 1000, tps: 1000, createdAt: "2025-04-17 08:36"}]}
