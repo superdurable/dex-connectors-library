@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tianyancha
+  displayName: Tianyancha
+  description: Read selected public registration facts about one Chinese company.
+  company: tianyancha
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: tianyancha
+  codegen:
+    go:
+      package: tianyancha
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one company profile request, as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes, as a positive integer. Blank uses the displayed default; increase only if the company record grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: tianyancha-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API token from https://open.tianyancha.com > 数据中心 > 我的接口 after applying for interface 365. Copy the token exactly, without Bearer; blank prevents requests.
+    guide:
+      startURL: https://open.tianyancha.com/open/365
+      steps:
+        - Sign in at https://open.tianyancha.com, apply for interface 365 企业基本信息（含主要人员）, then open 数据中心 > 我的接口 and copy its token into Dex Connections. The token is secret and sent unchanged in Authorization, without a Bearer prefix. Blank prevents requests.
+        - Start GetCompanyProfile with a company name, unified social credit code, registration number, or Tianyancha company ID in keyword, for example {"keyword":"平安银行股份有限公司"}. The interface currently lists ¥0.25 per call; confirm your plan and access before running the Flow.
+        - The connector returns only company ID, name, registration status, credit code, industry, capital, and company type. It discards the provider's staff, legal-person, contact, and address fields. Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: getCompanyProfile
+      goName: GetCompanyProfile
+      inputType: GetCompanyProfileInput
+      outputType: GetCompanyProfileOutput
+      kind: query
+      description: Read limited registration facts for one company by keyword.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Tianyancha returned one company profile.}
+        - {id: noData, goName: NoData, description: Tianyancha found no matching company., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Tianyancha rejected the token, permission, or query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Tianyancha returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local token or company keyword is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "Each company profile lookup can be charged, so transient failures are retried at most twice."}}
+      mocks:
+        - name: sampleCompany
+          branch: found
+          description: One active company with limited registration facts.
+          default: true
+          output: {companyID: 199557844, name: 平安银行股份有限公司, registrationStatus: 存续, creditCode: 91440300192185379H, industry: 货币金融服务, registeredCapital: 1142489.4787万人民币, companyType: 股份有限公司(上市)}
+        - name: noCompany
+          branch: noData
+          description: No company matches the supplied keyword.
+          failure: {kind: NOT_FOUND, message: Tianyancha found no matching company.}
