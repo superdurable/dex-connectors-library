@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tingyun
+  displayName: Tingyun
+  description: List monitored mobile applications without exposing their app tokens.
+  company: Tingyun
+  categories: [analytics]
+  version: v0.1.0
+spec:
+  provider: tingyun
+  codegen:
+    go:
+      package: tingyun
+  configuration:
+    fields:
+      - name: apiHost
+        goName: APIHost
+        type: string
+        required: true
+        description: "HTTPS platform origin such as https://wukong2.tingyun.com from the address bar after signing in at https://wukong2.tingyun.com/. Include no path except an optional trailing slash, port, query, or credentials. Blank prevents requests; use your own Tingyun platform host if different."
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one application-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for an unusually large application list. App tokens are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: tingyun-access-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: "Secret accessToken from your Tingyun platform such as https://wukong2.tingyun.com/ > lower-left account name > 账户管理 > API > generate accessToken. Copy the opaque token without the token prefix; blank prevents requests."
+    guide:
+      startURL: https://wukong2.tingyun.com/
+      steps:
+        - Sign in to your Tingyun platform, starting at https://wukong2.tingyun.com/ if that is your account's node. Copy the HTTPS origin from its address bar into apiHost; blank is invalid. Only *.tingyun.com hosts are supported in this version.
+        - Hover over the lower-left account name, open 账户管理 > API, and generate an accessToken. Copy the secret token into Dex without the token prefix; blank is invalid. The connector sends authorization as token plus one space plus the accessToken.
+        - Start ListApplications with empty input to read the mobile App list. The connector returns only numeric application IDs and names, excluding each appToken. Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: listApplications
+      goName: ListApplications
+      inputType: ListApplicationsInput
+      outputType: ListApplicationsOutput
+      kind: query
+      description: List monitored mobile App IDs and names visible to the accessToken.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Tingyun returned mobile application metadata.}
+        - {id: providerRejected, goName: ProviderRejected, description: Tingyun rejected authentication or access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Tingyun returned malformed or oversized metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local host or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneApplication
+          branch: listed
+          description: One mobile application is available.
+          default: true
+          output: {applications: [{id: 7461, name: mobile-app}]}
