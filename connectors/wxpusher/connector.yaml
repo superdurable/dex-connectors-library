@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: wxpusher
+  displayName: WxPusher
+  description: Count subscriptions to an authorized WxPusher application or topic without exposing user records.
+  company: WxPusher
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: wxpusher
+  codegen:
+    go:
+      package: wxpusher
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the WxPusher API. Leave blank for the displayed production endpoint; override only for a trusted provider-issued test origin.
+        default: https://wxpusher.zjiecode.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one subscriber-count query as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum subscriber-count response size in bytes as a positive integer. Leave blank for the displayed default.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: wxpusher-app-token
+    fields:
+      - name: app_token
+        goName: AppToken
+        type: secretString
+        description: Required appToken from https://wxpusher.zjiecode.com/admin/ > select your application > appToken. Copy the AT_ token into this protected field; blank prevents requests.
+        required: true
+    guide:
+      startURL: https://wxpusher.zjiecode.com/admin/
+      steps:
+        - Sign in with WeChat at https://wxpusher.zjiecode.com/admin/ and create or select an application. Open its appToken menu and copy the AT_ application token into the protected app_token field. Resetting the token invalidates the old connection.
+        - This Query asks for page 1 with pageSize 1 and returns only data.total; the user record is discarded. Leave baseUrl, timeout and maxResponseBytes blank for their displayed defaults. The token is transmitted to the official HTTPS API as a query parameter and must remain protected.
+  operations:
+    - name: getSubscriberCount
+      goName: GetSubscriberCount
+      inputType: GetSubscriberCountInput
+      outputType: SubscriberCountResult
+      kind: query
+      description: Count the application's subscription records without returning UID or user details.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: counted, goName: Counted, description: "WxPusher returned the subscriber-record count."}
+        - {id: providerRejected, goName: ProviderRejected, description: "WxPusher rejected the token or query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "WxPusher returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "The connection is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: countedSubscribers
+          branch: counted
+          description: Synthetic subscription count for local Dex Flow verification.
+          default: true
+          output: {total: 40}
