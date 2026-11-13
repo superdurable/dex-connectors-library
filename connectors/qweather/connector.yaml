@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: qweather
+  displayName: QWeather
+  description: Read current weather for a latitude and longitude.
+  company: QWeather
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: qweather
+  codegen:
+    go:
+      package: qweather
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one weather request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for expanded weather metadata. Output retains just current condition, temperature, time, and attributions.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: qweather-api-key
+    fields:
+      - name: api_host
+        goName: APIHost
+        type: secretString
+        required: true
+        description: "Account-specific API Host from https://console.qweather.com/ > Settings > API Host, like abc123.xy.qweatherapi.com. Copy only the hostname, without https://, path, or port. QWeather treats it as part of authentication; Dex stores it as a secret credential. Blank prevents requests."
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "API KEY credential from https://console.qweather.com/ > Projects > select project > Credentials > Add Credential > API KEY. Copy the complete opaque key. It is secret, stored only as a Dex credential, and sent in X-QW-Api-Key; blank prevents requests."
+    guide:
+      startURL: https://dev.qweather.com/en/docs/configuration/project-and-key/
+      steps:
+        - Sign in at https://console.qweather.com/, open Projects, create or select a project, then under Credentials choose Add Credential and API KEY. Save and copy the complete key into Dex. Restrict the key to the weather API where suitable.
+        - Open Console > Settings > API Host and copy the unique hostname into Dex without a URL scheme, path, or port. This hostname is part of QWeather authentication; do not substitute the legacy shared API domain.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. Supply decimal latitude and longitude in the Flow input, for example 39.92 and 116.41 for Beijing. The connector queries current weather once and returns QWeather attributions with the weather fields.
+  operations:
+    - name: getCurrentWeather
+      goName: GetCurrentWeather
+      inputType: GetCurrentWeatherInput
+      outputType: GetCurrentWeatherOutput
+      kind: query
+      description: Read current weather at decimal latitude and longitude.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: QWeather returned current weather for the coordinates.}
+        - {id: providerRejected, goName: ProviderRejected, description: "QWeather rejected authentication, quota, host, or location.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: QWeather returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local coordinates, credentials, or settings are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 20s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: personWaiting, explanation: "Current weather loses value quickly and QWeather warns against repeated invalid or throttled requests, so stop after three attempts."}}
+      mocks:
+        - name: beijing
+          branch: found
+          description: Example current weather in Beijing with provider attribution.
+          default: true
+          output: {conditionText: Few Clouds, conditionCode: "102", temperatureValue: 31.71, temperatureUnit: "°C", validTime: "2024-05-31T03:15Z", attributions: [https://developer.qweather.com/attribution.html]}
