@@ -1,0 +1,3 @@
+# Honor App ID lookup Flow
+
+Run `go run .` here with `DEX_FLOW_SERVICE_ADDRESS` pointing to `dexcli dev` and Dex project configuration available to `projectconfig.LoadFromEnvironment`. Add an `honor` connection in Dex Web with Client ID and API key from [Management Center > Open Capabilities > Credentials](https://developer.honor.com/cn/doc/guides/101359). Start `HonorAppIDLookup` with `{"packageName":"com.example.app"}` after binding that package in Honor App Management. The default `foundApp` mock returns app ID 123456; `noApp` returns no match. A real connection exchanges the credentials for an account token and reads only that package's app ID.
