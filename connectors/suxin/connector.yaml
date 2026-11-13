@@ -1,0 +1,76 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: suxin
+  displayName: Suxin
+  description: List organizations accessible to the Suxin API user without exposing company registration or signer details.
+  company: Suxin
+  categories: [files-documents]
+  version: v0.1.0
+spec:
+  provider: suxin
+  codegen:
+    go:
+      package: suxin
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Suxin HTTPS Open API origin documented at https://suxin365.com/. Leave blank for the displayed production default; override only for a provider-issued HTTPS origin.
+        default: https://pc.suxin365.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for each token or organization request, such as 5s or 1m. Leave blank for the displayed default; increase only for a slow provider response.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum number of bytes in each token or organization response. Leave blank for the displayed default; increase only for a legitimate larger organization list.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: suxin-api
+    fields:
+      - name: app_id
+        goName: AppID
+        type: secretString
+        required: true
+        description: Suxin application ID, formatted like app_test_..., from the credentials issued for the application described in section 2.1 at https://pc.suxin365.com/open-api.html; copy its appId here. Treat as secret; blank prevents authorization.
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Suxin API key, formatted like sk_test_..., paired with appId in section 2.1 at https://pc.suxin365.com/open-api.html; copy its apiKey here. Secret; blank prevents authorization.
+    guide:
+      startURL: https://pc.suxin365.com/
+      steps:
+        - Obtain the appId and paired apiKey issued for your Suxin Open API application, as specified in the documentation section 2.1, and copy them into the secret app_id and api_key fields. Both are required. Use credentials issued for this Open API integration.
+        - The connector exchanges those credentials at POST /api/v1/auth/token, uses the returned userId to request GET /api/v1/org/list, and does not ask you to transcribe a user ID. The token is kept out of Flow state and results.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults unless Suxin assigned your organization another HTTPS origin or a larger response allowance. The result contains only organization ID, name, type, and certification status.
+  operations:
+    - name: listOrganizations
+      goName: ListOrganizations
+      inputType: ListOrganizationsInput
+      outputType: ListOrganizationsOutput
+      kind: query
+      description: List organizations visible to the API key's default user.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Suxin returned organization metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Suxin rejected credentials or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Suxin returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleOrganizations
+          branch: listed
+          description: Synthetic organization metadata for local Flow verification, not live Suxin data.
+          default: true
+          output:
+            organizations:
+              - {id: "1001", name: Example Organization, entityType: COMPANY, certifyStatus: VERIFIED}
