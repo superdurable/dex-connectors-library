@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: yanwen
+  displayName: Yanwen Logistics
+  description: List Yanwen handover warehouses available to an authorized customer.
+  company: Yanwen
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: yanwen
+  codegen:
+    go:
+      package: yanwen
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Yanwen order API. Leave blank for the displayed production endpoint; override only for the official sandbox or a provider-approved endpoint.
+        default: https://open.yw56.com.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one warehouse-list query as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum warehouse-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if an authorized list exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: yanwen-api-token
+    fields:
+      - name: user_id
+        goName: UserID
+        type: string
+        description: Required Yanwen customer number from https://opendocs.yw56.com.cn/ > customer center > Account Management > Shipping Account Management. Copy the non-secret customer number exactly; blank prevents requests.
+        required: true
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: Secret API token from customer center > Account Management > Shipping Account Management at https://opendocs.yw56.com.cn/. Copy exactly; blank prevents requests. Dex protects it and uses it only to sign requests.
+        required: true
+    guide:
+      startURL: https://opendocs.yw56.com.cn/webfile/7128649694825156608/
+      steps:
+        - Register or sign in to the Yanwen customer center from https://opendocs.yw56.com.cn/ and open Account Management > Shipping Account Management. Find the customer number and API token for the production account.
+        - Copy the customer number into user_id and the secret token into protected api_token. Both are required; update this connection after rotation. For sandbox testing, use the official sandbox endpoint and its matching test credentials shown in the provider documentation.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed production defaults. This Query reads warehouse metadata only; optional product filtering is not needed to list all handover warehouses.
+  operations:
+    - name: listWarehouses
+      goName: ListWarehouses
+      inputType: ListWarehousesInput
+      outputType: WarehouseList
+      kind: query
+      description: List handover warehouse codes, names, and regions available to the Yanwen customer.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Yanwen returned a warehouse list, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Yanwen rejected the account or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Yanwen returned malformed or oversized warehouse data.", optional: true}
+        - {id: defect, goName: Defect, description: "The local connection is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedWarehouse
+          branch: listed
+          description: Synthetic handover warehouse for local Dex Flow verification.
+          default: true
+          output: {warehouses: [{code: "01", name: "Beijing Yanwen", area: "North China"}]}
