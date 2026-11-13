@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.6.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.10.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -171,6 +171,46 @@ try {
 }
 ```
 
+## Application environment
+
+AppManifest `application.environment` declares application-owned strings, and Dex Web stores each value in the project configuration: ordinary values inline and application secrets as exact private object versions. The [complete runnable application environment example](examples/application_environment.mjs) writes a secret, pins it in a snapshot, and resolves it the way a Worker does.
+
+`LoadedProject.resolveApplicationEnvironment()` reads each secret by exact version, checks its digest, and requires the object to bind the project scope and field name. It makes no provider calls, refreshes, writes, or mutable configuration reads, so later secret versions do not change a running Worker. The returned `ApplicationEnvironment` offers `lookup(name)` and `apply()`. `apply()` sets only application-owned names in `process.env`, or in the object you pass. It first checks every field and refuses all of them if any name is reserved: `PATH`, `HOME`, `PORT`, `HOST`, `NODE_OPTIONS`, `SSL_CERT_FILE`, `SSL_CERT_DIR`, `PUBLIC_BASE_URL`, `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`, or a `SUPERVERSE_`, `DEX_`, `AWS_`, `LD_`, `GO`, or `GIT_` prefix. Resolve and apply once at startup, before reading application settings or creating clients. The object redacts values from `toString`, template literals, `util.inspect`, and console output, and `JSON.stringify` throws. Errors never contain values. Never put resolved values in Flow inputs, Attributes, Results, Streams, or logs.
+
+`validateAndSortEnvironmentDeclarations`, `canonicalEnvironmentDeclarations`, `validateEnvironmentValue`, `ConfigurationStore.createApplicationSecret`, and `ConfigurationStore.validateApplicationEnvironment` apply Go's rules for writers such as Dex Web. Names are unique uppercase ASCII identifiers of at most 128 characters, with at most 128 fields. Values are at most 32,768 UTF-8 bytes and contain no NUL. `minLength` counts Unicode code points. A field has at most 128 unique enum values, and a secret field cannot declare an enum. A local Dex Web project selected with `DEX_CONNECTOR_CONFIG_FILE` has no application environment, so it resolves to zero fields, as in Go and Python.
+
+```js
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+import { inspect } from 'node:util';
+import { ConfigurationStore, InMemoryObjectStore, LoadedProject } from '../dist/projectconfig/index.js';
+
+// Dex Web's role: store the secret as an exact private version, then pin it in a configuration snapshot.
+const scope = { projectId: 'example', kind: 'preview' };
+const objects = new InMemoryObjectStore();
+const configurations = new ConfigurationStore(objects, scope);
+const declarations = [
+  { name: 'REVIEW_API_KEY', required: true, secret: true, minLength: 8 },
+  { name: 'SLACK_REVIEW_CHANNEL', required: true, enum: ['#ops', '#reviews'] },
+];
+const reviewKey = await configurations.createApplicationSecret('REVIEW_API_KEY', 'test-only-review-key');
+const written = await configurations.writeConfiguration(0, {
+  connections: [], triggerBindings: [], operationConfigurations: [],
+  environment: { REVIEW_API_KEY: { secretRef: reviewKey }, SLACK_REVIEW_CHANNEL: { value: '#reviews' } },
+});
+await configurations.validateApplicationEnvironment(declarations, written);
+const snapshot = await configurations.freezeConfiguration(written.revision);
+
+// The Worker's role; a hosted Worker gets the same project from loadFromEnvironment().
+const project = new LoadedProject(await configurations.readSnapshot(snapshot), snapshot, objects, undefined, undefined);
+const environment = await project.resolveApplicationEnvironment();
+const workerEnvironment = {};
+environment.apply(workerEnvironment); // Omit the argument to set process.env before creating application clients.
+if (workerEnvironment.REVIEW_API_KEY !== 'test-only-review-key' || workerEnvironment.SLACK_REVIEW_CHANNEL !== '#reviews') throw new Error('application environment example failed');
+if (inspect(environment).includes('test-only') || String(environment).includes('test-only')) throw new Error('application environment was not redacted');
+```
+
 ## Project credential providers
 
 The [runnable refresh example](examples/refreshing_project.mjs) binds `newRefreshingCredentialProvider` to a named project connection. `newCredentialProvider` reads an API key or another nonrenewable credential on each call. A refresh provider writes a `REFRESHING` head with a monotonic fence before sending one provider request, publishes an immutable result, and lets observers recover a result whose final head write was lost. An expired `AUTHORIZING` head publishes its immutable result when present or fences the connection as `REAUTHORIZATION_REQUIRED`; observers reload after competing writes. A terminal provider response also fences the connection as `REAUTHORIZATION_REQUIRED`; a transient response restores the prior credential. The local Dex Web projection writes an accepted refresh back to its mode-0600 `connections.json` only while that file still holds the imported credential. The decoder and encoder must cover the complete private credential, including a renewal token omitted by the provider's response.
@@ -283,6 +323,12 @@ await fence.recordProviderId(result.providerId);
 ```
 
 ## Release notes
+
+### 0.10.0
+
+`LoadedProject.resolveApplicationEnvironment()` resolves the application environment that `dex-app.yaml` declares, at parity with Go `ResolveApplicationEnvironment` and Python `resolve_application_environment`. It reads application secrets by exact version with a digest check, and returns a redacting `ApplicationEnvironment` whose `apply()` refuses reserved names. `ConfigurationStore` adds `createApplicationSecret`, `resolveApplicationEnvironment`, and `validateApplicationEnvironment`. The package also exports the declaration validators and `isApplicationEnvironmentName`. Configuration snapshots now reject environment entries that Go rejects: reserved or invalid names, oversized values, and secret references outside the scope or field. They also accept the JSON `null` members that Go writes or decodes as empty: `connections`, `triggerBindings`, `operationConfigurations`, `environment`, `value`, `secretRef`, `credentialBroker`, `authMethodId`, and `sharedConnectionId`. This addition is not breaking.
+
+Bug fix: a hosted project's credential broker token, at startup and on renewal after a 401, is now read as an application secret object with exact version, digest, scope, and the name `DEX_CREDENTIAL_BROKER_TOKEN`. The broker receives the token value, as in Go and Python. Previously the token sent was the raw object JSON. Concurrent broker reads now share one token read and one renewal after 401, and an unreadable configuration head during renewal keeps the current token reference, as in Go. A caller's abort or deadline also ends its wait for the token, so a stalled token read no longer blocks later broker reads. Credential broker token references with version `null` or a NUL, CR, or LF are rejected as Go rejects them, and endpoints follow Go's validation: at most 2048 UTF-8 bytes, no user information, query, or fragment, and plain HTTP only for private hosts. The broker client sends each request to the validated, normalized URL, and an endpoint is refused when URL normalization would change its host, such as a percent-encoded host, a hexadecimal, octal, or shortened IPv4 address, or an internationalized domain name.
 
 ### 0.9.0
 

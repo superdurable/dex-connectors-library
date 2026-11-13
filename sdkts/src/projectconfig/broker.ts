@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { BodyTooLargeError, readBoundedBody } from '../providerhttp/index.js';
 import { ReauthorizationRequiredError } from '../errors.js';
-import { isPrivateBrokerHost } from '../netpolicy.js';
+import { isValidCredentialBrokerEndpoint } from './credential_broker_endpoint.js';
 import { RFC3339NanoSchema } from './model.js';
 
 /** Broker temporarily unavailable; another read may succeed. */
@@ -34,11 +34,18 @@ export const BrokerAnswerSchema = z.object({
 /** Client for one trusted credential broker endpoint and scope token source. */
 export class CredentialBrokerClient {
   #token: string | undefined;
-  /** Bind a trusted endpoint, token source, and optional transport; tokens renew only after 401. */
-  constructor(private readonly endpoint: string, private readonly readToken: (renew?: boolean) => Promise<string>, private readonly transport: typeof fetch = fetch) {
-    let parsed: URL;
-    try { parsed = new URL(endpoint); } catch { throw new TypeError('credential broker endpoint is invalid'); }
-    if (!['https:', 'http:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash || (parsed.protocol === 'http:' && !isPrivateBrokerHost(parsed.hostname))) throw new TypeError('credential broker endpoint is invalid');
+  readonly #requestURL: string;
+  #tokenLockTail: Promise<void> = Promise.resolve();
+  /**
+   * Bind a trusted endpoint, token source, and optional transport; tokens renew only after 401.
+   *
+   * Concurrent reads share one token read and one renewal: a caller whose refused token another caller already
+   * replaced reuses the newer token instead of renewing again. A caller's abort or 40-second deadline also ends its
+   * wait for the token and any token read it started, so a stalled read cannot block later calls.
+   */
+  constructor(endpoint: string, private readonly readToken: (renew?: boolean) => Promise<string>, private readonly transport: typeof fetch = fetch) {
+    if (!isValidCredentialBrokerEndpoint(endpoint)) throw new TypeError('credential broker endpoint is invalid');
+    this.#requestURL = new URL(endpoint).href;
   }
 
   /** Read a shared credential; rejectedRevision is sent only when positive. */
@@ -55,17 +62,12 @@ export class CredentialBrokerClient {
   }
 
   private async readWithinDeadline(sharedConnectionId: string, rejectedRevision: number, requestSignal: AbortSignal): Promise<BrokerCredential> {
-    let token = this.#token ?? await this.readToken();
-    if (!isHeaderSafeBrokerToken(token)) throw new CredentialBrokerRejectedError();
-    this.#token = token;
+    let token = await this.#bearerToken(requestSignal);
     const payload = JSON.stringify({ sharedConnectionId, ...(rejectedRevision > 0 ? { rejectedRevision } : {}) });
     let response: Response;
     response = await this.post(token, payload, requestSignal);
     if (response.status === 401) {
-      const renewedToken = await this.readToken(true);
-      if (!isHeaderSafeBrokerToken(renewedToken) || renewedToken === token) throw new CredentialBrokerRejectedError();
-      token = renewedToken;
-      this.#token = token;
+      token = await this.#renewBearerToken(token, requestSignal);
       response = await this.post(token, payload, requestSignal);
     }
     if (response.status !== 200) {
@@ -91,14 +93,56 @@ export class CredentialBrokerClient {
     };
   }
 
+  async #bearerToken(signal: AbortSignal): Promise<string> {
+    return this.#withTokenLock(signal, async () => {
+      if (this.#token) return this.#token;
+      const token = await settleBeforeAbort(this.readToken(), signal);
+      if (!isHeaderSafeBrokerToken(token)) throw new CredentialBrokerRejectedError();
+      this.#token = token;
+      return token;
+    });
+  }
+
+  async #renewBearerToken(refusedToken: string, signal: AbortSignal): Promise<string> {
+    return this.#withTokenLock(signal, async () => {
+      if (this.#token && this.#token !== refusedToken) return this.#token;
+      this.#token = undefined;
+      const token = await settleBeforeAbort(this.readToken(true), signal);
+      if (!isHeaderSafeBrokerToken(token) || token === refusedToken) throw new CredentialBrokerRejectedError();
+      this.#token = token;
+      return token;
+    });
+  }
+
+  // Like Go's tokenMutex held under a context: an aborted waiter leaves the queue, and the holder's read is bounded.
+  async #withTokenLock<T>(signal: AbortSignal, action: () => Promise<T>): Promise<T> {
+    const previous = this.#tokenLockTail;
+    let release!: () => void;
+    const current = new Promise<void>(resolve => { release = resolve; });
+    this.#tokenLockTail = previous.then(() => current);
+    try { await settleBeforeAbort(previous, signal); }
+    catch (error: unknown) { release(); throw error; }
+    try { return await action(); }
+    finally { release(); }
+  }
+
   private async post(token: string, payload: string, signal?: AbortSignal): Promise<Response> {
     try {
-      return await this.transport(this.endpoint, {
+      return await this.transport(this.#requestURL, {
         method: 'POST', redirect: 'manual', signal: signal ?? null,
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: payload,
       });
     } catch { throw new CredentialBrokerUnavailableError(); }
   }
+}
+
+function settleBeforeAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(new CredentialBrokerUnavailableError());
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new CredentialBrokerUnavailableError());
+    signal.addEventListener('abort', onAbort, { once: true });
+    operation.then(value => { signal.removeEventListener('abort', onAbort); resolve(value); }, (error: unknown) => { signal.removeEventListener('abort', onAbort); reject(error); });
+  });
 }
 
 function isHeaderSafeBrokerToken(token: string): boolean {

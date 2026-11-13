@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import { isPrivateBrokerHost } from '../netpolicy.js';
+import { isValidCredentialBrokerEndpoint } from './credential_broker_endpoint.js';
+import { isApplicationEnvironmentName, isApplicationSecretReferenceInScope, validateEnvironmentReferences } from './application_environment_rules.js';
 
 /** Current secret-free project configuration schema shared with Dex Web. */
 export const ConfigurationSchemaVersion = 'connectors.dex.dev/project-configuration/v1alpha3';
@@ -26,21 +27,38 @@ export function scopePrefix(scope: Scope): string {
   return `projects/${parsed.projectId}/${parsed.kind}`;
 }
 
+// Go decodes JSON null into an absent pointer or map; accept the same documents.
+function withoutNull(value: unknown): unknown { return value === null ? undefined : value; }
+
+// Go decodes JSON null into a nil slice, which it treats as an empty list.
+function nullAsEmptyList(value: unknown): unknown { return value === null ? [] : value; }
+
+// Zod drops an own "__proto__" record key that Go rejects, so check the raw names first.
+function environmentWithoutNull(value: unknown, context: z.RefinementCtx): unknown {
+  if (value !== null && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).some(name => !isApplicationEnvironmentName(name))) {
+    context.addIssue({ code: 'custom', message: 'application environment entry is invalid' });
+  }
+  return withoutNull(value);
+}
+
 /** Exact versioned private application secret reference. */
 export const ApplicationSecretRefSchema = z.strictObject({ key: z.string().min(1), version: z.string().min(1), digest: z.string().regex(/^sha256:[a-f0-9]{64}$/) });
 /** Immutable private application secret reference. */
 export type ApplicationSecretRef = z.infer<typeof ApplicationSecretRefSchema>;
 
 /** Ordinary or private application environment value. */
-export const EnvironmentValueSchema = z.strictObject({ value: z.string().optional(), secretRef: ApplicationSecretRefSchema.optional() }).refine(value => (value.value === undefined) !== (value.secretRef === undefined));
+export const EnvironmentValueSchema = z.strictObject({
+  value: z.preprocess(withoutNull, z.string().optional()),
+  secretRef: z.preprocess(withoutNull, ApplicationSecretRefSchema.optional()),
+}).refine(value => (value.value === undefined) !== (value.secretRef === undefined), 'application environment entry is invalid');
 /** Ordinary value or private secret reference. */
 export type EnvironmentValue = z.infer<typeof EnvironmentValueSchema>;
 
 /** Logical connection and manifest-validated ordinary settings. */
 export const ConnectionConfigurationSchema = z.strictObject({
   connectorId: z.string().regex(/^[a-z][a-z0-9-]{1,62}$/), connectionName: z.string().min(1),
-  modulePath: z.string().min(1), provider: z.string().min(1), authMethodId: z.string().optional(),
-  sharedConnectionId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/).optional(),
+  modulePath: z.string().min(1), provider: z.string().min(1), authMethodId: z.preprocess(withoutNull, z.string().optional()),
+  sharedConnectionId: z.preprocess(withoutNull, z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/).optional()),
   configuration: z.record(z.string(), z.unknown()),
 });
 /** Ordinary connection configuration and optional shared identity. */
@@ -63,27 +81,27 @@ export const OperationConfigurationSchema = z.strictObject({
 export type OperationConfiguration = z.infer<typeof OperationConfigurationSchema>;
 
 /** Scope-owned credential broker endpoint and exact scope token reference. */
-export const CredentialBrokerConfigurationSchema = z.strictObject({ endpoint: z.url(), tokenSecretRef: ApplicationSecretRefSchema });
+export const CredentialBrokerConfigurationSchema = z.strictObject({ endpoint: z.string(), tokenSecretRef: ApplicationSecretRefSchema });
 /** Shared credential broker endpoint and token reference. */
 export type CredentialBrokerConfiguration = z.infer<typeof CredentialBrokerConfigurationSchema>;
 
 /** Immutable ordinary project configuration snapshot. */
 export const ConfigurationSchema = z.strictObject({
   schemaVersion: z.enum(['connectors.dex.dev/project-configuration/v1alpha2', ConfigurationSchemaVersion]),
-  scope: ScopeSchema, revision: z.number().int().positive(), connections: z.array(ConnectionConfigurationSchema),
-  triggerBindings: z.array(TriggerConfigurationSchema), operationConfigurations: z.array(OperationConfigurationSchema),
-  environment: z.record(z.string(), EnvironmentValueSchema).optional(), credentialBroker: CredentialBrokerConfigurationSchema.optional(),
+  scope: ScopeSchema, revision: z.number().int().positive(), connections: z.preprocess(nullAsEmptyList, z.array(ConnectionConfigurationSchema)),
+  triggerBindings: z.preprocess(nullAsEmptyList, z.array(TriggerConfigurationSchema)), operationConfigurations: z.preprocess(nullAsEmptyList, z.array(OperationConfigurationSchema)),
+  environment: z.preprocess(environmentWithoutNull, z.record(z.string(), EnvironmentValueSchema).optional()), credentialBroker: z.preprocess(withoutNull, CredentialBrokerConfigurationSchema.optional()),
 }).superRefine((configuration, context) => {
   const hasShared = configuration.connections.some(connection => connection.sharedConnectionId !== undefined);
   if (hasShared && !configuration.credentialBroker) context.addIssue({ code: 'custom', message: 'shared connections require a credential broker' });
   if (configuration.schemaVersion.endsWith('v1alpha2') && (hasShared || configuration.credentialBroker)) context.addIssue({ code: 'custom', message: 'shared connections require v1alpha3' });
   if (configuration.credentialBroker) {
     const broker = configuration.credentialBroker;
-    const expectedPrefix = `${scopePrefix(configuration.scope)}/app-secrets/DEX_CREDENTIAL_BROKER_TOKEN/`;
-    if (!broker.tokenSecretRef.key.startsWith(expectedPrefix) || !/^[a-f0-9]{32}$/.test(broker.tokenSecretRef.key.slice(expectedPrefix.length))) context.addIssue({ code: 'custom', message: 'broker token reference differs from scope' });
-    const endpoint = new URL(broker.endpoint);
-    if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.search || endpoint.hash || (endpoint.protocol === 'http:' && !isPrivateBrokerHost(endpoint.hostname))) context.addIssue({ code: 'custom', message: 'broker endpoint is invalid' });
+    if (!isApplicationSecretReferenceInScope(broker.tokenSecretRef, scopePrefix(configuration.scope), 'DEX_CREDENTIAL_BROKER_TOKEN')) context.addIssue({ code: 'custom', message: 'credential broker token reference differs from scope' });
+    if (!isValidCredentialBrokerEndpoint(broker.endpoint)) context.addIssue({ code: 'custom', message: 'broker endpoint is invalid' });
   }
+  try { validateEnvironmentReferences(scopePrefix(configuration.scope), configuration.environment ?? {}); }
+  catch (error: unknown) { context.addIssue({ code: 'custom', message: error instanceof Error ? error.message : 'application environment entry is invalid' }); }
   const connections = configuration.connections.map(item => `${item.connectorId}\0${item.connectionName}`);
   const triggers = configuration.triggerBindings.map(item => `${item.connectorId}\0${item.connectionName}\0${item.triggerName}\0${item.bindingName}`);
   const operations = configuration.operationConfigurations.map(item => `${item.connectorId}\0${item.connectionName}\0${item.operationId}\0${item.flowType}\0${item.stepType}`);

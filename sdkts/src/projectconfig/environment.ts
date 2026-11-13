@@ -10,7 +10,9 @@ export { ConnectionRecordSchema, CredentialEnvelopeSchema } from './connection_s
 import { ConnectionStore } from './connections.js';
 import { DexWebObjectStore } from './dexweb_store.js';
 import { SharedConnections } from './shared_connections.js';
-import { ConfigurationStore, InMemoryObjectStore, S3ObjectStore, digestBytes, type ObjectStore } from './storage.js';
+import { ConfigurationStore, InMemoryObjectStore, S3ObjectStore, type ObjectStore } from './storage.js';
+import { CredentialBrokerTokenSecretName, readApplicationSecretValue } from './application_secret_reader.js';
+import type { ApplicationEnvironment } from './application_environment.js';
 import { CredentialBrokerClient, CredentialBrokerUnavailableError, RejectedCredentialNotRefreshedError, type BrokerCredential } from './broker.js';
 import { isLocalStorageHost } from '../netpolicy.js';
 import { ReauthorizationRequiredError } from '../errors.js';
@@ -21,6 +23,7 @@ export const LocalConnectionsFileEnvironment = 'DEX_CONNECTOR_CONFIG_FILE';
 /** Loaded ordinary configuration and private connection resolver. */
 export class LoadedProject {
   readonly #sharedCredentials = new Map<string, { result: BrokerCredential; readAt: number; notBefore: number }>();
+  readonly #configurations: ConfigurationStore;
   /** Versioned private connection store for generated provider adapters. */
   readonly connections: ConnectionStore;
   /** Bind startup-pinned configuration to exactly one private credential source. */
@@ -32,7 +35,20 @@ export class LoadedProject {
     private readonly broker: CredentialBrokerClient | undefined,
   ) {
     ConfigurationSchema.parse(configuration);
-    this.connections = new ConnectionStore(objects ?? new InMemoryObjectStore(), configuration.scope, broker ? new SharedConnections(configuration, broker) : undefined);
+    const projectObjects = objects ?? new InMemoryObjectStore();
+    this.#configurations = new ConfigurationStore(projectObjects, configuration.scope);
+    this.connections = new ConnectionStore(projectObjects, configuration.scope, broker ? new SharedConnections(configuration, broker) : undefined);
+  }
+
+  /**
+   * Resolve the pinned configuration's application environment, reading each secret by exact version and digest.
+   *
+   * Makes no provider calls, refreshes, writes, or mutable configuration reads. Resolve and optionally `apply()` the
+   * result before creating application clients; never place returned values in a Flow. A local Dex Web project
+   * (`DEX_CONNECTOR_CONFIG_FILE`) has no application environment and resolves to zero fields.
+   */
+  async resolveApplicationEnvironment(): Promise<ApplicationEnvironment> {
+    return this.#configurations.resolveApplicationEnvironment(this.configuration);
   }
 
   /** Read a current private credential, never returning it through a Flow result. */
@@ -135,11 +151,13 @@ export async function loadFromEnvironment(environment: NodeJS.ProcessEnv = proce
   const configuration = await new ConfigurationStore(objects, scope).readSnapshot(snapshot);
   let tokenReference = configuration.credentialBroker?.tokenSecretRef;
   const broker = configuration.credentialBroker ? new CredentialBrokerClient(configuration.credentialBroker.endpoint, async (renew = false) => {
-    if (renew) tokenReference = (await new ConfigurationStore(objects, scope).readConfiguration()).configuration.credentialBroker?.tokenSecretRef;
+    if (renew) {
+      // As in Go, an unreadable head keeps the current reference, which is read again below.
+      try { tokenReference = (await new ConfigurationStore(objects, scope).readConfiguration()).configuration.credentialBroker?.tokenSecretRef ?? tokenReference; }
+      catch { /* keep the current reference */ }
+    }
     if (!tokenReference) throw new Error('credential broker token reference is unavailable');
-    const tokenObject = await objects.readObject(tokenReference.key, tokenReference.version);
-    if (digestBytes(tokenObject.contents) !== tokenReference.digest) throw new Error('credential broker token integrity differs');
-    return Buffer.from(tokenObject.contents).toString('utf8');
+    return readApplicationSecretValue(objects, scope, tokenReference, CredentialBrokerTokenSecretName);
   }) : undefined;
   return new LoadedProject(configuration, snapshot, objects, undefined, broker);
 }

@@ -1,11 +1,16 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { inspect } from 'node:util';
 import { GetBucketVersioningCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { readBoundedBody } from '../providerhttp/index.js';
-import { ConfigurationSchemaVersion, ConfigurationSchema, type Configuration, type Scope, type SnapshotRef, scopePrefix } from './model.js';
+import { ApplicationEnvironment, type EnvironmentDeclaration, validateAndSortEnvironmentDeclarations, validateEnvironmentValue } from './application_environment.js';
+import {
+  applicationSecretPrefix, isApplicationEnvironmentName, isValidEnvironmentValueEncoding, replaceUnpairedSurrogates, validateEnvironmentReferences,
+} from './application_environment_rules.js';
+import { readApplicationSecretValue } from './application_secret_reader.js';
+import { ConfigurationSchemaVersion, ConfigurationSchema, type ApplicationSecretRef, type Configuration, type Scope, type SnapshotRef, scopePrefix } from './model.js';
 
 /** Object is absent at the requested key or exact version. */
 export class ObjectNotFoundError extends Error { constructor() { super('project configuration object is absent'); this.name = 'ObjectNotFoundError'; } }
@@ -200,6 +205,80 @@ export class ConfigurationStore {
     return { key: object.key, version: object.version, digest: digestBytes(object.contents), mediaType: 'application/json' };
   }
 
+  /**
+   * Write one immutable private application secret object and return its exact reference.
+   *
+   * The object binds scope, name, and value at `<scope>/app-secrets/<NAME>/<random 32 hex>`. An unknown or conflicting
+   * write is reconciled by re-reading the same key and comparing exact bytes. Successful candidates remain scope-owned
+   * even when a later configuration CAS loses. Rejects reserved names and invalid values without exposing the value.
+   */
+  async createApplicationSecret(name: string, value: string): Promise<ApplicationSecretRef> {
+    if (!isApplicationEnvironmentName(name) || !isValidEnvironmentValueEncoding(value)) throw new Error('invalid application secret');
+    const key = `${applicationSecretPrefix(scopePrefix(this.scope), name)}${randomBytes(16).toString('hex')}`;
+    const contents = Buffer.from(encodeApplicationSecret(this.scope, name, value));
+    let object: ProjectObject;
+    try { object = await this.objects.createObject(key, contents); }
+    catch (error: unknown) {
+      if (!(error instanceof OutcomeUnknownError || error instanceof ConflictError)) throw error;
+      let observed: ProjectObject;
+      try { observed = await this.objects.readObject(key); }
+      catch { throw error; }
+      if (!Buffer.from(observed.contents).equals(contents)) throw error;
+      object = observed;
+    }
+    if (object.key !== key || !object.version || object.version === 'null' || !Buffer.from(object.contents).equals(contents)) throw new Error('application secret identity is invalid');
+    return { key, version: object.version, digest: digestBytes(contents) };
+  }
+
+  /**
+   * Resolve the configuration's ordinary values and the exact secret versions it pins.
+   *
+   * Makes no provider calls, refreshes, writes, or mutable configuration reads; later secret versions or configuration
+   * revisions do not change the result. Each secret is read by exact version, digest-checked, and must bind this
+   * scope and its field name. Throws a value-free error, returning no partial environment, on any failure.
+   */
+  async resolveApplicationEnvironment(configuration: Configuration): Promise<ApplicationEnvironment> {
+    if (configuration.scope.projectId !== this.scope.projectId || configuration.scope.kind !== this.scope.kind) throw new Error('application environment scope differs');
+    const environment = configuration.environment ?? {};
+    validateEnvironmentReferences(scopePrefix(configuration.scope), environment);
+    const values = new Map<string, string>();
+    for (const [name, entry] of Object.entries(environment)) {
+      const value = entry.value ?? undefined;
+      const secretRef = entry.secretRef ?? undefined;
+      if (value !== undefined) values.set(name, replaceUnpairedSurrogates(value));
+      else if (secretRef) values.set(name, await this.#readSecretValue(secretRef, name));
+    }
+    return new ApplicationEnvironment(values);
+  }
+
+  /**
+   * Check every configured field against the exact source declarations and pinned private values.
+   *
+   * Rejects undeclared names, secret or ordinary classification changes, missing required fields, and values that
+   * violate `minLength` or `enum`. Error messages contain at most a field name, never a value.
+   */
+  async validateApplicationEnvironment(declarations: readonly EnvironmentDeclaration[], configuration: Configuration): Promise<void> {
+    const fields = validateAndSortEnvironmentDeclarations(declarations);
+    const resolved = await this.resolveApplicationEnvironment(configuration);
+    const environment = configuration.environment ?? {};
+    const known = new Set<string>();
+    for (const field of fields) {
+      known.add(field.name);
+      const entry = Object.hasOwn(environment, field.name) ? environment[field.name] : undefined;
+      if (!entry) {
+        if (field.required) throw new Error(`application environment ${field.name} is required`);
+        continue;
+      }
+      if ((entry.secretRef != null) !== field.secret) throw new Error(`application environment ${field.name} classification changed`);
+      validateEnvironmentValue(field, resolved.lookup(field.name) ?? '');
+    }
+    if (Object.keys(environment).some(name => !known.has(name))) throw new Error('application environment contains undeclared fields');
+  }
+
+  async #readSecretValue(reference: ApplicationSecretRef, name: string): Promise<string> {
+    return readApplicationSecretValue(this.objects, this.scope, reference, name);
+  }
+
   private decodeConfiguration(object: ProjectObject): Configuration {
     if (object.key !== this.#key || !object.version || !object.etag) throw new Error('configuration document identity is invalid');
     let decoded: unknown;
@@ -209,6 +288,10 @@ export class ConfigurationStore {
     if (configuration.scope.projectId !== this.scope.projectId || configuration.scope.kind !== this.scope.kind) throw new Error('configuration scope differs');
     return configuration;
   }
+}
+
+function encodeApplicationSecret(scope: Scope, name: string, value: string): string {
+  return `{"scope":${encodeCanonicalValue({ projectId: scope.projectId, kind: scope.kind })},"name":${encodeCanonicalValue(name)},"value":${encodeCanonicalValue(value)}}`;
 }
 
 /** Validate a relative object key before accessing private storage. */
