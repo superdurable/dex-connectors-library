@@ -1,0 +1,76 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: weiling
+  displayName: Weiling
+  description: List Weiling CRM department IDs, names, and parent IDs without employee details.
+  company: Weiling
+  categories: [crm-sales]
+  version: v0.1.0
+spec:
+  provider: weiling
+  codegen:
+    go:
+      package: weiling
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Weiling HTTPS OpenAPI origin documented at https://www.weiling.cn/. Leave blank for the displayed default; the documented production HTTPS host is the only supported origin.
+        default: https://openapi.weiling.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for each token or department request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow response.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes in each token or department response. Leave blank for the displayed default; increase only for a legitimate larger department directory.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: weiling-api
+    fields:
+      - name: app_id
+        goName: AppID
+        type: secretString
+        required: true
+        description: AppId from Weiling CRM administrator > 设置 > 开放平台 at https://www.weiling.cn/; copy this application identifier into the secret field. Blank prevents authorization.
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: AppSecret paired with AppId in Weiling CRM administrator > 设置 > 开放平台 at https://www.weiling.cn/; keep it secret. Blank prevents authorization.
+    guide:
+      startURL: https://www.weiling.cn/
+      steps:
+        - Sign in as a Weiling CRM administrator, open 设置 > 开放平台, and copy the AppId and AppSecret for your application into secret app_id and app_secret fields. Both are required. Ensure that application has access to the department directory.
+        - The connector obtains a two-hour access_token from Weiling and caches it in process until close to expiry, then requests GET /openapi/department/list. The token and app secret never enter Flow state or results.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The output contains only department ID, name, and parent ID; it omits leader user IDs.
+  operations:
+    - name: listDepartments
+      goName: ListDepartments
+      inputType: ListDepartmentsInput
+      outputType: ListDepartmentsOutput
+      kind: query
+      description: List Weiling CRM department metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Weiling returned department metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Weiling rejected credentials or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Weiling returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleDepartments
+          branch: listed
+          description: Synthetic department metadata for local Flow verification, not live Weiling data.
+          default: true
+          output:
+            departments:
+              - {id: "dept-1", name: Example Department, parentID: "root"}
