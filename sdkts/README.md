@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.10.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.9.1`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -324,7 +324,7 @@ await fence.recordProviderId(result.providerId);
 
 ## Release notes
 
-### 0.10.0
+### 0.9.1
 
 `LoadedProject.resolveApplicationEnvironment()` resolves the application environment that `dex-app.yaml` declares, at parity with Go `ResolveApplicationEnvironment` and Python `resolve_application_environment`. It reads application secrets by exact version with a digest check, and returns a redacting `ApplicationEnvironment` whose `apply()` refuses reserved names. `ConfigurationStore` adds `createApplicationSecret`, `resolveApplicationEnvironment`, and `validateApplicationEnvironment`. The package also exports the declaration validators and `isApplicationEnvironmentName`. Configuration snapshots now reject environment entries that Go rejects: reserved or invalid names, oversized values, and secret references outside the scope or field. They also accept the JSON `null` members that Go writes or decodes as empty: `connections`, `triggerBindings`, `operationConfigurations`, `environment`, `value`, `secretRef`, `credentialBroker`, `authMethodId`, and `sharedConnectionId`. This addition is not breaking.
 
