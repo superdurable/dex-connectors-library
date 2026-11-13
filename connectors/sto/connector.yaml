@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: sto
+  displayName: STO Express Tracking
+  description: Query tracking scans for an authorized STO waybill.
+  company: STO
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: sto
+  codegen:
+    go:
+      package: sto
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS STO Link gateway URL including /gateway/link.do. Blank uses the displayed production endpoint; override only for a trusted compatible HTTPS test gateway without credentials or query parameters.
+        default: https://cloudinter-linkgateway.sto.cn/gateway/link.do
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one tracking request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete tracking JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually long scan histories.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: sto-link-gateway
+    fields:
+      - name: appKey
+        goName: AppKey
+        type: string
+        required: true
+        description: Subscription application's App Key from https://open.sto.cn under 控制台 > 应用管理 > 应用详情. Copy the complete opaque from_appkey; this nonsecret identifier is sent in each request. Blank prevents calls.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret paired with the subscription App Key at https://open.sto.cn under 控制台 > 应用管理 > 应用详情. Copy the full secret into this protected field; it signs content and is never sent. Blank prevents calls.
+      - name: fromCode
+        goName: FromCode
+        type: string
+        required: true
+        description: Subscription application's resource code (from_code) from https://open.sto.cn under 控制台 > 应用管理 > 应用详情. Copy the exact resource code, not the API ID or waybill; it is nonsecret. Blank prevents calls.
+    guide:
+      startURL: https://open.sto.cn
+      steps:
+        - Register and complete enterprise onboarding at https://open.sto.cn, then open 控制台 > 应用管理. Create or select an application, subscribe to 物流详情查询 (STO_TRACE_QUERY_COMMON), submit the API for review, and complete production activation. See https://open.sto.cn/#/help/mp2qqe.
+        - In 应用详情, copy the subscription application's App Key, secret App Secret, and resource code into appKey, protected appSecret, and fromCode. The application credentials are used with STO's provider app key sto_trace_query and identical to_code, fixed by this connector. See https://open.sto.cn/#/help/tz5gl0.
+        - Pass waybillNo as a STO waybill number. The Query sends one number, below the official maximum of 20 per call. It excludes names, phone numbers, pickup code, detailed memo, and addresses from the result. See https://open.sto.cn/#/apiDocument/STO_TRACE_QUERY_COMMON. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults; check your STO application terms for quotas and charges because the public API detail does not state fixed values.
+  operations:
+    - name: queryWaybillTrace
+      goName: QueryWaybillTrace
+      inputType: QueryWaybillTraceInput
+      outputType: WaybillTrace
+      kind: query
+      description: Read tracking scans for one authorized STO waybill.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: STO returned the requested waybill's tracking scans.}
+        - {id: providerRejected, goName: ProviderRejected, description: STO conclusively rejected the query or authorization., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: STO returned malformed or oversized tracking JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or input are missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample waybill has a pickup scan.
+          output: {waybillNo: '884000400421364', events: [{scanType: 收件, opTime: '2020-02-18 17:20:08', opOrgName: 青浦重固网点}]}
