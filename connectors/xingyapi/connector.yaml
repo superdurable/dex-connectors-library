@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: xingyapi
+  displayName: XingyAPI Nebula
+  description: Check whether a managed Enterprise WeChat instance is online.
+  company: xingyapi
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: xingyapi
+  codegen:
+    go:
+      package: xingyapi
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one instance status HTTP request, as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes, as a positive integer. Blank uses the displayed default; increase only if the account response grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: xingyapi-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API Key from https://open.xingyapi.com > API Key > create or select a Key. Copy it exactly; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://api.xingyapi.com/api-docs
+      steps:
+        - Sign in at https://open.xingyapi.com and open API Key to create or select a Key; copy its secret value into Dex Connections. The connector sends it in X-Nebula-Key. Blank prevents requests.
+        - Open 实例 in the same console to copy an existing instance_guid, formatted inst_xxxx. The instance must have been created and logged in through the documented scan process or the console one-click login. Start GetInstanceOnlineStatus with {"instanceGUID":"inst_xxxxxxxx"}.
+        - The Query reads only the online status and numeric account ID from personal/getInfo, omitting name, contact, and other personal fields. A not-logged-in response becomes offline. Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: getInstanceOnlineStatus
+      goName: GetInstanceOnlineStatus
+      inputType: GetInstanceOnlineStatusInput
+      outputType: GetInstanceOnlineStatusOutput
+      kind: query
+      description: Check a managed Enterprise WeChat instance's login status.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: checked, goName: Checked, description: XingyAPI returned the instance login status.}
+        - {id: providerRejected, goName: ProviderRejected, description: XingyAPI rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: XingyAPI returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local Key or instance GUID is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: onlineInstance
+          branch: checked
+          description: Managed account is online.
+          default: true
+          output: {isOnline: true, accountID: "1688850000000001"}
+        - name: offlineInstance
+          branch: checked
+          description: Managed instance has no logged-in account.
+          output: {isOnline: false, accountID: ""}
