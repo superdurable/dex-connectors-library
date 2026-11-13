@@ -523,7 +523,7 @@ def release_mutation_state(asset_names: list[str] | None, built_source_sha: str,
 
 def verify_existing_archives(existing_directory: Path, dist_directory: Path) -> None:
     """Require archives already on an incomplete GitHub release to equal the rebuilt archives byte for byte."""
-    for existing in existing_directory.iterdir():
+    for existing in sorted(existing_directory.iterdir()):
         rebuilt = dist_directory / existing.name
         if existing.is_symlink() or not existing.is_file() or not rebuilt.is_file():
             raise ValueError(f"incomplete GitHub release has {existing.name}, which this build did not produce")
