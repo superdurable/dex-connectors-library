@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: kunlun
+  displayName: Mureka
+  description: Read the status of an existing Mureka song generation task.
+  company: Kunlun Tech
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: kunlun
+  codegen:
+    go:
+      package: kunlun
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one song-status request, as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Mureka response size in bytes, as a positive integer. Blank uses the displayed default; raise only for unusually large task records. Output omits media URLs and lyrics.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: mureka-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "Secret API key from https://platform.mureka.cn/ > API Keys. Sign in, open API Keys, create a key and copy its full opaque value. Enter it without Bearer; blank prevents requests."
+    guide:
+      startURL: https://platform.mureka.cn/
+      steps:
+        - Sign in at https://platform.mureka.cn/ and open API Keys in the platform navigation. Create an API key and copy the complete secret value into Dex. The connector adds the Bearer prefix automatically.
+        - Find an existing song-generation task ID in the id field of a Mureka song-generation response. Supply this opaque ID as the Flow input taskId. This read-only connector does not create or charge for a task.
+        - Leave timeout and maxResponseBytes blank for the displayed defaults. Mureka task responses can include generated audio URLs and lyrics; this connector persists only the task ID, status, and model.
+  operations:
+    - name: getTaskStatus
+      goName: GetTaskStatus
+      inputType: GetTaskStatusInput
+      outputType: GetTaskStatusOutput
+      kind: query
+      description: Read the state and model of one existing Mureka song task.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Mureka returned the song task status.}
+        - {id: notFound, goName: NotFound, description: Mureka did not find the song task., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Mureka rejected authentication or task access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Mureka returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local task ID, credentials or settings are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: completedTask
+          branch: found
+          description: An existing song task completed.
+          default: true
+          output: {taskId: "435134", status: succeeded, model: mureka-6}
