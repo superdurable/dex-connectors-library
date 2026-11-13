@@ -25,6 +25,7 @@ directories:
   - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
   - connectors/aweber
+  - connectors/baidu/maps
   - connectors/bamboohr
   - connectors/basecamp
   - connectors/box

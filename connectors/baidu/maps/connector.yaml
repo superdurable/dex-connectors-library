@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: baidu-maps
+  displayName: Baidu Maps
+  description: Convert a Chinese structured street address to Baidu Maps coordinates and match precision.
+  company: Baidu
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: baidu-maps
+  codegen:
+    go:
+      package: baidumaps
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Baidu Maps Web API, without a path. Blank uses the displayed public endpoint; override only for a trusted test server or approved proxy serving /geocoding/v3/ unchanged.
+        default: https://api.map.baidu.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one Baidu Maps geocoding request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Baidu Maps JSON response size in bytes as a positive integer. Blank uses the displayed default; raise only if a legitimate geocoding response exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: baidu-maps-server-ak
+    fields:
+      - name: access_key
+        goName: AccessKey
+        type: secretString
+        description: Secret server-side AK from https://lbs.baidu.com/apiconsole/key > 应用管理 (Application Management) > 我的应用 (My Apps) > 创建应用 (Create Application). Select 服务端 (Server), enable geocoding, and choose IP whitelist validation. Copy the AK without spaces. Baidu requires it in the ak query parameter; Dex stores it only as a credential. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://lbs.baidu.com/apiconsole/key
+      steps:
+        - Sign in to https://lbs.baidu.com/apiconsole/key, then open 应用管理 (Application Management) > 我的应用 (My Apps) > 创建应用 (Create Application).
+        - Set the application type to 服务端 (Server), enable the geocoding service, choose IP whitelist request validation, and add every Dex Worker public egress IP. Do not choose SN validation for this connector.
+        - Submit the application, copy its secret AK into the access_key credential in Dex Web Connections, and save. Revoke or replace the AK in the same console if exposed.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: geocodeAddress
+      goName: GeocodeAddress
+      inputType: GeocodeAddressInput
+      outputType: GeocodeAddressOutput
+      kind: query
+      description: Resolve a structured Chinese address through Baidu Maps Geocoding API v3 and return its coordinate and confidence measures.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: geocoded, goName: Geocoded, description: Baidu Maps returned one geocoded coordinate and precision metrics.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Baidu Maps rejected the AK, permissions, quota, or address.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Baidu Maps returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: baiduOffice
+          branch: geocoded
+          description: A Beijing street address resolves to one Baidu Maps coordinate.
+          default: true
+          output: {longitude: 116.30783584945, latitude: 40.056583335558, precise: true, confidence: 80, comprehension: 100, level: "门址"}
