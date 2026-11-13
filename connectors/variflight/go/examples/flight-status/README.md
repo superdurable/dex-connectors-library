@@ -1,0 +1,3 @@
+# VariFlight flight status Flow
+
+Run `go run .` here with `DEX_FLOW_SERVICE_ADDRESS` pointing to `dexcli dev` and Dex project configuration available to `projectconfig.LoadFromEnvironment`. Add a `variflight` connection in Dex Web with partner appid and appsecurity supplied by [VariFlight DataWorks](https://dataworks.variflight.com/about-us/download-zone/flight-status-query-api-docs/). Ask VariFlight to allowlist the Dex Worker outbound IP. Start `VariFlightFlightStatus` with `{"flightNumber":"GX8915","departureDate":"2026-11-13"}`. The default `scheduledFlight` mock returns one record; `noFlight` selects the optional noData branch. A real connection signs and queries the fixed HTTPS endpoint.
