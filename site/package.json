@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "GOWORK=off go run ../cmd/connectorctl catalog --catalog ../catalog.yaml --output .catalog.yaml && vite",
+    "dev": "git tag -l 'connectors/*/python/v*' 'connectors/*/typescript/v*' > .catalog-language-tags && GOWORK=off go run ../cmd/connectorctl catalog --catalog ../catalog.yaml --completed-language-tags .catalog-language-tags --output .catalog.yaml && vite",
     "build": "tsc -p tsconfig.json && vite build",
     "test": "node --test src/catalogModel.test.mjs src/categoryIcons.test.mjs src/repositoryStarCount.test.mjs scripts/render-card.test.mjs scripts/contributors.test.mjs",
     "render-card": "node scripts/render-card.mjs"

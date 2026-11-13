@@ -76,6 +76,7 @@ export function readCatalog(text: string): CatalogConnector[];
 export function selectedCategoryID(parameterValue: string | null, categories: CatalogCategory[]): string;
 export function connectorMatchesCategory(connector: CatalogConnector, categoryID: string): boolean;
 export function categoryConnectorCounts(categories: CatalogCategory[], connectors: CatalogConnector[]): Map<string, number>;
+export function languageConnectorCounts(connectors: CatalogConnector[]): Map<"all" | "go" | "python" | "typescript", number>;
 export function pythonInstall(connector: CatalogConnector): PythonInstall | null;
 export function connectorMatchesQuery(connector: CatalogConnector, query: string): boolean;
 export function connectorMatchesLanguage(connector: CatalogConnector, language: "all" | "go" | "python" | "typescript"): boolean;
