@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: pgyer
+  displayName: Pgyer
+  description: List uploaded mobile apps and versions from Pgyer API 2.0.
+  company: Pgyer
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: pgyer
+  codegen:
+    go:
+      package: pgyer
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Pgyer API 2.0 service. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://www.pgyer.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one app-list request as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum app-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for unusually large upload pages.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: pgyer-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret API Key from https://www.pgyer.com/account/api under Account Center > API Info after real-name verification. Copy the key without an _api_key= prefix; blank prevents requests. Sub-accounts do not have their own API Key.
+        required: true
+    guide:
+      startURL: https://www.pgyer.com
+      steps:
+        - Sign in at https://www.pgyer.com, complete real-name verification, and open the account menu > Account Center > API Info to copy the API Key.
+        - Enter the API Key in the secret api_key field without an _api_key= prefix. Pgyer API 2.0 requires it in the HTTPS POST form body; resetting the key in API Info invalidates the old key immediately.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Pgyer returns code 1098 when the hourly API limit is reached; check the account plan for its call allowance.
+  operations:
+    - name: listUploadedApps
+      goName: ListUploadedApps
+      inputType: ListUploadedAppsInput
+      outputType: UploadedAppPage
+      kind: query
+      description: List one page of uploaded apps, returning app and build IDs, name, type, version, and creation time only.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Pgyer returned a page of uploaded apps, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Pgyer rejected the API key, permissions, or page.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Pgyer returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration or input is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedApp
+          branch: listed
+          description: Synthetic uploaded-app page for local Dex Flow verification.
+          default: true
+          output: {apps: [{appKey: x1y2z3, buildKey: a1b2c3d4e5f6, name: Example App, buildType: 2, version: '1.1', createdAt: '2025-01-01 10:00:00'}]}
