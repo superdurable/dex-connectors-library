@@ -12,6 +12,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/schema"
 )
 
 // Conformance inputs reach every language model, so they are independent evidence of the wire names.
@@ -20,7 +21,10 @@ func TestPublishedInputSchemasAcceptConformanceInputs(t *testing.T) {
 	validatedInputs := 0
 	for _, directory := range registeredConnectorDirectories(t) {
 		manifests := publishedLanguageManifests(t, directory)
-		require.NotEmpty(t, manifests, directory)
+		// Go-only connectors publish no dex-connector.json; each declared language package publishes one.
+		connectorManifest, err := load(filepath.Join("..", "..", filepath.FromSlash(directory), "connector.yaml"))
+		require.NoError(t, err)
+		require.Len(t, manifests, declaredLanguagePackageCount(connectorManifest), directory)
 		inputSchemas := map[string]*jsonschema.Schema{}
 		publishedSchemas := map[string]string{}
 		for path, contents := range manifests {
@@ -154,6 +158,21 @@ func publishedLanguageManifests(t *testing.T, directory string) map[string][]byt
 		manifests[path] = contents
 	}
 	return manifests
+}
+
+func declaredLanguagePackageCount(manifest schema.Manifest) int {
+	languages := manifest.Spec.Languages
+	if languages == nil {
+		return 0
+	}
+	count := 0
+	if languages.Python != nil {
+		count++
+	}
+	if languages.TypeScript != nil {
+		count++
+	}
+	return count
 }
 
 func conformanceDirectoryName(directory string) string {
