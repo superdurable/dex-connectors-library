@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: shoplazza
+  displayName: Shoplazza
+  description: Read safe shop identity and currency metadata from Shoplazza.
+  company: shoplazza
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: shoplazza
+  codegen:
+    go:
+      package: shoplazza
+  configuration:
+    fields:
+      - name: shopDomain
+        goName: ShopDomain
+        type: string
+        required: true
+        description: Store system domain from Shoplazza China admin at https://www.shoplazza.cn/ > your store > browser address; enter the full non-secret hostname ending in .myshoplaza.com, without scheme or path. Blank prevents calls.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive maximum duration for one shop API request, as a Go duration such as 10s or 1m. Leave blank for the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum shop response size in bytes. Leave blank for the displayed default; raise only if legitimate shop metadata exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: shoplazza-private-app
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret private-app Access Token from https://www.shoplazza.cn/ > store admin > Apps > Manage Private Apps > your app name; copy the generated opaque token into this protected field. Blank prevents calls; Dex sends it only in the Access-Token header.
+    guide:
+      startURL: https://www.shoplazza.cn/
+      steps:
+        - Sign in at https://www.shoplazza.cn/ and select the store to inspect. Copy its system domain from the store admin address, in the form store.myshoplaza.com, into shopDomain; it is not secret.
+        - In store admin open Apps > Manage Private Apps > Create App. Name the app, provide the required developer contact, and grant only the read_shop permission.
+        - Save the app, click its name, and copy the generated Access Token into the protected access_token field. This token is secret; blank prevents requests. Revoke or rotate it from Manage Private Apps if exposed.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. This connector reads only shop ID, name, domain and currency from the current 2027-01 API.
+  operations:
+    - name: getShop
+      goName: GetShop
+      inputType: GetShopInput
+      outputType: GetShopOutput
+      kind: query
+      description: Read the current store's ID, name, domain, and currency without contact or address data.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Shoplazza returned shop metadata.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Shoplazza rejected the token, scope or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Shoplazza returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local connection configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleShop
+          branch: found
+          description: Sample store identity without contacts or addresses.
+          default: true
+          output: {id: 42, name: Sample Shop, domain: sample.example, currency: USD}
