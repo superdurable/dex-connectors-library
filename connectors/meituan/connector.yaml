@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: meituan
+  displayName: Meituan Delivery
+  description: Query a Meituan Delivery order's current status without rider information.
+  company: Meituan
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: meituan
+  codegen:
+    go:
+      package: meituan
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Meituan Delivery API. Leave blank for the displayed production endpoint; override only for a trusted provider-issued test endpoint.
+        default: https://peisongopen.meituan.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one order-status query as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum order-status response size in bytes as a positive integer. Leave blank for the displayed default; raise only if provider responses exceed it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: meituan-delivery-key
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: string
+        description: Required AppKey from https://peisong.meituan.com/tscc/ > application dashboard. Copy the non-secret identifier exactly; blank prevents requests.
+        required: true
+      - name: secret
+        goName: Secret
+        type: secretString
+        description: Secret paired with the AppKey in the same Meituan Delivery dashboard. Copy exactly; blank prevents requests. Dex protects it and uses it only for SHA-1 signing.
+        required: true
+    guide:
+      startURL: https://peisong.meituan.com/tscc/guide
+      steps:
+        - Register or sign in at https://peisong.meituan.com/tscc/ and complete the Meituan Delivery cooperation onboarding. Open the application dashboard to obtain the production or test AppKey and paired secret.
+        - Copy AppKey into app_key and its paired secret into the protected secret field. Both are required. Test and production credentials are distinct; use the matching provider-issued HTTPS endpoint and update this connection after rotation.
+        - This Query reads only orders created by the authorized application within the past 90 days. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults; the provider limits this API to 10 requests per second per AppKey.
+  operations:
+    - name: queryOrderStatus
+      goName: QueryOrderStatus
+      inputType: QueryOrderStatusInput
+      outputType: OrderStatusResult
+      kind: query
+      description: Query the status code and time of a known delivery order, omitting rider identity, phone, and health data.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Meituan returned the current order status."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Meituan rejected the credentials or order identifiers.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Meituan returned malformed or oversized order data.", optional: true}
+        - {id: defect, goName: Defect, description: "The local order identifiers or connection are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundOrder
+          branch: found
+          description: Synthetic order status for local Dex Flow verification.
+          default: true
+          output: {deliveryId: 123456, meituanOrderId: MT123456789, merchantOrderId: ORDER123, status: 20, operatedAt: 1794552600}
