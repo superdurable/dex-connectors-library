@@ -3,9 +3,6 @@
 
 # [Dex Connectors](https://connectors.superdurable.io/)
 
-## Overview
-
-
 
 [<img width="1146" height="826" alt="what-is-connectors" src="https://github.com/user-attachments/assets/90050abb-6a5a-41d9-8333-3c773f40bde2" />](https://connectors.superdurable.io/)
 
