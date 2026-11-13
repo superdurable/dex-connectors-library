@@ -1,0 +1,76 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: qince
+  displayName: Qince
+  description: List Qince organization departments through its signed OpenAPI.
+  company: Qince
+  categories: [crm-sales]
+  version: v0.1.0
+spec:
+  provider: qince
+  codegen:
+    go:
+      package: qince
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: HTTPS OpenAPI origin shown in Qince WEB > API授权 list heading after administrator QR sign-in, such as https://openapi.region2.qince.com. Copy only scheme and host, without /api or a trailing path; blank prevents requests. See https://api.qince.com/SERVER/sys/help.html.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one department-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum department-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate large organization.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: qince-api
+    fields:
+      - name: open_id
+        goName: OpenID
+        type: string
+        required: true
+        description: Nineteen-character enterprise OpenID from Qince WEB > 系统管理 > 集成管理 > API管理 after OpenAPI activation. Ask the enterprise administrator or account manager for this identifier; it is not secret. Blank prevents requests. See https://api.qince.com/SERVER/sys/introduction.html.
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        required: true
+        description: Eighteen-character AppKey from Qince WEB > 系统管理 > 集成管理 > API管理 after OpenAPI activation. Ask the enterprise administrator or account manager for this secret; Dex stores it only as a credential and uses it to sign the request. Blank prevents requests. See https://api.qince.com/SERVER/sys/introduction.html.
+    guide:
+      startURL: https://api.qince.com/SERVER/sys/introduction.html
+      steps:
+        - Have the Qince enterprise administrator enable OpenAPI under 系统管理 > 集成管理 > API管理, or request OpenID and AppKey from the account manager. Enter the 19-character OpenID as open_id and the 18-character secret AppKey as app_key; rotate a disclosed key with the provider.
+        - In Qince WEB, search API授权, scan the QR code with the administrator's Qince mobile app, and copy the HTTPS OpenAPI origin from the API授权 list heading to baseUrl. Leave timeout and maxResponseBytes blank for the displayed defaults.
+        - The Query signs its JSON body with AppKey and a fresh millisecond timestamp, then reads department IDs, codes, names, and status. It omits employee and customer data.
+  operations:
+    - name: listDepartments
+      goName: ListDepartments
+      inputType: ListDepartmentsInput
+      outputType: ListDepartmentsOutput
+      kind: query
+      description: Read organization department metadata without personnel records.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Qince returned department metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Qince rejected the signed query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Qince returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local OpenAPI settings are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleDepartments
+          branch: listed
+          description: Synthetic department metadata for local Flow verification, not enterprise data.
+          default: true
+          output:
+            departments:
+              - {id: "10", code: "DD001", name: "Example Department", active: true}

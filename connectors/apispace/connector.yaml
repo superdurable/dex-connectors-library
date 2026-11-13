@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: apispace
+  displayName: APISpace
+  description: Read current weather for one city from the APISpace weather API.
+  company: APISpace
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: apispace
+  codegen:
+    go:
+      package: apispace
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the APISpace gateway. Leave blank for the displayed production endpoint; override only for a trusted test server or provider-approved proxy.
+        default: https://eolink.o.apispace.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one weather request as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise it only when the provider responds slowly from your network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum weather response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a documented larger provider response.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: apispace-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: Secret API key from https://www.apispace.com/ > Console > Access Control. Copy the exact token without a prefix; blank prevents requests. The key is sent only in X-APISpace-Token and must be updated after rotation.
+        required: true
+    guide:
+      startURL: https://www.apispace.com/eolink/api/456456/apiDocument
+      steps:
+        - Sign in at https://www.apispace.com/ and subscribe to Weather Forecast Query (product 456456). Check its plan and request allowance in the product page; calls may be charged.
+        - Open Console > Access Control and copy the API key to the protected api_token field without a prefix. The key is required in X-APISpace-Token and should be rotated in the APISpace console when needed.
+        - Find a city's areacode in the Domestic Cities attachment on the Weather Forecast Query introduction page. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: getCurrentWeather
+      goName: GetCurrentWeather
+      inputType: GetCurrentWeatherInput
+      outputType: CurrentWeather
+      kind: query
+      description: Read current conditions and provider update time for one city ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "APISpace returned current conditions for the city."}
+        - {id: providerRejected, goName: ProviderRejected, description: "APISpace rejected the key, plan, quota, or city.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "APISpace returned malformed or oversized weather data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration, token, or city ID is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: currentWeather
+          branch: found
+          description: Synthetic city weather for local Dex Flow verification.
+          default: true
+          output: {city: Beijing, condition: Cloudy, temperatureCelsius: 18.5, humidityPercent: 38, updatedAtBeijing: "2026-11-13 12:00:00"}

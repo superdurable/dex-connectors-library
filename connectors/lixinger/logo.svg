@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Lixinger connector">
+  <rect width="64" height="64" rx="14" fill="#166c60"/>
+  <path d="M20 14v36h26v-7H28V14z" fill="#fff"/>
+  <circle cx="43" cy="21" r="6" fill="#f5c94d"/>
+</svg>

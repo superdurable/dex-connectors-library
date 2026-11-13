@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jihugitlab
+  displayName: JiHu GitLab
+  description: List projects joined by the token owner on JihuLab or a JiHu GitLab deployment.
+  company: JiHu GitLab
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: jihugitlab
+  codegen:
+    go:
+      package: jihugitlab
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of JihuLab.com or your organization's JiHu GitLab deployment, copied from its browser address bar. Include only scheme and host without /api; blank uses the displayed JihuLab default. Override only for a private HTTPS deployment. See https://docs.gitlab.cn/docs/jh/api/projects/.
+        default: https://jihulab.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one project-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow private deployment.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum project-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate larger page.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: jihugitlab-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Personal access token from your JiHu GitLab HTTPS site > avatar > 编辑个人资料 > 访问 > 个人访问令牌 > 生成令牌. Select read_api, copy the one-time token into this secret field, and set an expiry. Dex stores it only as a credential; blank prevents requests. See https://docs.gitlab.cn/docs/jh/user/profile/personal_access_tokens/.
+    guide:
+      startURL: https://docs.gitlab.cn/docs/jh/user/profile/personal_access_tokens/
+      steps:
+        - On JihuLab.com or your organization's HTTPS JiHu GitLab site, open avatar > 编辑个人资料 > 访问 > 个人访问令牌. Generate a legacy personal access token with read_api scope, an expiry, and only the project membership needed; copy it once to secret api_key. Revoke it on that page if disclosed.
+        - Leave baseUrl blank for the JihuLab.com default; for a private deployment, copy only its HTTPS origin from the browser address bar. Leave timeout and maxResponseBytes blank for the displayed defaults.
+        - The Query requests only projects where the token owner is a member, one page at a time. It returns project ID, name, path, and next-page number; it does not expose owners, repository content, or access tokens.
+  operations:
+    - name: listMemberProjects
+      goName: ListMemberProjects
+      inputType: ListMemberProjectsInput
+      outputType: ListMemberProjectsOutput
+      kind: query
+      description: List one page of projects joined by the authenticated user.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "JiHu GitLab returned member projects."}
+        - {id: providerRejected, goName: ProviderRejected, description: "JiHu GitLab rejected the token or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "JiHu GitLab returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleMemberProjects
+          branch: listed
+          description: Synthetic project metadata for local Flow verification, not JihuLab data.
+          default: true
+          output:
+            projects:
+              - {id: 42, name: Example Project, path: example-group/example-project}
+            nextPage: 0

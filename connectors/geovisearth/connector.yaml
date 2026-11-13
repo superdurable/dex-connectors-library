@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: geovisearth
+  displayName: GEOVIS Earth
+  description: Read current weather for one Chinese city or coordinate.
+  company: GEOVIS Earth
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: geovisearth
+  codegen:
+    go:
+      package: geovisearth
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: GEOVIS Earth HTTPS weather API origin. Leave blank for the displayed production default; override only when the provider documents a replacement origin. See https://open.geovisearth.com/support/document?docId=220&sid=44.
+        default: https://api.open.geovisearth.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one current-weather request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow response.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum current-weather response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate larger response.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: geovisearth-weather
+    fields:
+      - name: token
+        goName: Token
+        type: secretString
+        required: true
+        description: Weather API service token from GEOVIS Earth open platform > register and verify account > developer guide > apply for token. Copy the token into this secret field; blank prevents requests. The provider requires token in the query string. See https://open.geovisearth.com/support/document?docId=220&sid=44.
+    guide:
+      startURL: https://open.geovisearth.com/
+      steps:
+        - Register on the GEOVIS Earth open platform, complete user verification, and use the developer guide to apply for a service token with access to 全国天气实况（6要素）. Copy it into secret token; blank prevents requests. Rotate it in the platform if disclosed.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Each request uses weather API quota; check the platform's call limit before high-volume use. The Query returns weather data only, never the token.
+  operations:
+    - name: getCurrentWeather
+      goName: GetCurrentWeather
+      inputType: GetCurrentWeatherInput
+      outputType: GetCurrentWeatherOutput
+      kind: query
+      description: Get current weather observations for one Chinese area code or coordinate.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: "GEOVIS Earth returned current weather."}
+        - {id: providerRejected, goName: ProviderRejected, description: "GEOVIS Earth rejected token, quota, or location.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "GEOVIS Earth returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local token or location is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "Each weather API request consumes call quota, so transient retries are limited to three attempts."}}
+      mocks:
+        - name: sampleCurrentWeather
+          branch: fetched
+          description: Synthetic current weather for local Flow verification, not live GEOVIS Earth data.
+          default: true
+          output: {areaCode: WTX_CH101300201, weather: 阴, weatherCode: "02", temperatureCelsius: 26.7, relativeHumidityPercent: 95, windDirection: 东北风, windForce: 3级, surfacePressureHpa: 986.7, observedAt: "20240911135031"}

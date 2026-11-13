@@ -1,0 +1,61 @@
+//go:build integration
+
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+package warehouseflow
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/yanwen/go"
+	"github.com/superdurable/dex-connectors-library/connectors/yanwen/go/yanwenmock"
+	"github.com/superdurable/dex/blob-cache-go/blobcache"
+	"github.com/superdurable/dex/sdk-go/dex"
+)
+
+func TestWarehouseFlowUsesDefaultMockWithRealDex(t *testing.T) {
+	mock := yanwenmock.New(t, ConnectionName)
+	flow := NewFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:10071"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	flowID := "yanwen-warehouses-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, flow, flowID, yanwen.ListWarehousesInput{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output yanwen.WarehouseList
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Len(t, output.Warehouses, 1)
+	require.Equal(t, "01", output.Warehouses[0].Code)
+	require.Equal(t, "North China", output.Warehouses[0].Area)
+	require.Len(t, mock.ListWarehouses().Calls(), 1)
+}

@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: yuexin
+  displayName: Yuexin AI Gateway
+  description: List model IDs available through the Yuexin AI Gateway.
+  company: Yuexin
+  categories: [ai, developer-tools]
+  version: v0.1.0
+spec:
+  provider: yuexin
+  codegen:
+    go:
+      package: yuexin
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one Yuexin model-list HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider adds more model metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: yuexin-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Yuexin AI Gateway Key from https://app.yuexin.ai/keys. Sign in, select Create API Key, save the one-time secret, and paste it into Dex Connections; blank prevents requests.
+    guide:
+      startURL: https://app.yuexin.ai/docs/api-keys
+      steps:
+        - Sign in at https://app.yuexin.ai, open Console > API Keys at https://app.yuexin.ai/keys, select Create API Key, set a name and optional expiry, quota, model/source limits, then save the one-time secret into Dex Connections. Blank prevents requests.
+        - Start ListModels with {}. The connector calls the fixed Yuexin HTTPS API and returns at most the first 50 model IDs. It does not call inference or expose model metadata. Leave timeout and maxResponseBytes blank for displayed defaults.
+        - The Key determines model visibility. Manage or revoke it from the same API Keys page. The list does not guarantee every model is currently available.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List up to 50 model IDs enabled for the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Yuexin returned the available model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: Yuexin rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Yuexin returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneModel
+          branch: found
+          description: One available API model ID.
+          default: true
+          output: {total: 1, modelIDs: [example-model]}
+        - name: noModels
+          branch: found
+          description: No models are enabled for the Key.
+          output: {total: 0, modelIDs: []}

@@ -1,0 +1,80 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: feihan
+  displayName: Feihan
+  description: Query the status of a known Feihan recharge order.
+  company: Feihan
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: feihan
+  codegen:
+    go:
+      package: feihan
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Feihan order API. Leave blank for the displayed production endpoint; override only for a provider-issued HTTPS endpoint.
+        default: https://api2.ofpay.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one order query as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise it only when the provider responds slowly from your network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum order response size in bytes as a positive integer. Leave blank for the displayed default; raise only if provider responses exceed it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: feihan-project-key
+    fields:
+      - name: project_id
+        goName: ProjectID
+        type: string
+        description: Required A-prefixed project code from https://api.ofpay.com/ after project approval. Copy exactly; blank prevents requests.
+        required: true
+      - name: password
+        goName: Password
+        type: secretString
+        description: Project password delivered by SMS during Feihan project registration. Copy the plaintext password; blank prevents requests. Dex hashes it before transmission.
+        required: true
+      - name: key_str
+        goName: KeyStr
+        type: secretString
+        description: Signing KeyStr supplied by Feihan account management for this project. Copy exactly; blank prevents requests. It is used only for the MD5 signature.
+        required: true
+    guide:
+      startURL: https://feihan.cn/apiDocs.html
+      steps:
+        - Sign in at https://api.ofpay.com/, complete business review, and create an API project. Find the A-prefixed project code on its project page and enter it as project_id.
+        - Obtain the project password from the registration SMS and enter its plaintext value in the protected password field. Obtain the matching KeyStr through the Feihan account representative and enter it in the protected key_str field. Both are required; blank prevents requests.
+        - Configure the provider-required calling IP whitelist for this project. Use the production HTTPS endpoint shown by default; the documented test endpoint uses HTTP and must not be used for this connection. Update credentials after rotation.
+        - This read-only Query needs an existing merchant order ID. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Follow the provider's commercial and rate-limit terms.
+  operations:
+    - name: queryRechargeOrder
+      goName: QueryRechargeOrder
+      inputType: QueryRechargeOrderInput
+      outputType: RechargeOrderResult
+      kind: query
+      description: Query a known merchant order's recharge status without exposing recharge account, card secrets, or other private provider fields.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Feihan returned the current recharge status."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Feihan rejected the credentials or order identifier.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Feihan returned malformed or oversized order data.", optional: true}
+        - {id: defect, goName: Defect, description: "The local order identifier or connection is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundOrder
+          branch: found
+          description: Synthetic order status for local Dex Flow verification.
+          default: true
+          output: {merchantOrderId: ORDER123, rechargeStatus: 1}

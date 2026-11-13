@@ -1,0 +1,79 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: west
+  displayName: West.cn (西部数码)
+  description: List domains in a West.cn reseller account.
+  company: West
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: west
+  codegen:
+    go:
+      package: west
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the West.cn reseller API without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.west.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one domain-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum domain-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate response exceeds it.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: west-api
+    fields:
+      - name: username
+        goName: Username
+        type: string
+        required: true
+        description: West.cn reseller username from https://www.west.cn/ > reseller account profile. Enter the registered account name, not an email address. It is sent as the username query parameter; blank prevents requests.
+      - name: api_password
+        goName: APIPassword
+        type: secretString
+        required: true
+        description: Secret API password from https://www.west.cn/ > 代理商管理 > API接口配置. Available only to approved reseller partners. Dex stores it only as a credential and uses it to derive a 10-minute MD5 token; blank prevents requests.
+    guide:
+      startURL: https://www.west.cn/
+      steps:
+        - Only approved West.cn reseller partners can use this API. Sign in at https://www.west.cn/, find your registered username in the account profile, then open 代理商管理 > API接口配置 to view or set the API password.
+        - Enter the username and API password in the corresponding Dex connection fields. The password is secret; Dex derives a short-lived token for each request. Rotate the password in API接口配置 if it is lost. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
+        - This Query reads a single page of domains and returns only domain names and expiration dates. It never requests WHOIS contact information or domain management passwords.
+  operations:
+    - name: listDomains
+      goName: ListDomains
+      inputType: ListDomainsInput
+      outputType: ListDomainsOutput
+      kind: query
+      description: Read one page of domain names and expiration dates.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "West.cn returned a domain page."}
+        - {id: providerRejected, goName: ProviderRejected, description: "West.cn rejected credentials or reseller access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "West.cn returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or page options are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleDomains
+          branch: listed
+          description: Synthetic domain page for local Flow verification, not live account data.
+          default: true
+          output:
+            domains:
+              - {name: example.cn, expiresAt: "2030-01-01"}
+            page: 1
+            totalPages: 1
+            total: 1

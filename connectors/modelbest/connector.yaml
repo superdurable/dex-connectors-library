@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: modelbest
+  displayName: ModelBest MiniCPM
+  description: List model IDs available through the ModelBest API.
+  company: ModelBest
+  categories: [ai, developer-tools]
+  version: v0.1.0
+spec:
+  provider: modelbest
+  codegen:
+    go:
+      package: modelbest
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API model-list HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider adds more model metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: modelbest-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret ModelBest API Key from https://platform.modelbest.cn/console/keys. Sign in, select Create Key, name it, create it, and copy the Key into Dex Connections; blank prevents requests.
+    guide:
+      startURL: https://github.com/OpenBMB/MiniCPM-OCR/blob/main/docs/minicpm_ocr_jev_api_zh.md
+      steps:
+        - Sign in at https://platform.modelbest.cn/console/keys, open API Keys, select Create Key, enter a Key name, create it, and copy the secret into Dex Connections. Blank prevents requests.
+        - Start ListModels with {}. The connector calls the fixed ModelBest HTTPS API and returns at most the first 50 model IDs. It does not call inference or expose model metadata. Leave timeout and maxResponseBytes blank for displayed defaults.
+        - Use a ModelBest platform API Key for api.modelbest.cn. The Key controls model access; manage or revoke it at Console > API Keys.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List up to 50 model IDs enabled for the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: ModelBest returned the available model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: ModelBest rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ModelBest returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneModel
+          branch: found
+          description: One available API model ID.
+          default: true
+          output: {total: 1, modelIDs: [MiniCPM-OCR-Jev]}
+        - name: noModels
+          branch: found
+          description: No models are enabled for the Key.
+          output: {total: 0, modelIDs: []}

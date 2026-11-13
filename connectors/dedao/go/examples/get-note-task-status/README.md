@@ -1,0 +1,5 @@
+# Get Note task status Flow
+
+Run `go run .` here with `DEX_FLOW_SERVICE_ADDRESS` pointing to `dexcli dev` and Dex project configuration available to `projectconfig.LoadFromEnvironment`. Add a `dedao` connection in Dex Web using the API Key and Client ID from [Get Note Open Platform](https://www.biji.com/openapi). Start `DedaoNoteTaskStatus` with `{"taskID":"69c3995e99f5a67e"}`, using a task ID returned by a prior asynchronous note-save call. The default `completedTask` mock returns a completed note ID; `pendingTask` returns pending. A real connection reads status only, not note content.
+
+Generate a strict FDG 2.0 graph with `dexcli visualize flow/workflow.go --schema-version 2.0 --lint app --json --out flow.fdg.json`. Run `go test ./...` for deterministic provider and Flow tests. With a running local Dex stack, run `go test -tags=integration ./examples/get-note-task-status/flow -run TestGetNoteTaskStatusUsesDefaultMockWithRealDex`; this starts the real Worker and Client against the synthetic mock. It does not verify a Get Note account or read note content.

@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: threatbook
+  displayName: ThreatBook
+  description: Check inbound source IP reputation with ThreatBook intelligence.
+  company: ThreatBook
+  categories: [security-identity]
+  version: v0.1.0
+spec:
+  provider: threatbook
+  codegen:
+    go:
+      package: threatbook
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one IP reputation HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only if the IP reputation response grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: threatbook-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Cloud API Key from https://x.threatbook.com/apiDocs/start/get_api_key > 我的API > 我的KEY. Copy it exactly; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://x.threatbook.com/apiDocs/start/get_api_key
+      steps:
+        - Sign in at https://x.threatbook.com, open 我的API > 我的KEY, apply for or view your Cloud API Key, and copy it into Dex Connections. Blank prevents requests. Ensure the Key has IP信誉 permission and bind Dex's public outbound IP in the provider's API access IP whitelist.
+        - Start CheckIPReputation with one IP from an inbound access log, WAF, IPS, or firewall alert, for example {"ipAddress":"159.203.93.255"}. The connector uses the fixed HTTPS endpoint and English labels. Leave timeout and maxResponseBytes blank for displayed defaults.
+        - ThreatBook requires apikey in the URL query. Redirects are disabled and no Key, raw URL, or provider message is included in results or failures. The result is a signal for triage; review business logs and false-positive tolerance before blocking traffic. Replace a compromised Key in 我的API > 我的KEY.
+  operations:
+    - name: checkIPReputation
+      goName: CheckIPReputation
+      inputType: CheckIPReputationInput
+      outputType: CheckIPReputationOutput
+      kind: query
+      description: Read the risk verdict for one inbound source IP.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: ThreatBook returned an IP risk verdict.}
+        - {id: noData, goName: NoData, description: ThreatBook has no intelligence for this IP., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ThreatBook rejected the Key or query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ThreatBook returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local Key or IP address is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "Each IP intelligence lookup can consume plan quota, so transient failures are retried at most twice."}}
+      mocks:
+        - name: suspiciousIP
+          branch: found
+          description: Inbound IP with a high-confidence medium-severity verdict.
+          default: true
+          output: {isMalicious: true, confidenceLevel: high, severity: medium, judgments: [Scanner]}
+        - name: noIntelligence
+          branch: noData
+          description: No ThreatBook intelligence for the supplied IP.
+          failure: {kind: NOT_FOUND, message: ThreatBook has no intelligence for this IP.}

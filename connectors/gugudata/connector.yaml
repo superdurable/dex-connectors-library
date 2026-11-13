@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: gugudata
+  displayName: GuGuData Text Segmentation
+  description: Segment a short text through GuGuData's Chinese NLP API.
+  company: GuGuData
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: gugudata
+  codegen:
+    go:
+      package: gugudata
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS segmentation request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum segmentation response size in bytes as a positive integer. Blank uses the displayed default; increase only if a valid response grows beyond it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: gugudata-nlp
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        required: true
+        description: Secret AppKey from https://www.gugudata.com/developers/portal/appkeys after enabling the NLP segmentation product. Copy its opaque value; Dex stores it as a credential and sends it in X-GUGUDATA-APPKEY. Blank prevents requests.
+    guide:
+      startURL: https://www.gugudata.com/developers/portal/appkeys
+      steps:
+        - Sign in at https://www.gugudata.com/developers/portal/appkeys, open AppKey 与权限, and enable the NLP 中文文本分词 product for this key.
+        - Copy the product AppKey into the secret app_key field. Restrict and rotate it in the developer center if exposed.
+        - Pass a nonblank text of at most 2000 UTF-16 code units. Leave timeout and maxResponseBytes blank for their displayed defaults. Calls may consume product quota.
+  operations:
+    - name: segmentText
+      goName: SegmentText
+      inputType: SegmentTextInput
+      outputType: SegmentTextOutput
+      kind: query
+      description: Split a short text into words in their original order.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: segmented, goName: Segmented, description: GuGuData returned segmented text.}
+        - {id: providerRejected, goName: ProviderRejected, description: "GuGuData rejected the key, permission, quota, or text.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GuGuData returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "Segmentation may consume purchased quota, so transport failures are retried at most twice."}}
+      mocks:
+        - name: chineseText
+          branch: segmented
+          description: Synthetic segmentation for local Flow verification, not live data.
+          default: true
+          output: {segmentedText: "计算机,科学,研究,人工智能"}

@@ -1,0 +1,71 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: yuandian
+  displayName: Yuandian Open Platform
+  description: Look up selected Chinese company registration facts by unified social credit code.
+  company: Yuandian
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: yuandian
+  codegen:
+    go:
+      package: yuandian
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS company lookup as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only when a legitimate company record exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: yuandian-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API Key from https://open.chineselaw.com > 个人中心 > API Key 管理. Create or select a key and copy it into this secret field; blank prevents requests.
+    guide:
+      startURL: https://open.chineselaw.com/mcp-config
+      steps:
+        - Sign in at https://open.chineselaw.com, open 个人中心 > API Key 管理, create or select a key, and copy it into the secret API Key field. The connector sends it in X-API-Key; blank prevents requests.
+        - Confirm access to 根据企业 id、统一社会信用代码获取企业详情 in 接口广场; consult the provider's member plan for quota and charges.
+        - Supply one 18-character uppercase unified social credit code in creditCode. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - The provider returns many personal and legal fields. This connector retains only company ID, name, credit code, status, industry, and company type.
+  operations:
+    - name: getCompanyProfile
+      goName: GetCompanyProfile
+      inputType: GetCompanyProfileInput
+      outputType: GetCompanyProfileOutput
+      kind: query
+      description: Read selected company registration facts by unified social credit code.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Yuandian returned one company profile.}
+        - {id: noData, goName: NoData, description: Yuandian found no company for the credit code., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Yuandian rejected the key, permission, or query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Yuandian returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local key or credit code is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "A company detail lookup can consume provider quota, so transient failures are retried at most twice."}}
+      mocks:
+        - name: sampleCompany
+          branch: found
+          description: Synthetic company registration fields for local Flow verification.
+          default: true
+          output: {companyID: sample-id, name: 示例企业有限公司, creditCode: 91110108MA0074PN30, registrationStatus: 存续, industry: 商务服务业, companyType: 有限责任公司}
+        - name: noCompany
+          branch: noData
+          description: No company matches the supplied credit code.
+          failure: {kind: NOT_FOUND, message: Yuandian found no matching company.}

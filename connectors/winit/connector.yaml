@@ -1,0 +1,89 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: winit
+  displayName: Winit
+  description: List overseas warehouse codes and names for an authorized Winit seller account.
+  company: Winit
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: winit
+  codegen:
+    go:
+      package: winit
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Winit production OpenAPI. Leave blank for the displayed production endpoint; override only for the documented sandbox or a trusted test server.
+        default: https://openapi.winit.com.cn
+      - name: platform
+        goName: Platform
+        type: string
+        required: true
+        description: Application Code from https://developer.winit.com.cn/ > My Applications > selected application; a non-secret uppercase identifier such as OWNERERP. This identifies the application for signatures; blank prevents requests.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one warehouse query as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise it only when the provider responds slowly from your network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum warehouse response size in bytes as a positive integer. Leave blank for the displayed default; raise only if the authorized warehouse catalog exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: winit-seller-app
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        description: Seller account name from https://seller.winit.com.cn/ > account profile, or seller authorization at the developer portal. Copy the exact app_key string; blank prevents requests. It is sent in the signed HTTPS JSON body.
+        required: true
+      - name: token
+        goName: Token
+        type: secretString
+        description: Seller token from https://seller.winit.com.cn/ > Personal Center > System Settings > Get Token, or seller authorization. Keep it secret; blank prevents requests. It is used locally for MD5 signing and never sent.
+        required: true
+      - name: client_id
+        goName: ClientID
+        type: secretString
+        description: Application Client ID from https://developer.winit.com.cn/ > My Applications > selected production application. Copy the exact ID; blank prevents requests. It is sent in the signed HTTPS JSON body.
+        required: true
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        description: Application Client Secret from https://developer.winit.com.cn/ > My Applications > selected production application. Keep it secret; blank prevents requests. It is used locally for MD5 signing and never sent.
+        required: true
+    guide:
+      startURL: https://developer.winit.com.cn/document/detail/id/1.html
+      steps:
+        - Sign in at https://developer.winit.com.cn/ and create a production application under My Applications. Copy its Application Code to the platform configuration field, Client ID to client_id, and Client Secret to client_secret; the latter is secret.
+        - Authorize a seller account for the application, or sign in at https://seller.winit.com.cn/ and open Personal Center > System Settings > Get Token. Copy the seller account name to app_key and secret token to token. These values are required and differ between sandbox and production.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed production defaults. To test in sandbox, override baseUrl with the HTTPS sandbox origin and use the separate sandbox application and seller credentials described in the Winit New Developer Guide.
+  operations:
+    - name: listWarehouses
+      goName: ListWarehouses
+      inputType: ListWarehousesInput
+      outputType: WarehousePage
+      kind: query
+      description: List overseas warehouse IDs, codes, and names without order or customer data.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Winit returned the authorized warehouse catalog, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Winit rejected credentials, authorization, or the query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Winit returned malformed or oversized warehouse data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local configuration or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedWarehouse
+          branch: listed
+          description: Synthetic overseas warehouse for local Dex Flow verification.
+          default: true
+          output: {warehouses: [{id: 1030042, code: AUME, name: AU Warehouse}]}

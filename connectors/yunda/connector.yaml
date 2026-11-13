@@ -1,0 +1,79 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: yunda
+  displayName: Yunda Express
+  description: Read the remaining ordinary electronic waybills for a Yunda Baima account.
+  company: Yunda
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: yunda
+  codegen:
+    go:
+      package: yunda
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one Yunda HTTPS request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum balance response size in bytes as a positive integer. Blank uses the displayed default; increase only if provider metadata grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: yunda-waybill-credentials
+    fields:
+      - name: appKey
+        goName: AppKey
+        type: secretString
+        required: true
+        description: Secret app-key issued after creating an application at https://open.yundaex.com/ > Applications. Copy the complete identifier; blank prevents requests.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret app-secret issued with that application at https://open.yundaex.com/ > Applications. It signs the exact JSON body; blank prevents requests.
+      - name: partnerID
+        goName: PartnerID
+        type: secretString
+        required: true
+        description: Yunda Baima partner account identifier supplied by your cooperating Yunda outlet. Enter its exact string into Dex Connections; blank prevents requests.
+      - name: baimaSecret
+        goName: BaimaSecret
+        type: secretString
+        required: true
+        description: Secret integration password for the Baima partner account, supplied by your cooperating Yunda outlet. Enter its exact string; blank prevents requests.
+    guide:
+      startURL: https://yundaex.apifox.cn/api-7039547
+      steps:
+        - At https://open.yundaex.com/ create or select an application and copy its app-key and app-secret from Applications into Dex Connections. Both are secret; blank prevents requests.
+        - Ask the cooperating Yunda outlet for its Baima partner_id and integration secret, then enter both in Dex Connections. The integration secret is secret, and blank prevents requests.
+        - Run GetWaybillBalance with empty input. It reads only ordinary (common) electronic waybill counts. This API supports only Yunda Baima accounts. Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: getWaybillBalance
+      goName: GetWaybillBalance
+      inputType: GetWaybillBalanceInput
+      outputType: GetWaybillBalanceOutput
+      kind: query
+      description: Read free and paid ordinary electronic waybill balances.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Yunda returned the Baima waybill balance.}
+        - {id: providerRejected, goName: ProviderRejected, description: Yunda rejected credentials or the balance query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Yunda returned malformed or oversized balance data., optional: true}
+        - {id: defect, goName: Defect, description: Local credentials are missing or invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: balance
+          branch: found
+          description: An example electronic waybill balance.
+          default: true
+          output: {freeCount: 1, paidCount: 2}

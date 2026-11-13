@@ -1,0 +1,80 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: kf5
+  displayName: KF5 Ticket Read
+  description: Read status metadata for one KF5 customer support ticket.
+  company: KF5
+  categories: [customer-support]
+  version: v0.1.0
+spec:
+  provider: kf5
+  codegen:
+    go:
+      package: kf5
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS ticket request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only when a legitimate ticket record exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: kf5-api-token
+    fields:
+      - name: subdomain
+        goName: Subdomain
+        type: string
+        required: true
+        description: Tenant subdomain from your KF5 URL https://{subdomain}.kf5.com, found after sign-in at https://www.kf5.com. Enter only the lowercase subdomain label, without dots or scheme; blank prevents requests.
+      - name: email
+        goName: Email
+        type: secretString
+        required: true
+        description: Secret administrator or agent sign-in email from https://{subdomain}.kf5.com > 个人设置. Enter the full email address paired with the API token; blank prevents requests.
+      - name: apiToken
+        goName: APIToken
+        type: secretString
+        required: true
+        description: Secret API token from https://{subdomain}.kf5.com > 系统设置 > 支持渠道 > 开放API设置. Generate or copy the token and keep it secret; blank prevents requests.
+    guide:
+      startURL: https://developer.kf5.com/doc/restapi/helpcenter/
+      steps:
+        - Sign in at https://www.kf5.com and note the lowercase subdomain before .kf5.com in your tenant URL. Enter only that label; blank or a full URL is invalid.
+        - In the tenant, open 个人设置 to confirm the agent email, then 系统设置 > 支持渠道 > 开放API设置 to generate or copy the secret API token. The connector uses HTTPS Basic authentication with email/token as username and API token as password. Blank credentials prevent requests.
+        - Pass one positive numeric ticket ID in ticketID. Agent permission is required for GET /apiv2/tickets/{id}.json. The result omits title, description, requester, comments, and raw provider data.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. Only use a tenant you administer and ticket IDs you are authorized to read.
+  operations:
+    - name: getTicket
+      goName: GetTicket
+      inputType: GetTicketInput
+      outputType: GetTicketOutput
+      kind: query
+      description: Read limited status metadata for one KF5 ticket ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: KF5 returned ticket status metadata.}
+        - {id: noData, goName: NoData, description: KF5 did not find the ticket., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "KF5 rejected authorization, permission, or the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: KF5 returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "The local tenant, credentials, or ticket ID is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: openTicket
+          branch: found
+          description: Synthetic open ticket metadata for local Flow verification.
+          default: true
+          output: {ticketID: 123, status: open, priority: normal, type: question, createdAt: "2026-11-13 10:00:00", updatedAt: "2026-11-13 11:00:00"}
+        - name: noTicket
+          branch: noData
+          description: No ticket matches the supplied ID.
+          failure: {kind: NOT_FOUND, message: KF5 did not find the ticket.}

@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: quanshi
+  displayName: Quanshi
+  description: List meeting room IDs, names, capacities, and states.
+  company: Quanshi
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: quanshi
+  codegen:
+    go:
+      package: quanshi
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Quanshi HTTPS OpenAPI origin. Leave blank for the displayed production default; override only with the documented beta origin when testing. See https://developer.quanshi.com/cn/api/560.
+        default: https://openapi.quanshicloud.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for each token or room-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for slow responses.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum size in bytes of each token or room-list response as a positive integer. Leave blank for the displayed default; raise only for a legitimate larger room list.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: quanshi-api
+    fields:
+      - name: app_id
+        goName: AppID
+        type: secretString
+        required: true
+        description: AppId assigned by Quanshi developer platform when your organization receives an OpenAPI developer key. Copy it into this secret field; blank prevents requests. See https://developer.quanshi.com/cn/api/69.
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: AppSecret paired with AppId from Quanshi developer platform. Copy it into this secret field; it signs token creation, and blank prevents requests. Rotate it with Quanshi if disclosed. See https://developer.quanshi.com/cn/api/69.
+    guide:
+      startURL: https://developer.quanshi.com/cn
+      steps:
+        - Register or sign in through the Quanshi developer platform and request a developer key for Cloud Meeting OpenAPI. Copy the assigned AppId and AppSecret into secret app_id and app_secret; both are required. Contact Quanshi support if the key or room-list permission is unavailable.
+        - Leave baseUrl blank for the displayed production origin, or select the documented HTTPS beta origin for testing. Leave timeout and maxResponseBytes blank for displayed defaults. The Query creates a short-lived token, derives its administrator userId, and returns only room ID, name, capacity, and state.
+  operations:
+    - name: listRooms
+      goName: ListRooms
+      inputType: ListRoomsInput
+      outputType: ListRoomsOutput
+      kind: query
+      description: List meeting rooms visible to the derived administrator.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Quanshi returned meeting room metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Quanshi rejected credentials or room access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Quanshi returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleRooms
+          branch: listed
+          description: Synthetic meeting room metadata for local Flow verification, not live Quanshi data.
+          default: true
+          output:
+            rooms:
+              - {id: 10935, name: Example Room, capacity: 20, status: 1}

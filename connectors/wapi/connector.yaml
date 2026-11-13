@@ -1,0 +1,73 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: wapi
+  displayName: Wapi Vehicle Brand Prices
+  description: List vehicle brands and maintenance-record query prices from Wapi.
+  company: Wapi
+  categories: [data-search, developer-tools]
+  version: v0.1.0
+spec:
+  provider: wapi
+  codegen:
+    go:
+      package: wapi
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS brand-price request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum brand-price response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider adds more brands.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: wapi-app
+    fields:
+      - name: appID
+        goName: AppID
+        type: string
+        required: true
+        description: Nonsecret numeric application ID from https://www.wapi.cn > 会员中心 > 我的应用. Create an app and add 维修保养记录精准版; blank prevents requests.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret 32-character application key from https://www.wapi.cn > 会员中心 > 我的应用 > 应用密钥. Set MD5 verification for this app; blank prevents requests.
+    guide:
+      startURL: https://www.wapi.cn/api_detail/170/324.html
+      steps:
+        - Sign in at https://www.wapi.cn, open 会员中心 > 我的应用, create an application, add 维修保养记录精准版, and copy its nonsecret numeric AppID and secret 32-character AppSecret into Dex Connections. Choose MD5 signature verification and authorize the calling IP if the account requires it. Blank fields prevent requests.
+        - Start ListVehicleBrands with {}. The connector signs appid, format=json, and a current Unix timestamp in seconds, then calls the fixed HTTPS brand-and-price GET endpoint. It returns only brand IDs, names, and provider prices in Chinese fen; it does not order maintenance records.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The read-only brand-and-price subinterface is documented as not billed; other maintenance-record subinterfaces may be billed and are not called here.
+  operations:
+    - name: listVehicleBrands
+      goName: ListVehicleBrands
+      inputType: ListVehicleBrandsInput
+      outputType: ListVehicleBrandsOutput
+      kind: query
+      description: Read vehicle brand names and maintenance-record query prices in fen.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Wapi returned the vehicle brand list.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wapi rejected the application or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wapi returned malformed or oversized brand data., optional: true}
+        - {id: defect, goName: Defect, description: The local app credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneBrand
+          branch: found
+          description: One synthetic vehicle brand and price.
+          default: true
+          output: {total: 1, brands: [{id: "15", name: "宝马", priceFen: 3400}]}
+        - name: noBrands
+          branch: found
+          description: No brands returned.
+          output: {total: 0, brands: []}

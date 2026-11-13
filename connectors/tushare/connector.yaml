@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tushare
+  displayName: Tushare Trading Calendar
+  description: Read one Chinese securities exchange trading date from Tushare Pro.
+  company: Tushare
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: tushare
+  codegen:
+    go:
+      package: tushare
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS trading calendar request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size in bytes as a positive integer. Blank uses the displayed default; increase only when a valid calendar response exceeds it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: tushare-pro
+    fields:
+      - name: token
+        goName: Token
+        type: secretString
+        required: true
+        description: Secret Tushare Pro token from https://tushare.pro > 登录 > 个人中心 > 接口 TOKEN. Copy it exactly into this secret field; blank prevents requests.
+    guide:
+      startURL: https://tushare.pro/document/1?doc_id=40
+      steps:
+        - Register and sign in at https://tushare.pro, open 个人中心 > 接口 TOKEN, and copy the token into Dex Web Connections as a secret. Tushare requires it in the HTTPS JSON body; blank prevents requests.
+        - Confirm your account has permission and enough points for trade_cal in 权限中心. Supply exchange as SSE, SZSE, or BSE and date as YYYYMMDD, for example 20261113.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The connector returns only exchange, date, open flag, and previous trading date, and never stores the token or raw provider response.
+  operations:
+    - name: getTradingDay
+      goName: GetTradingDay
+      inputType: GetTradingDayInput
+      outputType: GetTradingDayOutput
+      kind: query
+      description: Check whether one calendar date is open for trading on one Chinese exchange.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Tushare returned the requested trading date.}
+        - {id: noData, goName: NoData, description: Tushare returned no matching calendar date., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Tushare rejected the token, permission, or query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Tushare returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "The local token, exchange, or date is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "A calendar lookup consumes provider quota, so transient failures are retried at most twice."}}
+      mocks:
+        - name: sampleTradingDay
+          branch: found
+          description: Synthetic exchange trading date for local Flow verification.
+          default: true
+          output: {exchange: SSE, date: "20261113", isOpen: true, previousTradingDate: "20261112"}
+        - name: noDate
+          branch: noData
+          description: No calendar row matches the selected date.
+          failure: {kind: NOT_FOUND, message: Tushare returned no matching calendar date.}

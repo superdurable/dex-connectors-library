@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: chinaz
+  displayName: Chinaz
+  description: Read public website title, description, keywords, and IP for one domain.
+  company: Chinaz
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: chinaz
+  codegen:
+    go:
+      package: chinaz
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of Chinaz API Data v2. Leave blank for the displayed production endpoint; override only for a trusted test server or provider-approved proxy.
+        default: https://apidatav2.chinaz.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one site TDK request as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise it only when the provider responds slowly from your network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum single-domain TDK response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a documented larger provider response.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: chinaz-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret key from https://api.chinaz.com/ApiDetails/SiteData > Apply or purchase API > User Center > My Data. Copy the exact key; blank prevents requests. It is sent in the HTTPS POST form body, never in the URL.
+        required: true
+    guide:
+      startURL: https://api.chinaz.com/ApiDetails/SiteData
+      steps:
+        - Sign in to Chinaz at https://api.chinaz.com/ApiDetails/SiteData, open Site TDK Information, and apply for or purchase its API plan. This operation consumes plan allowance.
+        - In User Center > My Data, find the Site TDK Information APPKEY and enter it in the protected api_key field. The key is required, is sent in the HTTPS form body, and must be updated after rotation.
+        - Enter one domain name from a public website as the Flow input, without scheme or path. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: getSiteTDK
+      goName: GetSiteTDK
+      inputType: GetSiteTDKInput
+      outputType: SiteTDK
+      kind: query
+      description: Read public title, keywords, description, and IP for one domain.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Chinaz returned TDK metadata for the domain."}
+        - {id: notFound, goName: NotFound, description: "Chinaz could not find site metadata for the domain.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Chinaz rejected the key, plan, or domain.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Chinaz returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration, key, or domain is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundSite
+          branch: found
+          description: Synthetic site metadata for local Dex Flow verification.
+          default: true
+          output: {domain: example.com, title: Example Site, keywords: example, description: Public example site, ipAddress: 192.0.2.1}

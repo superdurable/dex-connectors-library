@@ -1,0 +1,7 @@
+# Yanwen handover warehouses
+
+`ListWarehouses` reads the handover warehouse codes, names, and regions available to an authorized Yanwen customer. It calls `POST https://open.yw56.com.cn/api/order` with JSON body `{}` and signed public parameters in the URL. The 32-character lowercase MD5 signature covers the token, customer number, compact body, format, method, millisecond timestamp, and version in the provider's documented order. The raw API token is never placed in the URL, result, or receipt; the derived signature is not logged.
+
+The [official warehouse API](https://opendocs.yw56.com.cn/webfile/7128649694825156608/) defines the HTTPS production and sandbox endpoints, credential location, request signing, and response fields. The Query omits the optional product filter so it lists all available handover warehouses. HTTP 429 and 5xx, transport failures, and provider negative system codes retry. Definite provider errors take an optional `providerRejected` branch, which fails the example Flow unless wired.
+
+The response is bounded to 1 MiB and 500 warehouses. The [runnable Dex Flow](go/examples/warehouses/README.md) demonstrates a static connection, typed output, durable result, strict FDG, and a mock backed by a real Dex Worker and Client. Live customer authorization and production warehouse lists remain unverified. The logo uses the [official Yanwen Open Platform brand image](https://opendocs.yw56.com.cn/webfile/image/logo.jpg).

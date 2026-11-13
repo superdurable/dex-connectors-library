@@ -1,0 +1,83 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: wangdian
+  displayName: Wangdian
+  description: List one bounded page of Wangdian ERP shop IDs, names, platforms, and authorization states.
+  company: Wangdian
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: wangdian
+  codegen:
+    go:
+      package: wangdian
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Wangdian HTTPS production API origin; see https://open.wangdian.cn/Y/open/apidoc/doc?path=shop_Y. Leave blank for the displayed default; the documented production HTTPS host is the only supported origin.
+        default: https://openapi.huice.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one shop request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow provider response.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes of one shop response. Leave blank for the displayed default; increase only for a legitimate larger page within the provider's bounds.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: wangdian-api
+    fields:
+      - name: sid
+        goName: SID
+        type: secretString
+        required: true
+        description: Seller account sid assigned to the ERP buyer by Wangdian; obtain it from your ERP administrator at https://open.wangdian.cn/ and copy the string here. Treat as secret; blank prevents requests.
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        required: true
+        description: Appkey from Wangdian Open Platform > 自助对接 > 应用管理 at https://open.wangdian.cn/ after approval. Copy the assigned string into this secret field; blank prevents requests.
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Appsecret paired with the appkey in Wangdian Open Platform > 自助对接 > 应用管理 at https://open.wangdian.cn/. Secret signing key; blank prevents requests and it is never sent to the provider.
+    guide:
+      startURL: https://open.wangdian.cn/
+      steps:
+        - Register at Wangdian Open Platform and wait for approval. In 自助对接 > 应用管理, create or select an appkey with shop.php read permission, then copy its appkey and paired appsecret into secret fields. Obtain sid from the ERP buyer administrator. All three are required.
+        - The connector signs each request using the documented MD5 algorithm, sends a form POST to shop.php, and returns only shop metadata. It omits email, contacts, addresses, platform account identifiers, and provider refresh tokens.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Page number is zero based and page size is 1 to 100; the example queries only enabled shops unless the provider changes its default.
+  operations:
+    - name: listShops
+      goName: ListShops
+      inputType: ListShopsInput
+      outputType: ListShopsOutput
+      kind: query
+      description: List one page of enabled Wangdian ERP shops.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Wangdian returned shop metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Wangdian rejected credentials or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Wangdian returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleShops
+          branch: listed
+          description: Synthetic ERP shop metadata for local Flow verification, not live Wangdian data.
+          default: true
+          output:
+            shops:
+              - {id: "332", number: "SHOP-332", name: Example Shop, platformID: 127, authorizationState: 1}
+            total: 1
+            nextPage: 0

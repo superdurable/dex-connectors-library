@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: starhub
+  displayName: StarHub Ai Model Catalog
+  description: List model IDs available to a StarHub Ai API Key.
+  company: StarHub
+  categories: [ai, developer-tools]
+  version: v0.1.0
+spec:
+  provider: starhub
+  codegen:
+    go:
+      package: starhub
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS model-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider adds more model metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: starhub-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret sk- prefixed API Key from https://www.starhubc.com > 控制台 > API Keys. Create and copy the Key once into Dex Connections; blank prevents requests.
+    guide:
+      startURL: https://www.starhubc.com/docs
+      steps:
+        - Sign in at https://www.starhubc.com, open 控制台 > API Keys, create a secret sk- prefixed API Key and copy it once into Dex Connections. The field is required; blank prevents requests.
+        - Start ListModels with {}. The connector calls the current HTTPS api.starhubc.com domain and returns at most the first 50 model IDs visible to the Key. It does not call inference or expose model metadata.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The fixed production endpoint is api.starhubc.com; model availability follows the Key and provider catalog.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List up to 50 model IDs enabled for the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: StarHub Ai returned the available model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: StarHub Ai rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: StarHub Ai returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneModel
+          branch: found
+          description: One available API model ID.
+          default: true
+          output: {total: 1, modelIDs: [deepseek-flash]}
+        - name: noModels
+          branch: found
+          description: No models are enabled for the Key.
+          output: {total: 0, modelIDs: []}

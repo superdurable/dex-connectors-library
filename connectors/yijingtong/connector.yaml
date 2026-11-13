@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: yijingtong
+  displayName: Yijingtong
+  description: List warehouses authorized for a Yijingtong overseas warehouse tenant.
+  company: Yijingtong
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: yijingtong
+  codegen:
+    go:
+      package: yijingtong
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS system origin assigned by Yijingtong customer service for this tenant, without a path. Find it in the API onboarding message; blank prevents requests. Do not use the public documentation sandbox host.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one warehouse query as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise it only when the provider responds slowly from your network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum warehouse response size in bytes as a positive integer. Leave blank for the displayed default; raise only if the authorized catalog exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: yijingtong-token
+    fields:
+      - name: token
+        goName: Token
+        type: secretString
+        description: Secret production API token assigned by Yijingtong customer service during API onboarding at https://www.kjwlxt.com/. Copy the token as given; blank prevents requests. The public sandbox demo token is not a production credential.
+        required: true
+    guide:
+      startURL: https://szy.kjwlxt.com/hwc_openapi_docs/?page=overview
+      steps:
+        - Contact Yijingtong customer service through https://www.kjwlxt.com/ to enable overseas warehouse API access. They assign your tenant's HTTPS production system domain and production token; the documentation host is sandbox only.
+        - Enter the assigned HTTPS origin without a path into baseUrl and the production token into the protected token field. Both are required. The token is sent only in the JSON request body; update the connection after rotation.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. Query the warehouse catalog first to confirm the warehouses authorized for your tenant.
+  operations:
+    - name: listWarehouses
+      goName: ListWarehouses
+      inputType: ListWarehousesInput
+      outputType: WarehousePage
+      kind: query
+      description: List authorized warehouse codes, names, and countries without inventory or customer data.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Yijingtong returned warehouses, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Yijingtong rejected the token or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Yijingtong returned malformed or oversized warehouse data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local configuration or token is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedWarehouse
+          branch: listed
+          description: Synthetic authorized warehouse for local Dex Flow verification.
+          default: true
+          output: {warehouses: [{id: US01, name: US Warehouse, country: United States}]}

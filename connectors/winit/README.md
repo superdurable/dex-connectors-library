@@ -1,0 +1,7 @@
+# Winit overseas warehouse catalog
+
+This Go connector lists authorized overseas warehouse IDs, codes, and names through the [Winit `queryWarehouse` API](https://developer.winit.com/document/detail/id/43.html). It excludes warehouse street addresses and all orders, inventory, and customer information. Winit is operated by [万邑通（上海）信息科技股份有限公司](https://winit.com/html/about.html).
+
+The connector calls `POST https://openapi.winit.com.cn/openapi/service` with JSON and the documented seller `sign` plus application `client_sign`. Both are uppercase MD5 hashes over sorted request parameter names and values, bracketed by the respective secret. Seller token and application Client Secret never leave the process. The [signing guide](https://developer.winit.com.cn/document/detail/id/6.html), [common parameters](https://developer.winit.com.cn/document/detail/id/5.html), and [onboarding guide](https://developer.winit.com.cn/document/detail/id/1.html) describe production and sandbox credentials. Winit documents a default limit of 1,000 requests per minute. HTTP 429, 5xx, and transport failures retry; definite provider rejection is terminal.
+
+The [runnable Dex Flow](go/examples/warehouse-list/README.md) shows connection setup. The [official Winit logo](https://cnres.winit.com.cn/winit/logo/svg/developer.svg) is included unchanged. Live seller authorization and production warehouse responses remain unverified.

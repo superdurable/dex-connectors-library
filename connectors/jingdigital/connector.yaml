@@ -1,0 +1,78 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jingdigital
+  displayName: JINGdigital
+  description: List one page of JINGdigital ordinary marketing tag IDs and names.
+  company: JINGdigital
+  categories: [marketing]
+  version: v0.1.0
+spec:
+  provider: jingdigital
+  codegen:
+    go:
+      package: jingdigital
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: JINGdigital HTTPS Open API origin described in the public access guide at https://www.jingdigital.com/. Leave blank for the displayed production default; override only if JINGdigital assigns your tenant another documented HTTPS origin.
+        default: https://jingopenapi.jingsocial.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for each token or tag request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow response.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes in each token or tag response. Leave blank for the displayed default; increase only if JINGdigital raises its documented response-size limit.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: jingdigital-api
+    fields:
+      - name: app_id
+        goName: AppID
+        type: secretString
+        required: true
+        description: Appid from JINGdigital management backend > 开发平台 > 开发与集成 > select or create a development application at https://www.jingdigital.com/. Copy the string into this secret field; blank prevents authorization.
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: AppSecret paired with Appid in JINGdigital management backend > 开发平台 > 开发与集成 > your application at https://www.jingdigital.com/. Keep secret; blank prevents authorization.
+    guide:
+      startURL: https://www.jingdigital.com/
+      steps:
+        - Sign in to the JINGdigital management backend, open 开发平台 > 开发与集成, create or select a development application, and enable ordinary tag list API access. Copy its Appid and AppSecret into the secret app_id and app_secret fields. Both are required; see the linked access guide.
+        - The connector exchanges credentials through POST /v1/oauth2/token and uses the temporary access_token header for POST /v1/tag/select/list. It keeps token and secret out of Flow state, results, and logs.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. The tag Query returns a bounded page of IDs, names, levels, and a next page number; it excludes user/member data.
+  operations:
+    - name: listTags
+      goName: ListTags
+      inputType: ListTagsInput
+      outputType: ListTagsOutput
+      kind: query
+      description: Read one bounded page of ordinary marketing tag metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "JINGdigital returned ordinary tag metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "JINGdigital rejected credentials or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "JINGdigital returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleTags
+          branch: listed
+          description: Synthetic tag metadata for local Flow verification, not live JINGdigital data.
+          default: true
+          output:
+            tags:
+              - {id: 166007, name: Example Tag, level: 1}
+            total: 1
+            nextPage: 0

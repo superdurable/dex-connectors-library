@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zhongkeyunxing
+  displayName: Zhongke Yunxing Model Catalog
+  description: List model IDs available to a Zhongke Yunxing API Key.
+  company: Zhongke Yunxing
+  categories: [ai, developer-tools]
+  version: v0.1.0
+spec:
+  provider: zhongkeyunxing
+  codegen:
+    go:
+      package: zhongkeyunxing
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS model-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider adds more model metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: zhongkeyunxing-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret sk- prefixed API Key from https://www.zhongkeyunx.com > 控制台 > API 密钥. Create and copy the Key once into Dex Connections; blank prevents requests.
+    guide:
+      startURL: https://www.zhongkeyunx.com/brand/guide.html
+      steps:
+        - Sign in at https://www.zhongkeyunx.com, open 控制台 > API 密钥, create a secret sk- prefixed API Key and copy it once into Dex Connections. The field is required; blank prevents requests.
+        - Start ListModels with {}. The connector calls the current HTTPS www.zhongkeyunx.com domain and returns at most the first 50 model IDs visible to the Key. It does not call inference or expose model metadata.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The fixed production endpoint is www.zhongkeyunx.com; model availability follows the Key and provider catalog.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List up to 50 model IDs enabled for the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Zhongke Yunxing returned the available model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zhongke Yunxing rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zhongke Yunxing returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneModel
+          branch: found
+          description: One available API model ID.
+          default: true
+          output: {total: 1, modelIDs: [gpt-6.1-sol]}
+        - name: noModels
+          branch: found
+          description: No models are enabled for the Key.
+          output: {total: 0, modelIDs: []}

@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: onebound
+  displayName: Onebound 万邦
+  description: Search 1688 public product listings by keyword through Onebound.
+  company: Onebound
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: onebound
+  codegen:
+    go:
+      package: onebound
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Onebound gateway. Leave blank for the displayed production endpoint; override only for a trusted test server or provider-approved proxy.
+        default: https://api-gw.onebound.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one search request as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise it only when the provider responds slowly from your network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size in bytes as a positive integer. Leave blank for the displayed default; increase only for a documented larger product page.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: onebound-key-secret
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: API key from https://console.open.onebound.cn/console/ after registering and opening the 1688 item_search API. Copy its key exactly; it is secret, required, and sent in the signed HTTPS request URL. Blank prevents requests.
+        required: true
+      - name: api_secret
+        goName: APISecret
+        type: secretString
+        description: Matching API secret from https://console.open.onebound.cn/console/ for the same API key. Copy it exactly; it is secret, required, and used only to compute the request signature. It is never transmitted. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://open.onebound.cn/help/api/1688.item_search.html
+      steps:
+        - Register at https://console.open.onebound.cn/console/ using the 立即开通 link on the 1688 item_search documentation. Open or subscribe to this API and check its price, quota, and approved request frequency; successful and empty-result calls are billed.
+        - In the Onebound console, find the key and matching secret for this API, or contact Onebound support from the linked documentation if they are not displayed. Copy both into the protected api_key and api_secret fields; both are required. The key appears only in the signed HTTPS URL and the secret is never sent. Update the Dex connection after rotation.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Choose a search keyword and optional one-based page in the Flow input; each attempt may incur a charge.
+  operations:
+    - name: searchProducts
+      goName: SearchProducts
+      inputType: SearchProductsInput
+      outputType: ProductSearchPage
+      kind: query
+      description: Search a bounded page of public 1688 listings; results contain only product metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Onebound returned a product page, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Onebound rejected the credentials, plan, quota, or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Onebound returned malformed or oversized product data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local keyword, page, or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 10s, maximumAttempts: 3, totalDuration: 1m, reason: {kind: billedOperation, explanation: "Each successful or empty Onebound search may be charged, so retries are capped at three attempts."}}
+      mocks:
+        - name: listedProduct
+          branch: listed
+          description: Synthetic public 1688 product for local Dex Flow verification.
+          default: true
+          output: {pageNumber: 1, total: 1, products: [{productID: "123456789", title: "Sample work gloves", price: "12.00", detailURL: "https://detail.1688.com/offer/123456789.html"}]}

@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: lianlianpay
+  displayName: LianLian Pay
+  description: Query the status of an authorized merchant payment order.
+  company: LianLian Pay
+  categories: [finance-payments]
+  version: v0.1.0
+spec:
+  provider: lianlianpay
+  codegen:
+    go:
+      package: lianlianpay
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the LianLian Pay query API. Leave blank for the displayed production endpoint; override only for the provider-issued test origin.
+        default: https://openapi.lianlianpay.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one payment-status query as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise it only when the provider responds slowly from your network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum payment-status response size in bytes as a positive integer. Leave blank for the displayed default.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: lianlianpay-merchant-key
+    fields:
+      - name: merchant_id
+        goName: MerchantID
+        type: string
+        description: Required 16- to 18-digit merchant number from https://b.lianlianpay.com/trader/login.htm > merchant account details. Blank prevents requests; this identifier is not secret.
+        required: true
+      - name: private_key
+        goName: PrivateKey
+        type: secretString
+        description: PEM RSA private key corresponding to the public key registered with LianLian Pay. Create/register it using https://api-doc.lianlianpay.com/openplatform/doc-338855 and keep it secret; blank prevents requests.
+        required: true
+    guide:
+      startURL: https://api-doc.lianlianpay.com/openplatform/doc-338855
+      steps:
+        - Complete LianLian Pay merchant onboarding, sign in at https://b.lianlianpay.com/trader/login.htm, and find your merchant number in merchant account details. Copy it into merchant_id. Production examples are 18 digits; the documented test merchant is 16 digits.
+        - Follow the public-key setup at https://api-doc.lianlianpay.com/openplatform/doc-338855. Generate an RSA key pair, register the public key with LianLian Pay, and put the paired PEM private key into the protected private_key field. Never use the documentation's published test key in production.
+        - Enable the payment result query API for the merchant. Use only order numbers belonging to that merchant. Leave baseUrl, timeout and maxResponseBytes blank for their displayed defaults; override baseUrl only for the provider-issued HTTPS test origin.
+  operations:
+    - name: queryPaymentStatus
+      goName: QueryPaymentStatus
+      inputType: QueryPaymentStatusInput
+      outputType: PaymentStatusResult
+      kind: query
+      description: Read the processing status of a known merchant payment order without exposing payer details.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "LianLian Pay returned the payment status."}
+        - {id: providerRejected, goName: ProviderRejected, description: "LianLian Pay rejected the merchant or order query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "LianLian Pay returned malformed or oversized order data.", optional: true}
+        - {id: defect, goName: Defect, description: "The order number or connection is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundOrder
+          branch: found
+          description: Synthetic merchant payment status for local Dex Flow verification.
+          default: true
+          output: {merchantOrderId: ORDER123, status: SUCCESS}
