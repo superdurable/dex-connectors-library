@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tokenfactory
+  displayName: TokenFactory
+  description: Read the unbilled CNY account balance and API Key status from TokenFactory.
+  company: TokenFactory
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: tokenfactory
+  codegen:
+    go:
+      package: tokenfactory
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the TokenFactory API. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.tokenfactory.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one balance request as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum balance response size in bytes as a positive integer. Leave blank for the displayed default; raise only if TokenFactory changes the response contract.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: tokenfactory-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret API Key created after sign-in and real-name verification at https://console.tokenfactory.cn/ > API Keys. Copy the exact Key without Bearer; blank prevents requests. Dex sends it only in the Authorization header.
+        required: true
+    guide:
+      startURL: https://console.tokenfactory.cn/
+      steps:
+        - Sign in at https://console.tokenfactory.cn/ and complete real-name verification. Open API Keys in the console and create a Key for this connection, or select an existing one and reveal its full value.
+        - Copy the API Key string into the secret api_key field without the Bearer prefix. The Key can be viewed again, disabled, or deleted on the same page; update Dex when rotating it.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. This balance endpoint does not make model calls, alter Key state, or incur charges.
+  operations:
+    - name: getBalance
+      goName: GetBalance
+      inputType: GetBalanceInput
+      outputType: Balance
+      kind: query
+      description: Read the current CNY account balance and API Key active status without billing or usage writes.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: retrieved, goName: Retrieved, description: "TokenFactory returned the account balance and Key status."}
+        - {id: providerRejected, goName: ProviderRejected, description: "TokenFactory rejected the API Key or balance query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "TokenFactory returned malformed or oversized balance data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: retrievedBalance
+          branch: retrieved
+          description: Synthetic account balance for local Dex Flow verification.
+          default: true
+          output: {balanceYuan: 12.345678, isActive: true, unit: CNY}
