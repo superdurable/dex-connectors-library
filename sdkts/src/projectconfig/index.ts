@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 export * from './model.js';
+export * from './application_environment.js';
 export * from './storage.js';
 export * from './environment.js';
 export * from './broker.js';
