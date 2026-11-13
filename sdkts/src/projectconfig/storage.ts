@@ -60,7 +60,7 @@ export class InMemoryObjectStore implements ObjectStore {
   /** Create only when no object exists under this key. */
   async createObject(key: string, contents: Uint8Array): Promise<ProjectObject> {
     validateObjectKey(key);
-    validateContents(contents);
+    validateContents(contents, localObjectByteLimit(key));
     if (this.#versions.has(key)) throw new ConflictError();
     return this.#write(key, contents);
   }
@@ -68,7 +68,7 @@ export class InMemoryObjectStore implements ObjectStore {
   /** Compare and swap the latest object by ETag. */
   async compareAndSwapObject(key: string, expectedETag: string, contents: Uint8Array): Promise<ProjectObject> {
     validateObjectKey(key);
-    validateContents(contents);
+    validateContents(contents, localObjectByteLimit(key));
     const current = (this.#versions.get(key) ?? []).at(-1);
     if (!current || current.etag !== expectedETag) throw new ConflictError();
     return this.#write(key, contents);
@@ -370,8 +370,20 @@ function canonicalFieldOrder(object: Record<string, unknown>): string[] {
   return selected.concat(keys.filter(key => !selected.includes(key)).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))));
 }
 
-function validateContents(contents: Uint8Array): void {
-  if (!contents.length || contents.length > 4 << 20) throw new TypeError('project object body is empty or oversized');
+/** Largest project object on S3 in bytes, as in the Go Connector SDK. */
+export const MaxProjectObjectBytes = 4 << 20;
+
+/**
+ * Largest object a process-local store accepts for key: 8 MiB for a Trigger inbox, which the Go SDK's local
+ * store also holds, and MaxProjectObjectBytes otherwise.
+ */
+export function localObjectByteLimit(key: string): number {
+  return key.includes('/trigger-inboxes/') ? 8 << 20 : MaxProjectObjectBytes;
+}
+
+/** Reject an empty object or one larger than maxBytes. */
+export function validateContents(contents: Uint8Array, maxBytes = MaxProjectObjectBytes): void {
+  if (!contents.length || contents.length > maxBytes) throw new TypeError('project object body is empty or oversized');
 }
 
 function classifyStorageError(error: unknown, isWrite: boolean): Error {
