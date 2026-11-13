@@ -1,0 +1,80 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: sensorsdata
+  displayName: Sensors Data
+  description: Read one page of channel campaign metadata from Sensors Data Analytics.
+  company: Sensorsdata
+  categories: [analytics]
+  version: v0.1.0
+spec:
+  provider: sensorsdata
+  codegen:
+    go:
+      package: sensorsdata
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: HTTPS origin of your organization's Sensors Data Analytics cluster, copied from the browser address bar after sign-in. Enter only scheme and host, without /api; blank prevents requests. Your administrator must expose this deployment over HTTPS. See https://manual.sensorsdata.cn/openapi.
+      - name: projectName
+        goName: ProjectName
+        type: string
+        required: true
+        description: Exact project English name from the project parameter in your Sensors Data Analytics browser URL after selecting the project. It is not secret; blank prevents requests. The connector sends it as sensorsdata-project. See https://manual.sensorsdata.cn/sa/docs/open_api_authentication.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one campaign-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow cluster.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum campaign-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for an approved larger page.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: sensorsdata-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Thirty-five-character API Key from your Sensors Data Analytics HTTPS site > 个人账号 > API Key 管理 > 新增 Api Key. Copy an unexpired key with project read access into this secret field; Dex stores it only as a credential. Blank prevents requests. See https://manual.sensorsdata.cn/sa/docs/open_api_authentication.
+    guide:
+      startURL: https://manual.sensorsdata.cn/sa/docs/open_api_authentication
+      steps:
+        - Sign in to your organization's HTTPS Sensors Data Analytics site and open 个人账号 > API Key 管理 > 新增 Api Key. Copy an unexpired 35-character key into api_key; it inherits that user's project permissions. Revoke a disclosed key there.
+        - Select the intended project and copy the browser HTTPS origin into baseUrl and the project parameter's exact English name into projectName. Both are required; leave timeout and maxResponseBytes blank for the displayed defaults.
+        - This Query reads one page of channel campaign names, link counts, and latest creation times. Use a key with only the needed project read access and keep query frequency low as recommended by Sensors Data.
+  operations:
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListCampaignsInput
+      outputType: ListCampaignsOutput
+      kind: query
+      description: List one page of channel campaign metadata for a Sensors Data project.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Sensors Data returned a campaign page."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Sensors Data denied the query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Sensors Data returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleCampaigns
+          branch: listed
+          description: Synthetic campaign metadata for local Flow verification, not project data.
+          default: true
+          output:
+            campaigns:
+              - {name: "Example Campaign", linkCount: 1, latestUseTime: "2025-01-01 12:00:00"}
+            totalRows: 1
+            totalPages: 1
+            pageNum: 0
+            pageSize: 20
