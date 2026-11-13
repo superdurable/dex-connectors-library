@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zadig
+  displayName: Zadig
+  description: List projects from a Zadig deployment.
+  company: Zadig
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: zadig
+  codegen:
+    go:
+      package: zadig
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: HTTPS origin of your organization's Zadig deployment, from its sign-in page address bar after following https://docs.koderover.com/zadig/cn/Zadig%20v4.3/api/usage/. Include only scheme and host, without a path. Blank prevents requests; HTTP is accepted only for local loopback tests.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one project-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum project-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate response exceeds it.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: zadig-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API Token from your Zadig deployment > top-right user menu > 账号设置 > API Token. Start with https://docs.koderover.com/zadig/cn/Zadig%20v4.3/api/usage/. Use an account with read-only project access. Dex stores the token only as a credential; blank prevents requests.
+    guide:
+      startURL: https://docs.koderover.com/zadig/cn/Zadig%20v4.3/api/usage/
+      steps:
+        - Open your organization's HTTPS Zadig deployment, click the top-right user menu, open 账号设置, and copy the API Token into api_key. Use a user account whose project permissions are limited to read-only access; the token inherits that user's rights.
+        - Set baseUrl to the HTTPS origin from the deployment's sign-in page without /openapi or other paths. Leave timeout and maxResponseBytes blank for displayed defaults. Rotate the token in 账号设置 if compromised.
+        - This Query reads one page of project keys, names, and deployment types. It does not start workflows or read project secrets.
+  operations:
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: ListProjectsOutput
+      kind: query
+      description: Read one page of project metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Zadig returned a project page."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zadig rejected the token or project access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zadig returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or page options are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleProjects
+          branch: listed
+          description: Synthetic project page for local Flow verification, not live deployment data.
+          default: true
+          output:
+            projects:
+              - {key: example-project, name: Example Project, deployType: yaml}
+            total: 1
