@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: seventeentrack
+  displayName: 17TRACK
+  description: List registered shipment numbers and tracking statuses from the 17TRACK API.
+  company: SeventeenTrack
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: seventeentrack
+  codegen:
+    go:
+      package: seventeentrack
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the 17TRACK Tracking API. Leave blank for the displayed production endpoint; override only for a trusted test server or provider-approved proxy.
+        default: https://api.17track.net
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one tracking-list query as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum tracking-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if 40 records exceed it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: seventeentrack-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret Tracking API key from https://api.17track.net/zh-cn/ > sign in > Settings > Key. Copy the key without a prefix; blank prevents requests. Update this connection after rotation.
+        required: true
+    guide:
+      startURL: https://api.17track.net/zh-cn/doc
+      steps:
+        - Register or sign in to a 17TRACK Tracking API account at https://api.17track.net/zh-cn/, then open Settings and find the unique API key. The official guide also asks you to configure a webhook to receive ongoing tracking updates.
+        - Copy the key into the protected api_key field without a prefix. It is required and sent only in the 17token header. Update the Dex connection after key rotation.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed production defaults. This Query reads only already registered shipment numbers and does not register or charge new shipments.
+  operations:
+    - name: listTrackedShipments
+      goName: ListTrackedShipments
+      inputType: ListTrackedShipmentsInput
+      outputType: TrackedShipmentPage
+      kind: query
+      description: Page through registered shipment numbers and tracking statuses, omitting contacts, addresses, and raw events.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "17TRACK returned a page of registered shipments, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "17TRACK rejected the key or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "17TRACK returned malformed or oversized tracking data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local page number or key is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedShipment
+          branch: listed
+          description: Synthetic registered shipment for local Dex Flow verification.
+          default: true
+          output: {pageNumber: 1, total: 1, shipments: [{number: RR123456789CN, carrier: 3011, packageStatus: InTransit, trackingStatus: Tracking}]}
