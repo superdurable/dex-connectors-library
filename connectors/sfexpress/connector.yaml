@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: sfexpress
+  displayName: SF Express
+  description: Query route events for an authorized SF Express waybill.
+  company: SFExpress
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: sfexpress
+  codegen:
+    go:
+      package: sfexpress
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the SF Express API. Leave blank for the displayed production endpoint; override only for a trusted sandbox or provider-approved endpoint.
+        default: https://bspgw.sf-express.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one route query as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum route response size in bytes as a positive integer. Leave blank for the displayed default; raise only if an authorized route exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: sfexpress-checkword
+    fields:
+      - name: partner_id
+        goName: PartnerID
+        type: string
+        description: Required SF Express customer code from https://open.sf-express.com/ > Console > Business Center > Business Integration > Developer Integration. It is a non-secret code up to 64 characters; blank prevents requests.
+        required: true
+      - name: checkword
+        goName: Checkword
+        type: secretString
+        description: Secret checkword from the same SF Express application and environment. Copy exactly; blank prevents requests. Dex stores it as a protected credential and uses it only to sign requests.
+        required: true
+    guide:
+      startURL: https://open.sf-express.com/developSupport/195960
+      steps:
+        - Sign in at https://open.sf-express.com/ and open Console > Business Center > Business Integration > Developer Integration to create or select an application. Find its customer code (partnerID) and secret checkword for the selected environment.
+        - In the application API list, associate the route query service EXP_RECE_SEARCH_ROUTES with that application and complete the provider's sandbox tests and online approval before production access. The standard route Query checks waybill ownership.
+        - Copy partnerID into the non-secret partner_id field and checkword into the protected checkword field. Both are required; update this connection after rotation. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: queryRoutes
+      goName: QueryRoutes
+      inputType: QueryRoutesInput
+      outputType: RouteQueryResult
+      kind: query
+      description: Query standard route event times and codes for one owned SF Express waybill, omitting free-text remarks and locations.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "SF Express returned route events for the waybill, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "SF Express rejected the credentials, permission, or waybill.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "SF Express returned malformed or oversized route data.", optional: true}
+        - {id: defect, goName: Defect, description: "The local waybill or connection is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundRoute
+          branch: found
+          description: Synthetic route event for local Dex Flow verification.
+          default: true
+          output: {waybillNumber: SF1234567890123, routes: [{occurredAt: "2026-11-13 09:30:00", opcode: "50"}]}
