@@ -54,9 +54,9 @@ must cover its declared operation branches against the Go-verified scenarios.
 The porter supplies inputs and provider responses, records complete expectations
 from Go, and commits the recording. CI verifies exact Go output, every Input
 field, and separate 5xx and 429 Retry coverage for each operation.
-New or edited Python and TypeScript packages must add these fixtures. Existing
-packages without fixtures receive a `missing conformance (legacy)` warning on
-Go-only edits; fixture-backed connectors always replay their scenarios.
+Every Python and TypeScript package must have these fixtures unless
+`conformance/exemptions.yaml` exempts its connector; replay fails a package
+without them on every event and scope.
 The coordinator merges one batch at a time and confirms its Release run
 created every package's GitHub release, and published each new npm project,
 before merging the next batch. Python first uploads to PyPI may lag behind

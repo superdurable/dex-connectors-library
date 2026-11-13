@@ -598,6 +598,7 @@ class ReleaseMutationTests(unittest.TestCase):
             (dist / "a.whl").write_bytes(b"rebuilt")
             with self.assertRaisesRegex(ValueError, "different a.whl"):
                 language_publish.verify_existing_archives(existing, dist)
+            (dist / "a.whl").write_bytes(b"same")
             (existing / "b.tar.gz").write_bytes(b"other")
             with self.assertRaisesRegex(ValueError, "did not produce"):
                 language_publish.verify_existing_archives(existing, dist)

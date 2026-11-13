@@ -38,14 +38,17 @@ class MergeQueueTriggerTest(unittest.TestCase):
         workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
         triggers = workflow.split("\njobs:\n", maxsplit=1)[0]
         self.assertRegex(triggers, r"(?m)^  merge_group:\s*$")
+        plan = workflow_job(workflow, "connector-plan")
+        self.assertRegex(plan, r"CONNECTOR_SCOPE: \$\{\{.*github.event_name == 'merge_group'.*\}\}")
+        self.assertRegex(plan, r"CONNECTOR_BASE: \$\{\{.*github.event.merge_group.base_sha.*\}\}")
         scopes = re.findall(r"CONNECTOR_SCOPE: \$\{\{(.*)\}\}", workflow)
-        self.assertTrue(scopes)
+        self.assertGreater(len(scopes), 1)
         for scope in scopes:
-            self.assertIn("github.event_name == 'merge_group'", scope)
+            self.assertTrue("github.event_name == 'merge_group'" in scope or "needs.connector-plan.outputs.connector_scope" in scope, scope)
         bases = re.findall(r"(?:CONNECTOR_BASE|BASE_SHA): \$\{\{(.*)\}\}", workflow)
         self.assertTrue(bases)
         for base in bases:
-            self.assertIn("github.event.merge_group.base_sha", base)
+            self.assertTrue("github.event.merge_group.base_sha" in base or base.strip() == "needs.connector-plan.outputs.connector_base", base)
 
 class DexDevelopmentServerDurabilityTest(unittest.TestCase):
     def test_every_workflow_dexcli_dev_uses_process_crash_safe_durability(self) -> None:
@@ -260,8 +263,10 @@ class ConnectorsMCPWorkflowTest(unittest.TestCase):
         self.assertIn("make test-connectors-mcp", job)
         self.assertIn("connectors_mcp: ${{ steps.plan.outputs.connectors_mcp }}", workflow_job(workflow, "connector-plan"))
         summary = workflow_job(workflow, "ci-summary")
-        self.assertIn("RUN_CONNECTORS_MCP: ${{ needs.connector-plan.outputs.connectors_mcp }}", summary)
-        self.assertIn("'RUN_CONNECTORS_MCP': ('connectors-mcp',),", summary)
+        from script import ci_summary
+
+        self.assertIn("PLAN_CONNECTORS_MCP: ${{ needs.connector-plan.outputs.connectors_mcp }}", summary)
+        self.assertEqual("connectors-mcp", ci_summary.PLAN_OUTPUT_JOBS["connectors_mcp"])
 
 
 MAKEFILE_PATH = WORKFLOW_PATH.parents[2] / "Makefile"
@@ -318,8 +323,280 @@ class GoDownloadRetryTest(unittest.TestCase):
         self.assertLess(prewarm, dex_web.index('run(["go", "test", ".",'))
 
     def test_retry_helper_tests_run_in_common_ci(self) -> None:
-        _, recipe = makefile_target(self.makefile, "test-common")
+        _, recipe = makefile_target(self.makefile, "test-common-python-scripts")
         self.assertIn("script/go_download_retry_test.py", recipe)
+
+
+COMMON_BLOCKS = {
+    # job: (plan output, Makefile target)
+    "common-sdkgo": ("common_sdkgo", "test-common-sdkgo"),
+    "common-root-go": ("common_root_go", "test-common-root-go"),
+    "common-python-scripts": ("common_python_scripts", "test-common-python-scripts"),
+    "common-typescript-conformance": ("common_typescript_conformance", "test-common-typescript-conformance"),
+}
+
+
+class CommonBlockJobsTest(unittest.TestCase):
+    """Each common block is its own path-selected job, and make test-common still runs them all."""
+
+    workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+    makefile = MAKEFILE_PATH.read_text(encoding="utf-8")
+
+    def test_each_block_runs_only_its_target_when_the_plan_selects_it(self) -> None:
+        plan = workflow_job(self.workflow, "connector-plan")
+        self.assertNotRegex(self.workflow, r"(?m)^  common:\s*$")
+        self.assertNotIn("outputs.common ", self.workflow)
+        self.assertNotIn("outputs.common }}", self.workflow)
+        for job_name, (output, target) in COMMON_BLOCKS.items():
+            with self.subTest(job=job_name):
+                job = workflow_job(self.workflow, job_name)
+                self.assertIn(f"{output}: ${{{{ steps.plan.outputs.{output} }}}}", plan)
+                self.assertIn(f"\n    needs: connector-plan\n    if: needs.connector-plan.outputs.{output} == 'true'\n", job)
+                self.assertEqual([f"make {target}"], re.findall(r"(?m)^\s+- run: (make .*)$", job))
+                self.assertNotIn("github.event_name", job.split("\n    steps:\n", 1)[0], "blocks run on every event")
+
+    def test_make_test_common_runs_every_block(self) -> None:
+        prerequisites, recipe = makefile_target(self.makefile, "test-common")
+        self.assertEqual(sorted([*(target for _, target in COMMON_BLOCKS.values()), "test-common-repository-checks"]),
+                         sorted(prerequisites.split()))
+        self.assertEqual("", recipe)
+
+    def test_repository_checks_run_on_every_event_and_change(self) -> None:
+        job = workflow_job(self.workflow, "common-repository-checks")
+        header = job.split("\n    steps:\n", 1)[0]
+        self.assertNotIn("if:", header)
+        self.assertNotIn("needs:", header, "the checks start without waiting for the plan")
+        self.assertEqual(["make test-common-repository-checks"], re.findall(r"(?m)^\s+- run: (make .*)$", job))
+        _, recipe = makefile_target(self.makefile, "test-common-repository-checks")
+        self.assertIn("go test -race $(ROOT_GO_REPOSITORY_CHECK_PACKAGES)", recipe)
+        self.assertIn("go test -count=1 -run '$(ROOT_GO_REPOSITORY_CHECK_TESTS)' ./cmd/connectorctl", recipe)
+        _, root = makefile_target(self.makefile, "test-common-root-go")
+        self.assertIn('grep -vxF "$$repository_checks"', root, "the root suite does not rerun the repository checks")
+
+    def test_each_job_sets_up_only_the_toolchains_its_block_needs(self) -> None:
+        uses = {job_name: set(re.findall(r"uses: ([a-z-]+/[a-z-]+(?:/[a-z]+)?)@", workflow_job(self.workflow, job_name)))
+                for job_name in COMMON_BLOCKS}
+        self.assertEqual({"actions/checkout", "actions/setup-go", "actions/cache/restore", "actions/cache/save"}, uses["common-sdkgo"])
+        self.assertEqual({"actions/checkout", "actions/setup-go", "actions/cache/restore", "actions/cache/save"},
+                         set(re.findall(r"uses: ([a-z-]+/[a-z-]+(?:/[a-z]+)?)@", workflow_job(self.workflow, "common-repository-checks"))))
+        self.assertEqual({"actions/checkout", "actions/setup-node", "actions/setup-go", "actions/cache/restore", "actions/cache/save"},
+                         uses["common-root-go"])
+        self.assertEqual({"actions/checkout", "actions/setup-go", "actions/setup-node"}, uses["common-python-scripts"])
+        self.assertEqual({"actions/checkout", "actions/setup-node"}, uses["common-typescript-conformance"])
+        # The root suite compiles generated TypeScript with both packages' node_modules.
+        _, recipe = makefile_target(self.makefile, "test-common-root-go")
+        self.assertIn("npm ci --prefix connectors/stripe/typescript\n", recipe)
+        self.assertIn("npm ci --prefix connectors/google/gmail/typescript\n", recipe)
+        self.assertLess(recipe.index("npm ci"), recipe.index("go test"))
+
+    def test_go_blocks_restore_main_caches_and_only_main_saves_them(self) -> None:
+        for job_name in ("common-repository-checks", "common-sdkgo", "common-root-go"):
+            with self.subTest(job=job_name):
+                job = workflow_job(self.workflow, job_name)
+                self.assertIn("          cache: false\n", job, "setup-go saves only on a key miss, so main never refreshes it")
+                self.assertLess(job.index("run: python3 script/set_mtimes_from_git_objects.py"), job.index("make test-common"))
+                restore = job.split("uses: actions/cache/restore@v6\n", 1)[1].split("\n      - ", 1)[0]
+                key = re.search(r"key: (.*)", restore).group(1)
+                self.assertTrue(key.startswith(f"{job_name}-${{{{ runner.os }}}}-go${{{{ steps.setup-go.outputs.go-version }}}}-"), key)
+                self.assertTrue(key.endswith("-${{ github.sha }}"), key)
+                self.assertIn("restore-keys: |", restore)
+                for path in ("~/.cache/go-build", "~/go/pkg/mod"):
+                    self.assertIn(path, restore)
+                save = job.split("uses: actions/cache/save@v6\n", 1)[0].rsplit("\n      - ", 1)[1]
+                self.assertIn("if: github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true'", save)
+                self.assertLess(job.index("make test-common"), job.index("actions/cache/save"))
+                clean = job.index("run: go clean -testcache")
+                self.assertIn("if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'\n        run: go clean -testcache", job)
+                self.assertLess(job.index("uses: actions/cache/restore@v6"), clean)
+                self.assertLess(clean, job.index("make test-common"))
+
+    def test_only_tests_with_untracked_inputs_disable_the_go_test_cache(self) -> None:
+        _, sdkgo = makefile_target(self.makefile, "test-common-sdkgo")
+        self.assertIn("SDKGO_UNCACHED_TESTS = ^TestWrongFactoryTargetInputDoesNotCompile$$\n", self.makefile)
+        self.assertIn("\tcd sdkgo && GOWORK=off go test -race -skip '$(SDKGO_UNCACHED_TESTS)' ./...\n", sdkgo)
+        self.assertIn("\tcd sdkgo && GOWORK=off go test -race -count=1 -run '$(SDKGO_UNCACHED_TESTS)' .\n", sdkgo)
+        _, root = makefile_target(self.makefile, "test-common-root-go")
+        self.assertIn("ROOT_GO_CACHEABLE_TEST_PACKAGES = ./internal/codegen/gomodel\n", self.makefile)
+        # Packages default to -count=1; a new package is cached only after review adds it to the list.
+        self.assertIn('grep -vxF "$$cacheable"', root)
+        self.assertIn("go test -race -count=1 $$uncached", root)
+        self.assertIn("go test -race $$cacheable", root)
+
+    def test_root_go_recipe_fails_when_either_test_run_fails(self) -> None:
+        _, recipe = makefile_target(self.makefile, "test-common-root-go")
+        recipe = recipe.replace("npm ci", "true").replace("\tGOWORK=off go vet ./...\n", "")
+        directory = Path(tempfile.mkdtemp())
+        stubs = directory / "bin"
+        stubs.mkdir()
+        # The go stub lists packages, then fails the run named in FAILING_RUN.
+        (stubs / "go").write_text('#!/bin/sh\nif [ "$1 $2" = "list ./..." ]; then printf "./cmd/x\\n./internal/compliance\\n"; exit 0; fi\n'
+                                  'if [ "$1" = list ]; then shift; for p in "$@"; do echo "$p"; done; exit 0; fi\n'
+                                  'case " $* " in *" -count=1 "*) run=uncached;; *) run=cacheable;; esac\n'
+                                  'echo "$run $*" >> "$LOG"; [ "$run" != "$FAILING_RUN" ]\n')
+        (stubs / "go").chmod(0o755)
+        (directory / "Makefile").write_text("ROOT_GO_CACHEABLE_TEST_PACKAGES = ./internal/compliance\nrun:\n" + recipe)
+        for failing_run in ("", "uncached", "cacheable"):
+            with self.subTest(failing_run=failing_run or "none"):
+                log = directory / f"log-{failing_run}"
+                result = subprocess.run(["make", "-s", "run"], cwd=directory, capture_output=True, text=True,
+                                        env={**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}",
+                                             "FAILING_RUN": failing_run, "LOG": str(log)})
+                self.assertEqual(failing_run == "", result.returncode == 0, result.stderr)
+                runs = sorted(log.read_text().splitlines())
+                self.assertEqual(["cacheable test -race ./internal/compliance", "uncached test -race -count=1 ./cmd/x"], runs)
+
+
+class QueueOnlyJobsTest(unittest.TestCase):
+    """Pull requests run fast checks; the merge queue also runs jobs that need a Dex stack or services."""
+
+    workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+    pull_request_exclusion = "github.event_name != 'pull_request'"
+
+    def job_condition(self, job_name: str) -> str:
+        match = re.search(r"(?m)^    if: (.*)$", workflow_job(self.workflow, job_name).split("\n    steps:\n", 1)[0])
+        return match.group(1) if match else ""
+
+    def test_workflow_skips_exactly_the_summary_queue_only_jobs_on_pull_requests(self) -> None:
+        from script import ci_summary
+
+        jobs_section = self.workflow.split("\njobs:\n", 1)[1]
+        job_names = re.findall(r"(?m)^  ([a-z][a-z0-9-]*):\s*$", jobs_section)
+        skipped = {name for name in job_names if self.pull_request_exclusion in self.job_condition(name)}
+        self.assertEqual(set(ci_summary.QUEUE_ONLY_JOBS), skipped)
+        for name in skipped:
+            self.assertTrue(self.job_condition(name).startswith(("github.event_name != 'schedule' && " + self.pull_request_exclusion,
+                                                                 self.pull_request_exclusion)), name)
+
+    def test_long_running_and_fast_jobs_stay_on_pull_requests(self) -> None:
+        from script import ci_summary
+
+        for name in ("language-connectors", "connectors", "python-connectors-latest-sdk", "workspace-connector-dependents",
+                     "connectors-mcp", "sdkpython", "sdkts", "react", "site", "dex-version-plan", "common-repository-checks",
+                     "connector-conformance",
+                     *COMMON_BLOCKS):
+            with self.subTest(job=name):
+                self.assertNotIn(name, ci_summary.QUEUE_ONLY_JOBS)
+                self.assertNotIn("pull_request", self.job_condition(name))
+
+    def step_conditions(self, job_name: str) -> dict[str, str]:
+        conditions = {}
+        for step in workflow_steps(workflow_job(self.workflow, job_name)):
+            command = re.search(r"(?m)^\s*(?:- )?run: (.*)$", step)
+            condition = re.search(r"(?m)^\s*if: (.*)$", step)
+            if command:
+                conditions[command.group(1)] = condition.group(1) if condition else ""
+        return conditions
+
+    def test_package_tests_and_conformance_replay_run_in_parallel_jobs(self) -> None:
+        # Package tests took about 61 minutes (run 43271436573) and every-fixture replay about 39
+        # (run 43339498254); in one job they would approach the 120-minute merge queue timeout.
+        self.assertEqual({"make test-python-connectors test-typescript-connectors": ""}, self.step_conditions("language-connectors"))
+        for job_name in ("language-connectors", "connector-conformance"):
+            header = workflow_job(self.workflow, job_name).split("\n    steps:\n", 1)[0]
+            self.assertIn("\n    needs: connector-plan\n    if: needs.connector-plan.outputs.count != '0'\n", header)
+        self.assertNotIn("all_connectors", self.workflow)
+
+    def test_every_event_replays_the_selected_connectors_and_only_pull_requests_and_canaries_mutate(self) -> None:
+        conditions = self.step_conditions("connector-conformance")
+        self.assertEqual({"make test-connector-conformance", "python3 script/connector_conformance.py --mutation-self-test"}, set(conditions))
+        self.assertEqual("", conditions["make test-connector-conformance"], "the queue replays every selected fixture")
+        mutation = conditions["python3 script/connector_conformance.py --mutation-self-test"]
+        for event_name, runs in (("pull_request", True), ("merge_group", False), ("push", False), ("schedule", True),
+                                 ("workflow_dispatch", True)):
+            with self.subTest(event=event_name):
+                self.assertEqual(runs, evaluate_condition(mutation, {"github.event_name": event_name}))
+
+    def test_replay_includes_every_plan_selected_connector(self) -> None:
+        makefile = MAKEFILE_PATH.read_text(encoding="utf-8")
+        prerequisites, recipe = makefile_target(makefile, "test-connector-conformance")
+        self.assertIn("download-root-go-modules", prerequisites.split())
+        self.assertIn('go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1;', recipe)
+        self.assertIn('arguments="$$arguments --include-connector $$directory"', recipe)
+        self.assertIn('if [ "$(CONNECTOR_SCOPE)" != all ]; then arguments="$$arguments --base $(CONNECTOR_BASE) --head $(CONNECTOR_HEAD)"; fi;', recipe)
+
+    def test_connectors_mcp_runs_unit_tests_on_pull_requests_and_the_dex_example_in_the_queue(self) -> None:
+        steps = workflow_steps(workflow_job(self.workflow, "connectors-mcp"))
+        unit = next(step for step in steps if "make test-connectors-mcp\n" in step)
+        self.assertNotIn("if:", unit)
+        for marker in ("astral-sh/setup-uv", "install-dexcli", "make test-connectors-mcp-example"):
+            step = next(step for step in steps if marker in step)
+            self.assertIn(f"if: {self.pull_request_exclusion}\n", step, marker)
+
+    def test_released_compatibility_runs_only_on_schedule_and_manual_runs(self) -> None:
+        self.assertEqual("(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && needs.connector-plan.outputs.count != '0'",
+                         self.job_condition("dex-compat-released"))
+
+
+def evaluate_condition(condition: str, values: dict[str, str]) -> bool:
+    """Evaluates a workflow `if:` built from ==, !=, &&, ||, and parentheses over the given contexts."""
+    expression = condition
+    for name in sorted(values, key=len, reverse=True):
+        expression = expression.replace(name, repr(values[name]))
+    expression = expression.replace("&&", " and ").replace("||", " or ")
+    if re.search(r"[A-Za-z_]+\.[A-Za-z_]", re.sub(r"'[^']*'", "", expression)):
+        raise AssertionError(f"unknown context in {condition}")
+    return bool(eval(expression, {"__builtins__": {}}))  # noqa: S307 - the expression comes from ci.yml.
+
+
+class ConnectorPlanBaseFallbackTest(unittest.TestCase):
+    """An unknown base commit plans every connector and CI job instead of failing or skipping."""
+
+    def run_plan_step(self, base: str, main_relation: str = "none") -> tuple[subprocess.CompletedProcess, str, str]:
+        """Runs the plan step; main_relation is none, behind (main is an older commit), or head (head is on main)."""
+        script = step_script(workflow_job(WORKFLOW_PATH.read_text(encoding="utf-8"), "connector-plan"), "Plan affected Connector shards")
+        directory = Path(tempfile.mkdtemp())
+        stubs = directory / "bin"
+        stubs.mkdir()
+        (stubs / "make").write_text("#!/bin/sh\nexit 0\n")
+        (stubs / "go").write_text('#!/bin/sh\necho "$@" > "$GO_ARGUMENTS"\n')
+        for stub in stubs.iterdir():
+            stub.chmod(0o755)
+        environment = {**os.environ, **GIT_FIXTURE_ENVIRONMENT, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}"}
+        for arguments in (["init", "-q", "-b", "main"], ["commit", "-q", "--allow-empty", "-m", "base"]):
+            subprocess.run(["git", *arguments], cwd=directory, env=environment, check=True)
+        if main_relation == "behind":
+            subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=directory, env=environment, check=True)
+            subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "feature"], cwd=directory, env=environment, check=True)
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=directory, env=environment, capture_output=True, text=True, check=True).stdout.strip()
+        if main_relation == "head":
+            subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=directory, env=environment, check=True)
+        self.main_commit = subprocess.run(["git", "rev-parse", "HEAD~1" if main_relation == "behind" else "HEAD"], cwd=directory,
+                                          env=environment, capture_output=True, text=True, check=True).stdout.strip()
+        environment.update({"CONNECTOR_SCOPE": "changed", "CONNECTOR_BASE": base or head, "CONNECTOR_HEAD": head,
+                            "GITHUB_OUTPUT": str(directory / "output"), "GO_ARGUMENTS": str(directory / "go-arguments")})
+        result = subprocess.run(["bash", "-e", "-c", script], cwd=directory, env=environment, capture_output=True, text=True)
+        return result, (directory / "output").read_text(), (directory / "go-arguments").read_text()
+
+    def test_known_base_plans_changed_scope(self) -> None:
+        result, outputs, go_arguments = self.run_plan_step("")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("--scope changed", go_arguments)
+        self.assertIn("--base ", go_arguments)
+        self.assertRegex(outputs, r"connector_scope=changed\nconnector_base=[0-9a-f]{40}\n")
+
+    def test_unknown_base_uses_the_merge_base_with_main(self) -> None:
+        result, outputs, go_arguments = self.run_plan_step("0000000000000000000000000000000000000000", main_relation="behind")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("--scope changed --head", go_arguments)
+        self.assertIn(f"--base {self.main_commit}", go_arguments)
+        self.assertEqual(f"connector_scope=changed\nconnector_base={self.main_commit}\n", outputs)
+        self.assertIn("using the merge base with main", result.stdout)
+
+    def test_unknown_base_on_main_plans_everything(self) -> None:
+        result, outputs, go_arguments = self.run_plan_step("not-a-commit", main_relation="head")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("--scope all", go_arguments)
+        self.assertEqual("connector_scope=all\nconnector_base=\n", outputs)
+
+    def test_unknown_base_plans_everything(self) -> None:
+        for base in ("0000000000000000000000000000000000000000", "not-a-commit"):
+            with self.subTest(base=base):
+                result, outputs, go_arguments = self.run_plan_step(base)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn("--scope all", go_arguments)
+                self.assertNotIn("--base", go_arguments)
+                self.assertEqual("connector_scope=all\nconnector_base=\n", outputs)
+                self.assertIn("Unknown base commit", result.stdout)
 
 
 class TestMatrixFailureTest(unittest.TestCase):

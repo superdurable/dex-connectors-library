@@ -18,9 +18,9 @@ A Python or TypeScript package lists exactly the operations and Triggers it impl
 Every Python and TypeScript connector package must replay Go-verified provider
 scenarios from `conformance/connectors/<directory>/scenarios.json`. Cover each
 Go-tested operation branch, Retry, uncertainty, request count, and provider
-idempotency-key behavior. CI requires fixtures for new or changed Python and
-TypeScript packages and any connector with existing fixtures. Existing packages
-without fixtures report `missing conformance (legacy)` on Go-only changes.
+idempotency-key behavior. CI requires fixtures for every Python and TypeScript
+package on every event and scope, unless `conformance/exemptions.yaml` exempts
+its connector.
 Porters write scenario inputs, prior state, and provider responses; Go record
 mode writes complete requests, exact outputs, production idempotency keys,
 and retry decisions. CI verifies a nonzero value for every input field, each
