@@ -134,6 +134,11 @@ export function categoryConnectorCounts(categories, connectors) {
   return counts;
 }
 
+export function languageConnectorCounts(connectors) {
+  return new Map(["all", "go", "python", "typescript"].map((language) =>
+    [language, connectors.filter((connector) => connectorMatchesLanguage(connector, language)).length]));
+}
+
 function readLanguages(value, goVersion) {
   const languages = value ?? { go: goVersion };
   if (typeof languages !== "object" || Array.isArray(languages)) {

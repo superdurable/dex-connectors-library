@@ -6,10 +6,11 @@ import { Link, Route, Routes, useLocation, useParams, useSearchParams } from "re
 
 import { GitHubMarkIcon, GitHubStarIcon } from "./GitHubIcons";
 import { CategoryIcon, Icon, type IconName } from "./Icons";
-import { LanguageIcons } from "./LanguageIcons";
+import { LanguageIcons, LanguageLogo } from "./LanguageIcons";
 import { SiteHeader } from "./SiteHeader";
 import { formatStarCount, formatStarredLinkLabel } from "./repositoryStarCount.mjs";
 import { useGitHubRepositoryStarCount } from "./useGitHubRepositoryStarCount";
+import { useSlidingSegmentIndicator } from "./useSlidingSegmentIndicator";
 import { WhatIsDexConnectors } from "./WhatIsDexConnectors";
 import {
   allCategories,
@@ -23,6 +24,7 @@ import {
   connectorMatchesCategory,
   connectorMatchesQuery,
   connectorMatchesLanguage,
+  languageConnectorCounts,
   pythonInstall,
   readCatalogDocument,
   selectedCategoryID,
@@ -77,6 +79,8 @@ export function App() {
   const location = useLocation();
   const isExplainer = location.pathname === "/what-is-dex-connectors";
   const isDetail = location.pathname.startsWith("/connectors/");
+  const siteTabsRef = useRef<HTMLElement>(null);
+  const siteTabIndicatorStyle = useSlidingSegmentIndicator(siteTabsRef, isExplainer ? "explainer" : "connectors");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -104,26 +108,30 @@ export function App() {
       <div className="page">
         <header className={`masthead${isDetail ? " masthead-compact" : ""}`}>
           <div className="masthead-intro">
-            <p className="masthead-eyebrow">Open source · MIT licensed</p>
             <h1 className="directory-title">
               <Link to="/">Dex Connectors</Link>
             </h1>
             <p className="lede">
-              Open sourced and trusted connectors, take your process from prototype to production.
+              Open-source, MIT-licensed connectors that take your process from prototype to production.
               <LedeRepositoryLink />
             </p>
           </div>
-          <nav className="site-tabs" aria-label="Connector site">
-            <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
+          <nav className="site-tabs" aria-label="Connector site" ref={siteTabsRef}>
+            <span className="segment-indicator" aria-hidden="true" style={siteTabIndicatorStyle} />
+            <Link className={`site-tab${isExplainer ? "" : " active"}`} data-selected={!isExplainer}
+              aria-current={isExplainer ? undefined : "page"} to="/">
               Connectors
             </Link>
-            <Link className={`site-tab${isExplainer ? " active" : ""}`} to="/what-is-dex-connectors">
+            <Link className={`site-tab${isExplainer ? " active" : ""}`} data-selected={isExplainer}
+              aria-current={isExplainer ? "page" : undefined}
+              to="/what-is-dex-connectors">
               What is Dex Connectors
             </Link>
           </nav>
-          {!isExplainer && catalog.status === "ready" ? <CatalogTotals connectors={catalog.value.connectors} /> : null}
+          {catalog.status === "ready" ? <CatalogTotals connectors={catalog.value.connectors} /> : null}
         </header>
-        <main>
+        {/* Keyed by path so each page change replays the entrance animation. */}
+        <main key={location.pathname} className="route-view">
           <Routes>
             <Route path="/" element={<CatalogPage catalog={catalog} />} />
             <Route path="/connectors/:id" element={<ConnectorPage catalog={catalog} />} />
@@ -193,10 +201,13 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogDocument> }) {
   const categoryID = selectedCategoryID(searchParams.get(categorySearchParameter), categories);
   const selectedCategory = categories.find((category) => category.id === categoryID);
   // Counts follow search and language so every navigation entry predicts its result size.
-  const searchAndLanguageMatches = connectors.filter((connector) =>
-    connectorMatchesQuery(connector, query) && connectorMatchesLanguage(connector, language));
+  const queryMatches = connectors.filter((connector) => connectorMatchesQuery(connector, query));
+  const searchAndLanguageMatches = queryMatches.filter((connector) => connectorMatchesLanguage(connector, language));
   const counts = categoryConnectorCounts(categories, searchAndLanguageMatches);
   const matched = searchAndLanguageMatches.filter((connector) => connectorMatchesCategory(connector, categoryID));
+  // Language counts follow search and category instead.
+  const languageCounts = languageConnectorCounts(
+    queryMatches.filter((connector) => connectorMatchesCategory(connector, categoryID)));
   const hasActiveFilters = query.trim() !== "" || language !== "all" || categoryID !== allCategories;
   const clearSearchAndLanguage = () => {
     setQuery("");
@@ -221,21 +232,12 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogDocument> }) {
                 id="connector-search"
                 type="search"
                 value={query}
-                placeholder="Try channelPicker, send, messageReceived, or Gmail"
+                placeholder="Try Gmail, send, or channelPicker"
                 onChange={(event) => setQuery(event.target.value)}
               />
             </span>
           </form>
-          <fieldset className="language-filter">
-            <legend>Language</legend>
-            {(["all", "go", "python", "typescript"] as const).map((option) => (
-              <label key={option} className={language === option ? "selected" : ""}>
-                <input type="radio" name="language" value={option} checked={language === option}
-                  onChange={() => setLanguage(option)} />
-                {languageFilterLabels[option]}
-              </label>
-            ))}
-          </fieldset>
+          <LanguageFilterControl language={language} languageCounts={languageCounts} onLanguageChange={setLanguage} />
         </div>
         <div className="results-heading" style={categoryHueStyle(selectedCategory)}>
           <div>
@@ -326,6 +328,32 @@ function CategoryNavigation({ categories, counts, selectedCategoryID: selectedID
         })}
       </ul>
     </nav>
+  );
+}
+
+function LanguageFilterControl({ language, languageCounts, onLanguageChange }: {
+  language: LanguageFilter;
+  languageCounts: Map<LanguageFilter, number>;
+  onLanguageChange: (language: LanguageFilter) => void;
+}) {
+  const fieldsetRef = useRef<HTMLFieldSetElement>(null);
+  const indicatorStyle = useSlidingSegmentIndicator(fieldsetRef, language);
+  return (
+    <fieldset className="language-filter" ref={fieldsetRef}>
+      <legend className="visually-hidden">Language</legend>
+      <span className="segment-indicator" aria-hidden="true" style={indicatorStyle} />
+      {(["all", "go", "python", "typescript"] as const).map((option) => (
+        <label key={option} className={language === option ? "selected" : ""} data-selected={language === option}>
+          <input type="radio" name="language" value={option} checked={language === option}
+            onChange={() => onLanguageChange(option)} />
+          {option === "all" ? null : (
+            <span className={`language-filter-logo language-icon-${option}`}><LanguageLogo language={option} /></span>
+          )}
+          {languageFilterLabels[option]}
+          <span className="language-filter-count">{languageCounts.get(option)}</span>
+        </label>
+      ))}
+    </fieldset>
   );
 }
 

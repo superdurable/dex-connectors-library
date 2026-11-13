@@ -450,8 +450,11 @@ newer manifest language version is pending, it keeps the latest completed
 version and reads that version's capability declarations from its release tag. The
 catalog generator accepts a completed-tag inventory with
 `--completed-language-tags`; without one, it omits language entries rather than
-advertising a pending version. The catalog build also asks PyPI which listed
-Python releases it serves and passes those tags with
+advertising a pending version. The local site preview, `npm run dev` in `site/`,
+passes every local Python and TypeScript connector tag as completed; run
+`git fetch --tags` first to approximate the deployed catalog. The catalog
+build also asks PyPI which listed Python releases it serves and passes those
+tags with
 `--pypi-published-language-tags`. Each listed Python release then carries
 `pythonPackage` with its package `name`, release `tag`, and `pypiPublished`.
 The directory site shows `pip install <package>==<version>` only when

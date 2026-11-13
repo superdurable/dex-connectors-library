@@ -19,6 +19,7 @@ import {
   readOperations,
   allCategories,
   categoryConnectorCounts,
+  languageConnectorCounts,
   connectorMatchesCategory,
   selectedCategoryID,
 } from "./catalogModel.mjs";
@@ -73,6 +74,9 @@ test("category counts include every category, count secondary membership, and fo
   assert.deepEqual([...categoryConnectorCounts(categories, pythonMatches)], [
     ["all", 1], ["ai", 1], ["communication", 1], ["finance-payments", 0], ["hr-recruiting", 0],
   ]);
+  assert.deepEqual([...languageConnectorCounts(connectors)], [["all", 4], ["go", 4], ["python", 1], ["typescript", 0]]);
+  const aiMatches = connectors.filter((connector) => connectorMatchesCategory(connector, "ai"));
+  assert.deepEqual([...languageConnectorCounts(aiMatches)], [["all", 2], ["go", 2], ["python", 1], ["typescript", 0]]);
 });
 
 test("category filter composes with search, and search matches category names", () => {
