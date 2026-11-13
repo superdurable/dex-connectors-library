@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: navinfo
+  displayName: NavInfo LBS
+  description: Look up coarse city location for an IP address through NavInfo's REST API.
+  company: navinfo
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: navinfo
+  codegen:
+    go:
+      package: navinfo
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one IP location request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum location response size in bytes as a positive integer. Blank uses the displayed default; increase only if NavInfo adds verified location fields.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: navinfo-rest-ak
+    fields:
+      - name: ak
+        goName: AK
+        type: secretString
+        required: true
+        description: Secret NavInfo REST API AK from https://lbs.navinfo.com/docs/webapi/ipcity.html > AK > 点击申请. Create a REST API key, copy its opaque AK, and paste here; blank prevents requests.
+    guide:
+      startURL: https://lbs.navinfo.com/docs/webapi/guide.html
+      steps:
+        - Register or sign in at https://lbs.navinfo.com, open the IP定位 REST API document and click 申请 in the AK row, then create a REST API AK with IP定位 permission, and copy the secret opaque key into Dex Connections. The document links to key application; blank prevents requests.
+        - Start LookupIPLocation with an IPv4 address such as 8.8.8.8. Blank or malformed IP is rejected locally. The connector returns only province, city, and administrative code; if no IP is supplied, it does not fall back to the worker's own IP.
+        - NavInfo requires AK in the HTTPS query string. Redirects are disabled, and the AK, raw request URL, provider message, and other location fields are never returned. Leave timeout and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: lookupIPLocation
+      goName: LookupIPLocation
+      inputType: LookupIPLocationInput
+      outputType: LookupIPLocationOutput
+      kind: query
+      description: Resolve one IP address to coarse province, city, and administrative code.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: NavInfo returned coarse city location.}
+        - {id: providerRejected, goName: ProviderRejected, description: "NavInfo rejected the AK, IP, quota, or permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: NavInfo returned malformed or oversized location data., optional: true}
+        - {id: defect, goName: Defect, description: The local AK or IP address is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An IP lookup can consume plan quota, so an unconfirmed request is retried at most twice."}}
+      mocks:
+        - name: beijing
+          branch: found
+          description: Sample Beijing city result.
+          default: true
+          output: {province: 北京市, city: 北京市, adcode: '110000'}
