@@ -1,14 +1,10 @@
-# Dex Connectors Library
-
-[Dex main repository](https://github.com/superdurable/dex) ·
-[Documentation](https://docs.superdurable.io) ·
-[Connector directory](https://connectors.superdurable.io/)
+# [Dex Connectors](https://connectors.superdurable.io/)
 
 ## Overview
 
-[![Dex Connectors directory](https://connectors.superdurable.io/card.png)](https://connectors.superdurable.io/)
+![Dex Connectors directory](https://connectors.superdurable.io/card.png)
 
-Dex Connectors Library is the open-source library that connects Dex
+Dex Connectors Library is the open-source library that connects [Dex](https://github.com/superdurable/dex)
 applications to products and services across the internet.
 
 Trigger events from those products can start a new Flow run or invoke a Flow
