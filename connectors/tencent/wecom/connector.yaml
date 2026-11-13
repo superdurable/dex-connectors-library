@@ -1,0 +1,130 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: wecom
+  displayName: WeCom
+  description: Send text and markdown messages to WeCom (WeChat Work) group chats through a group robot webhook, or to members, departments, and tags through a self-built application.
+  company: Tencent
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: wecom
+  codegen:
+    go:
+      package: wecom
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "HTTPS origin of the WeCom server API, without a path. Blank uses the displayed default, which serves every WeCom organization; override only for a trusted test server or an approved WeCom proxy that forwards /cgi-bin unchanged."
+        default: https://qyapi.weixin.qq.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one WeCom HTTP request as a positive Go duration, such as 5s or 1m. Blank uses the displayed default; raise it only when the Worker reaches WeCom through a slow network path."
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum WeCom JSON response size in bytes as a positive integer. Blank uses the displayed default; raise it only when an application send to many recipients returns long invalid-recipient lists."
+        default: 262144
+  auth:
+    methodLabel: Sender
+    defaultMethod: group-robot
+    methods:
+      - id: group-robot
+        displayName: Group robot webhook
+        description: Post as a group robot (群机器人, now called 消息推送) to the one internal group chat that owns its webhook; sendGroupRobotMessage uses this method.
+        type: apiKey
+        connectionKind: wecom-group-robot
+        fields:
+          - name: webhook_key
+            goName: WebhookKey
+            type: secretString
+            description: "Secret key of one group robot webhook. In the WeCom desktop or mobile app open the internal group chat > ... (chat settings) > 消息推送 (Message Push, formerly 群机器人) > the robot, then copy only the value after key= in its webhook address https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..., a UUID such as 693a91f6-7a2c-4bc4-97a0-0ec2b1fa5aa0. Anyone holding it can post to the group, so it is stored only as a Dex credential. Blank prevents sends."
+            required: true
+        guide:
+          startURL: https://developer.work.weixin.qq.com/document/path/91770
+          steps:
+            - "Open the internal WeCom group chat that should receive messages in the WeCom desktop or mobile app. External groups that contain WeChat users cannot add a robot."
+            - "Open the chat settings (... at the top right), choose 消息推送 (Message Push; older clients call it 群机器人, Group Robot), then 添加 (Add) to create a robot, or select an existing one."
+            - "Copy the robot's webhook address, https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..., and paste only the value after key= into webhook_key. It is a secret: never put it in Flow input, code, tickets, or chat."
+            - "If the key leaks, remove the robot from the group in the same settings page and add a new one; the old webhook stops working immediately. Each robot accepts at most 20 messages per minute."
+      - id: application
+        displayName: Self-built application
+        description: Send as a self-built WeCom application (自建应用) to members, departments, or tags inside its visible range; sendApplicationMessage uses this method.
+        type: apiKey
+        connectionKind: wecom-application
+        fields:
+          - name: corp_id
+            goName: CorpID
+            type: string
+            description: "Non-secret organization ID (企业ID) from https://work.weixin.qq.com/wework_admin/frame#profile > 我的企业 (My Company) > 企业信息 (Company Info) > 企业ID, usually ww followed by 16 lowercase hexadecimal characters, such as ww1a2b3c4d5e6f7a8b. Blank prevents token requests."
+            required: true
+          - name: agent_id
+            goName: AgentID
+            type: string
+            description: "Non-secret AgentId of the self-built application, shown at https://work.weixin.qq.com/wework_admin/frame#apps > 应用管理 (App Management) > the application > AgentId; a positive decimal integer such as 1000002. It must belong to the same application as corp_secret. Blank prevents sends."
+            required: true
+          - name: corp_secret
+            goName: CorpSecret
+            type: secretString
+            description: "Secret of the same self-built application from https://work.weixin.qq.com/wework_admin/frame#apps > the application > Secret > 查看 (View); WeCom delivers it to an administrator's WeCom app, about 43 letters, digits, hyphens, or underscores. Stored only as a Dex credential and exchanged for a two-hour access token in the Worker. Blank prevents token requests."
+            required: true
+        guide:
+          startURL: https://work.weixin.qq.com/wework_admin/frame#apps
+          steps:
+            - "Sign in to the WeCom admin console as an administrator, open 应用管理 (App Management) > 自建 (Self-built), and choose 创建应用 (Create App) or select an existing application."
+            - "On the application page set 可见范围 (Visible Range) to every member, department, or tag the application should message; WeCom drops recipients outside it and fails the call with errcode 81013 when none remain."
+            - "Copy AgentId into agent_id, then choose Secret > 查看 (View); WeCom sends the secret to your WeCom app. Paste it into corp_secret. Copy 我的企业 (My Company) > 企业信息 (Company Info) > 企业ID into corp_id."
+            - "WeCom can accept a self-built application's calls only from its trusted IP addresses; calls from elsewhere fail with errcode 60020. Under the application's 开发者接口 (Developer API) > 企业可信IP (Trusted Company IP) > 配置 (Configure), add the public egress IP of every Dex Worker that runs this connector. If the console asks for a 可信域名 (trusted domain) or a 接收消息 (Receive Messages) server URL first, configure one of them."
+            - "If the secret leaks, reset it on the same Secret panel; the old secret and its tokens stop working, so paste the new secret here."
+  operations:
+    - name: sendGroupRobotMessage
+      goName: SendGroupRobotMessage
+      inputType: SendGroupRobotMessageInput
+      outputType: SentGroupRobotMessage
+      kind: mutation
+      description: Post one text or markdown message to the group chat that owns the robot webhook. WeCom offers no idempotency key for robot posts, so an unconfirmed post selects uncertain instead of posting again.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: WeCom accepted the message for the group chat with errcode 0.}
+        - {id: providerRejected, goName: ProviderRejected, description: "WeCom conclusively refused the post, such as a removed or disabled robot, an invalid key, or content over the size limit; nothing was posted.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The post may have reached WeCom but its acceptance was not confirmed; check the group chat before posting again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, the connection method, the webhook key, or the dispatch checkpoint is invalid; nothing was posted.", optional: true}
+      # Sync exposes the single-dispatch heartbeat to retries; WeCom robot posts have no idempotency key.
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+      mocks:
+        - name: markdownPosted
+          branch: sent
+          description: The example robot posted a markdown deployment notice to the Meridian operations group.
+          default: true
+          output: {messageType: markdown, contentBytes: 96}
+    - name: sendApplicationMessage
+      goName: SendApplicationMessage
+      inputType: SendApplicationMessageInput
+      outputType: SentApplicationMessage
+      kind: mutation
+      description: Send one text or markdown message from a self-built application to members, departments, or tags. WeCom duplicate checking suppresses an identical request for four hours, so a retry inside that window never delivers twice; a retry after it selects uncertain instead of sending.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: "WeCom accepted the message and returned its msgid; any recipients it could not reach are listed in the output."}
+        - {id: providerRejected, goName: ProviderRejected, description: "WeCom conclusively refused the send or the access token request, such as an invalid secret or AgentId, an untrusted Worker IP, or no valid recipient; nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A retry came 3 hours 50 minutes or more after the first attempt, past the safe part of WeCom's four-hour duplicate check, and an earlier attempt may have delivered the message; check with the recipients before sending again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, the connection method, or the application credentials are invalid; nothing was sent.", optional: true}
+      # The default one-hour retry window stays inside the four-hour duplicate_check_interval; only a longer ExecuteRetry override reaches uncertain.
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: textDelivered
+          branch: sent
+          description: The example application sent a text alert to the Meridian on-call member and the operations department.
+          default: true
+          output: {messageId: "mock-msgid-6pD0aQe3s4k", invalidUserIds: [], invalidDepartmentIds: [], invalidTagIds: [], unlicensedUserIds: []}
