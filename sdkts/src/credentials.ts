@@ -62,6 +62,25 @@ export function createCall(context: AsyncContext, connection: ConnectionRef, ope
   return call;
 }
 
+/**
+ * Create the credential call of a Trigger source, which runs outside a Dex Step. The operation names the
+ * Trigger, as project credential providers require the connector ID. Progress and text writers are
+ * no-ops, and the context carries only the cancellation signal.
+ */
+export function createTriggerCall(connection: ConnectionRef, operation: OperationRef, id: CallID, signal: AbortSignal): Call {
+  ConnectionRefSchema.parse(connection);
+  OperationRefSchema.parse(operation);
+  const call = { id, connection, operation } as Call;
+  Object.defineProperties(call, {
+    context: { value: { cancellationSignal: signal } as unknown as AsyncContext, enumerable: false },
+    reportProgress: { value: () => undefined, enumerable: false },
+    writeText: { value: () => undefined, enumerable: false },
+    hasProgressStream: { value: () => false, enumerable: false },
+    hasTextStream: { value: () => false, enumerable: false },
+  });
+  return call;
+}
+
 /** Resolve a credential at call time outside durable Flow state. */
 export interface CredentialProvider<C> {
   /** Return current credentials, honoring cancellation. */

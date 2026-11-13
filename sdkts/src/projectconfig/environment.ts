@@ -7,13 +7,14 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { z } from 'zod';
 import { ConfigurationSchema, LocalConnectionsFileSchema, type Configuration, type LocalConnection, type Scope, type SnapshotRef, scopePrefix } from './model.js';
 export { ConnectionRecordSchema, CredentialEnvelopeSchema } from './connection_schema.js';
-import { ConnectionStore } from './connections.js';
+import { ConnectionStore, type ConnectionKey } from './connections.js';
 import { DexWebObjectStore } from './dexweb_store.js';
 import { SharedConnections } from './shared_connections.js';
 import { ConfigurationStore, InMemoryObjectStore, S3ObjectStore, type ObjectStore } from './storage.js';
 import { CredentialBrokerTokenSecretName, readApplicationSecretValue } from './application_secret_reader.js';
 import type { ApplicationEnvironment } from './application_environment.js';
-import { CredentialBrokerClient, CredentialBrokerUnavailableError, RejectedCredentialNotRefreshedError, type BrokerCredential } from './broker.js';
+import { CredentialBrokerClient, CredentialBrokerUnavailableError, RejectedCredentialNotRefreshedError, type BrokerCredential, type RelayedRequestHeaders } from './broker.js';
+import { TriggerInbox, type TriggerInboxKey } from './trigger_inbox.js';
 import { isLocalStorageHost } from '../netpolicy.js';
 import { ReauthorizationRequiredError } from '../errors.js';
 
@@ -77,6 +78,54 @@ export class LoadedProject {
     const { material } = await this.connections.readCredentialMaterial(key);
     if (material.expiresAt && material.expiresAt.getTime() <= Date.now()) throw new Error('expired project credential requires refresh');
     return material.credentials;
+  }
+
+  /** Bind one Trigger binding's durable inbox in this project's storage without reading or writing objects. */
+  triggerInbox(key: TriggerInboxKey): TriggerInbox { return new TriggerInbox(this.connections.objects, this.configuration.scope, key); }
+
+  /**
+   * Tell the credential broker that the shared connection receives relayed Trigger events at this
+   * scope's Trigger route. registrationPath is the absolute path of the broker's registration endpoint,
+   * such as a connector's fixed path, resolved against the origin of the configured broker endpoint.
+   * The scope token authorizes it, renewed after HTTP 401 as for a credential read. A connector
+   * registers every time its relayed receiver starts.
+   *
+   * It resolves once the broker stored the registration, and rejects with ConnectionNotSelectedError when
+   * the scope no longer selects the shared connection, RelayedTriggerNotRelayedError when the broker does
+   * not relay its events, CredentialBrokerUnavailableError for a transport failure, a timeout, or HTTP 408,
+   * 425, 429, or 5xx, which the caller retries, and CredentialBrokerRejectedError for any other status or
+   * an invalid answer. A project without a credential broker, or an entry that is missing or not shared,
+   * rejects without a request. Errors never contain the scope token or the response.
+   */
+  async registerRelayedTrigger(key: ConnectionKey, registrationPath: string, signal?: AbortSignal): Promise<void> {
+    if (!this.broker) throw new Error('relayed Trigger registration requires a credential broker in the project configuration');
+    const sharedConnectionId = this.sharedConnectionId(key);
+    if (!sharedConnectionId) throw new Error(`relayed Trigger registration requires a shared connection entry for ${key.connectorId}/${key.connectionName}`);
+    await this.broker.registerRelayedTrigger(sharedConnectionId, key.connectionName, registrationPath, signal);
+  }
+
+  /**
+   * Check that the host signed a relayed Trigger request with this scope's token. RelaySignatureHeader
+   * must be "v1=" and the hexadecimal HMAC-SHA256 of "v1:<RelayTimestampHeader>:<body>", compared in
+   * constant time, and the timestamp must be within 5 minutes of receivedAt. body is the raw request body.
+   *
+   * A signature that does not match the cached token rereads the token once, as a credential read does
+   * after HTTP 401, so a rotated token keeps working; such rereads happen at most once every 30 seconds.
+   * Concurrent requests share one token read. A mismatch inside the 30-second window rejects with
+   * RelayTokenRenewalDeferredError, a retryable CredentialBrokerUnavailableError, so a rotated token is
+   * accepted on the host's retry while a forged request is never delivered.
+   * It rejects with RelaySignatureInvalidError for a request to refuse and CredentialBrokerUnavailableError
+   * when the token cannot be read, which the receiver answers as retryable. A project without a credential
+   * broker rejects every request. The token never leaves the broker client.
+   */
+  async verifyRelayedRequest(headers: RelayedRequestHeaders, body: Uint8Array, receivedAt: Date): Promise<void> {
+    if (!this.broker) throw new Error('relayed Trigger verification requires a credential broker in the project configuration');
+    await this.broker.verifyRelayedRequest(headers, body, receivedAt);
+  }
+
+  /** Return the shared connection ID of a configured connection, or undefined when it is not shared. */
+  sharedConnectionId(key: ConnectionKey): string | undefined {
+    return this.configuration.connections.find(entry => entry.connectorId === key.connectorId && entry.connectionName === key.connectionName)?.sharedConnectionId;
   }
 
   /** Resolve a newer shared credential after the provider rejected one revision. */

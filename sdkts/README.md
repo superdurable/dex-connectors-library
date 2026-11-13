@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.9.1`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.10.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -21,6 +21,7 @@ node examples/manifest_refresh.mjs
 node examples/singledispatch.mjs
 node examples/fence.mjs
 node examples/textgen.mjs
+node examples/triggers.mjs
 ```
 
 All durations in this package are milliseconds. Public JSON shapes use the Go SDK's field names. Credential values and project objects stay outside Flow state and cannot be serialized through their wrappers.
@@ -322,7 +323,32 @@ const result = await fence.dispatch(async signal => {
 await fence.recordProviderId(result.providerId);
 ```
 
+## Triggers
+
+A Trigger is a long-running provider event source outside a Flow, at parity with the Go SDK's Trigger contract. The [runnable Trigger example](examples/triggers.mjs) serves a signed webhook, records each event in an inbox before answering 200, and delivers it to the application target; its in-memory inbox lasts only for the process, while `project.triggerInbox(key)` persists. The [Dex integration harness](test/integ/trigger_flows.mjs) runs the Dex targets against a real Worker and Client, replays a local Dex Web inbox after a real process restart, delivers a signed relayed request through a persisted inbox, and consumes an inbox the Go SDK wrote.
+
+- `TriggerSource.run(context, target)` owns the provider transport. It calls `prepareTriggerDelivery` before acknowledging an event and retries with `deliverTrigger`, whose capped exponential delay starts at 250 milliseconds and doubles up to 30 seconds. `TriggerContext` carries the `AbortSignal` that stops delivery, event-scoped log attributes, and the skip recorder; create it with `newTriggerContext(signal)`.
+- `newTrigger({ definition, binding, source, target })` replays a durable target's pending events first, then runs the source, consuming every `UndeliverableTriggerError`.
+- `newDexFlowTriggerTarget(client, flow, filter, resolveFlowId, mapToFlowInput)` starts a Flow with the event ID as request ID and Flow ID reuse disallowed, so a duplicate start counts as delivered. `newDexRPCTriggerTarget(client, rpcMethod, filter, resolveFlowId, mapToRPCInput)` invokes an RPC; Dex does not deduplicate RPCs, so the handler treats a repeated event ID as a duplicate. A closed or never-started Flow, an input that cannot be encoded, and a handler that throws `UndeliverableTriggerError` are undeliverable; every other failure is retried.
+- `newDurableTriggerTarget(project.triggerInbox(key), key, target)` stores acknowledged events in project storage until the target consumes them. The inbox object key and document match the Go SDK byte for byte: each event stays the raw JSON bytes it was written as, so a Go-written event keeps numbers beyond double precision, Go's key order, and bytes that are not valid UTF-8 through every rewrite, and the document decodes as Go's strict decoder does. Replay hands each payload to the `decodePayload` option as UTF-8 text and as the exact stored bytes. The default, `parseTriggerPayloadJSON`, decodes the bytes as Go's encoding/json decodes them into `any`: every finite number becomes the nearest double, so 9007199254740993 arrives as 9007199254740992, 1e-400 becomes 0, and a number beyond the double range such as 1e400 is refused, leaving its event pending; strings and keys follow Go's rules, so an unpaired surrogate escape and each invalid UTF-8 byte become U+FFFD. A connector whose payloads carry exact integers beyond 2^53 passes its own `decodePayload`, which reads the raw text or bytes. New events encode with `encodeGoJSONValue`, which writes like Go's encoding/json for maps, without recursion up to Go's 10000 nesting levels, and refuses NaN, Infinity, array holes, cycles, and other values Go cannot encode; object keys are sorted like a Go map's, while a Go struct keeps its field order, so the two differ only in key order. A local Dex Web project keeps inboxes in `trigger-inboxes/` beside `connections.json`. One inbox holds at most 1000 events and 8 MiB, as in Go; on S3 both SDKs store at most 4 MiB per object.
+- `@superdurable/connectors-sdk/webhooktrigger` supplies `WebhookEndpoint`, which serves a provider webhook as a `node:http` request listener: 200 after every accepting source recorded the event, 400 for a failed verification or decoding, 405 for another method, 413 for an oversized body, and 503 while no source runs or recording fails. Each verified event records and queues one at a time, in the order it was verified, so the inboxes and the sources hold events in arrival order even when an earlier request records more slowly; each answer waits until its event is queued. A request that fails verification never holds up others, and an event that cannot record and queue within `arrivalTimeoutMs` (10 seconds by default) of its slot's reservation is answered 503 for a provider retry. Its durable inboxes refuse a write they have not started; a write already in flight that then succeeds still queues the event, so it is delivered at least once, possibly after events that arrived later. `newRelayedRequestVerification(project)` verifies requests a Dex host relays.
+- `@superdurable/connectors-sdk/relaysignature` signs and verifies host-relayed requests independently of any connector: `verifyRelaySignature(token, headers, rawBody, receivedAt)` returns `{ isValid: true, signedAt }` or `{ isValid: false, refusal }` with `missing`, `malformed`, `stale`, or `mismatch`. `LoadedProject.verifyRelayedRequest` reads the scope token itself, once for concurrent requests, and rereads it at most every 30 seconds after a well-formed, fresh signature mismatches; a mismatch inside that window rejects with the retryable `RelayTokenRenewalDeferredError`, so a host's retry after a token rotation is accepted; `LoadedProject.registerRelayedTrigger(key, path)` registers a shared connection's relayed route on the credential broker's origin. Neither logs nor returns the token.
+
+Delivery records go to a `TriggerLogger`; `defaultTriggerLogger` writes INFO and above as JSON lines on stderr. Records carry IDs, error classes, and gRPC codes, never error messages, payloads, or credentials. A TypeScript RPC handler rejects an event by throwing `UndeliverableTriggerError`, whose name, `UndeliverableTriggerErrorType`, the Worker reports as the error type; the RPC target requires that exact type and the exact message prefix. A Worker code alone never marks an event undeliverable, so a Go handler's marker is retried by a TypeScript target.
+
+```js
+const key = { connectorId: 'sample', connectionName: 'workspace', triggerName: 'itemCreated', bindingName: 'start' };
+const inbox = new TriggerInbox(new InMemoryObjectStore(), { projectId: 'example', kind: 'preview' }, key);
+const target = newDurableTriggerTarget(inbox, key, { handleTrigger: async (_context, event) => { delivered.push(event.payload.itemId); } });
+const definition = { trigger: { connectorId: 'sample', triggerName: 'itemCreated' }, description: 'Receive a new item.' };
+const runner = newTrigger({ definition, binding: { connection, trigger: definition.trigger, name: 'start' }, source: endpoint.newSource(), target });
+```
+
 ## Release notes
+
+### 0.10.0
+
+Trigger support at parity with the Go SDK: Trigger definitions, bindings, runners, `deliverTrigger`, the Dex Flow and RPC Trigger targets, the durable project Trigger inbox, the `webhooktrigger` endpoint, and the connector-neutral `relaysignature` module with `LoadedProject.verifyRelayedRequest` and `registerRelayedTrigger`. `createTriggerCall` builds the credential call of a Trigger source. These additions are not breaking.
 
 ### 0.9.1
 
