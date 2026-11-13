@@ -261,13 +261,18 @@ func (client *Client) PostThreadReply() PostThreadReplyOperation {
 	return PostThreadReplyOperation{client: client}
 }
 
+// PostButtonMessage returns the PostButtonMessage operation bound to this client.
+func (client *Client) PostButtonMessage() PostButtonMessageOperation {
+	return PostButtonMessageOperation{client: client}
+}
+
 func (client *Client) channelThreadCreatedTriggerSource(connection sdkgo.ConnectionRef, configuration ChannelThreadCreatedTriggerConfiguration) *messageTriggerSource {
 	if err := configuration.Validate(); err != nil {
 		panic(err)
 	}
 	return &messageTriggerSource{
-		client: client, connection: connection,
-		channelID: configuration.ChannelID, matcher: configuration.ThreadTriggerMatcher, triggerName: "channelThreadCreated",
+		triggerBindingIdentity: triggerBindingIdentity{client: client, connection: connection, triggerName: "channelThreadCreated"},
+		channelID:              configuration.ChannelID, matcher: configuration.ThreadTriggerMatcher,
 	}
 }
 
@@ -276,9 +281,18 @@ func (client *Client) threadReplyCreatedTriggerSource(connection sdkgo.Connectio
 		panic(err)
 	}
 	return &messageTriggerSource{
-		client: client, connection: connection,
-		channelID: configuration.ChannelID, matcher: configuration.ThreadReplyMatcher, requiresThread: true,
-		triggerName: "threadReplyCreated",
+		triggerBindingIdentity: triggerBindingIdentity{client: client, connection: connection, triggerName: "threadReplyCreated"},
+		channelID:              configuration.ChannelID, matcher: configuration.ThreadReplyMatcher, requiresThread: true,
+	}
+}
+
+func (client *Client) buttonClickedTriggerSource(connection sdkgo.ConnectionRef, configuration ButtonClickedTriggerConfiguration) *buttonClickedTriggerSource {
+	if err := configuration.Validate(); err != nil {
+		panic(err)
+	}
+	return &buttonClickedTriggerSource{
+		triggerBindingIdentity: triggerBindingIdentity{client: client, connection: connection, triggerName: "buttonClicked"},
+		configuration:          configuration,
 	}
 }
 
@@ -389,7 +403,7 @@ func (PostChannelMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ PostCha
 
 // Invoke executes one provider call and classifies its attempt.
 func (operation PostChannelMessageOperation) Invoke(call sdkgo.Call, input PostChannelMessageInput) sdkgo.MutationAttempt[PostMessageOutput] {
-	return operation.client.postMessage(call, "postChannelMessage", input.ChannelID, "", input.Text, PostChannelMessageDefinition.StepDefaults.ExecuteMethodTimeout, PostChannelMessageBranchSent, PostChannelMessageBranchProviderRejected, PostChannelMessageBranchUncertain, PostChannelMessageBranchDefect)
+	return operation.client.postMessage(call, "postChannelMessage", input.ChannelID, "", input.Text, nil, PostChannelMessageDefinition.StepDefaults.ExecuteMethodTimeout, PostChannelMessageBranchSent, PostChannelMessageBranchProviderRejected, PostChannelMessageBranchUncertain, PostChannelMessageBranchDefect)
 }
 
 // Definition returns the immutable connector operation definition.
@@ -404,10 +418,11 @@ func (PostThreadReplyOperation) IdempotencyKey(callID sdkgo.CallID, _ PostThread
 
 // Invoke executes one provider call and classifies its attempt.
 func (operation PostThreadReplyOperation) Invoke(call sdkgo.Call, input PostThreadReplyInput) sdkgo.MutationAttempt[PostMessageOutput] {
-	return operation.client.postMessage(call, "postThreadReply", input.ChannelID, input.ThreadTimestamp, input.Text, PostThreadReplyDefinition.StepDefaults.ExecuteMethodTimeout, PostThreadReplyBranchSent, PostThreadReplyBranchProviderRejected, PostThreadReplyBranchUncertain, PostThreadReplyBranchDefect)
+	return operation.client.postMessage(call, "postThreadReply", input.ChannelID, input.ThreadTimestamp, input.Text, nil, PostThreadReplyDefinition.StepDefaults.ExecuteMethodTimeout, PostThreadReplyBranchSent, PostThreadReplyBranchProviderRejected, PostThreadReplyBranchUncertain, PostThreadReplyBranchDefect)
 }
 
-func (client *Client) postMessage(call sdkgo.Call, operationName string, channelID string, threadTimestamp string, text string, methodTimeout time.Duration, sent sdkgo.BranchID, providerRejected sdkgo.BranchID, uncertain sdkgo.BranchID, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {
+// postMessage sends chat.postMessage under the single-dispatch fence. Nil blocks send a plain text message.
+func (client *Client) postMessage(call sdkgo.Call, operationName string, channelID string, threadTimestamp string, text string, blocks []slackBlock, methodTimeout time.Duration, sent sdkgo.BranchID, providerRejected sdkgo.BranchID, uncertain sdkgo.BranchID, defect sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {
 	if strings.TrimSpace(channelID) == "" || strings.TrimSpace(text) == "" || len([]rune(text)) > client.maxMessageCharacters {
 		return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureValidation, "channel and bounded non-empty text are required"), sdkgo.Receipt{})
 	}
@@ -432,9 +447,12 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack credentials are temporarily unavailable; no message was sent"), 0)
 	}
-	payload := map[string]string{"channel": channelID, "text": text, "client_msg_id": string(call.IdempotencyKey)}
+	payload := map[string]any{"channel": channelID, "text": text, "client_msg_id": string(call.IdempotencyKey)}
 	if threadTimestamp != "" {
 		payload["thread_ts"] = threadTimestamp
+	}
+	if blocks != nil {
+		payload["blocks"] = blocks
 	}
 	var response providerResponse
 	err = fence.Dispatch(func(requestContext context.Context) error {

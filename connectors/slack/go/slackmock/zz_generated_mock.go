@@ -25,6 +25,7 @@ type Mock struct {
 	listChannelMessages  *connectormock.Query[slack.ListChannelMessagesInput, slack.ListChannelMessagesOutput]
 	postChannelMessage   *connectormock.Mutation[slack.PostChannelMessageInput, slack.PostMessageOutput]
 	postThreadReply      *connectormock.Mutation[slack.PostThreadReplyInput, slack.PostMessageOutput]
+	postButtonMessage    *connectormock.Mutation[slack.PostButtonMessageInput, slack.PostMessageOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -39,6 +40,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		listChannelMessages:  connectormock.NewQuery[slack.ListChannelMessagesInput, slack.ListChannelMessagesOutput](t, slack.ListChannelMessagesDefinition),
 		postChannelMessage:   connectormock.NewMutation[slack.PostChannelMessageInput, slack.PostMessageOutput](t, slack.PostChannelMessageDefinition),
 		postThreadReply:      connectormock.NewMutation[slack.PostThreadReplyInput, slack.PostMessageOutput](t, slack.PostThreadReplyDefinition),
+		postButtonMessage:    connectormock.NewMutation[slack.PostButtonMessageInput, slack.PostMessageOutput](t, slack.PostButtonMessageDefinition),
 	}
 	mock.listChannels.Default(ListChannelsDefault())
 	mock.getWorkspaceIdentity.Default(GetWorkspaceIdentityDefault())
@@ -47,6 +49,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listChannelMessages.Default(ListChannelMessagesDefault())
 	mock.postChannelMessage.Default(PostChannelMessageDefault())
 	mock.postThreadReply.Default(PostThreadReplyDefault())
+	mock.postButtonMessage.Default(PostButtonMessageDefault())
 	connection, err := slack.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "slack", Name: connectionName})
 	if err != nil {
 		t.Fatalf("slack mock connection: %v", err)
@@ -93,6 +96,11 @@ func (mock *Mock) PostThreadReply() *connectormock.Mutation[slack.PostThreadRepl
 	return mock.postThreadReply
 }
 
+// PostButtonMessage returns the postButtonMessage script.
+func (mock *Mock) PostButtonMessage() *connectormock.Mutation[slack.PostButtonMessageInput, slack.PostMessageOutput] {
+	return mock.postButtonMessage
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListChannels() sdkgo.Query[slack.ListChannelsInput, slack.ListChannelsOutput] {
@@ -115,6 +123,9 @@ func (operations mockOperations) PostChannelMessage() sdkgo.Mutation[slack.PostC
 }
 func (operations mockOperations) PostThreadReply() sdkgo.Mutation[slack.PostThreadReplyInput, slack.PostMessageOutput] {
 	return operations.mock.postThreadReply
+}
+func (operations mockOperations) PostButtonMessage() sdkgo.Mutation[slack.PostButtonMessageInput, slack.PostMessageOutput] {
+	return operations.mock.postButtonMessage
 }
 
 // ListChannelsListed selects the listed branch: The channel page was read.
@@ -519,4 +530,58 @@ func PostThreadReplyMissingReplyText() connectormock.Case[slack.PostMessageOutpu
 // PostThreadReplyDefault is the manifest default, replySent, which New installs.
 func PostThreadReplyDefault() connectormock.Case[slack.PostMessageOutput] {
 	return PostThreadReplyReplySent()
+}
+
+// PostButtonMessageSent selects the sent branch: Slack accepted the message.
+func PostButtonMessageSent(value slack.PostMessageOutput, failure *sdkgo.Failure) connectormock.Case[slack.PostMessageOutput] {
+	return connectormock.Branch(slack.PostButtonMessageBranchSent, value, failure)
+}
+
+// PostButtonMessageProviderRejected selects the providerRejected branch: Slack conclusively rejected the message.
+func PostButtonMessageProviderRejected(value slack.PostMessageOutput, failure *sdkgo.Failure) connectormock.Case[slack.PostMessageOutput] {
+	return connectormock.Branch(slack.PostButtonMessageBranchProviderRejected, value, failure)
+}
+
+// PostButtonMessageUncertain returns an uncertain postButtonMessage outcome.
+func PostButtonMessageUncertain(value slack.PostMessageOutput, failure sdkgo.Failure) connectormock.Case[slack.PostMessageOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// PostButtonMessageDefect selects the defect branch: Local input, terminal connection credentials, connection configuration, or connector definition is invalid.
+func PostButtonMessageDefect(value slack.PostMessageOutput, failure *sdkgo.Failure) connectormock.Case[slack.PostMessageOutput] {
+	return connectormock.Branch(slack.PostButtonMessageBranchDefect, value, failure)
+}
+
+// PostButtonMessageRetry asks Dex to retry the postButtonMessage Step, after the delay when it is positive.
+func PostButtonMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[slack.PostMessageOutput] {
+	return connectormock.Retry[slack.PostMessageOutput](failure, after)
+}
+
+// PostButtonMessageButtonMessageSent is the manifest mock buttonMessageSent: Slack accepts an approval request with Approve and Reject buttons in an existing thread.
+func PostButtonMessageButtonMessageSent() connectormock.Case[slack.PostMessageOutput] {
+	value := connectormock.MustDecodeOutput[slack.PostMessageOutput](`{"message":{"channelId":"C0123456789","timestamp":"1710000012.000700","threadTimestamp":"1710000000.000100","userId":"U0BOT123456","text":"Approve order 1042?"}}`)
+	return connectormock.Branch(slack.PostButtonMessageBranchSent, value, nil)
+}
+
+// PostButtonMessageButtonMessageRejected is the manifest mock buttonMessageRejected: Slack rejects the button message because the bot cannot write to the channel.
+func PostButtonMessageButtonMessageRejected() connectormock.Case[slack.PostMessageOutput] {
+	var value slack.PostMessageOutput
+	return connectormock.Branch(slack.PostButtonMessageBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Slack rejected the button message because the bot cannot write to the channel."})
+}
+
+// PostButtonMessageButtonMessageOutcomeUnknown is the manifest mock buttonMessageOutcomeUnknown: The connection closes after dispatch, so Slack acceptance cannot be confirmed.
+func PostButtonMessageButtonMessageOutcomeUnknown() connectormock.Case[slack.PostMessageOutput] {
+	var value slack.PostMessageOutput
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before Slack confirmed the button message."})
+}
+
+// PostButtonMessageDuplicateButtonActionID is the manifest mock duplicateButtonActionID: Two buttons share one action ID, so no request is sent.
+func PostButtonMessageDuplicateButtonActionID() connectormock.Case[slack.PostMessageOutput] {
+	var value slack.PostMessageOutput
+	return connectormock.Branch(slack.PostButtonMessageBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Each button action ID must be unique."})
+}
+
+// PostButtonMessageDefault is the manifest default, buttonMessageSent, which New installs.
+func PostButtonMessageDefault() connectormock.Case[slack.PostMessageOutput] {
+	return PostButtonMessageButtonMessageSent()
 }

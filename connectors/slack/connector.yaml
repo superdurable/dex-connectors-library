@@ -6,7 +6,7 @@ metadata:
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
   categories: [communication]
-  version: v1.6.0
+  version: v1.7.0
 spec:
   provider: slack
   languages:
@@ -88,6 +88,7 @@ spec:
       steps:
         - Create or select a Slack app; under OAuth & Permissions add the displayed bot and user token scopes, then add the exact Redirect URI shown below.
         - Under Socket Mode, enable Socket Mode; under Basic Information > App-Level Tokens, generate an xapp- token with connections:write.
+        - Under Interactivity & Shortcuts, turn Interactivity on so button clicks reach the buttonClicked Trigger through Socket Mode; no Request URL or extra scope is needed, and connections that never post buttons can leave it off.
         - Copy Client ID and Client Secret from Basic Information > App Credentials and paste them below; also paste the xapp- token in app_token, which Triggers need to receive events through Socket Mode.
         - Under OAuth & Permissions enable Token Rotation only after this release is deployed; rotating bot and user access tokens expire after 12 hours and each refresh token is one-use.
     oauth2:
@@ -178,6 +179,11 @@ spec:
       eventType: MessageEvent
       configurationType: ThreadReplyCreatedTriggerConfiguration
       description: Receive a matching thread reply.
+    - name: buttonClicked
+      goName: ButtonClicked
+      eventType: ButtonClickEvent
+      configurationType: ButtonClickedTriggerConfiguration
+      description: Receive a matching click on a message button that postButtonMessage posted, through Socket Mode.
   operations:
     - name: listChannels
       goName: ListChannels
@@ -488,3 +494,37 @@ spec:
           branch: defect
           description: The reply text is empty, so no request is sent.
           failure: {kind: VALIDATION, message: The thread reply text is required.}
+    - name: postButtonMessage
+      goName: PostButtonMessage
+      inputType: PostButtonMessageInput
+      outputType: PostMessageOutput
+      kind: mutation
+      description: Post one message with Block Kit buttons to a Slack channel, or as a reply when threadTimestamp is set. Clicks reach the buttonClicked Trigger. Synchronous durability preserves the shared single-dispatch fence after retry or Worker loss.
+      idempotency: required
+      branches: *postBranches
+      agent:
+        # Buttons only act through a Flow that runs the buttonClicked Trigger, so agents are not offered this tool.
+        exposed: false
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only HTTP 429/503, complete HTTP 2xx rate-limit or service-unavailable refusals, HTTP 401 or complete HTTP 2xx credential refusals followed by successful refresh, proven-unsent, pre-dispatch, and read-back failures retry; client_msg_id replay is unverified, and a lost timestamp cannot be read back, so a broader replay could publish another button message."}}
+      mocks:
+        - name: buttonMessageSent
+          branch: sent
+          description: Slack accepts an approval request with Approve and Reject buttons in an existing thread.
+          default: true
+          output:
+            message: {channelId: C0123456789, timestamp: "1710000012.000700", threadTimestamp: "1710000000.000100", userId: U0BOT123456, text: "Approve order 1042?"}
+        - name: buttonMessageRejected
+          branch: providerRejected
+          description: Slack rejects the button message because the bot cannot write to the channel.
+          failure: {kind: AUTHORIZATION, message: Slack rejected the button message because the bot cannot write to the channel.}
+        - name: buttonMessageOutcomeUnknown
+          description: The connection closes after dispatch, so Slack acceptance cannot be confirmed.
+          uncertain: {failure: {kind: TRANSPORT, message: The connection closed before Slack confirmed the button message.}}
+        - name: duplicateButtonActionID
+          branch: defect
+          description: Two buttons share one action ID, so no request is sent.
+          failure: {kind: VALIDATION, message: Each button action ID must be unique.}

@@ -2697,6 +2697,1801 @@
       "operation": "postThreadReply"
     },
     {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channel\":\"C123\",\"ts\":\"2.0\",\"message\":{\"channel\":\"C123\",\"ts\":\"2.0\",\"user\":\"U1\",\"text\":\"hello\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "providerId": "2.0",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "C123",
+            "text": "hello",
+            "timestamp": "2.0",
+            "userId": "U1"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-success",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"channel\":\"C123\",\"ts\":\"2.0\",\"message\":{\"channel\":\"C123\",\"ts\":\"2.0\",\"user\":\"U1\",\"text\":\"hello\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "providerId": "2.0",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "C123",
+            "text": "hello",
+            "timestamp": "2.0",
+            "userId": "U1"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello"
+      },
+      "name": "postButtonMessage-top-level-success",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"no_permission\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-provider-rejected",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"ratelimited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-rate-limited",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"internal_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-server-failure",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-transport-before-send",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-transport-after-send",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"duplicate_message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-conflict",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"service_unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-service-unavailable",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"ts\":\"2.0\",\"thread_ts\":\"1.0\",\"user\":\"U1\",\"text\":\"hello\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "2.0"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "2.0"
+            ],
+            "ts": [
+              "1.0"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "message": {
+            "channelId": "C123",
+            "text": "hello",
+            "threadTimestamp": "1.0",
+            "timestamp": "2.0",
+            "userId": "U1"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-read-back",
+      "operation": "postButtonMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+        "providerId": "2.0",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-defect",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"ratelimited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "2.0"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "2.0"
+            ],
+            "ts": [
+              "1.0"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-read-back-rate-limited",
+      "operation": "postButtonMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+        "providerId": "2.0",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"service_unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "2.0"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "2.0"
+            ],
+            "ts": [
+              "1.0"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-read-back-server-failure",
+      "operation": "postButtonMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+        "providerId": "2.0",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "2.0"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "2.0"
+            ],
+            "ts": [
+              "1.0"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "name": "postButtonMessage-read-back-transport-before-send",
+      "operation": "postButtonMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+        "providerId": "2.0",
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"service_unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"ok\":true,\"channel\":\"C123\",\"ts\":\"2.0\",\"message\":{\"channel\":\"C123\",\"ts\":\"2.0\",\"user\":\"U1\",\"text\":\"hello\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "hello",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "hello",
+            "thread_ts": "1.0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "providerId": "2.0",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "C123",
+            "text": "hello",
+            "timestamp": "2.0",
+            "userId": "U1"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "hello",
+        "threadTimestamp": "1.0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "postButtonMessage-retry-503-then-sent",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"ts\":\"1710000002.000300\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "reply Slack",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "reply Slack",
+            "thread_ts": "1710000000.000100"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"ts\":\"1710000002.000300\",\"thread_ts\":\"1710000000.000100\",\"user\":\"U1\",\"text\":\"confirmed\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000002.000300"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "1710000002.000300"
+            ],
+            "ts": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "providerId": "1710000002.000300",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "C123",
+            "text": "confirmed",
+            "threadTimestamp": "1710000000.000100",
+            "timestamp": "1710000002.000300",
+            "userId": "U1"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "reply Slack",
+        "threadTimestamp": "1710000000.000100"
+      },
+      "name": "postButtonMessage-partial-then-readback",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"invalid_auth\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "reply Slack",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "reply Slack",
+            "thread_ts": "1710000000.000100"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "reply Slack",
+        "threadTimestamp": "1710000000.000100"
+      },
+      "name": "postButtonMessage-unauthorized",
+      "operation": "postButtonMessage"
+    },
+    {
+      "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "exchanges": [
+        {
+          "body": "not JSON",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "blocks": [
+              {
+                "text": {
+                  "text": "reply Slack",
+                  "type": "mrkdwn"
+                },
+                "type": "section"
+              },
+              {
+                "elements": [
+                  {
+                    "action_id": "approve",
+                    "style": "primary",
+                    "text": {
+                      "emoji": true,
+                      "text": "Approve",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  },
+                  {
+                    "action_id": "reject",
+                    "style": "danger",
+                    "text": {
+                      "emoji": true,
+                      "text": "Reject",
+                      "type": "plain_text"
+                    },
+                    "type": "button",
+                    "value": "order-1042"
+                  }
+                ],
+                "type": "actions"
+              }
+            ],
+            "channel": "C123",
+            "client_msg_id": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+            "text": "reply Slack",
+            "thread_ts": "1710000000.000100"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+          "state": "claimed"
+        },
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
+      "input": {
+        "buttons": [
+          {
+            "actionId": "approve",
+            "style": "primary",
+            "text": "Approve",
+            "value": "order-1042"
+          },
+          {
+            "actionId": "reject",
+            "style": "danger",
+            "text": "Reject",
+            "value": "order-1042"
+          }
+        ],
+        "channelId": "C123",
+        "text": "reply Slack",
+        "threadTimestamp": "1710000000.000100"
+      },
+      "name": "postButtonMessage-invalid-response",
+      "operation": "postButtonMessage"
+    },
+    {
       "callId": "7e327e25-7e56-5ddd-8be8-3df0838a289c",
       "exchanges": [
         {

@@ -68,6 +68,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[slack.PostMessageOutput](`{"message":{"channelId":"C0123456789","timestamp":"1710000011.000600","threadTimestamp":"1710000000.000100","userId":"U0BOT123456","text":"Processing complete."}}`)
 			return err
 		}},
+		{name: "postButtonMessage/buttonMessageSent/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[slack.PostMessageOutput](`{"message":{"channelId":"C0123456789","timestamp":"1710000012.000700","threadTimestamp":"1710000000.000100","userId":"U0BOT123456","text":"Approve order 1042?"}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -98,5 +102,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.PostThreadReply().Definition().Operation.OperationID != "postThreadReply" {
 		t.Errorf("postThreadReply mock has another definition")
+	}
+	if mock.PostButtonMessage().Definition().Operation.OperationID != "postButtonMessage" {
+		t.Errorf("postButtonMessage mock has another definition")
 	}
 }

@@ -1,14 +1,16 @@
 # Slack Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.6.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.7.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
 
 This module finds Slack channels, identifies the connected workspace, reads
 recent channel history, reads and writes Slack channel threads, and receives Slack Events
 API messages through Socket Mode, or from a host that relays them for a shared
-connection (see [Relayed events](#relayed-events)). It supports public and
-private channels, not direct messages.
+connection (see [Relayed events](#relayed-events)). In Go it also posts
+messages with Block Kit buttons and receives their clicks through Socket Mode
+(see [Buttons](#buttons)). It supports public and private channels, not direct
+messages.
 
 ## Agent tools
 
@@ -55,6 +57,9 @@ and provider behavior have not been verified for this package.
 4. Subscribe to the `message.channels` and `message.groups` bot events.
 5. Install the app, then create an app-level token with `connections:write`.
 6. Invite the bot to every private channel it must observe or post to.
+7. To receive button clicks, open **Interactivity & Shortcuts** and turn
+   Interactivity on. With Socket Mode enabled Slack asks for no Request URL,
+   and clicks need no additional scope.
 
 Dex Web stores the OAuth bot and user tokens. When Token Rotation is enabled,
 it also stores both one-use refresh tokens, and the connector refreshes the two
@@ -134,20 +139,41 @@ each binding while receiving every message through one socket. The inboxes are
 kept in project storage.
 
 Socket Mode envelopes are persisted in every matching binding-specific inbox
-and acknowledged before their targets run. Delivery then stays inline on the
-socket reader, so events reach Dex in the order the runner receives them. A
-root message is therefore delivered before any reply received after it. If a
-connection drops, the runner delivers the events it had persisted but not yet
-delivered before it reads envelopes from the next connection. Slack does not
-guarantee event order, so a reply that Slack sends before its root is consumed
-as undeliverable. The runner hands each event to `sdkgo.DeliverTrigger`:
+and acknowledged before their targets run. Events reach Dex in the order the
+runner receives them, so a root message is delivered before any reply or button
+click received after it. If a connection drops, the runner delivers the events
+it had persisted but not yet delivered before it reads envelopes from the next
+connection. Slack does not guarantee event order, so a reply that Slack sends
+before its root is consumed as undeliverable. The runner hands each event to
+`sdkgo.DeliverTrigger`:
 
 - An undeliverable event is consumed. Examples are a reply in a thread whose
   Flow finished, failed, or never started. One stray reply therefore cannot
   block the other bindings.
 - Any other failure, such as a Dex or Worker outage, retries with backoff from
-  250 milliseconds up to 30 seconds. While an event retries, the runner does not
-  read later envelopes, so Slack may redeliver them.
+  250 milliseconds up to 30 seconds.
+
+How a retry affects later envelopes depends on the targets:
+
+- When every route's target is a durable inbox, as with
+  `NewProjectMessageTriggerRunner` or `provider.NewDurableTriggerTarget`
+  targets, one delivery goroutine per connection delivers the acknowledged
+  events while the socket reader keeps recording and acknowledging later
+  envelopes. A retrying delivery therefore does not delay another binding's
+  acknowledgement, which Slack requires within three seconds for a button
+  click. The delivery queue holds 256 envelopes; when it is full, the reader
+  holds the envelope it just acknowledged and pauses until one is delivered, so
+  up to 258 acknowledged envelopes await delivery, counting the one being
+  delivered. Paused envelopes are not yet
+  acknowledged, so Slack resends them, and every acknowledged event is already
+  in its inbox. The runner finishes delivering the waiting events before it
+  reconnects. A durable inbox holds its lock during
+  one delivery attempt, so the same binding records its next event only after
+  that attempt returns.
+- Otherwise, such as a generated per-Trigger factory or `NewMessageTriggerRunner`
+  with plain targets, delivery stays inline on the socket reader. While an
+  event retries, the runner does not read later envelopes, so Slack may
+  redeliver them, and at most one acknowledged event awaits delivery.
 
 At startup and before every reconnect, the runner replays pending events in
 order, roots first, with the same backoff, and only then opens the socket.
@@ -164,6 +190,58 @@ after one second. A failed connection attempt is retried after one second,
 doubling up to 30 seconds while attempts keep failing. The delay starts again
 at one second once a connection receives Slack's `hello`. Canceling the
 runner's context closes the socket at once.
+
+## Buttons
+
+`PostButtonMessage` (Go only) posts one message whose text appears in a Block
+Kit section above 1 through 25 buttons, as a top-level message or, with
+`threadTimestamp`, as a thread reply. Each `MessageButton` has a required
+`ActionID`, unique in the message and at most 255 characters; a required
+plain-text `Text` label of at most 75 characters; an optional `Value` of at
+most 2000 characters that the click returns unchanged; and an optional `Style`
+of `ButtonStylePrimary` or `ButtonStyleDanger`. The message text is also the
+notification fallback and must be at most 3000 characters, Slack's section
+limit. Invalid input selects `defect` before anything is sent. The post uses
+`chat.postMessage` with the existing `chat:write` scope and the same
+single-dispatch fence, retry policy, read-back, and branches as
+`PostThreadReply`. Treat a button value like message text: every member who
+can see the message can read it, and a click delivers it to the Flow and
+records it in the binding's durable inbox, so it must never contain a secret or
+token.
+
+The `buttonClicked` Trigger delivers a `ButtonClickEvent` for each click on a
+button in its channel: team, channel, message timestamp, thread timestamp (the
+message's own timestamp for a top-level message, as `MessageEvent` reports a
+root), clicker user ID, action ID, value, and action timestamp. Slack sends
+clicks as `block_actions` interactive payloads over the same Socket Mode
+connection as messages, so add `ButtonClickedRoutes` to the one
+`NewProjectMessageTriggerRunner` of the connection; Slack sends each event to
+only one of an app's connections. A click is acknowledged before it is
+delivered, so button routes require durable inboxes: `NewMessageTriggerRunner`
+with button routes returns an error unless every route's target, message
+routes included, comes from `provider.NewDurableTriggerTarget`, and `Run` of
+the generated `NewButtonClickedTrigger`, whose runner cannot pass a durable
+inbox to its source, always returns an error. Its configuration takes the
+required `channelId`, optional `actionIds` to receive only those buttons, and
+optional `clickerUserIds` to receive only clicks by those members; an empty
+list matches everyone. Clicks on views, modals, and other block elements are
+acknowledged and ignored.
+
+An interactive payload has no event ID, so the event ID joins the team,
+channel, message timestamp, action ID, and action timestamp: each click is a
+separate event, and a replayed click deduplicates. An approval RPC should
+accept the first decision and treat later clicks as no-ops, as
+[`examples/button-approval`](go/examples/button-approval) does. The runner
+acknowledges each click as soon as its durable inbox recorded it and logs a
+WARN `slack interactive envelope acknowledged late` record when recording took
+longer than Slack's three seconds; Slack has then shown the clicker an error,
+but the recorded click is still delivered. Events and log records never carry
+the payload's response URL, trigger ID, or verification token, and log records
+never carry the button value.
+
+Clicks reach only Socket Mode: a relaying host forwards Events API messages,
+not interactive payloads. On a connection without an `app_token`, `Run` of a
+runner with button routes returns an error.
 
 ## Relayed events
 
@@ -310,6 +388,8 @@ no `binding`. Their runner records go to `slog.Default()`, so call
 - `GetThreadReply` reads one reply by timestamp.
 - `PostChannelMessage` creates a top-level channel message.
 - `PostThreadReply` replies to an existing thread.
+- `PostButtonMessage` (Go only) posts a message with buttons; see
+  [Buttons](#buttons).
 
 Every query classifies the HTTP status before decoding the body, because Slack
 may answer 429 or 5xx without a JSON body. HTTP 429 and 5xx return Retry and
@@ -393,6 +473,9 @@ Flow. [`examples/channel-lookup`](go/examples/channel-lookup) reads the
 workspace identity and one filtered channel page.
 [`examples/channel-marker-search`](go/examples/channel-marker-search) pages
 through recent channel history until it finds the bot's own marker post.
+[`examples/button-approval`](go/examples/button-approval) replies to a request
+with Approve and Reject buttons and completes on the first decider's click,
+with the request and button Triggers on one shared runner.
 
 ## Python package
 

@@ -33,7 +33,19 @@ type ThreadReplyCreatedTriggerRoute struct {
 	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
-// MessageTriggerRunnerConfig configures Slack message Triggers that share one Socket Mode connection.
+// ButtonClickedTriggerRoute binds one button click configuration to its application target.
+type ButtonClickedTriggerRoute struct {
+	// BindingName names this configured Trigger binding.
+	BindingName string
+	// Configuration is the configuration for button clicked trigger route.
+	Configuration ButtonClickedTriggerConfiguration
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[ButtonClickEvent]
+}
+
+// MessageTriggerRunnerConfig configures Slack message and button click Triggers that share one Socket Mode
+// connection. Slack sends each event to only one of an app's open Socket Mode connections, so give every
+// Trigger of a connection to one runner instead of running a separate Trigger for each.
 type MessageTriggerRunnerConfig struct {
 	// Connection specifies connection for message trigger runner config.
 	Connection Connection
@@ -41,6 +53,12 @@ type MessageTriggerRunnerConfig struct {
 	ChannelThreadCreatedRoutes []ChannelThreadCreatedTriggerRoute
 	// ThreadReplyCreatedRoutes specifies thread reply created routes for message trigger runner config.
 	ThreadReplyCreatedRoutes []ThreadReplyCreatedTriggerRoute
+	// ButtonClickedRoutes receives clicks on message buttons. Clicks arrive only through Socket Mode, so the
+	// connection's credential needs an app_token and the Slack app must have Interactivity turned on. With
+	// button routes, every route's Target must be a durable inbox from provider.NewDurableTriggerTarget, so a
+	// click can be acknowledged within three seconds without risking its loss; NewMessageTriggerRunner returns
+	// an error otherwise. NewProjectMessageTriggerRunner always supplies durable inboxes.
+	ButtonClickedRoutes []ButtonClickedTriggerRoute
 }
 
 // MessageTriggerRunner receives Slack messages for one connection and dispatches matching routes. It receives
@@ -48,7 +66,7 @@ type MessageTriggerRunnerConfig struct {
 // NewProjectMessageTriggerRunner whose shared connection has none receives the events that its host relays
 // instead, through ServeHTTP.
 type MessageTriggerRunner struct {
-	routes []messageTriggerRoute
+	routes socketModeRoutes
 	// relay receives relayed events; it is nil for a runner built without a project configuration.
 	relay *relayedMessageReceiver
 }
@@ -59,7 +77,7 @@ func NewMessageTriggerRunner(config MessageTriggerRunnerConfig) (*MessageTrigger
 		return nil, err
 	}
 	routes := make([]messageTriggerRoute, 0, len(config.ChannelThreadCreatedRoutes)+len(config.ThreadReplyCreatedRoutes))
-	bindingKeys := make(map[string]bool, cap(routes))
+	bindingKeys := make(map[string]bool, cap(routes)+len(config.ButtonClickedRoutes))
 	for _, route := range config.ChannelThreadCreatedRoutes {
 		if err := validateMessageTriggerRoute("channelThreadCreated", route.BindingName, route.Target, bindingKeys); err != nil {
 			return nil, err
@@ -82,22 +100,46 @@ func NewMessageTriggerRunner(config MessageTriggerRunnerConfig) (*MessageTrigger
 		source.bindingName = route.BindingName
 		routes = append(routes, messageTriggerRoute{source: source, target: route.Target})
 	}
-	if len(routes) == 0 {
+	buttonRoutes := make([]buttonClickedTriggerRoute, 0, len(config.ButtonClickedRoutes))
+	for _, route := range config.ButtonClickedRoutes {
+		if err := validateTriggerRoute("buttonClicked", route.BindingName, route.Target == nil, bindingKeys); err != nil {
+			return nil, err
+		}
+		if err := route.Configuration.Validate(); err != nil {
+			return nil, err
+		}
+		source := config.Connection.client.buttonClickedTriggerSource(config.Connection.reference, route.Configuration)
+		source.bindingName = route.BindingName
+		buttonRoutes = append(buttonRoutes, buttonClickedTriggerRoute{source: source, target: route.Target})
+	}
+	if len(routes) == 0 && len(buttonRoutes) == 0 {
 		return nil, fmt.Errorf("Slack message Trigger routes are required")
 	}
-	return &MessageTriggerRunner{routes: routes}, nil
+	runnerRoutes := socketModeRoutes{messages: routes, buttons: buttonRoutes}
+	if len(buttonRoutes) > 0 && !runnerRoutes.hasDurableInboxes() {
+		return nil, errButtonClicksRequireDurableInboxes
+	}
+	return &MessageTriggerRunner{routes: runnerRoutes}, nil
 }
 
-// Run replays each route's durable inbox in order, roots first, retrying failures until the context ends,
-// then receives and dispatches Slack message events until the context ends or the runner fails. Before
-// each reconnect it replays the inboxes again, so an event persisted on a failed connection is delivered
-// before any envelope read on the next one.
+// Run replays each route's durable inbox in order, roots first, then replies, then button clicks, retrying
+// failures until the context ends, then receives and dispatches Slack events until the context ends or the
+// runner fails. Before each reconnect it replays the inboxes again, so an event persisted on a failed
+// connection is delivered before any envelope read on the next one.
+//
+// When every route's target is a durable inbox, as with NewProjectMessageTriggerRunner, Run acknowledges each
+// Socket Mode envelope once the matching inboxes recorded it and delivers acknowledged events in arrival
+// order on a separate goroutine. A target that is still retrying, such as one waiting for a stopped Worker,
+// therefore does not delay the acknowledgement of a later button click, which Slack requires within three
+// seconds. Otherwise Run delivers each event before reading the next envelope, so at most one acknowledged
+// event awaits delivery and a retrying event delays later envelopes.
 //
 // A runner from NewProjectMessageTriggerRunner first reads the connection's credential, retrying with the
 // Socket Mode backoff while it is unavailable. With an app_token it uses Socket Mode. Without one, on a shared
 // connection, it replays the inboxes, serves relayed events through ServeHTTP and registers the connection
 // name with the host, retrying while the host is unavailable; it returns an error when the host refuses the
 // registration, when the scope no longer selects the connection, and for a connection that is not shared.
+// A host relays only Events API messages, so a relayed runner with button click routes returns an error.
 //
 // Run logs through the connection's WithLogger logger: INFO when a Socket Mode connection opens, WARN with
 // the next delay when one fails, DEBUG for every ignored message with its reason, and the sdkgo delivery
@@ -108,14 +150,17 @@ func (runner *MessageTriggerRunner) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		if isRelayed && len(runner.routes.buttons) > 0 {
+			return fmt.Errorf("Slack connection %q has no app_token for Socket Mode, and button clicks reach only Socket Mode; add an app_token or remove the buttonClicked routes", runner.relay.key.ConnectionName)
+		}
 		if isRelayed {
 			return runner.relay.run(ctx)
 		}
 	}
-	if err := replayMessageTriggerRoutes(ctx, runner.routes); err != nil {
+	if err := runner.routes.replay(ctx); err != nil {
 		return err
 	}
-	return runMessageTriggerRoutes(ctx, runner.routes)
+	return runSocketModeRoutes(ctx, runner.routes)
 }
 
 // ProjectChannelThreadCreatedTriggerRoute binds one root-message binding from the project configuration to its
@@ -136,12 +181,24 @@ type ProjectThreadReplyCreatedTriggerRoute struct {
 	Target sdkgo.TriggerTarget[MessageEvent]
 }
 
-// ProjectMessageTriggerRunnerConfig selects Slack message Trigger bindings from the project configuration.
+// ProjectButtonClickedTriggerRoute binds one button click binding from the project configuration to its
+// application target.
+type ProjectButtonClickedTriggerRoute struct {
+	// BindingName names this configured Trigger binding.
+	BindingName string
+	// Target routes accepted events into the application.
+	Target sdkgo.TriggerTarget[ButtonClickEvent]
+}
+
+// ProjectMessageTriggerRunnerConfig selects Slack message and button click Trigger bindings from the project
+// configuration.
 type ProjectMessageTriggerRunnerConfig struct {
 	// ChannelThreadCreatedRoutes specifies channel thread created routes for project message trigger runner config.
 	ChannelThreadCreatedRoutes []ProjectChannelThreadCreatedTriggerRoute
 	// ThreadReplyCreatedRoutes specifies thread reply created routes for project message trigger runner config.
 	ThreadReplyCreatedRoutes []ProjectThreadReplyCreatedTriggerRoute
+	// ButtonClickedRoutes receives clicks on message buttons through Socket Mode; see MessageTriggerRunnerConfig.
+	ButtonClickedRoutes []ProjectButtonClickedTriggerRoute
 }
 
 // durableMessageTriggerTarget wraps one binding's target so that each event is stored before its
@@ -173,23 +230,38 @@ func NewProjectMessageTriggerRunner(
 			return nil, err
 		}
 		return provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(connection.client.logger))
+	}, func(
+		key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[ButtonClickEvent],
+	) (sdkgo.TriggerTarget[ButtonClickEvent], error) {
+		inbox, err := project.TriggerInbox(key)
+		if err != nil {
+			return nil, err
+		}
+		return provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(connection.client.logger))
 	})
 	if err != nil {
 		return nil, err
 	}
-	if runner.relay, err = newRelayedMessageReceiver(project, connection, runner.routes); err != nil {
+	if runner.relay, err = newRelayedMessageReceiver(project, connection, runner.routes.identity(), runner.routes.messages); err != nil {
 		return nil, err
 	}
 	return runner, nil
 }
 
+// durableButtonClickedTriggerTarget wraps one button binding's target so that each click is stored before
+// its acknowledgement.
+type durableButtonClickedTriggerTarget func(
+	key projectconfig.TriggerInboxKey, target sdkgo.TriggerTarget[ButtonClickEvent],
+) (sdkgo.TriggerTarget[ButtonClickEvent], error)
+
 // newDurableMessageTriggerRunner runs config's routes on connection with the bindings that configuration
-// stores, wrapping each target with makeDurable.
+// stores, wrapping each message target with makeDurable and each button target with makeButtonDurable.
 func newDurableMessageTriggerRunner(
 	connection Connection,
 	configuration projectconfig.Configuration,
 	config ProjectMessageTriggerRunnerConfig,
 	makeDurable durableMessageTriggerTarget,
+	makeButtonDurable durableButtonClickedTriggerTarget,
 ) (*MessageTriggerRunner, error) {
 	if err := connection.validate(); err != nil {
 		return nil, err
@@ -214,6 +286,23 @@ func newDurableMessageTriggerRunner(
 			return nil, err
 		}
 		runnerConfig.ThreadReplyCreatedRoutes = append(runnerConfig.ThreadReplyCreatedRoutes, ThreadReplyCreatedTriggerRoute{
+			BindingName: route.BindingName, Configuration: routeConfiguration, Target: target,
+		})
+	}
+	for _, route := range config.ButtonClickedRoutes {
+		var routeConfiguration ButtonClickedTriggerConfiguration
+		triggerName := ButtonClickedTriggerDefinition.Trigger.TriggerName
+		connectionName := connection.reference.Name
+		if err := configuration.DecodeTriggerConfiguration(ConnectorID, connectionName, triggerName, route.BindingName, &routeConfiguration); err != nil {
+			return nil, fmt.Errorf("slack %s binding %q configuration: %w", triggerName, route.BindingName, err)
+		}
+		target, err := makeButtonDurable(projectconfig.TriggerInboxKey{
+			ConnectorID: ConnectorID, ConnectionName: connectionName, TriggerName: triggerName, BindingName: route.BindingName,
+		}, route.Target)
+		if err != nil {
+			return nil, err
+		}
+		runnerConfig.ButtonClickedRoutes = append(runnerConfig.ButtonClickedRoutes, ButtonClickedTriggerRoute{
 			BindingName: route.BindingName, Configuration: routeConfiguration, Target: target,
 		})
 	}
@@ -246,8 +335,12 @@ func validateMessageTriggerRoute(
 	target sdkgo.TriggerTarget[MessageEvent],
 	bindingKeys map[string]bool,
 ) error {
+	return validateTriggerRoute(triggerName, bindingName, target == nil, bindingKeys)
+}
+
+func validateTriggerRoute(triggerName string, bindingName string, isTargetMissing bool, bindingKeys map[string]bool) error {
 	trimmedBindingName := strings.TrimSpace(bindingName)
-	if trimmedBindingName == "" || target == nil {
+	if trimmedBindingName == "" || isTargetMissing {
 		return fmt.Errorf("Slack message Trigger binding name and target are required")
 	}
 	bindingKey := triggerName + "\x00" + trimmedBindingName

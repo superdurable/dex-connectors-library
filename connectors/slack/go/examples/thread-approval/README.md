@@ -75,11 +75,11 @@ cd slack-thread-approval-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/go/v1.6.0/connectors/slack/go/examples/thread-approval/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/go/v1.7.0/connectors/slack/go/examples/thread-approval/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/slack-thread-approval-e2e
-go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.6.0
+go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.7.0
 go mod tidy
 ```
 
@@ -316,7 +316,7 @@ the Dex Server address printed by the current dexcli process:
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/slack/go/examples/thread-approval@v1.6.0
+  github.com/superdurable/dex-connectors-library/connectors/slack/go/examples/thread-approval@v1.7.0
 ```
 
 Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The
@@ -446,12 +446,11 @@ same way. The RPC keeps it pending with `Slack thread is still reading its root
 message`, or Dex reports `one or more attribute keys are locked`, until the
 Flow is waiting for a reply.
 
-While one event retries, the shared runner reads no later message, so fix the
-reported failure: restart the Dex Server or the Worker, or correct
-`DEX_FLOW_SERVICE_ADDRESS`. Slack redelivers an unacknowledged envelope only a
-few times, so messages sent during a long retry are persisted only if Slack
-still redelivers them after the runner resumes; a long outage can drop them.
-Other records to look for:
+While one event retries, the shared runner keeps receiving, recording, and
+acknowledging later messages, between delivery attempts for the same binding,
+and delivers them in order after it. They wait in their durable inboxes, so fix
+the reported failure: restart the Dex Server or the Worker, or correct
+`DEX_FLOW_SERVICE_ADDRESS`. Other records to look for:
 
 - A quiet channel logs nothing between messages. Slack pings the socket, and
   the Worker keeps one connection open for hours, until Slack refreshes it with
