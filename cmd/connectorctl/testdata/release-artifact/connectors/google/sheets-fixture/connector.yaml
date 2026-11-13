@@ -1,0 +1,97 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-sheets-fixture
+  displayName: Google Sheets Fixture
+  description: OAuth manifest fixture for generated connector metadata.
+  company: Google
+  categories: [developer-tools]
+  version: v0.3.0
+spec:
+  provider: google
+  languages:
+    python:
+      version: v0.2.1
+      operations: [appendRows]
+      triggers: []
+    typescript:
+      version: v0.5.0
+      operations: [appendRows]
+      triggers: []
+  codegen:
+    go:
+      package: googlesheetsfixture
+  configuration:
+    fields:
+      - name: applicationName
+        goName: ApplicationName
+        type: string
+        description: OAuth application display name.
+        required: true
+      - name: environment
+        goName: Environment
+        type: enum
+        description: Google API environment.
+        required: false
+        enum: [production, sandbox]
+        default: production
+      - name: scopesOverride
+        goName: ScopesOverride
+        type: stringList
+        description: Optional scope override fixture.
+        required: false
+        default: [scope-b, scope-a]
+      - name: labels
+        goName: Labels
+        type: stringMap
+        description: Optional deterministic label fixture.
+        required: false
+        default: {team: onboarding, owner: platform}
+  auth:
+    type: oauth2
+    connectionKind: google-sheets-oauth
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: OAuth access token.
+        required: true
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps: [Create an OAuth client and copy its credentials.]
+    oauth2:
+      protocol: oauth2
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      scopes: [https://www.googleapis.com/auth/drive.file]
+      pkce: true
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.1.0 <0.2.0"
+      backendCapabilities: [configuration.write]
+      mockScenarios: [not-configured, ready]
+      icon: icon.svg
+  operations:
+    - name: appendRows
+      goName: AppendRows
+      inputType: AppendRowsInput
+      outputType: AppendRowsOutput
+      kind: mutation
+      description: Append rows to one spreadsheet.
+      idempotency: required
+      branches:
+        - {id: appended, goName: Appended, description: Rows were appended.}
+        - {id: uncertain, goName: Uncertain, description: Append outcome is unknown.}
+        - {id: defect, goName: Defect, description: Local input is invalid., optional: true}
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry:
+          initialInterval: 1s
+          backoffCoefficient: 2
+          maximumInterval: 30s
+          maximumAttempts: 5
+          totalDuration: 2m
+          reason: {kind: duplicateWriteRisk, explanation: Explicit test policy bounds duplicate writes.}

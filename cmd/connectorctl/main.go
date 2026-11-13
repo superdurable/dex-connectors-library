@@ -26,9 +26,29 @@ import (
 	"github.com/superdurable/dex-connectors-library/schema"
 )
 
+// Exit codes that release tooling reads. releaseSourceRejectedExitCode means the manifest's content fails a current
+// rule, so a retry with the same tooling cannot succeed. uiArtifactRequiredExitCode means the manifest declares Studio
+// UI but the caller passed no UI artifact. languagePackageFileMissingExitCode means a declared language's
+// pyproject.toml or package.json does not exist. Every other failure exits with 1.
+const (
+	releaseSourceRejectedExitCode      = 3
+	uiArtifactRequiredExitCode         = 4
+	languagePackageFileMissingExitCode = 5
+)
+
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		var rejected releaseSourceRejectedError
+		if errors.As(err, &rejected) {
+			os.Exit(releaseSourceRejectedExitCode)
+		}
+		if errors.Is(err, errUIArtifactRequired) {
+			os.Exit(uiArtifactRequiredExitCode)
+		}
+		if errors.Is(err, errLanguagePackageFileMissing) {
+			os.Exit(languagePackageFileMissingExitCode)
+		}
 		os.Exit(1)
 	}
 }
@@ -98,9 +118,14 @@ func run(args []string) error {
 }
 
 type connectorReleaseArtifact struct {
-	ConnectorID    string              `json:"connectorId"`
-	Manifest       schema.Manifest     `json:"manifest"`
-	ModulePath     string              `json:"modulePath"`
+	ConnectorID string `json:"connectorId"`
+	// Language is python or typescript for a language package release and absent for a Go release.
+	Language string `json:"language,omitempty"`
+	// Package is the PyPI or npm package name of a language release and absent for a Go release.
+	Package  string          `json:"package,omitempty"`
+	Manifest schema.Manifest `json:"manifest"`
+	// ModulePath is the Go module path of a Go release and absent for a language release.
+	ModulePath     string              `json:"modulePath,omitempty"`
 	Version        string              `json:"version"`
 	Tag            string              `json:"tag"`
 	SourceSHA      string              `json:"sourceSha"`
@@ -131,7 +156,9 @@ type connectorUIRelease struct {
 func releaseArtifact(args []string) error {
 	flags := flag.NewFlagSet("release-artifact", flag.ContinueOnError)
 	manifestPath := flags.String("manifest", "", "connector manifest path")
-	modulePath := flags.String("module-path", "", "connector Go module path")
+	modulePath := flags.String("module-path", "", "connector Go module path of a Go release")
+	language := flags.String("language", "", "python or typescript for a language package release; omit for Go")
+	packageName := flags.String("package", "", "expected PyPI or npm package name of a language release")
 	version := flags.String("version", "", "release version")
 	tag := flags.String("tag", "", "full component tag")
 	sourceSHA := flags.String("source-sha", "", "source commit SHA")
@@ -142,8 +169,10 @@ func releaseArtifact(args []string) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if flags.NArg() != 0 || *manifestPath == "" || *modulePath == "" || *version == "" || *tag == "" || *sourceSHA == "" || *output == "" || *digestOutput == "" {
-		return errors.New("usage: connectorctl release-artifact --manifest PATH --module-path PATH --version VERSION --tag TAG --source-sha SHA --output PATH --digest-output PATH")
+	isLanguageRelease := *language != ""
+	if flags.NArg() != 0 || *manifestPath == "" || *version == "" || *tag == "" || *sourceSHA == "" || *output == "" || *digestOutput == "" ||
+		isLanguageRelease == (*modulePath != "") || (!isLanguageRelease && *packageName != "") {
+		return errors.New("usage: connectorctl release-artifact --manifest PATH (--module-path PATH | --language python|typescript [--package NAME]) --version VERSION --tag TAG --source-sha SHA --output PATH --digest-output PATH")
 	}
 	manifestBytes, err := os.ReadFile(*manifestPath)
 	if err != nil {
@@ -151,16 +180,22 @@ func releaseArtifact(args []string) error {
 	}
 	manifest, err := load(*manifestPath)
 	if err != nil {
-		return err
-	}
-	if candidate := connectorReleaseCandidateVersionPattern.FindStringSubmatch(*version); manifest.Metadata.Version != *version &&
-		(candidate == nil || candidate[1] != manifest.Metadata.Version) {
-		return fmt.Errorf("release version %s does not match manifest version %s or a release candidate of it", *version, manifest.Metadata.Version)
+		return rejectReleaseSource(err)
 	}
 	manifestDigest := fmt.Sprintf("%x", sha256.Sum256(manifestBytes))
 	artifact := connectorReleaseArtifact{
 		ConnectorID: manifest.Metadata.Name, Manifest: manifest, ModulePath: *modulePath,
 		Version: *version, Tag: *tag, SourceSHA: *sourceSHA, ManifestSHA256: manifestDigest,
+	}
+	if isLanguageRelease {
+		releasedPackage, identityErr := languageReleaseIdentity(*manifestPath, manifest, *language, *version, *tag, *packageName)
+		if identityErr != nil {
+			return rejectReleaseSource(identityErr)
+		}
+		artifact.Language, artifact.Package = *language, releasedPackage
+	} else if candidate := connectorReleaseCandidateVersionPattern.FindStringSubmatch(*version); manifest.Metadata.Version != *version &&
+		(candidate == nil || candidate[1] != manifest.Metadata.Version) {
+		return fmt.Errorf("release version %s does not match manifest version %s or a release candidate of it", *version, manifest.Metadata.Version)
 	}
 	for _, method := range manifest.Spec.Auth.AuthMethods() {
 		hostKept := schema.HostKeptCredentials(method)
@@ -174,7 +209,7 @@ func releaseArtifact(args []string) error {
 	}
 	if manifest.Spec.Studio != nil {
 		if *uiArtifactPath == "" {
-			return errors.New("manifest declares Studio UI but no UI artifact was provided")
+			return errUIArtifactRequired
 		}
 		digest, digestErr := readDigest(*uiDigestPath, filepath.Base(*uiArtifactPath))
 		if digestErr != nil {
@@ -202,7 +237,7 @@ func releaseArtifact(args []string) error {
 	}
 	encoded = append(encoded, '\n')
 	if err := verifyReleaseAuthMethods(encoded, manifest); err != nil {
-		return err
+		return rejectReleaseSource(err)
 	}
 	if err := os.WriteFile(*output, encoded, 0o644); err != nil {
 		return fmt.Errorf("write release artifact: %w", err)
@@ -212,6 +247,66 @@ func releaseArtifact(args []string) error {
 		return fmt.Errorf("write release artifact digest: %w", err)
 	}
 	return nil
+}
+
+// releaseSourceRejectedError is a release-artifact failure that the release source itself causes, such as a
+// manifest written before a current rule. It keeps the message of the error it wraps.
+type releaseSourceRejectedError struct {
+	err error
+}
+
+func (rejected releaseSourceRejectedError) Error() string { return rejected.err.Error() }
+
+func (rejected releaseSourceRejectedError) Unwrap() error { return rejected.err }
+
+// errUIArtifactRequired reports a missing --ui-artifact for a manifest that declares Studio UI; it is the caller's
+// input error, never a rejection of the release source.
+var errUIArtifactRequired = errors.New("manifest declares Studio UI but no UI artifact was provided")
+
+// rejectReleaseSource marks err as a rejection of the release source's content. A file system failure, including a
+// missing file, stays an ordinary error: the caller decides which files the source has.
+func rejectReleaseSource(err error) error {
+	var pathError *fs.PathError
+	if errors.As(err, &pathError) || errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return releaseSourceRejectedError{err: err}
+}
+
+// languageReleaseIdentity checks a language release against the manifest's spec.languages declaration and returns
+// its package name. The version is the declared language version or a release candidate of it, and the tag is
+// <connector directory>/<language>/<version>, so the metadata describes only the release it is attached to.
+func languageReleaseIdentity(manifestPath string, manifest schema.Manifest, language, version, tag, expectedPackage string) (string, error) {
+	if language != "python" && language != "typescript" {
+		return "", fmt.Errorf("release language must be python or typescript, not %q", language)
+	}
+	var declaration *schema.LanguagePackage
+	if manifest.Spec.Languages != nil {
+		declaration = manifest.Spec.Languages.Python
+		if language == "typescript" {
+			declaration = manifest.Spec.Languages.TypeScript
+		}
+	}
+	if declaration == nil {
+		return "", fmt.Errorf("manifest does not declare spec.languages.%s", language)
+	}
+	if candidate := connectorReleaseCandidateVersionPattern.FindStringSubmatch(version); declaration.Version != version &&
+		(candidate == nil || candidate[1] != declaration.Version) {
+		return "", fmt.Errorf("release version %s does not match spec.languages.%s version %s or a release candidate of it",
+			version, language, declaration.Version)
+	}
+	directory, err := connectorDirectoryInCatalog(manifestPath)
+	if err != nil {
+		return "", err
+	}
+	if expectedTag := directory + "/" + language + "/" + version; tag != expectedTag {
+		return "", fmt.Errorf("release tag %s must be %s", tag, expectedTag)
+	}
+	releasedPackage := languagePackageName(directory, language, declaration.Package)
+	if expectedPackage != "" && expectedPackage != releasedPackage {
+		return "", fmt.Errorf("release package %s does not match the manifest's %s package %s", expectedPackage, language, releasedPackage)
+	}
+	return releasedPackage, nil
 }
 
 const (

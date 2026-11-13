@@ -5,8 +5,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,6 +17,9 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+// errLanguagePackageFileMissing marks a declared language whose package metadata file does not exist.
+var errLanguagePackageFileMissing = errors.New("declared language package file is missing")
 
 var pythonProjectField = regexp.MustCompile(`^\s*(name|version)\s*=\s*["']([^"']+)["']\s*(?:#.*)?$`)
 
@@ -57,7 +62,7 @@ func validateLanguagePackages(manifestPath string, manifest schema.Manifest) err
 		pyprojectPath := filepath.Join(connectorDirectory, "python", "pyproject.toml")
 		contents, err := os.ReadFile(pyprojectPath)
 		if err != nil {
-			return fmt.Errorf("spec.languages.python requires %s: %w", pyprojectPath, err)
+			return fmt.Errorf("spec.languages.python requires %s: %w", pyprojectPath, languagePackageFileError(err))
 		}
 		projectFields := make(map[string]string)
 		inProject := false
@@ -81,7 +86,7 @@ func validateLanguagePackages(manifestPath string, manifest schema.Manifest) err
 		packagePath := filepath.Join(connectorDirectory, "typescript", "package.json")
 		contents, err := os.ReadFile(packagePath)
 		if err != nil {
-			return fmt.Errorf("spec.languages.typescript requires %s: %w", packagePath, err)
+			return fmt.Errorf("spec.languages.typescript requires %s: %w", packagePath, languagePackageFileError(err))
 		}
 		var declaration struct {
 			Name    string                      `json:"name"`
@@ -106,6 +111,14 @@ func validateLanguagePackages(manifestPath string, manifest schema.Manifest) err
 	return nil
 }
 
+// languagePackageFileError adds errLanguagePackageFileMissing to a read error that reports a missing file.
+func languagePackageFileError(err error) error {
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("%w: %w", errLanguagePackageFileMissing, err)
+	}
+	return err
+}
+
 func connectorDirectoryInCatalog(manifestPath string) (string, error) {
 	connectorAbsoluteDirectory, err := filepath.Abs(filepath.Dir(manifestPath))
 	if err != nil {
@@ -113,12 +126,17 @@ func connectorDirectoryInCatalog(manifestPath string) (string, error) {
 	}
 	repositoryRoot := connectorAbsoluteDirectory
 	for {
-		if _, err := os.Stat(filepath.Join(repositoryRoot, "catalog.yaml")); err == nil {
+		catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+		_, statErr := os.Stat(catalogPath)
+		if statErr == nil {
 			break
+		}
+		if !errors.Is(statErr, fs.ErrNotExist) {
+			return "", fmt.Errorf("find the repository catalog of %s: %w", manifestPath, statErr)
 		}
 		parent := filepath.Dir(repositoryRoot)
 		if parent == repositoryRoot {
-			return "", fmt.Errorf("language packages require a repository catalog: %s", manifestPath)
+			return "", fmt.Errorf("language packages require a repository catalog: %s: %w", manifestPath, fs.ErrNotExist)
 		}
 		repositoryRoot = parent
 	}

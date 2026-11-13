@@ -258,8 +258,8 @@ jobs:
           token: ''
       - uses: astral-sh/setup-uv@v7
         if: needs.plan.outputs.language == 'python'
+      # The connector's Studio UI builds for every language, so Python candidates need Node too.
       - uses: actions/setup-node@v6
-        if: needs.plan.outputs.language == 'typescript'
         with:
           node-version: 24
       - name: Validate released language SDK dependency
@@ -315,11 +315,37 @@ jobs:
           for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
           python3 "${RUNNER_TEMP}/component_release.py" verify-language-artifacts \
             --language "${RELEASE_LANGUAGE}" --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" "${arguments[@]}"
+      - name: Build and test the candidate's Connector Studio UI
+        env:
+          MANIFEST_PATH: ${{ needs.plan.outputs.manifest_path }}
+        run: |
+          # The UI tarball stays outside language-dist, so language-release.json never lists it.
+          if [ -f "${CANDIDATE_DIRECTORY}/ui/package-lock.json" ]; then
+            npm ci --prefix sdk/react
+            npm run build --prefix sdk/react
+            npm ci --prefix "${CANDIDATE_DIRECTORY}/ui"
+            npm test --prefix "${CANDIDATE_DIRECTORY}/ui"
+            npm run build --prefix "${CANDIDATE_DIRECTORY}/ui"
+            mkdir -p "${RUNNER_TEMP}/ui"
+            go run ./cmd/connectorctl ui-artifact \
+              --manifest "${MANIFEST_PATH}" \
+              --ui-root "${CANDIDATE_DIRECTORY}/ui/dist" \
+              --output "${RUNNER_TEMP}/ui/connector-ui.tgz" \
+              --digest-output "${RUNNER_TEMP}/ui/connector-ui.tgz.sha256"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: language-candidate
           path: ${{ runner.temp }}/language-dist
           if-no-files-found: error
+      - name: Keep the Studio UI artifact for publication
+        if: hashFiles(format('{0}/ui/package-lock.json', env.CANDIDATE_DIRECTORY)) != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: connector-ui
+          path: ${{ runner.temp }}/ui
+          if-no-files-found: error
+          retention-days: 1
 
   publish-language:
     needs: [plan, verify-language]
@@ -336,10 +362,17 @@ jobs:
       RELEASE_SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
       RELEASE_DISPLAY_NAME: ${{ needs.plan.outputs.display_name }}
       RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+      MANIFEST_PATH: ${{ needs.plan.outputs.manifest_path }}
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - uses: astral-sh/setup-uv@v7
         if: needs.plan.outputs.language == 'python'
       - uses: actions/setup-node@v6
@@ -350,6 +383,11 @@ jobs:
         with:
           name: language-candidate
           path: ${{ runner.temp }}/language-dist
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: connector-ui
+          path: ${{ runner.temp }}/ui
       - name: Verify package archives before publication
         run: |
           if [ "${RELEASE_LANGUAGE}" = python ]; then
@@ -381,6 +419,25 @@ jobs:
             --language "${RELEASE_LANGUAGE}" --package "${RELEASE_PACKAGE}" \
             --version "${CANDIDATE_VERSION}" --tag "${RELEASE_TAG}" \
             --source-sha "${RELEASE_SOURCE_SHA}" "${manifest_args[@]}"
+      - name: Build connector release metadata with main's tooling
+        if: steps.state.outputs.release_required == 'true'
+        run: |
+          # Before any registry upload, so a manifest that main's tooling rejects publishes nothing.
+          git fetch --no-tags origin "${RELEASE_SOURCE_SHA}"
+          git worktree add --detach "${RUNNER_TEMP}/candidate" "${RELEASE_SOURCE_SHA}"
+          metadata="${RUNNER_TEMP}/connector-release"
+          mkdir -p "${metadata}"
+          ui_arguments=()
+          if [ -f "${RUNNER_TEMP}/ui/connector-ui.tgz" ]; then
+            cp "${RUNNER_TEMP}/ui/connector-ui.tgz" "${RUNNER_TEMP}/ui/connector-ui.tgz.sha256" "${metadata}/"
+            ui_arguments+=(--ui-artifact "${metadata}/connector-ui.tgz" --ui-digest "${metadata}/connector-ui.tgz.sha256")
+          fi
+          go run ./cmd/connectorctl release-artifact \
+            --manifest "${RUNNER_TEMP}/candidate/${MANIFEST_PATH}" \
+            --language "${RELEASE_LANGUAGE}" --package "${RELEASE_PACKAGE}" \
+            --version "${CANDIDATE_VERSION}" --tag "${RELEASE_TAG}" --source-sha "${RELEASE_SOURCE_SHA}" \
+            --output "${metadata}/connector-release.json" --digest-output "${metadata}/connector-release.json.sha256" \
+            "${ui_arguments[@]}"
       - name: Publish Python pre-release
         if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'python' && env.CANDIDATE_DRY_RUN != 'true'
         env:
@@ -412,11 +469,13 @@ jobs:
             "${title}" "${RELEASE_SOURCE_SHA}" > "${RUNNER_TEMP}/language-notes.md"
           if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
             gh release edit "${RELEASE_TAG}" --title "${title}"
-            gh release upload "${RELEASE_TAG}" --clobber "${RUNNER_TEMP}"/language-dist/*
+            gh release upload "${RELEASE_TAG}" --clobber "${RUNNER_TEMP}"/language-dist/* "${RUNNER_TEMP}"/connector-release/*
           else
+            # connector-release.json ships with the archives, so language-release.complete always follows it.
             gh release create "${RELEASE_TAG}" --target "${RELEASE_SOURCE_SHA}" \
               --prerelease --title "${title}" \
-              --notes-file "${RUNNER_TEMP}/language-notes.md" "${RUNNER_TEMP}"/language-dist/*
+              --notes-file "${RUNNER_TEMP}/language-notes.md" "${RUNNER_TEMP}"/language-dist/* \
+              "${RUNNER_TEMP}"/connector-release/*
           fi
       - name: Mark language candidate complete
         if: steps.state.outputs.release_required == 'true' && env.CANDIDATE_DRY_RUN != 'true'
