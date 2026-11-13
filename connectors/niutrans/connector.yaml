@@ -1,0 +1,50 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: niutrans
+  displayName: NiuTrans
+  description: Translate bounded text with NiuTrans's metered translation API.
+  company: NiuTrans
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: niutrans
+  codegen:
+    go:
+      package: niutrans
+  configuration:
+    fields:
+      - {name: baseUrl, goName: BaseURL, type: url, default: 'https://api.niutrans.com', description: 'HTTPS origin of the NiuTrans translation API without a path. Leave blank for the displayed production endpoint; override only for an approved proxy or local test server.'}
+      - {name: timeout, goName: Timeout, type: duration, default: 15s, description: 'Maximum time for one translation attempt as a positive Go duration such as 10s or 1m. Leave blank for the displayed default; increase only for a slow approved proxy.'}
+      - {name: maxResponseBytes, goName: MaxResponseBytes, type: integer, default: 65536, description: 'Maximum translation response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a valid provider response exceeds it.'}
+  auth:
+    type: apiKey
+    connectionKind: niutrans-text
+    fields:
+      - {name: api_key, goName: APIKey, type: secretString, required: true, description: 'Secret APIKEY from https://niutrans.com > 控制台 > 个人中心 > APIKEY. Sign up, bind the account as requested, then reveal and copy the exact value; blank prevents requests. It is sent in the HTTPS form body and never Flow input.'}
+    guide:
+      startURL: https://niutrans.com
+      steps:
+        - Sign in at https://niutrans.com, open 控制台 > 个人中心, find APIKEY, complete any required account binding, then reveal and copy it into the secret api_key field. Do not put the key in Flow input.
+        - Translation uses points based on source characters; the provider documents one point per 2000 characters and a 5000-character request limit. This connector caps input at 1000 Unicode characters and two attempts because a successful request may be billed twice after an ambiguous failure.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults. The Flow example uses a synthetic mock and does not spend translation points.
+  operations:
+    - name: translateText
+      goName: TranslateText
+      inputType: TranslateTextInput
+      outputType: TranslateTextOutput
+      kind: query
+      description: Translate up to 1000 Unicode characters from one language to another.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: translated, goName: Translated, description: 'NiuTrans returned translated text.'}
+        - {id: providerRejected, goName: ProviderRejected, description: 'NiuTrans rejected the key, quota, text, or language pair.', optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: 'NiuTrans returned malformed or oversized data.', optional: true}
+        - {id: defect, goName: Defect, description: 'Local text, language code, or connection credentials are invalid.', optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 10s, maximumAttempts: 2, totalDuration: 1m, reason: {kind: billedOperation, explanation: 'A translated response may already consume points when an attempt fails after reaching NiuTrans; two attempts bound duplicate charges.'}}
+      mocks:
+        - {name: sampleTranslation, branch: translated, description: 'Synthetic hello translation for local Flow verification; no provider call or points consumed.', default: true, output: {translatedText: Hello.}}
