@@ -3,277 +3,106 @@
 
 # [Dex Connectors](https://connectors.superdurable.io/)
 
+**Open-source connectors for [Dex](https://github.com/superdurable/dex) applications.** Add a connector to a Flow to call a provider's API as typed Steps, or start Flows and call Flow RPCs from its events; Dex handles retries, idempotency, and recovery. Applications can use released connectors from Go, Python, and TypeScript.
 
-[<img width="1146" height="826" alt="what-is-connectors" src="https://github.com/user-attachments/assets/90050abb-6a5a-41d9-8333-3c773f40bde2" />](https://connectors.superdurable.io/)
+[Browse connectors](https://connectors.superdurable.io/) · [Connector concepts](https://docs.superdurable.io/concepts/connector/) · [Build with AI](https://docs.superdurable.io/build-with-ai/dex-developer-skill/) · [Dex docs](https://docs.superdurable.io/)
 
-Dex Connectors Library is the open-source library that connects [Dex](https://github.com/superdurable/dex)
-applications to products and services across the internet.
+## 🧠 Concepts
 
-Trigger events from those products can start a new Flow run or invoke a Flow
-RPC. On the other hand, Dex Flows compose reusable Connector Steps to call
-provider APIs. Those Steps include Query and Mutation operations, timeout and
-retry policy, persisting read results in Attributes, and streaming progress
-from long-running operations. In addition, connectors include reusable UI
-units for configuring and using those products.
+<a href="https://connectors.superdurable.io/#/what-is-dex-connectors">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/connector-map-dark.gif" />
+    <img src="docs/assets/connector-map-light.gif" width="1120" alt="Connector map with three lanes. Events in: a provider event goes through a connector Trigger to start a Flow or invoke a Flow RPC. API calls out: a Flow calls the provider API through connector Query and Mutation Steps. Setup in Dex Web: provider authorization goes into the connection runtime and configuration UI units, which Dex Web shows as forms for each Flow." />
+  </picture>
+</a>
 
+- ⚡ **Trigger** receives provider events and, for each one, starts a Flow or calls a Flow RPC. Delivery is at least once.
+- 🔍 **Query** is an operation that reads provider state in a Step.
+- ✏️ **Mutation** is an operation that changes provider state in a Step and sends an idempotency key. When the outcome is unknown, it selects the `uncertain` branch instead of sending again.
+- 🔑 **Connection** is the named provider account that a Step or Trigger uses. Its credentials never enter Flow state.
+- 🧩 **Configuration UI unit** is a connector-owned control that Dex Web combines into the settings form for a Step or Trigger binding.
 
-The directory lists each published connector, its company, reusable UI units,
-triggers, and operations. Search matches all of those names and descriptions.
+## 🤖 Build with AI
 
-## Use a connector
+Dex Skills teach a coding agent, such as Codex, Claude Code, or Cursor, to build Dex applications with released connectors. In Claude Code:
 
-A Connector is a versioned integration package, not just an API operation. It
-can own authentication and connection configuration, provider reads and
-writes, provider event ingress, typed routing into Dex, and reusable setup UI.
-Applications keep only a logical connection name; credentials remain in the
-Connector runtime and never enter Flow state or a configuration UI unit.
-
-| Capability | Purpose |
-| --- | --- |
-| Query operation | Read provider state from a typed Connector Step. |
-| Mutation operation | Change provider state with idempotency and explicit uncertainty handling. |
-| Trigger | Receive provider events with stable event identity and at-least-once delivery. |
-| Flow Trigger target | Filter and map a Trigger event into a new typed Flow execution. |
-| Flow RPC and RPC Trigger target | Define a typed method on an existing Flow, then filter and map a Trigger event into it. |
-| Configuration UI unit | Let Dex Web compose connector-owned controls for non-secret operation or Trigger configuration. |
-
-### Query operation
-
-A Query reads provider state. The operation-specific factory creates a typed
-Dex Step; the application maps the current Flow value to provider input and
-connects the successful result branch to the next Step. Provider work runs in
-the Connector Step's `Execute` method.
-
-For example, the Slack thread approval Flow reads one bounded page of thread
-messages and routes the `Read` result to `threadLoaded`:
-
-```go
-dex.DefineStep(slack.NewListThreadMessagesStep(slack.ListThreadMessagesStepConfig[Input]{
-	StepType:       readThreadStepType,
-	ConnectionName: ConnectionName,
-	Annotations: sdkgo.StepAnnotations{
-		GroupID: "slack", GroupLabel: "Slack",
-		Explanation: "Read the messages in the newly created Slack thread.",
-	},
-	Connection: flow.connection,
-	MapToOperationInput: func(input Input) slack.ListThreadMessagesInput {
-		return slack.ListThreadMessagesInput{
-			ChannelID: input.ChannelID, ThreadTimestamp: input.ThreadTimestamp,
-			PageSize: 15,
-		}
-	},
-	Read: sdkgo.GoTo(threadLoaded{}),
-}))
+```sh
+claude plugin marketplace add superdurable/dex-skills
+claude plugin install superdurable-dex@superdurable
 ```
 
-### Mutation operation
-
-A Mutation changes provider state. It uses the same typed Step boundary, but
-its provider adapter also derives a stable idempotency key from the Dex call
-identity. A definite provider outcome selects a branch. A failure that is safe
-to repeat returns Retry, including a write that the same key deduplicates or
-whose outcome a read-back confirms before resending. Only a write that may have
-reached the provider, cannot be repeated safely, and cannot be confirmed by
-read-back selects `uncertain` for reconciliation instead of being blindly
-resent. See
-[Branch-only Result and strict Attempt](docs/connector-contract.md#branch-only-result-and-strict-attempt).
-
-This Slack Mutation maps durable thread state into a reply and continues only
-after Slack confirms the `Sent` branch:
-
-```go
-dex.DefineStep(slack.NewPostThreadReplyStep(slack.PostThreadReplyStepConfig[ThreadState]{
-	StepType:       postCompletionStepType,
-	ConnectionName: ConnectionName,
-	Annotations: sdkgo.StepAnnotations{
-		GroupID: "slack", GroupLabel: "Slack",
-		Explanation: "Reply to the Slack thread after the reply Trigger invokes the RPC.",
-	},
-	Connection:     flow.connection,
-	MapToOperationInput: func(state ThreadState) slack.PostThreadReplyInput {
-		return slack.PostThreadReplyInput{
-			ChannelID:       state.Input.ChannelID,
-			ThreadTimestamp: state.Input.ThreadTimestamp,
-			Text:            flow.postCompletionConfiguration.Value.Text,
-		}
-	},
-	Sent: sdkgo.GoTo(completionPosted{}),
-}))
+```text
+/superdurable-dex:dex-app-builder Design and build an event-registration application.
 ```
 
-### Trigger
+[Dex App Builder](https://docs.superdurable.io/build-with-ai/dex-developer-skill/dex-app-builder/) builds a complete application; [Dex SDK](https://docs.superdurable.io/build-with-ai/dex-developer-skill/dex-sdk/) handles focused SDK work in any supported language. Other hosts: [Install and use Dex Skills](https://docs.superdurable.io/build-with-ai/dex-developer-skill/).
 
-A Trigger is a long-running provider ingress capability, separate from a Flow
-Step. It validates an external event, preserves the provider's stable event ID
-and occurrence time, and delivers the event at least once. A
-Trigger binding names one use of that event source and keeps its matcher
-configuration separate from reusable connection credentials.
+## 👀 Example
 
-For example, this Flow definition declares one statically named use of Slack's
-`channelThreadCreated` Trigger:
+Install a connector package, open its named connection, and add an operation Step to a Flow. Gmail in Python:
 
-```go
-slack.DefineChannelThreadCreatedTriggerBinding(
-	slack.ChannelThreadCreatedTriggerBindingConfig{
-		ConnectionName: ConnectionName,
-		BindingName:    StartTriggerBinding,
-	},
+```python
+# pip install dex-connector-google-gmail
+from dex_connectors.sdk.projectconfig import load_from_environment
+from dex_connectors.google_gmail import GetMessageInput, new_get_message_step, new_project_connection
+
+async def main():
+    project = await load_from_environment()
+    connection = new_project_connection(project, "gmail-inbox")
+    ...
+
+# In your dex.Flow:
+read = new_get_message_step(
+    step_type="ReadReceivedEmail", step_input_type=..., annotations=...,
+    connection=connection, connection_name="gmail-inbox",
+    map_to_operation_input=lambda value: GetMessageInput(value.message_id),
+    read=message_read,  # happy-path branch -> next Step
 )
 ```
 
-The Trigger itself does not decide whether an event starts a Flow or invokes an
-RPC. The application chooses one of the following typed targets and supplies a
-pure filter, Flow ID resolver, and input mapper.
+The same in TypeScript:
 
-### Flow Trigger target
+```ts
+// npm install @superdurable/connector-google-gmail @superdurable/dex
+import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig';
+import { newGetMessageStep, newProjectConnection, type GetMessageInput } from '@superdurable/connector-google-gmail';
 
-A Flow Trigger target admits a provider event into a new Flow. The application
-filter runs first, the resolver chooses the stable business Flow ID, and the
-mapper produces the typed start input. Dex uses the stable provider event ID as
-the start request identity so redelivery does not create another root start.
+const project = await loadFromEnvironment();
+const connection = newProjectConnection(project, 'gmail-inbox');
 
-The Slack example routes a matching top-level channel message into a new thread
-approval Flow:
-
-```go
-ChannelThreadCreatedRoutes: []slack.LocalChannelThreadCreatedTriggerRoute{{
-	BindingName: threadapproval.StartTriggerBinding,
-	Target: sdkgo.NewDexFlowTriggerTarget(
-		client, flow, startTriggerFilter, threadapproval.ResolveFlowID,
-		threadapproval.MapToFlowInput,
-	),
-}},
+const readStep = newGetMessageStep<GetMessageInput>({
+  stepType: 'ReadGmailMessage', connectionName: 'gmail-inbox', connection,
+  annotations: { /* ... */ }, mapToOperationInput: input => input,
+  read: doneStep, // happy-path branch -> next Step
+});
 ```
 
-### Flow RPC and RPC Trigger target
+A Mutation Step has the same shape, for example `new_reply_to_message_step(..., sent=...)`. Runnable examples: [Python](connectors/google/gmail/python/examples/thread_reply/flow.py) and [TypeScript](connectors/google/gmail/typescript/examples/gmail-flow/). The [directory](https://connectors.superdurable.io/) shows which languages each connector supports. Python and TypeScript packages implement operations; Triggers are Go only.
 
-A Flow RPC is an application-owned typed method for synchronously reading or
-changing one existing Flow execution. An RPC Trigger target delivers a provider
-event to that method. The same Flow ID resolver locates the execution, while an
-RPC input mapper keeps the provider event type out of the application's RPC
-contract. The application owns RPC registration, locks, business-state checks,
-and bounded duplicate-event state.
+## 📚 Learn more
 
-The Slack Flow registers `ReceiveThreadReply` with an Attribute lock for the
-state changed by the handler:
+- [Configure connections in Dex Web](https://docs.superdurable.io/reference/web/local-connector-setup/) for local development.
+- [Connectors as agent tools](https://docs.superdurable.io/agent-frameworks/connectors-as-tools/).
+- [Slack thread approval walkthrough](connectors/slack/go/examples/thread-approval/README.md): a Go example with Triggers, a Flow RPC, and configuration UI units.
 
-```go
-dex.DefineRPC(flow.ReceiveThreadReply, &dex.RPCOptions{
-	LockAttributes: []dex.AttributeLock{dex.LockAttribute(threadStateAttribute)},
-})
-```
+## 🛠️ Contributing
 
-The Trigger target passes that same bound method directly, routing an allowed
-thread reply to the Flow started by the root message:
-
-```go
-ThreadReplyCreatedRoutes: []slack.LocalThreadReplyCreatedTriggerRoute{{
-	BindingName: threadapproval.ReplyTriggerBinding,
-	Target: sdkgo.NewDexRPCTriggerTarget(
-		client, flow.ReceiveThreadReply, replyTriggerFilter,
-		threadapproval.ResolveFlowID, threadapproval.MapToReceiveThreadReplyInput,
-	),
-}},
-```
-
-### Configuration UI unit
-
-A configuration UI unit is a small connector-owned React control that Dex Web
-composes for one operation or Trigger binding. Generated unit and port
-constants connect the control to an application-owned configuration object
-through JSON Pointers. The iframe receives only scoped non-secret values;
-credentials and provider tokens remain host-owned.
-
-For example, Slack's reusable `textInput` unit configures the completion reply
-used by `PostThreadReply`:
-
-```go
-ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
-	ID: "completionText", UnitID: slack.UIUnitTextInput,
-	Label: "Completion reply", Required: true,
-	Description: "Enter the Slack message posted after the approval reply arrives.",
-	Bindings: []sdkgo.ConnectorUIBinding{{
-		Port: slack.UITextInputPortText, JSONPointer: "/text",
-	}},
-}}},
-```
-
-Slack also composes `channelPicker`, `memberPicker`, and `textInput` units for
-its two Trigger bindings, so Dex Web stores stable provider IDs without
-exposing credentials to those controls.
-
-### End-to-end Slack example
-
-Follow the [Slack thread approval walkthrough](connectors/slack/go/examples/thread-approval/README.md)
-to configure Slack and Dex Web, run the example Worker, and verify the complete
-path: a top-level Slack message starts a Flow, the Flow reads the thread, an
-allowed reply invokes its typed RPC, and the Connector posts the completion
-reply. The [complete Flow source](connectors/slack/go/examples/thread-approval/flow/workflow.go)
-shows how the Steps, triggers, and RPC are wired together.
-
-In Dex Web, open **Connections**, select `slack / slack-workspace`, and choose
-**Authorize**. Then configure each Flow use in the left panel: set the
-`postThreadReply` **Completion reply**, configure both trigger bindings, and
-choose **Save** in each unit. A green check marks saved setup. In the screenshot,
-authorization and both triggers are ready; `postThreadReply` is the remaining
-item to configure before starting the example Worker.
-
-![Dex Web Slack connection setup with authorization, operation, and trigger status](docs/assets/slack-connection-setup.png)
-
-## Contribute a connector
-
-Follow the [Dex Skills installation guide](https://github.com/superdurable/dex-skills#install)
-to install either the recommended `superdurable-dex` Plugin or the complete
-standalone Skills bundle, but not both. Duplicate installations can shadow one
-another.
-
-Then use Dex Connector Contributor to add or modify a connector, operation,
-Trigger, or configuration UI unit. The skill is a thin bootstrap: it discovers
-or helps create the contributor's GitHub fork, resolves the correct checkout,
-and loads this repository's instructions. After checkout, [AGENTS.md](AGENTS.md),
-the [architecture](docs/architecture.md), [connector contract](docs/connector-contract.md),
-[manifest guide](docs/manifest-authoring.md),
-[configuration guidance](docs/configuration-guidance.md),
-[acceptance criteria](docs/acceptance.md), and the owning connector README are
-the authoritative contribution workflow.
-
-Use this request template:
+Add a connector, operation, Trigger, or configuration UI unit with the [Dex Connector Contributor](https://docs.superdurable.io/build-with-ai/dex-developer-skill/dex-connector-contributor/) skill:
 
 ```text
-Add <XYZ> to Dex official connector library
+/superdurable-dex:dex-connector-contributor Add <XYZ> to Dex official connector library
 ```
 
-The explicit invocation depends on the installation path:
+The skill is a thin bootstrap: it finds or creates your fork and loads this repository's rules. After checkout, [AGENTS.md](AGENTS.md), the [architecture](docs/architecture.md), [connector contract](docs/connector-contract.md), [manifest guide](docs/manifest-authoring.md), [configuration guidance](docs/configuration-guidance.md), [acceptance criteria](docs/acceptance.md), and [versioning and releases](docs/versioning-and-releases.md) are the authoritative contribution workflow.
 
-| Host | Plugin | Standalone Skills |
-| --- | --- | --- |
-| Codex | Type `@`, select **Dex**, then enter the request. Plain `@Dex` text is not equivalent. | `$dex-connector-contributor Add <XYZ> to Dex official connector library` |
-| Claude Code | `/superdurable-dex:dex-connector-contributor Add <XYZ> to Dex official connector library` | `/dex-connector-contributor Add <XYZ> to Dex official connector library` |
-| Cursor | `/dex-connector-contributor Add <XYZ> to Dex official connector library` | `/dex-connector-contributor Add <XYZ> to Dex official connector library` |
+<details>
+<summary>OAuth authorization evidence</summary>
 
-Cursor uses the same short slash command for both sources. The installation
-guide also covers upgrade paths. The
-[skill source](https://github.com/superdurable/dex-skills/blob/main/dex-connector-contributor/SKILL.md)
-documents the agent workflow.
+When a contribution adds a connector or operation with `spec.auth.type: oauth2`, open the pull request early rather than waiting for live authorization testing. Authors are then encouraged to test the real provider application, API, or scope configuration and optionally attach a screenshot to the pull request description. This applies to OAuth 2.0 and OpenID Connect, not API keys or other static credentials. Redact secrets and personal data, never commit the screenshot, and say plainly if live testing is incomplete. Missing evidence must not block early connector sharing or review.
 
-When a contribution adds a connector or operation with
-`spec.auth.type: oauth2`, open the pull request early rather than waiting for
-live authorization testing. After the pull request is open, authors are
-encouraged to test the real provider application, API, or scope configuration
-and optionally attach a screenshot to the pull request description. This
-applies to OAuth 2.0 and OpenID Connect, not API keys or other static
-credentials.
+</details>
 
-Redact tokens, client secrets, account details, and unrelated personal data, and
-do not commit the screenshot to the repository. If live authorization testing
-is incomplete, say so plainly. Missing evidence must not block early connector
-sharing or review.
-
-## Contributors
-
-Every GitHub user with an attributed commit on the default `main` branch is a
-Dex Connectors contributor. Counts follow that branch, matching the repository
-contributor view; bots and commits without a linked GitHub account are omitted.
+### Contributors
 
 <a href="https://github.com/superdurable/dex-connectors-library/graphs/contributors">
   <picture>
@@ -281,49 +110,3 @@ contributor view; bots and commits without a linked GitHub account are omitted.
     <img src="https://raw.githubusercontent.com/superdurable/dex-connectors-library/readme-assets/contributors-light.svg" alt="Dex Connectors contributors on the main branch" />
   </picture>
 </a>
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=superdurable%2Fdex-connectors-library&type=date&legend=top-left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=superdurable/dex-connectors-library&type=date&legend=top-left" />
-  </picture>
-</a>
-
-## Organization
-
-The first folder under `connectors/` is the company name, matches
-`metadata.company`, and contains `logo.svg`. Connectors for the same company
-are grouped below that folder, such as `connectors/google/gmail` and
-`connectors/google/spreadsheet`.
-
-Each connector's Go module lives in its `go/` subdirectory. Release tags use
-that module directory, such as `connectors/github/go/vX.Y.Z` and
-`connectors/google/gmail/go/vX.Y.Z`. Manifests, READMEs, UI, Python, and
-TypeScript packages stay in the connector directory.
-The manifest `metadata.version` is that connector's own release version, and
-moving it releases only that connector. `metadata.categories` places the
-connector in one or two directory categories; see
-[Directory categories](docs/manifest-authoring.md#directory-categories). The root `catalog.yaml`
-is the sorted membership allowlist used to generate the public catalog. Adding
-a connector changes no other shared inventory.
-
-Modules record the minimum Dex Go SDK they need, and Dex Server is backward
-compatible with earlier SDK releases. An application may move the Dex Go SDK,
-the Connector SDK, a connector, or the Dex CLI to a newer stable release after
-reading that release's Breaking Changes section. CI checks the connectors
-against the latest stable Dex CLI and Dex Go SDK; see
-[Dex versions](docs/versioning-and-releases.md#dex-versions).
-
-The repository does not track a Go workspace. Run `make workspace` to generate
-an ignored local `go.work`; CI and release verification always use
-`GOWORK=off` for standalone modules.
-
-- [Connector contract](docs/connector-contract.md)
-- [Architecture](docs/architecture.md)
-- [Manifest authoring](docs/manifest-authoring.md)
-- [Versioning and releases](docs/versioning-and-releases.md)
-- [Acceptance](docs/acceptance.md)
-- [Verification status](docs/verification-status.md)
