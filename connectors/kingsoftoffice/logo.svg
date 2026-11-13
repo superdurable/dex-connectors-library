@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="64" viewBox="0 0 180 64" role="img" aria-label="WPS 365">
+  <rect width="180" height="64" rx="12" fill="#ef4939"/>
+  <text x="17" y="44" fill="#fff" font-family="sans-serif" font-size="37" font-weight="700">WPS</text>
+  <text x="125" y="43" fill="#fff" font-family="sans-serif" font-size="21" font-weight="600">365</text>
+</svg>
