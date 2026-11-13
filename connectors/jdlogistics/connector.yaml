@@ -47,7 +47,7 @@ spec:
         goName: AccessToken
         type: secretString
         required: true
-        description: Access token from https://oauth.jdl.com after the JD Logistics enabled merchant account authorizes the application via 授权介绍. Copy the full secret token into this protected field; it expires after one year and blank prevents calls.
+        description: Access token shown by https://oauth.jdl.com/oauth/authorize in 授权介绍 > 简化模式 after the JD Logistics enabled merchant account authorizes the application. Copy the full secret token into this protected field; it expires after one year and blank prevents calls.
       - name: customerCode
         goName: CustomerCode
         type: string
@@ -57,7 +57,7 @@ spec:
       startURL: https://open.jdl.com
       steps:
         - Sign with JD Logistics and obtain a customer code, register at https://open.jdl.com, certify as 自研商家, create an application under 控制台 > 开发管理 > 应用管理, and subscribe to 京东快递快运. The platform says its APIs are free. See https://open.jdl.com/#/devSupport/53220.
-        - Copy AppKey and secret AppSecret from the application overview. Authorize the application at https://oauth.jdl.com/oauth/authorize using the merchant account enabled by JD Logistics sales; copy the access token to the protected accessToken field. The token lasts one year and can be refreshed in the final ten days. See https://open.jdl.com/#/devSupport/53392.
+        - Copy AppKey and secret AppSecret from the application overview. Follow https://open.jdl.com/#/devSupport/53392 under 简化模式; open https://oauth.jdl.com/oauth/authorize with client_id set to AppKey, redirect_uri set to urn:ietf:wg:oauth:2.0:oob, and response_type set to code. Sign in with the merchant account enabled by JD Logistics sales. This mode displays access and refresh tokens directly without a code exchange. Copy the access token into protected accessToken; refresh it in JD Logistics and update Dex during its final ten days of the one-year lifetime.
         - Copy the customer code from qualification details or JD Logistics sales. Query a B2C waybill belonging to this merchant; results omit operator names, phone numbers, addresses and free-text remarks. See https://open.jdl.com/#/open-business-document/api-doc/267/1039. Leave baseUrl, timeout and maxResponseBytes blank for displayed defaults; no fixed public rate limit is published.
   operations:
     - name: queryWaybillTrace

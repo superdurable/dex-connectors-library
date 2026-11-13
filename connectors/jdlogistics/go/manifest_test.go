@@ -63,7 +63,7 @@ func TestConnectionGuidanceCoversEveryVisibleField(t *testing.T) {
 	require.Contains(t, fields[4].Description, "secret")
 	require.Equal(t, "https://open.jdl.com", manifest.Spec.Auth.Guide.StartURL)
 	guide := strings.Join(manifest.Spec.Auth.Guide.Steps, " ")
-	for _, value := range []string{"应用管理", "AppSecret", "customer code"} {
+	for _, value := range []string{"应用管理", "AppSecret", "customer code", "简化模式", "urn:ietf:wg:oauth:2.0:oob"} {
 		require.Contains(t, guide, value)
 	}
 	require.Len(t, manifest.Spec.Operations, 1)
