@@ -1,0 +1,64 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tianxiagongchang
+  displayName: Tianxia Gongchang
+  description: Read account status for a Tianxia Gongchang Open Platform application.
+  company: Tianxiagongchang
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: tianxiagongchang
+  codegen:
+    go:
+      package: tianxiagongchang
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one account-status request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum account-status response size in bytes as a positive integer. Leave blank for the displayed default; raise only if the provider expands its response.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: tianxiagongchang-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Open Platform secret key from https://www.tianxiagongchang.com/open/docs/quickstart after business activation. The live key looks like sk-tx-live- followed by characters; copy it from the activation email into this secret credential field. Blank prevents requests; revoke a disclosed key through provider support.
+    guide:
+      startURL: https://www.tianxiagongchang.com/open/docs/quickstart
+      steps:
+        - Contact Tianxia Gongchang through the Open Platform quick-start page to activate an application. Copy the key from the activation email to api_key; a live key has the sk-tx-live- prefix. Keep the key secret and request revocation from the provider if disclosed.
+        - Leave timeout and maxResponseBytes blank for the displayed defaults. The connector calls the provider's fixed HTTPS account endpoint and adds the Bearer authorization prefix itself.
+        - The Query is free and does not consume the provider's rate-limit quota. It reports application ID, sandbox status, credit balance, and frozen credits; no factory or contact details are requested.
+  operations:
+    - name: getAccountStatus
+      goName: GetAccountStatus
+      inputType: GetAccountStatusInput
+      outputType: GetAccountStatusOutput
+      kind: query
+      description: Read the application identity and account credit status without charge.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: retrieved, goName: Retrieved, description: "Tianxia Gongchang returned account status."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Tianxia Gongchang rejected the key or account state.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The account response was malformed or oversized.", optional: true}
+        - {id: defect, goName: Defect, description: "Local key configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleAccountStatus
+          branch: retrieved
+          description: Synthetic application and credit status for local Flow verification, not a real account.
+          default: true
+          output: {appId: 1, creditsBalance: 880, frozenCredits: 0, isSandbox: false}
