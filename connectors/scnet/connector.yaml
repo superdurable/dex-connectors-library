@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: scnet
+  displayName: SCNet Model API
+  description: List model IDs available through the SCNet Model API.
+  company: scnet
+  categories: [ai, developer-tools]
+  version: v0.1.0
+spec:
+  provider: scnet
+  codegen:
+    go:
+      package: scnet
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one SCNet model-list HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider adds more model metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: scnet-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret general SCNet API Key, usually beginning sk-, from https://www.scnet.cn/ui/console/index.html. Sign in, open Model API > API Keys, create a general Key, copy the one-time secret into Dex Connections; blank prevents requests.
+    guide:
+      startURL: https://www2.scnet.cn/help/docs/mainsite/mass/tutorial/apikeymgt.html
+      steps:
+        - Sign in at https://www.scnet.cn/ui/console/index.html, open Model API > API Keys, select Create API Key, choose the team, name, service type and permitted models, then save the one-time general sk- secret into Dex Connections. Blank prevents requests.
+        - Start ListModels with {}. The connector calls the fixed SCNet HTTPS API and returns at most the first 50 model IDs. It does not call inference or expose model metadata. Leave timeout and maxResponseBytes blank for displayed defaults.
+        - The Key determines model visibility. Manage or revoke it from the same API Keys page. The list does not guarantee every model is currently available.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List up to 50 model IDs enabled for the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: SCNet returned the available model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: SCNet rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SCNet returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneModel
+          branch: found
+          description: One available API model ID.
+          default: true
+          output: {total: 1, modelIDs: [example-model]}
+        - name: noModels
+          branch: found
+          description: No models are enabled for the Key.
+          output: {total: 0, modelIDs: []}
