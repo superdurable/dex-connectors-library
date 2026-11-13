@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: easemob
+  displayName: Easemob IM
+  description: Read one Easemob IM user's account details.
+  company: Easemob
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: easemob
+  codegen:
+    go:
+      package: easemob
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: HTTPS REST API host for this app's Easemob data center, found at https://console.easemob.com under Application List > select App Key > Application Overview. Enter the host root only, such as https://a1.easemob.com, with no app path; blank prevents calls. VIP customers use the host supplied by Easemob support.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of each token or user detail HTTP request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete token or user JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for larger provider responses.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: easemob-im-client-credentials
+    fields:
+      - name: appKey
+        goName: AppKey
+        type: string
+        required: true
+        description: App Key from https://console.easemob.com under Application List > select the app > Application Overview > Development Configuration. Copy the exact orgname#appname value; it supplies the two URL path components and is nonsecret. Blank prevents calls.
+      - name: clientId
+        goName: ClientID
+        type: string
+        required: true
+        description: Client ID paired with the App Key at https://console.easemob.com under Application Overview > Development Configuration. Copy its full nonsecret value for App Token acquisition. Blank prevents calls.
+      - name: clientSecret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret paired with the App Key and Client ID at https://console.easemob.com under Application Overview > Development Configuration. Copy its full value into this secret field; Dex sends it only to the HTTPS App Token endpoint. Blank prevents calls.
+    guide:
+      startURL: https://console.easemob.com
+      steps:
+        - Sign in at https://console.easemob.com, open Application List and select the test or production App Key. In Application Overview, copy the REST API host assigned to its data center and enter it as the HTTPS baseUrl host root.
+        - In Application Overview > Development Configuration, copy App Key in orgname#appname format, Client ID, and secret Client Secret. Dex uses these to obtain and cache an App Token; never put the secret or token in Flow input.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. getUserDetail reads one user's account metadata; enter that app's user ID when starting the Flow.
+  operations:
+    - name: getUserDetail
+      goName: GetUserDetail
+      inputType: GetUserDetailInput
+      outputType: UserDetail
+      kind: query
+      description: Read one IM user's nonsecret account details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Easemob returned the user detail.}
+        - {id: providerRejected, goName: ProviderRejected, description: Easemob conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Easemob returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local credentials or user ID are missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample active IM user is found.
+          output: {userId: user1, userUuid: 0ffe2d80-0000-0000-8d66-279e3e1c214b, createdAtMilliseconds: 1542795196504, modifiedAtMilliseconds: 1542795196504, activated: true, nickname: Sample User}
