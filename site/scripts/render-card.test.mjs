@@ -4,7 +4,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { cardHeight, cardWidth, renderCatalogCard, renderCatalogCardSvg } from "./render-card.mjs";
+import {
+  badgeHeight,
+  badgePixelScale,
+  badgeWidth,
+  canStatSegmentFitFourDigitCounts,
+  renderCatalogBadgePng,
+  renderCatalogBadgeSvg,
+} from "./render-card.mjs";
 
 function catalogText(connectorCount) {
   const connectors = Array.from({ length: connectorCount }, (_, index) => `
@@ -40,30 +47,44 @@ function svgDimensions(svg) {
   return match.slice(1).map(Number);
 }
 
-test("catalog card shows the five catalog totals in site order", () => {
-  const svg = renderCatalogCardSvg({ catalogText: catalogText(3) });
-  const tileTexts = [...svg.matchAll(/class="(label|count)">([^<]*)</g)].map((match) => match[2]);
-  assert.deepEqual(tileTexts, [
-    "companies", "3",
-    "connectors", "3",
-    "UI units", "3",
-    "operations", "6",
-    "triggers", "3",
+test("catalog badge shows the five catalog totals in site order with icons", () => {
+  const svg = renderCatalogBadgeSvg({ catalogText: catalogText(3) });
+  const statTexts = [...svg.matchAll(/class="(count|label)"[^>]*>([^<]*)</g)].map((match) => match[2]);
+  assert.deepEqual(statTexts, [
+    "3", "companies",
+    "3", "connectors",
+    "3", "UI units",
+    "6", "operations",
+    "3", "triggers",
   ]);
+  const iconNames = [...svg.matchAll(/data-icon="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(iconNames, ["building", "plug", "sliders", "code", "bolt"]);
   assert.doesNotMatch(svg, /Mail 0/);
 });
 
-test("catalog card size does not depend on connector count", () => {
+test("catalog badge has no title or site URL text", () => {
+  const svg = renderCatalogBadgeSvg({ catalogText: catalogText(3) });
+  const visibleTexts = [...svg.matchAll(/<(text|tspan)[^>]*>([^<]+)</g)].map((match) => match[2]);
+  for (const visibleText of visibleTexts) {
+    assert.doesNotMatch(visibleText, /Dex Connectors|superdurable/);
+  }
+});
+
+test("catalog badge size does not depend on connector count", () => {
   for (const connectorCount of [1, 500]) {
-    const svg = renderCatalogCardSvg({ catalogText: catalogText(connectorCount) });
-    assert.deepEqual(svgDimensions(svg), [cardWidth, cardHeight, cardWidth, cardHeight]);
+    const svg = renderCatalogBadgeSvg({ catalogText: catalogText(connectorCount) });
+    assert.deepEqual(svgDimensions(svg), [badgeWidth, badgeHeight, badgeWidth, badgeHeight]);
     assert.match(svg, new RegExp(`class="count">${connectorCount * 2}<`));
   }
 });
 
-test("catalog card is a fixed-size PNG", () => {
-  const png = renderCatalogCard({ catalogText: catalogText(500) });
+test("catalog badge segments fit four-digit counts", () => {
+  assert.ok(canStatSegmentFitFourDigitCounts());
+});
+
+test("catalog badge is a fixed-size PNG at the pixel scale", () => {
+  const png = renderCatalogBadgePng({ catalogText: catalogText(500) });
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
-  assert.equal(png.readUInt32BE(16), cardWidth);
-  assert.equal(png.readUInt32BE(20), cardHeight);
+  assert.equal(png.readUInt32BE(16), badgeWidth * badgePixelScale);
+  assert.equal(png.readUInt32BE(20), badgeHeight * badgePixelScale);
 });
