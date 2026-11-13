@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: douyin
+  displayName: Douyin
+  description: Read aggregate behavior counts for a Douyin mini app's completed reporting day.
+  company: Douyin
+  categories: [analytics]
+  version: v0.1.0
+spec:
+  provider: douyin
+  codegen:
+    go:
+      package: douyin
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one token or analysis HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size for each token or analysis call in bytes as a positive integer. Blank uses the displayed default; increase only if the behavior summary grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: douyin-miniapp
+    fields:
+      - name: clientKey
+        goName: ClientKey
+        type: string
+        required: true
+        description: Non-secret mini app AppID/client_key from https://developer.open-douyin.com/ > 小程序控制台 > 开发 > 开发配置, usually beginning with tt. Copy it exactly; blank prevents requests.
+      - name: clientSecret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret AppSecret/client_secret for the same mini app from https://developer.open-douyin.com/ > 小程序控制台 > 开发 > 开发配置. Copy it exactly; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://developer.open-douyin.com/
+      steps:
+        - Sign in at https://developer.open-douyin.com/, create or select your own mini app, then open 小程序控制台 > 开发 > 开发配置. Copy its AppID/client_key and matching secret AppSecret/client_secret into Dex Connections. Blank values prevent requests; manage or replace the secret in that console.
+        - This connector uses non-service-provider client_token authentication, not merchant delegation. POST /oauth/client_token/ uses grant_type client_credential. Tokens stay in worker memory until expiry and are sent only in the access-token header. The console's 数据 > 数据中心 > 用户 > 行为分析 page displays the same reports. Service-provider delegation needs merchant data-analysis permission and is outside this connector.
+        - Start GetBehaviorSummary with a completed historical date formatted YYYY-MM-DD, within the past 90 days; yesterday is available after 10:00 China Standard Time, and earlier dates are available before then. Blank is invalid. The connector requests the China Standard Time day as Unix-second start_time and end_time and returns only aggregate sum counts. Leave timeout and maxResponseBytes blank for displayed defaults. Douyin refreshes prior-day data by 10:00 and limits token requests.
+  operations:
+    - name: getBehaviorSummary
+      goName: GetBehaviorSummary
+      inputType: GetBehaviorSummaryInput
+      outputType: GetBehaviorSummaryOutput
+      kind: query
+      description: Read aggregate mini app user and opening counts for a completed reporting day.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Douyin returned behavior summary counts.}
+        - {id: providerRejected, goName: ProviderRejected, description: Douyin rejected credentials or report request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Douyin returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local date or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: personWaiting, explanation: "A user waits for an already-computed historical report, so temporary failures are retried at most twice."}}
+      mocks:
+        - name: summary
+          branch: found
+          description: Aggregate behavior counts from the documented response example.
+          default: true
+          output: {activeUserCount: 113, newUserCount: 74, totalUserCount: 285227, openCount: 190, shareCount: 8}
