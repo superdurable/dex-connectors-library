@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: apifox
+  displayName: Apifox
+  description: Summarize an accessible project's exported OpenAPI document without exposing its contents.
+  company: apifox
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: apifox
+  codegen:
+    go:
+      package: apifox
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one project export request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for large approved projects.
+        default: 20s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum exported OpenAPI response size in bytes as a positive integer. Blank uses the displayed default; increase only for a verified larger project, up to 16 MiB.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: apifox-access-token
+    fields:
+      - name: accessToken
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Apifox personal API access token from https://app.apifox.com > avatar > 账号设置 > API 访问令牌. Copy it when created; blank prevents requests.
+    guide:
+      startURL: https://docs.apifox.com/api-access-token
+      steps:
+        - Sign in at https://app.apifox.com, open avatar > 账号设置 > API 访问令牌, click 新建, set a name and expiry, then 保存并生成令牌. Copy the one-time secret token into Dex Connections; blank prevents requests. It inherits your project permissions.
+        - In the target project, open 项目设置 > 基本设置 and copy the positive decimal 项目 ID. Start GetProjectAPISummary with {"projectID":"123"} using that ID. Blank or nondecimal IDs are rejected locally.
+        - The connector exports the project's OpenAPI 3.1 JSON using Apifox API version 2024-03-28 and returns only title, version, and endpoint count. It does not persist or return the document. Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: getProjectAPISummary
+      goName: GetProjectAPISummary
+      inputType: GetProjectAPISummaryInput
+      outputType: GetProjectAPISummaryOutput
+      kind: query
+      description: Read only a summary of one accessible project's OpenAPI document.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Apifox exported the project definition.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Apifox rejected the token, project, version, or permission.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Apifox returned malformed or oversized OpenAPI data., optional: true}
+        - {id: defect, goName: Defect, description: The local token or project ID is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneEndpoint
+          branch: found
+          description: A sample project with one endpoint.
+          default: true
+          output: {title: Example API, version: 1.0.0, endpointCount: 1}
+        - name: emptyProject
+          branch: found
+          description: A project with no paths.
+          output: {title: Empty API, version: 1.0.0, endpointCount: 0}
