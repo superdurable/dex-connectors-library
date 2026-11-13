@@ -1,0 +1,3 @@
+# vivo online app version Flow
+
+Run `go run .` here with `DEX_FLOW_SERVICE_ADDRESS` pointing to `dexcli dev` and Dex project configuration available to `projectconfig.LoadFromEnvironment`. Add a `vivo` connection in Dex Web with developer account and HMAC secret from [Account Information](https://developers.vivo.com/). Start `VivoOnlineVersion` with `{"packageName":"com.example.app"}` after publishing that package in vivo App Store. The default `onlineVersion` mock returns version 3.2.1; `noApp` selects noData. A real connection signs the current millisecond timestamp and reads only published version metadata.
