@@ -27,6 +27,7 @@ interface OutgoingMessage {
   recipients: string[];
   requestedThreadId: string;
   hasPreSendSearch: boolean;
+  messageIdAddress: string;
 }
 
 const SendMessageOutcomes: SendOutcomes = {
@@ -37,6 +38,7 @@ const ReplyToMessageOutcomes: SendOutcomes = {
   operationId: 'replyToMessage', requestName: 'reply', rejectionMessage: 'Gmail rejected the reply',
   sentBranch: ReplyToMessageBranch.Sent, providerRejectedBranch: ReplyToMessageBranch.ProviderRejected,
 };
+const MissingRunIDMessage = 'the Dex call context has no run ID, so nothing was sent';
 
 /** One Dex Execute attempt's reserved send and read-back windows. */
 export class GmailSendAttemptBudget {
@@ -122,6 +124,8 @@ export class GmailSender {
   /** Send one new message under the Dex attempt deadline. */
   async sendMessage(call: Call, input: SendMessageInput, dexDeadline: Date | undefined): Promise<MutationAttempt<SendMessageOutput>> {
     if (call.context.attempt < 1) return defect('sendMessage', 'LOCAL_DEFECT', 'Dex Execute attempt number is invalid');
+    const messageIdAddress = this.#messageID(call);
+    if (!messageIdAddress) return defect('sendMessage', 'LOCAL_DEFECT', MissingRunIDMessage);
     const fence = newFence(call, SendMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000);
     if (fence.decide().kind === 'failClosed') return defect('sendMessage', 'LOCAL_DEFECT', 'Dex send checkpoint is unreadable');
     const budget = new GmailSendAttemptBudget(call.context.cancellationSignal, dexDeadline);
@@ -141,15 +145,17 @@ export class GmailSender {
     }
     let raw: Uint8Array;
     try {
-      raw = buildMIMEMessage(call.id, call.idempotencyKey ?? call.id, this.#messageID(call), credentials.primaryEmail, recipients, input.subject, input.textBody, input.htmlBody);
+      raw = buildMIMEMessage(call.id, call.idempotencyKey ?? call.id, messageIdAddress, credentials.primaryEmail, recipients, input.subject, input.textBody, input.htmlBody);
     } catch { return defect('sendMessage', 'VALIDATION', 'message could not be encoded'); }
     if (raw.length > this.#http.settings().maxMessageBytes) return defect('sendMessage', 'VALIDATION', 'message exceeds configured size limit');
-    return this.#sendAndConfirm(call, fence, budget, credentials, SendMessageOutcomes, { raw, recipients, requestedThreadId: '', hasPreSendSearch: false });
+    return this.#sendAndConfirm(call, fence, budget, credentials, SendMessageOutcomes, { raw, recipients, requestedThreadId: '', hasPreSendSearch: false, messageIdAddress });
   }
 
   /** Read the source then reply in its Gmail thread under the Dex attempt deadline. */
   async replyToMessage(call: Call, input: ReplyToMessageInput, dexDeadline: Date | undefined): Promise<MutationAttempt<SendMessageOutput>> {
     if (call.context.attempt < 1) return defect('replyToMessage', 'LOCAL_DEFECT', 'Dex Execute attempt number is invalid');
+    const messageIdAddress = this.#messageID(call);
+    if (!messageIdAddress) return defect('replyToMessage', 'LOCAL_DEFECT', MissingRunIDMessage);
     const fence = newFence(call, ReplyToMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000);
     if (fence.decide().kind === 'failClosed') return defect('replyToMessage', 'LOCAL_DEFECT', 'Dex send checkpoint is unreadable');
     const budget = new GmailSendAttemptBudget(call.context.cancellationSignal, dexDeadline);
@@ -164,13 +170,13 @@ export class GmailSender {
     const priorProviderId = fence.decide().marker?.providerId;
     if (fence.decide().kind === 'readBackRequired' && priorProviderId) {
       return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes,
-        { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true },
+        { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true, messageIdAddress },
         { id: priorProviderId, threadId: '' }, this.#receipt(call, '', priorProviderId));
     }
     if (call.context.attempt > 1 || fence.decide().kind === 'readBackRequired') {
       try {
-        const found = await this.#provider.findSentMessage(call, credentials, this.#messageID(call), budget.preSendSignal());
-        if (found) return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes, { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true }, found, this.#receipt(call));
+        const found = await this.#provider.findSentMessage(call, credentials, messageIdAddress, budget.preSendSignal());
+        if (found) return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes, { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true, messageIdAddress }, found, this.#receipt(call));
       } catch {
         await recordPreSendRetry(fence);
         return newMutationRetry(failure('replyToMessage', 'AVAILABILITY', 'Gmail sent-mail search did not answer before the reply'));
@@ -202,10 +208,10 @@ export class GmailSender {
     catch { return newMutationBranch(ReplyToMessageBranch.InvalidResponse, emptySend(), this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'Gmail returned an invalid source sender')); }
     if (/[\r\n]/.test(message.subject + message.rfcMessageId + (message.references ?? ''))) return newMutationBranch(ReplyToMessageBranch.InvalidResponse, emptySend(), this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'Gmail returned invalid source reply headers'));
     let raw: Uint8Array;
-    try { raw = buildReplyMIMEMessage(call.id, call.idempotencyKey ?? call.id, this.#messageID(call), credentials.primaryEmail, message, input); }
+    try { raw = buildReplyMIMEMessage(call.id, call.idempotencyKey ?? call.id, messageIdAddress, credentials.primaryEmail, message, input); }
     catch { return defect('replyToMessage', 'VALIDATION', 'reply could not be encoded within the configured limit'); }
     if (raw.length > this.#http.settings().maxMessageBytes) return defect('replyToMessage', 'VALIDATION', 'reply could not be encoded within the configured limit');
-    return this.#sendAndConfirm(call, fence, budget, credentials, ReplyToMessageOutcomes, { raw, recipients: [recipient], requestedThreadId: message.threadId, hasPreSendSearch: call.context.attempt > 1 });
+    return this.#sendAndConfirm(call, fence, budget, credentials, ReplyToMessageOutcomes, { raw, recipients: [recipient], requestedThreadId: message.threadId, hasPreSendSearch: call.context.attempt > 1, messageIdAddress });
   }
 
   async #sendAndConfirm(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage): Promise<MutationAttempt<SendMessageOutput>> {
@@ -216,7 +222,7 @@ export class GmailSender {
     }
     if ((call.context.attempt > 1 || fence.decide().kind === 'readBackRequired') && !message.hasPreSendSearch) {
       try {
-        const found = await this.#provider.findSentMessage(call, credentials, this.#messageID(call), budget.preSendSignal());
+        const found = await this.#provider.findSentMessage(call, credentials, message.messageIdAddress, budget.preSendSignal());
         if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, this.#receipt(call));
       } catch {
         await recordPreSendRetry(fence);
@@ -249,7 +255,7 @@ export class GmailSender {
     }
     if (status === 503) {
       // Gmail documents 5xx as processing failures and Sent Mail search can lag, so the claim stays.
-      const lookup = await this.#pollSentMessage(call, budget, credentials);
+      const lookup = await this.#pollSentMessage(call, budget, credentials, message);
       if (lookup.sent) return this.#sentAfterDispatch(call, fence, budget, credentials, operation, message, lookup.sent, receipt);
       return retryAfterRefusal(operation.operationId, 'AVAILABILITY', `Gmail ${operation.requestName} is temporarily unavailable`, headers);
     }
@@ -257,14 +263,14 @@ export class GmailSender {
     if (status < 200 || status >= 300) {
       if (call.context.attempt > 1) {
         try {
-          const found = await this.#provider.findSentMessage(call, credentials, this.#messageID(call), budget.attemptSignal());
+          const found = await this.#provider.findSentMessage(call, credentials, message.messageIdAddress, budget.attemptSignal());
           if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, receipt);
         } catch { /* A conclusive current refusal still selects its branch. */ }
       }
       return newMutationBranch(operation.providerRejectedBranch, emptySend(), receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
     }
     if (!sentResponse) {
-      const lookup = await this.#pollSentMessage(call, budget, credentials);
+      const lookup = await this.#pollSentMessage(call, budget, credentials, message);
       if (lookup.sent) return this.#sentAfterDispatch(call, fence, budget, credentials, operation, message, lookup.sent, receipt);
       return this.#sentMessage(call, budget, credentials, operation, message, { id: '', threadId: message.requestedThreadId }, receipt);
     }
@@ -272,7 +278,7 @@ export class GmailSender {
   }
 
   async #confirmPossiblySent(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, kind: Failure['kind'], reason: string, receipt: ReceiptDraft): Promise<MutationAttempt<SendMessageOutput>> {
-    const lookup = await this.#pollSentMessage(call, budget, credentials);
+    const lookup = await this.#pollSentMessage(call, budget, credentials, message);
     if (lookup.sent) return this.#sentAfterDispatch(call, fence, budget, credentials, operation, message, lookup.sent, receipt);
     const suffix = lookup.hadError ? 'the sent-mail search did not answer' : 'the sent-mail search found no message';
     return newMutationRetry(failure(operation.operationId, kind, `${reason}; ${suffix}`));
@@ -294,7 +300,7 @@ export class GmailSender {
     return newMutationBranch(operation.sentBranch, { sender: credentials.primaryEmail, recipients: message.recipients, messageId: sent.id, threadId }, { ...receipt, providerObjectId: sent.id });
   }
 
-  async #pollSentMessage(call: Call, budget: GmailSendAttemptBudget, credentials: Credentials): Promise<{ sent?: SentMessageIdentity; hadError: boolean }> {
+  async #pollSentMessage(call: Call, budget: GmailSendAttemptBudget, credentials: Credentials, message: OutgoingMessage): Promise<{ sent?: SentMessageIdentity; hadError: boolean }> {
     let hadError = false;
     for (let lookup = 0; lookup < 4; lookup++) {
       if (lookup > 0) {
@@ -302,7 +308,7 @@ export class GmailSender {
         catch { return { hadError: true }; }
       }
       try {
-        const found = await this.#provider.findSentMessage(call, credentials, this.#messageID(call), budget.attemptSignal());
+        const found = await this.#provider.findSentMessage(call, credentials, message.messageIdAddress, budget.attemptSignal());
         if (found) return { sent: found, hadError: false };
         hadError = false;
       } catch { hadError = true; }
@@ -311,8 +317,11 @@ export class GmailSender {
     return { hadError };
   }
 
-  #messageID(call: Call): string {
-    return rfcMessageIDAddress(call.idempotencyKey ?? call.id, call.context.runId, call.context.flowStartedAt);
+  #messageID(call: Call): string | undefined {
+    // AsyncContext types both fields as required, but dex-agents tool Step contexts omit flowStartedAt.
+    const { runId, flowStartedAt } = call.context as { runId?: unknown; flowStartedAt?: Date | null };
+    if (typeof runId !== 'string' || !runId) return undefined;
+    return rfcMessageIDAddress(call.idempotencyKey ?? call.id, runId, flowStartedAt);
   }
 
   #receipt(call: Call, requestId = '', objectId = ''): ReceiptDraft {

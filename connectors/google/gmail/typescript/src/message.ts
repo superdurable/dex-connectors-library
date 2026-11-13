@@ -144,9 +144,21 @@ export function validateSendInput(input: SendMessageInput, sender: string): stri
   return recipients;
 }
 
-/** Deterministic provider search identity for one Dex run and connector call. */
-export function rfcMessageIDAddress(idempotencyKey: string, runId: string, flowStartedAt: Date): string {
-  const runIdentity = `${runId}\0${Math.floor(flowStartedAt.getTime() / 1000)}`;
+/**
+ * Deterministic provider search identity for one Dex run and connector call.
+ *
+ * A valid `flowStartedAt` keeps the Go connector's derivation. An absent or
+ * invalid one derives the identity from the key and run ID alone, which stays
+ * stable across retries of the call within one run.
+ *
+ * @throws TypeError when `runId` is empty.
+ */
+export function rfcMessageIDAddress(idempotencyKey: string, runId: string, flowStartedAt?: Date | null): string {
+  if (!runId) throw new TypeError('Dex run ID is required');
+  // Callers such as dex-agents tool Steps may omit flowStartedAt; this non-numeric marker never equals Unix seconds.
+  const runIdentity = flowStartedAt instanceof Date && Number.isFinite(flowStartedAt.getTime())
+    ? `${runId}\0${Math.floor(flowStartedAt.getTime() / 1000)}`
+    : `${runId}\0no-flow-start`;
   return `${createHash('sha256').update(`${idempotencyKey}\0${runIdentity}`).digest('hex')}@dex.superdurable.dev`;
 }
 

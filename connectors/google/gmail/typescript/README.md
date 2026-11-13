@@ -11,7 +11,7 @@ This package provides typed `getMessage`, `sendMessage`, and `replyToMessage` op
 The checked-in `src/generated/` contracts come from `connector.yaml` and the
 Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/google/gmail/connector.yaml` from the repository root after either source changes. `src/models.ts` keeps credential requirements specific to Google OAuth and Workspace delegation, plus the public non-null send recipient arrays. `src/steps.ts` delegates to generated factories while requiring `GmailConnection` at compile time; `src/mock/index.ts` re-exports matching generated scenarios and validates send scenarios against the public result type. `src/project.ts` keeps the refresh codec and public connection constructor.
 
-Version 0.2.1 requires Connector SDK 0.9.0. Generated private and shared
+Version 0.2.2 requires Connector SDK 0.9.0. Generated private and shared
 credential decoders validate project material, and the refresh driver reads
 generated manifest grants with Gmail-specific delegation checks. Each token
 exchange honors the declared `tokenExchangeTimeout`, as the Go driver does.
