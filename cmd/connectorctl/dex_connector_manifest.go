@@ -31,12 +31,13 @@ type dexConnectorPackageIdentity struct {
 type dexConnectorFactory struct {
 	Name        string               `json:"name"`
 	Kind        string               `json:"kind"`
-	OperationID string               `json:"operationId"`
+	OperationID string               `json:"operationId,omitempty"`
+	TriggerName string               `json:"triggerName,omitempty"`
 	InputType   string               `json:"inputType,omitempty"`
-	Description string               `json:"description"`
+	Description string               `json:"description,omitempty"`
 	Agent       *dexConnectorAgent   `json:"agent,omitempty"`
 	Fields      dexConnectorFields   `json:"fields"`
-	Branches    []dexConnectorBranch `json:"branches"`
+	Branches    []dexConnectorBranch `json:"branches,omitempty"`
 	InputSchema map[string]any       `json:"inputSchema,omitempty"`
 }
 
@@ -48,10 +49,12 @@ type dexConnectorAgent struct {
 }
 
 type dexConnectorFields struct {
-	StepType        string `json:"stepType"`
-	Annotations     string `json:"annotations"`
+	StepType        string `json:"stepType,omitempty"`
+	Annotations     string `json:"annotations,omitempty"`
 	ConnectionName  string `json:"connectionName"`
-	ResultAttribute string `json:"resultAttribute"`
+	BindingName     string `json:"bindingName,omitempty"`
+	ConfigurationUI string `json:"configurationUI,omitempty"`
+	ResultAttribute string `json:"resultAttribute,omitempty"`
 }
 
 type dexConnectorBranch struct {
@@ -91,7 +94,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 				Name:      languagePackageName(connectorDirectory, language.name, language.packageDeclaration.Package),
 				Version:   strings.TrimPrefix(language.packageDeclaration.Version, "v"),
 			},
-			Factories: make([]dexConnectorFactory, 0, len(language.packageDeclaration.Operations)),
+			Factories: make([]dexConnectorFactory, 0, len(language.packageDeclaration.Operations)+len(language.packageDeclaration.Triggers)),
 		}
 		selectedOperations := make(map[string]bool, len(language.packageDeclaration.Operations))
 		for _, name := range language.packageDeclaration.Operations {
@@ -144,6 +147,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 			}
 			packageManifest.Factories = append(packageManifest.Factories, factory)
 		}
+		packageManifest.Factories = append(packageManifest.Factories, typeScriptTriggerBindingFactories(manifest, language.packageDeclaration.Triggers)...)
 		contents, err := encodeLanguageManifest(packageManifest)
 		if err != nil {
 			return nil, fmt.Errorf("encode %s connector package manifest: %w", language.name, err)
@@ -279,4 +283,25 @@ func lowerCamelToSnake(name string) string {
 		}
 	}
 	return converted.String()
+}
+
+// typeScriptTriggerBindingFactories describes the static Trigger binding factory of each declared Trigger, which
+// Dex Web reads to configure a binding, as Go's DefineXTriggerBinding. Manifest validation keeps Python Trigger
+// lists empty, so only TypeScript packages declare them.
+func typeScriptTriggerBindingFactories(manifest schema.Manifest, declared []string) []dexConnectorFactory {
+	selected := make(map[string]bool, len(declared))
+	for _, name := range declared {
+		selected[name] = true
+	}
+	factories := make([]dexConnectorFactory, 0, len(declared))
+	for _, trigger := range manifest.Spec.Triggers {
+		if !selected[trigger.Name] {
+			continue
+		}
+		factories = append(factories, dexConnectorFactory{
+			Name: "define" + trigger.GoName + "TriggerBinding", Kind: "trigger", TriggerName: trigger.Name,
+			Fields: dexConnectorFields{ConnectionName: "connectionName", BindingName: "bindingName", ConfigurationUI: "configurationUI"},
+		})
+	}
+	return factories
 }

@@ -35,9 +35,13 @@ identity, and fields used by Dex CLI's Python and TypeScript source analyzers.
 It also carries each operation's input type, input JSON Schema, and model-facing
 description, plus any reviewed `agent` block; see
 [Agent tool metadata](#agent-tool-metadata).
-Only listed operation factories are generated. Trigger factory mappings await
-language package and `dex-connector.json` contract support; validation rejects
-nonempty language Trigger lists until then.
+Only listed operation and Trigger factories are generated. Each listed Trigger
+maps to its static binding factory, such as TypeScript
+`defineThreadReplyCreatedTriggerBinding`, with the `connectionName`,
+`bindingName`, and `configurationUI` fields, as Go's `DefineXTriggerBinding`.
+A TypeScript package lists a Trigger only when it exports that binding factory;
+validation rejects nonempty Python Trigger lists until Python Trigger factories
+are supported.
 
 For a declared Python package, generation also writes its `_generated/` module:
 Go-derived operation dataclasses, Config and Credentials, operation definitions

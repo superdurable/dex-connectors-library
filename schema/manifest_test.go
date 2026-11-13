@@ -186,7 +186,9 @@ func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 		{name: "unknown operation", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [missing], triggers: []}\n", problem: "spec.languages.python.operations names unknown missing"},
 		{name: "duplicate operation", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [appendRows, appendRows], triggers: []}\n", problem: "spec.languages.python.operations has duplicate name appendRows"},
 		{name: "unknown Trigger", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [], triggers: [missing]}\n", problem: "spec.languages.python.triggers names unknown missing"},
-		{name: "unsupported Trigger", languageBlock: "  languages:\n    typescript: {version: v0.2.0, operations: [], triggers: [messageReceived]}\n", problem: "spec.languages.typescript.triggers must be empty until language Trigger factories are supported"},
+		{name: "unknown TypeScript Trigger", languageBlock: "  languages:\n    typescript: {version: v0.2.0, operations: [], triggers: [missing]}\n", problem: "spec.languages.typescript.triggers names unknown missing"},
+		{name: "unsupported Python Trigger", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [], triggers: [messageReceived]}\n", problem: "spec.languages.python.triggers must be empty until Python Trigger factories are supported"},
+		{name: "duplicate TypeScript Trigger", languageBlock: "  languages:\n    typescript: {version: v0.2.0, operations: [], triggers: [messageReceived, messageReceived]}\n", problem: "spec.languages.typescript.triggers has duplicate name messageReceived"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			contents := strings.Replace(string(fixture), "spec:\n", "spec:\n"+testCase.languageBlock, 1)
@@ -232,6 +234,14 @@ func TestLanguageCapabilityJSONSchemaRequiresListsWithoutDuplicates(t *testing.T
 	language.Operations = []string{"appendRows"}
 	language.Triggers = []string{"messageReceived"}
 	require.ErrorContains(t, validate(), "triggers")
+
+	// Editors validating with the JSON Schema alone also keep Python Trigger lists empty but accept TypeScript ones.
+	typeScriptDefinition := definition.(map[string]any)["$defs"].(map[string]any)["typescriptLanguage"]
+	require.NoError(t, compiler.AddResource("https://connectors.dex.dev/typescript-language.schema.json", typeScriptDefinition))
+	typeScriptLanguage, err := compiler.Compile("https://connectors.dex.dev/typescript-language.schema.json")
+	require.NoError(t, err)
+	require.NoError(t, typeScriptLanguage.Validate(map[string]any{"version": "v0.1.0", "operations": []any{}, "triggers": []any{"messageReceived"}}))
+	require.ErrorContains(t, typeScriptLanguage.Validate(map[string]any{"version": "v0.1.0", "operations": []any{}, "triggers": []any{"messageReceived", "messageReceived"}}), "triggers")
 }
 
 func TestExecutionRetryPolicyValidation(t *testing.T) {

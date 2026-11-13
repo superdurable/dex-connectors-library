@@ -934,13 +934,16 @@ def validate_language_capability_coverage(source_manifest: Path, language: str, 
     factories = document.get("factories")
     if not isinstance(factories, list) or any(not isinstance(factory, dict) for factory in factories):
         raise ValueError("dex-connector.json factories must be a list")
-    factory_operations = [factory.get("operationId") for factory in factories]
+    factory_operations = [factory.get("operationId") for factory in factories if factory.get("kind") != "trigger"]
     if any(not isinstance(operation, str) for operation in factory_operations):
         raise ValueError("dex-connector.json factories must name operation IDs")
     if len(set(factory_operations)) != len(factory_operations) or set(factory_operations) != operations:
         raise ValueError(f"{language} declared operations differ from dex-connector.json factories")
-    if triggers:
-        raise ValueError(f"{language} Trigger factories are not supported by dex-connector.json")
+    factory_triggers = [factory.get("triggerName") for factory in factories if factory.get("kind") == "trigger"]
+    if any(not isinstance(trigger, str) for trigger in factory_triggers):
+        raise ValueError("dex-connector.json Trigger factories must name Triggers")
+    if len(set(factory_triggers)) != len(factory_triggers) or set(factory_triggers) != triggers:
+        raise ValueError(f"{language} declared Triggers differ from dex-connector.json Trigger factories")
 
 
 def read_declared_language_capabilities(source_manifest: Path, language: str) -> tuple[set[str], set[str]]:

@@ -691,8 +691,11 @@ class ComponentReleaseTest(unittest.TestCase):
         with mock.patch.object(release, "read_declared_language_capabilities", return_value=({"getMessage"}, set())):
             release.validate_language_capability_coverage(source_manifest, "python", document)
         with mock.patch.object(release, "read_declared_language_capabilities", return_value=({"getMessage"}, {"messageReceived"})):
-            with self.assertRaisesRegex(ValueError, "Trigger factories are not supported"):
+            with self.assertRaisesRegex(ValueError, "declared Triggers differ"):
                 release.validate_language_capability_coverage(source_manifest, "python", document)
+        with_trigger = {**document, "factories": [*document["factories"], {"name": "defineMessageReceivedTriggerBinding", "kind": "trigger", "triggerName": "messageReceived"}]}
+        with mock.patch.object(release, "read_declared_language_capabilities", return_value=({"getMessage"}, {"messageReceived"})):
+            release.validate_language_capability_coverage(source_manifest, "typescript", with_trigger)
 
     def test_connectorctl_reads_language_capabilities(self) -> None:
         manifest = SCRIPT.parents[2] / "connectors/newsapi/connector.yaml"

@@ -55,4 +55,11 @@ function checkOperation(models: Record<string, unknown>, factory: JSONSchema): v
 const packageDirectory = resolve(process.argv[2] ?? '.');
 const packageRoot = await import(pathToFileURL(join(packageDirectory, 'src', 'index.ts')).href) as Record<string, unknown>;
 const manifest = JSON.parse(readFileSync(join(packageDirectory, 'dex-connector.json'), 'utf8')) as { factories: JSONSchema[] };
-for (const factory of manifest.factories) checkOperation(packageRoot, factory);
+for (const factory of manifest.factories) {
+  // Dex analyzers find a Trigger binding factory by its export name; it has no operation input to validate.
+  if (factory.kind === 'trigger') {
+    if (typeof packageRoot[factory.name] !== 'function') throw new Error(`${factory.triggerName}: ${factory.name} is not exported from the package root`);
+    continue;
+  }
+  checkOperation(packageRoot, factory);
+}
