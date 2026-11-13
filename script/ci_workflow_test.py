@@ -322,5 +322,23 @@ class GoDownloadRetryTest(unittest.TestCase):
         self.assertIn("script/go_download_retry_test.py", recipe)
 
 
+class TestMatrixFailureTest(unittest.TestCase):
+    """A failing test-matrix fails its target instead of yielding an empty list."""
+
+    makefile = MAKEFILE_PATH.read_text(encoding="utf-8")
+
+    def test_no_recipe_pipes_test_matrix_output(self) -> None:
+        for line in self.makefile.splitlines():
+            if "test-matrix" in line:
+                self.assertNotIn("|", line.replace("||", ""), line)
+                self.assertIn(")\" || exit 1", line)
+
+    def test_dex_compat_targets_fail_when_test_matrix_fails(self) -> None:
+        for target in ("current", "released", "latest-go-sdk"):
+            _, recipe = makefile_target(self.makefile, f"test-dex-compat-{target}")
+            self.assertRegex(recipe, r"test-matrix [^\n]*\)\" \|\| exit 1;")
+            self.assertIn("paste -sd, -", recipe)
+
+
 if __name__ == "__main__":
     unittest.main()

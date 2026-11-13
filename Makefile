@@ -134,15 +134,18 @@ test-connector-integration: download-root-go-modules
 	done
 
 test-dex-compat-current: download-root-go-modules
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS) | paste -sd, -)"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
+	directories="$$(printf '%s\n' "$$directories" | paste -sd, -)"; \
 	python3 script/dex_compatibility.py current --connector-directories "$$directories"
 
 test-dex-compat-released: download-root-go-modules
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS) | paste -sd, -)"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
+	directories="$$(printf '%s\n' "$$directories" | paste -sd, -)"; \
 	python3 script/dex_compatibility.py released --connector-directories "$$directories"
 
 test-dex-compat-latest-go-sdk: download-root-go-modules
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS) | paste -sd, -)"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
+	directories="$$(printf '%s\n' "$$directories" | paste -sd, -)"; \
 	python3 script/dex_compatibility.py latest-go-sdk --connector-directories "$$directories"
 
 studio-bundle-theme:
