@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -26,6 +27,9 @@ MUTATION_IRRELEVANT_CONNECTOR_DIRECTORIES = ("ui/",)
 MUTATION_SHARED_SELECTION_FILES = frozenset({
     "cmd/connectorctl/conformance_operations.go", "cmd/connectorctl/conformance_manifest_changes.go",
 })
+# Root-module package and embed directories of connectorctl; a test checks them against go list -deps.
+OPERATION_DISCOVERY_SOURCE_DIRECTORIES = ("cmd/connectorctl", "internal", "schema")
+OPERATION_DISCOVERY_MODULE_FILES = frozenset({"go.mod", "go.sum"})
 _CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$")
 
 
@@ -162,11 +166,17 @@ def has_shared_runner_change(paths: list[str]) -> bool:
 
 
 def mutation_self_test_connectors(paths: list[str], base_revision: str, head_revision: str) -> list[Path]:
-    """Select connectors whose conformance inputs changed; display-only manifest metadata edits select none."""
+    """Select connectors whose conformance inputs or discovered operations changed.
+
+    Display-only manifest metadata edits select none.
+    """
+    fixture_connectors = sorted(ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
+                                for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json"))
     if has_shared_runner_change(paths) or any(path in MUTATION_SHARED_SELECTION_FILES for path in paths):
-        return sorted(ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
-                      for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json"))
+        return fixture_connectors
     connectors: set[Path] = set()
+    if any(is_operation_discovery_input(path) for path in paths):
+        connectors.update(operation_discovery_changed_connectors(base_revision, head_revision, fixture_connectors))
     manifest_paths: dict[str, Path] = {}
     for path in paths:
         connector = connector_for_path(path)
@@ -188,6 +198,65 @@ def mutation_self_test_connectors(paths: list[str], base_revision: str, head_rev
         ))
         connectors.update(manifest_paths[path] for path in pending_manifests if changed_manifests[path])
     return sorted(connectors)
+
+
+def is_operation_discovery_input(path: str) -> bool:
+    """Report whether a path can change connectorctl conformance-operations output; tests cannot."""
+    if path in OPERATION_DISCOVERY_MODULE_FILES:
+        return True
+    if not path.startswith(tuple(directory + "/" for directory in OPERATION_DISCOVERY_SOURCE_DIRECTORIES)):
+        return False
+    return not (path.endswith("_test.go") or "/testdata/" in path)
+
+
+def operation_discovery_archive_paths() -> tuple[str, ...]:
+    """Return the root-module paths that build connectorctl at another revision."""
+    return (*sorted(OPERATION_DISCOVERY_MODULE_FILES), *OPERATION_DISCOVERY_SOURCE_DIRECTORIES)
+
+
+def operation_discovery_changed_connectors(
+    base_revision: str, head_revision: str, connectors: list[Path]
+) -> list[Path]:
+    """Select connectors whose conformance-operations output differs; base failures select, head failures raise."""
+    with tempfile.TemporaryDirectory() as scratch:
+        base_connectorctl = build_connectorctl_at_revision(base_revision, Path(scratch) / "base")
+        head_connectorctl = build_connectorctl_at_revision(head_revision, Path(scratch) / "head")
+
+        def has_changed_operations(connector: Path) -> bool:
+            manifest = str(connector / "connector.yaml")
+            head_output = conformance_operations_output(head_connectorctl, manifest)
+            try:
+                base_output = conformance_operations_output(base_connectorctl, manifest)
+            except subprocess.CalledProcessError as error:
+                print(f"{connector.relative_to(ROOT)}: base conformance-operations failed ({error.returncode}); "
+                      "selecting it", file=sys.stderr)
+                return True
+            return json.loads(base_output) != json.loads(head_output)
+
+        with ThreadPoolExecutor(max_workers=min(os.cpu_count() or 4, 8)) as executor:
+            changed = list(executor.map(has_changed_operations, connectors))
+    selected = [connector for connector, is_changed in zip(connectors, changed) if is_changed]
+    for connector in selected:
+        print(f"{connector.relative_to(ROOT)}: discovered operations changed", flush=True)
+    return selected
+
+
+def build_connectorctl_at_revision(revision: str, directory: Path) -> Path:
+    """Build connectorctl from one revision's root-module sources and return the binary path."""
+    directory.mkdir(parents=True)
+    archive = subprocess.run(["git", "archive", revision, *operation_discovery_archive_paths()],
+                             cwd=ROOT, check=True, capture_output=True).stdout
+    subprocess.run(["tar", "-x", "-C", str(directory)], input=archive, check=True)
+    binary = directory / "connectorctl"
+    subprocess.run(["go", "build", "-o", str(binary), "./cmd/connectorctl"], cwd=directory,
+                   env={**os.environ, "GOWORK": "off"}, check=True)
+    return binary
+
+
+def conformance_operations_output(connectorctl: Path, manifest: str) -> str:
+    """Run one connectorctl binary's conformance-operations from the repository root."""
+    return subprocess.check_output([str(connectorctl), "conformance-operations", manifest], cwd=ROOT,
+                                   env={**os.environ, "GOWORK": "off"}, text=True)
 
 
 def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] | None = None) -> None:
