@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: fiftyonetracking
+  displayName: 51Tracking
+  description: Count registered parcels by delivery status through the 51Tracking API.
+  company: FiftyOneTracking
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: fiftyonetracking
+  codegen:
+    go:
+      package: fiftyonetracking
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the 51Tracking API. Leave blank for the displayed production endpoint; override only for a trusted test server or provider-approved proxy.
+        default: https://api.51tracking.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one status-count query as a positive Go duration such as 15s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum status-count response size in bytes as a positive integer. Leave blank for the displayed default; raise only if the provider adds status fields.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: fiftyonetracking-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret API key from https://www.51tracking.com/ > sign in > Settings > Get API Key > name and generate. Copy the key without a prefix; blank prevents requests. Update this connection after rotation.
+        required: true
+    guide:
+      startURL: https://www.51tracking.com/api-index-cn.html
+      steps:
+        - Sign in at https://www.51tracking.com/ and open Settings > Get API Key. Name and generate a key as described in https://docs.51tracking.com/article/12. The status-count API is available only to API-enabled accounts and excludes accounts with more than two million shipment numbers.
+        - Copy the API key into the protected api_key field without a prefix. It is required and sent only in the Tracking-Api-Key header. Update the Dex connection after key rotation.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed production defaults. The current contract is V3; check the provider's V4 migration notice before long-term deployment.
+  operations:
+    - name: getShipmentStatusCounts
+      goName: GetShipmentStatusCounts
+      inputType: GetShipmentStatusCountsInput
+      outputType: ShipmentStatusCounts
+      kind: query
+      description: Count registered parcels by delivery status without exposing tracking numbers or customer data.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: counted, goName: Counted, description: "51Tracking returned aggregate parcel status counts."}
+        - {id: providerRejected, goName: ProviderRejected, description: "51Tracking rejected the key or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "51Tracking returned malformed or oversized status data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local API key is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: countedParcels
+          branch: counted
+          description: Synthetic status counts for local Dex Flow verification.
+          default: true
+          output: {pending: 1, notFound: 2, inTransit: 3, pickup: 4, delivered: 5, expired: 0, undelivered: 0, exception: 0}

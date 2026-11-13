@@ -1,0 +1,7 @@
+# 51Tracking parcel status counts
+
+This Go connector reads aggregate counts of registered parcels by delivery status through the [51Tracking V3 API](https://www.51tracking.com/api-index-cn.html). It never returns tracking numbers, names, contacts, addresses, or raw tracking events. 51Tracking is operated by 深圳市执尚方舟网络科技有限公司, identified in a [Beijing Stock Exchange filing](https://www.bse.cn/disclosure/2026/2026-05-20/1779270493_288642.pdf) as an established logistics API provider.
+
+`GetShipmentStatusCounts` calls `GET https://api.51tracking.com/v3/trackings/status` with a protected `Tracking-Api-Key` header. The [official contract](https://www.51tracking.com/api-index-cn.html) defines the HTTPS endpoint and status-count response; it excludes accounts with over two million shipment numbers. The [help center](https://www.51tracking.com/help_article-75-141-cn.html) says API access is a paid feature after a trial, recommends V4, and says V2/V3 will eventually be retired. This V3 connector will require migration when 51Tracking publishes a complete V4 contract. HTTP 429, 5xx, and transport failures retry; definite authorization errors fail the Flow.
+
+The [runnable Dex Flow](go/examples/shipment-status-counts/README.md) shows setup and typed output. The logo uses the [official 51Tracking site SVG](https://s.51tracking.com/B-revised/comm/img/logoto.svg). Live authorization and production status counts remain unverified.
