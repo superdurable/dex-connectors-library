@@ -1,0 +1,50 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: pingpp
+  displayName: Ping++
+  description: Read a Ping++ Charge payment status without exposing payment credentials.
+  company: Ping++
+  categories: [finance-payments]
+  version: v0.1.0
+spec:
+  provider: pingpp
+  codegen:
+    go:
+      package: pingpp
+  configuration:
+    fields:
+      - {name: baseUrl, goName: BaseURL, type: url, default: 'https://api.pingxx.com', description: 'HTTPS origin of the Ping++ API, without a path. Leave blank for the displayed production and test-key endpoint; override only for a trusted proxy or local test server.'}
+      - {name: timeout, goName: Timeout, type: duration, default: 10s, description: 'Maximum time for one Charge lookup as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow approved proxy.'}
+      - {name: maxResponseBytes, goName: MaxResponseBytes, type: integer, default: 262144, description: 'Maximum Charge response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a valid Charge response exceeds it.'}
+  auth:
+    type: apiKey
+    connectionKind: pingpp-charge
+    fields:
+      - {name: api_key, goName: APIKey, type: secretString, required: true, description: 'Secret API Key from https://dashboard.pingxx.com > company name > 企业面板 > 开发参数 > API Key. Copy the exact sk_test or sk_live value; it is sent as the Basic Auth username with an empty password. Blank prevents requests.'}
+    guide:
+      startURL: https://dashboard.pingxx.com
+      steps:
+        - Sign in at https://dashboard.pingxx.com, click the company name, then open 企业面板 > 开发参数 > API Key.
+        - Copy the sk_test API Key for simulated charges or the sk_live API Key for real charge lookups into the secret api_key field. Test and live keys refer to separate data; never paste the key into Flow input.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults. This connector only performs GET Charge lookups and never creates, refunds, or reverses payments.
+  operations:
+    - name: getChargeStatus
+      goName: GetChargeStatus
+      inputType: GetChargeStatusInput
+      outputType: GetChargeStatusOutput
+      kind: query
+      description: Read paid, refunded, reversed, and live-mode flags for one Charge.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: 'Ping++ returned the Charge state.'}
+        - {id: notFound, goName: NotFound, description: 'The Charge ID does not exist for this API Key.', optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: 'Ping++ rejected the API Key or request.', optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: 'Ping++ returned malformed or oversized data.', optional: true}
+        - {id: defect, goName: Defect, description: 'Local Charge ID or connection credentials are invalid.', optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - {name: sampleCharge, branch: fetched, description: 'Synthetic unpaid test Charge for local Flow verification; not a real payment.', default: true, output: {chargeId: ch_sample123, paid: false, refunded: false, reversed: false, liveMode: false}}
