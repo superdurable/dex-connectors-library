@@ -1,0 +1,80 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jushuitan
+  displayName: Jushuitan
+  description: List enabled ERP shops through the current Jushuitan Open Platform.
+  company: Jushuitan
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: jushuitan
+  codegen:
+    go:
+      package: jushuitan
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum shop-list request time as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only when a page of shops is unusually large.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: jushuitan-api-key
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        required: true
+        description: "App Key from https://openweb.jushuitan.com/user/login > Console > Applications > your approved application > Basic Information. Copy the full opaque value as a secret; blank prevents requests."
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: "App Secret from https://openweb.jushuitan.com/user/login > Console > Applications > your approved application > Basic Information. Copy the full opaque value as a secret for request signing; blank prevents requests."
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: "Access Token from https://openweb.jushuitan.com/user/login > Console > Applications > your application > My Authorizations (own-store app), or the provider's User Authorization Tool for a service-provider app. Copy the full opaque token as a secret; blank prevents requests. Tokens expire after 30 days and must be renewed in the provider platform."
+    guide:
+      startURL: https://openweb.jushuitan.com/user/login
+      steps:
+        - Register at the Jushuitan Open Platform, complete developer qualification, create an own-store or service-provider application, and request permission for the Shop Query API in Application Details > API Permission Application.
+        - In the approved application's Basic Information, copy its App Key and App Secret into Dex secrets. For an own-store app, open My Authorizations to copy the Access Token. For a service-provider app, use the User Authorization Tool and have the merchant authorize before copying the token.
+        - Access and refresh tokens expire after 30 days. Renew authorization or refresh the own-store token in the Jushuitan platform before expiry, then replace the Dex Access Token. Add the Dex worker's outbound IP to the application's IP allowlist. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listShops
+      goName: ListShops
+      inputType: ListShopsInput
+      outputType: ListShopsOutput
+      kind: query
+      description: List one page of enabled ERP shops.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Jushuitan returned one page of enabled shops.}
+        - {id: providerRejected, goName: ProviderRejected, description: Jushuitan rejected the shop-list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jushuitan returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local connection credentials or settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: twoShops
+          branch: found
+          description: One page of two enabled ERP shops.
+          default: true
+          output:
+            pageIndex: 1
+            pageSize: 10
+            hasNext: false
+            shops:
+              - {shopId: 10178845, name: Example Shop, site: Own store}
+              - {shopId: 10178846, name: Second Shop, site: Marketplace}
