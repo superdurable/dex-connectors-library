@@ -1,5 +1,5 @@
 
-[![Dex Connectors directory](https://connectors.superdurable.io/card.png)](https://connectors.superdurable.io/)
+<a href="https://connectors.superdurable.io/"><img src="https://connectors.superdurable.io/card.png" alt="Dex Connectors directory totals" width="900"></a>
 
 # [Dex Connectors](https://connectors.superdurable.io/)
 
