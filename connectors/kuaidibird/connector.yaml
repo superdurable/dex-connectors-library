@@ -1,0 +1,82 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: kuaidibird
+  displayName: KuaidiBird
+  description: Query one carrier waybill through KuaidiBird's instant tracking API.
+  company: KuaidiBird
+  categories: [data-search, ecommerce]
+  version: v0.1.0
+spec:
+  provider: kuaidibird
+  codegen:
+    go:
+      package: kuaidibird
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin for the KuaidiBird instant-query API, without a path. Leave blank for the displayed production endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.kdniao.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one provider request as a positive Go duration such as 5s. Leave blank for the displayed default; raise only for an approved slow proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate unusually long parcel history.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: kuaidibird
+    fields:
+      - name: business_id
+        goName: BusinessID
+        type: secretString
+        description: KuaidiBird merchant ID (EBusinessID), a decimal identifier from https://www.kdniao.com > user management console > 我的服务 (My Services) > 用户信息 (User Information). Register and verify the account, then copy the exact ID; Dex stores it only as a credential. Blank prevents requests.
+        required: true
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret AppKey/API key paired with the merchant ID from https://www.kdniao.com > user management console > 我的服务 (My Services) > 用户信息 (User Information). Reveal and copy it exactly; Dex stores it only as a credential. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://www.kdniao.com
+      steps:
+        - Open https://www.kdniao.com, register or sign in, complete real-name verification, and enable the Instant Query API in the user management console.
+        - Open 我的服务 (My Services) > 用户信息 (User Information). Copy the decimal 用户ID (EBusinessID) and paired API key (AppKey) into the two secret Dex credential fields; use one account's matched pair.
+        - The base Instant Query API uses request type 1002 and allows at most 500 calls per day. Check the enabled product and quota in 我的服务; higher-tier monitoring uses a different API and is outside this connection.
+        - Rotate an exposed API key in the provider console and update the Dex connection. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: queryTracking
+      goName: QueryTracking
+      inputType: QueryTrackingInput
+      outputType: QueryTrackingOutput
+      kind: query
+      description: Read one waybill's carrier status and tracking events with the base instant-query product.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: retrieved, goName: Retrieved, description: "KuaidiBird returned a waybill state and tracking events."}
+        - {id: providerRejected, goName: ProviderRejected, description: "KuaidiBird returned a definite unsuccessful query, including an unknown waybill or unavailable product.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned incomplete, malformed, or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection or input configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 30s, backoffCoefficient: 2, maximumInterval: 2m, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "Each call consumes daily query quota and some plans bill usage, so transient failures get at most two bounded retries."}}
+      mocks:
+        - name: sampleTracking
+          branch: retrieved
+          description: Synthetic parcel events for local Flow verification; these are not customer records.
+          default: true
+          output:
+            carrierCode: YTO
+            trackingNumber: 'YT1234567890123'
+            state: '2'
+            events:
+              - {time: '2026-11-12 15:30:00', content: 'Parcel was collected by the carrier.'}
+              - {time: '2026-11-13 10:00:00', content: 'Parcel reached the destination sorting center.'}

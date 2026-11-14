@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Volcengine">
+  <rect width="64" height="64" rx="14" fill="#f5faff"/>
+  <path d="M5 47 22 17l11 20-8 10Z" fill="#18b9d5"/>
+  <path d="M20 47 36 10l23 37Z" fill="#377ef7"/>
+  <path d="m32 47 12-24 15 24Z" fill="#2359ba"/>
+</svg>

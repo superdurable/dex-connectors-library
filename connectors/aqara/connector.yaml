@@ -1,0 +1,86 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: aqara
+  displayName: Aqara
+  description: List devices and their online state from an authorized Aqara account in mainland China.
+  company: Aqara
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: aqara
+  codegen:
+    go:
+      package: aqara
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin for the mainland China Aqara Cloud API. Leave blank for the displayed public endpoint; override only for a trusted test server.
+        default: https://open-cn.aqara.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one device-list request as a positive Go duration, such as 10s. Leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum device-list JSON response in bytes. Leave blank for the displayed default; raise only for a legitimately larger page.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: aqara-cloud
+    fields:
+      - name: app_id
+        goName: AppID
+        type: string
+        required: true
+        description: Non-secret AppID from https://developer.aqara.com > Console > Project Management > approved project details. Blank prevents requests.
+      - name: key_id
+        goName: KeyID
+        type: string
+        required: true
+        description: Non-secret KeyID from the approved project's Key Management page at https://developer.aqara.com. Blank prevents requests.
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        required: true
+        description: Secret AppKey paired with KeyID at https://developer.aqara.com > Console > Project Management > Project Details > Key Management. Dex stores it as a credential and uses it only to sign requests. Blank prevents requests.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret accessToken from Aqara account or project authorization at https://developer.aqara.com. It expires after the authorization's chosen validity period and must be manually replaced in Dex when refreshed. Blank prevents requests.
+    guide:
+      startURL: https://developer.aqara.com
+      steps:
+        - Sign in at https://developer.aqara.com, open Console > Project Management, create a project, and wait for approval. Copy its AppID from Project Details.
+        - Open Project Details > Key Management. Create or select a key; copy the non-secret KeyID and secret AppKey into the corresponding fields. Rotate the pair in that page if compromised.
+        - Authorize an Aqara Home account through the project's authorization workflow, or authorize a project from the Aqara IoT Solution Platform > Project > Extension Services. Exchange its short-lived authCode for an accessToken as documented at https://opendoc.aqara.com/en/docs/developmanual/authManagement/aqaraauthMode.html.
+        - Save the accessToken only in the secret field. Aqara's default access token lasts seven days; use the documented refreshToken API before expiry and update this field manually. Never put tokens in Flow input or logs.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Device queries require authorization to the target account or project.
+  operations:
+    - name: listDevices
+      goName: ListDevices
+      inputType: ListDevicesInput
+      outputType: DevicePage
+      kind: query
+      description: Read one bounded page of devices and online state for the authorized Aqara account or project.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Aqara returned one page of devices, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Aqara rejected authorization, permission, or device query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Aqara returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDevices
+          branch: listed
+          description: Synthetic authorized device page for local Flow verification.
+          default: true
+          output: {totalCount: 1, pageNum: 1, pageSize: 50, devices: [{deviceId: 'lumi.07737309957642', deviceName: 'Aqara Hub', model: 'lumi.gateway.aqhm01', modelType: 1, online: true, firmwareVersion: '3.2.6', positionId: 'real2.730432352746111072', parentDeviceId: '', timeZone: 'GMT+08:00'}]}

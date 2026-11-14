@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Ping++ connector icon">
+  <rect width="64" height="64" rx="13" fill="#1976D2"/>
+  <path d="M15 18h18c10 0 16 5 16 14S43 46 33 46H23v6h-8zm8 8v12h10c5 0 8-2 8-6s-3-6-8-6z" fill="#fff"/>
+  <path d="M42 13v10m-5-5h10M53 31v10m-5-5h10" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: juhe
+  displayName: Juhe
+  description: Read current city weather from Juhe Data.
+  company: Juhe
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: juhe
+  codegen:
+    go:
+      package: juhe
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Juhe Data API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://apis.juhe.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one weather request as a positive Go duration, such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Juhe response size in bytes as a positive integer. Leave blank for the displayed default; raise only when a legitimate weather result exceeds it.
+        default: 524288
+  auth:
+    type: apiKey
+    connectionKind: juhe-weather
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: API 73 key from https://www.juhe.cn/docs/api/id/73 > 申请接口, then 个人中心 > 我的数据 > 天气预报 (above the API name). Copy its exact string; Dex stores it only as a credential. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://www.juhe.cn/docs/api/id/73
+      steps:
+        - Sign in at https://www.juhe.cn/docs/api/id/73, choose 申请接口 for 天气预报 (API 73), and complete the requested real-name certification.
+        - Open 个人中心 > 我的数据 > 天气预报; copy the API key shown above the API name into the secret api_key field. Keep the characters exact and rotate or revoke the key from the provider console when needed.
+        - The free plan currently allows 50 calls per day; higher membership tiers can change that quota. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: getCurrentWeather
+      goName: GetCurrentWeather
+      inputType: GetCurrentWeatherInput
+      outputType: GetCurrentWeatherOutput
+      kind: query
+      description: Read current weather conditions for one Chinese city.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: "Juhe returned current weather for the city."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Juhe rejected the key, entitlement, quota, or city.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Juhe returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 20s, maximumAttempts: 2, totalDuration: 1m, reason: {kind: billedOperation, explanation: "Repeated weather requests consume daily quota or paid membership allowance, so retry only once."}}
+      mocks:
+        - name: beijingCurrentWeather
+          branch: fetched
+          description: Synthetic Beijing weather for local Flow verification, not live Juhe data.
+          default: true
+          output: {city: "北京", weatherText: "晴", weatherCode: "00", temperatureCelsius: "20", humidityPercent: "45", windDirection: "北风", windPower: "2级", airQualityIndex: "50"}

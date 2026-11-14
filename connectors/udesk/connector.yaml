@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: udesk
+  displayName: Udesk
+  description: Read ticket status identifiers and names from a Udesk support account.
+  company: Udesk
+  categories: [customer-support]
+  version: v0.1.0
+spec:
+  provider: udesk
+  codegen:
+    go:
+      package: udesk
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Your account HTTPS origin, such as https://demo.udesk.cn, from the browser address when signed into your Udesk customer-service system. Enter the subdomain ending in .udesk.cn without a path; it is account-specific. Blank prevents requests.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one status-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum status-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only when a legitimate status list exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: udesk-open-api-v2
+    fields:
+      - name: admin_email
+        goName: AdminEmail
+        type: secretString
+        description: Super administrator email from your https://<account>.udesk.cn login, in mailbox format such as admin@example.com. Enter the exact address used by POST /open_api_v1/log_in. Dex stores it as a credential and sends it only as Udesk's required email query field over HTTPS. Blank prevents requests.
+        required: true
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: Open API authentication token returned by POST https://<account>.udesk.cn/open_api_v1/log_in using the super administrator email and password. Copy the open_api_auth_token value, normally UUID-shaped. Dex stores it only as a credential and uses it to sign requests; it never sends the token itself. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://www.udesk.cn/doc/apiv2/intro/
+      steps:
+        - Sign in to your Udesk customer-service system and copy its HTTPS account origin, https://<subdomain>.udesk.cn, from the browser address into baseUrl.
+        - Follow the Udesk v2 authentication guide at https://www.udesk.cn/doc/apiv2/intro/ and call POST /open_api_v1/log_in from your own trusted server with the super administrator email and password. Copy open_api_auth_token from a code 1000 response; never enter the password into Dex.
+        - Enter the exact super administrator mailbox in admin_email and the returned token in api_token. Keep both as Dex credentials; rotate the token by obtaining a new one through the Udesk login API if exposed.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The connector generates the Unix-seconds timestamp, one-use nonce, v2 version, and SHA-256 signature automatically.
+  operations:
+    - name: listTicketStatuses
+      goName: ListTicketStatuses
+      inputType: ListTicketStatusesInput
+      outputType: ListTicketStatusesOutput
+      kind: query
+      description: List Udesk ticket statuses, optionally filtering by whether each status is enabled.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Udesk returned zero or more ticket statuses.}
+        - {id: providerRejected, goName: ProviderRejected, description: Udesk rejected authentication or the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Udesk returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: commonStatuses
+          branch: listed
+          description: The account exposes the standard open and resolved ticket statuses.
+          default: true
+          output: {statuses: [{statusId: 1, name: 开启, englishName: open, enabled: true, color: "#f30000"}, {statusId: 2, name: 已解决, englishName: resolved, enabled: true, color: "#00b38a"}]}

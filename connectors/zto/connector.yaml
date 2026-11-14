@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zto
+  displayName: ZTO Express Tracking
+  description: Query tracking scans for a ZTO waybill linked to an authorized electronic-waybill account.
+  company: ZTO
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: zto
+  codegen:
+    go:
+      package: zto
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS ZTO Open Platform API origin. Blank uses the displayed production endpoint; override only for an authorized compatible test endpoint without credentials, query, or path.
+        default: https://japi.zto.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one tracking request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete tracking JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually long scan histories.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: zto-open-platform
+    fields:
+      - name: appKey
+        goName: AppKey
+        type: string
+        required: true
+        description: Application AppKey from https://open.zto.com under 控制台 > 业务对接 > 开发者对接 > 应用详情 > 应用信息. Copy the full opaque key; it is nonsecret and sent in x-appKey. Blank prevents calls.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret paired with AppKey at https://open.zto.com under 控制台 > 业务对接 > 开发者对接 > 应用详情 > 应用信息. Copy the full secret into this protected credential; it signs the exact JSON body and is never sent. Blank prevents calls.
+    guide:
+      startURL: https://open.zto.com
+      steps:
+        - Sign in at https://open.zto.com, complete enterprise certification, then open 控制台 > 业务对接 > 开发者对接. Create or select an application and copy AppKey and secret AppSecret from 应用详情 > 应用信息. See https://open.zto.com/#/documents?menuId=59.
+        - Keep the application on the platform standard signature setting. In 应用详情 > 添加服务, enable 物流轨迹查询 (zto.merchant.waybill.track.query). In 应用详情 > 业务参数配置, bind the merchant's electronic-waybill account to the application. This connector intentionally uses account authorization; it does not submit telephone digits. Publish the application and wait for ZTO review before production calls.
+        - Pass billCode as the ZTO waybill number. Tracking descriptions and staff or recipient details from the provider are excluded from results; only scan type, millisecond timestamp, and scan site name are retained. See https://open.zto.com/#/documentsDetail?resourceGroup=10&apiName=zto.merchant.waybill.track.query. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults; ZTO does not publish a fixed rate or price for this API in its public contract.
+  operations:
+    - name: queryWaybillTrace
+      goName: QueryWaybillTrace
+      inputType: QueryWaybillTraceInput
+      outputType: WaybillTrace
+      kind: query
+      description: Read tracking scans for one waybill under a bound ZTO electronic-waybill account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ZTO returned the waybill's tracking scans.}
+        - {id: providerRejected, goName: ProviderRejected, description: ZTO conclusively rejected the query or account authorization., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ZTO returned malformed or oversized tracking JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or input are missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample waybill has a pickup scan.
+          output: {billCode: '73100059800035', events: [{scanType: 收件, scanDate: 1676429769000, scanSiteName: 金华浦江县}]}

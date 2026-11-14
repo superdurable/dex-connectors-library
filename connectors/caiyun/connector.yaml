@@ -1,0 +1,51 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: caiyun
+  displayName: Caiyun Weather
+  description: Read current weather for one geographic coordinate from Caiyun Weather.
+  company: Caiyun
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: caiyun
+  codegen:
+    go:
+      package: caiyun
+  configuration:
+    fields:
+      - {name: baseUrl, goName: BaseURL, type: url, default: 'https://api.caiyunapp.com', description: 'HTTPS origin of Caiyun Weather v2.6 without a path. Leave blank for the displayed production endpoint; override only for an approved proxy or local test server.'}
+      - {name: timeout, goName: Timeout, type: duration, default: 10s, description: 'Maximum time for one realtime weather request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow approved proxy.'}
+      - {name: maxResponseBytes, goName: MaxResponseBytes, type: integer, default: 262144, description: 'Maximum realtime response size in bytes as a positive integer. Leave blank for the displayed default; increase only if a valid provider response exceeds it.'}
+  auth:
+    type: apiKey
+    connectionKind: caiyun-weather
+    fields:
+      - {name: app_key, goName: AppKey, type: secretString, required: true, description: 'Secret App Key from https://platform.caiyunapp.com > 访问控制 > API 凭证管理. Create or select an API credential with v2.6 realtime access, then copy its App Key. Blank prevents requests; the key is used only in the signed HTTPS request path, never Flow input or results.'}
+      - {name: app_secret, goName: AppSecret, type: secretString, required: true, description: 'Secret App Secret from https://platform.caiyunapp.com > 访问控制 > API 凭证管理, paired with the App Key. Copy the exact string and store it in this secret field; blank prevents requests. It signs each request locally and is never sent to Caiyun.'}
+    guide:
+      startURL: https://platform.caiyunapp.com
+      steps:
+        - Sign in at https://platform.caiyunapp.com and open 访问控制 > API 凭证管理. Create or select an App Key and App Secret pair, and ensure the weather v2.6 realtime API is enabled for its plan.
+        - Copy App Key and its paired App Secret into the two secret fields. Use API 凭证管理 rather than Token 管理; the connector signs every request with HMAC-SHA256. Restrict access in the provider console and rotate exposed credentials there.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Weather API requests consume plan calls; the connector limits retries to two attempts because a delayed success can consume another call. See https://docs.caiyunapp.com/weather-api/billing.html.
+  operations:
+    - name: getCurrentWeather
+      goName: GetCurrentWeather
+      inputType: GetCurrentWeatherInput
+      outputType: GetCurrentWeatherOutput
+      kind: query
+      description: Get metric current weather at one longitude and latitude.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: 'Caiyun returned current weather for the coordinate.'}
+        - {id: providerRejected, goName: ProviderRejected, description: 'Caiyun rejected credentials, permission, or coordinate. HTTP 429 rate or quota limits retry instead.', optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: 'Caiyun returned malformed or oversized weather data.', optional: true}
+        - {id: defect, goName: Defect, description: 'Local coordinate or connection credentials are invalid.', optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 10s, maximumAttempts: 2, totalDuration: 1m, reason: {kind: billedOperation, explanation: 'Each successful weather request consumes plan calls, so two attempts bound duplicate usage after an ambiguous failure.'}}
+      mocks:
+        - {name: beijingCurrentWeather, branch: fetched, description: 'Synthetic Beijing weather sample for local Flow verification; not live data and consumes no calls.', default: true, output: {temperatureCelsius: 20, relativeHumidity: 0.5, skyCondition: CLEAR_DAY, windSpeedMetersPerSecond: 2}}

@@ -1,0 +1,71 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zhipu
+  displayName: Zhipu AI
+  description: Generate bounded text with a Zhipu GLM chat model.
+  company: Zhipu
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: zhipu
+  codegen:
+    go:
+      package: zhipu
+  configuration:
+    fields:
+      - name: model
+        goName: Model
+        type: string
+        description: "GLM model ID sent to POST /api/paas/v4/chat/completions, from the Chat Completions model list at https://docs.bigmodel.cn/api-reference/模型-api/对话补全. Blank uses the displayed default; override only if your API Key can access another listed model. This is not secret."
+        default: glm-4.7-flash
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one generation call as a positive Go duration such as 2m or 5m. Blank uses the displayed default; raise only for longer model responses.
+        default: 120s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum nonstreaming response size in bytes as a positive integer. Blank uses the displayed default; raise only for a longer bounded model output.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: zhipu-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret API key from https://bigmodel.cn/usercenter/proj-mgmt/apikeys (Control Center > API Keys); create or select a key for the project that owns billing, then copy its opaque value. Dex stores it as a credential and sends it only as a Bearer header to open.bigmodel.cn. Blank prevents requests."
+        required: true
+    guide:
+      startURL: https://bigmodel.cn/usercenter/proj-mgmt/apikeys
+      steps:
+        - Sign in to the Zhipu BigModel platform and open Control Center > API Keys at https://bigmodel.cn/usercenter/proj-mgmt/apikeys.
+        - Select the project that should own usage, create an API key, and copy the opaque secret value into api_key. Restrict or revoke it on the same page where your account offers those controls.
+        - Leave model blank for the displayed model default or enter an ID from https://docs.bigmodel.cn/api-reference/模型-api/对话补全 that your project can access. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: generateText
+      goName: GenerateText
+      inputType: GenerateTextInput
+      outputType: GenerateTextOutput
+      kind: query
+      description: Generate one nonstreaming, text-only response from a GLM model.
+      idempotency: none
+      branches:
+        - {id: generated, goName: Generated, description: The model returned a complete text response.}
+        - {id: truncated, goName: Truncated, description: The model stopped at the token limit and returned partial text., optional: true}
+        - {id: blocked, goName: Blocked, description: The model refused or content filtering prevented a text answer., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zhipu rejected the key, quota, model, or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zhipu returned malformed, oversized, or unsupported content.", optional: true}
+        - {id: defect, goName: Defect, description: Local request or connection settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 180s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 1h, reason: {kind: billedOperation, explanation: "A generation may be billed before its result reaches Dex, and a repeat can incur another charge without provider deduplication."}}
+      mocks:
+        - name: shortAnswer
+          branch: generated
+          description: GLM answers a short prompt and reports token usage.
+          default: true
+          output: {text: The connector shipped on time., model: glm-4.7-flash, responseId: chatcmpl-mock-1, finishReason: stop, usage: {promptTokens: 12, completionTokens: 7, totalTokens: 19}}

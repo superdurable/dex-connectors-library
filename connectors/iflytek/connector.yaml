@@ -1,0 +1,80 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: iflytek
+  displayName: iFLYTEK Spark
+  description: Generate bounded text with the iFLYTEK Spark HTTP chat API.
+  company: iFLYTEK
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: iflytek
+  codegen:
+    go:
+      package: iflytek
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Spark API root. Blank uses the displayed production endpoint; override only for a trusted compatible test gateway. Do not include /v1/chat/completions or credentials.
+        default: https://spark-api-open.xf-yun.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one generation request as a positive Go duration such as 1m. Blank uses the displayed default; raise only for slower models.
+        default: 45s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete nonstreaming chat JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for larger generated answers.
+        default: 131072
+      - name: model
+        goName: Model
+        type: string
+        description: Spark model ID from https://console.xfyun.cn under My Services > Spark > HTTP API. Blank uses the displayed Lite default; select a model enabled for this APIPassword, such as generalv3 or 4.0Ultra. Retired Max model IDs are refused.
+        default: lite
+      - name: maxOutputTokens
+        goName: MaxOutputTokens
+        type: integer
+        description: Maximum generated answer length in tokens as a positive integer up to 4096 for Lite. Blank uses the displayed default; raise only when a longer answer is needed.
+        default: 512
+  auth:
+    type: apiKey
+    connectionKind: iflytek-spark-http
+    fields:
+      - name: apiPassword
+        goName: APIPassword
+        type: secretString
+        required: true
+        description: Secret HTTP APIPassword from https://console.xfyun.cn under My Services > Spark > selected version > HTTP service authentication information. Copy the full opaque value into this secret field; Dex sends it only as Bearer over HTTPS. Blank prevents calls.
+    guide:
+      startURL: https://console.xfyun.cn
+      steps:
+        - Sign in at https://console.xfyun.cn, open My Services > Spark, enable the desired model version, and open that version's HTTP service authentication information.
+        - Copy the full opaque APIPassword into secret apiPassword; it is used as a Bearer token and blank prevents calls. Rotate or revoke it in the same console if exposed.
+        - Leave baseUrl, timeout, maxResponseBytes, model, and maxOutputTokens blank for displayed defaults. The default Lite model is currently supported; choose another enabled model ID only when needed.
+  operations:
+    - name: createChatCompletion
+      goName: CreateChatCompletion
+      inputType: CreateChatCompletionInput
+      outputType: ChatCompletion
+      kind: query
+      description: Generate one nonstreaming text answer from a bounded user message.
+      idempotency: none
+      authorization: required
+      execution:
+        executeMethodTimeout: 1m
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 20s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "A generation can be billed even when the response is lost; another attempt may incur another charge."}}
+      branches:
+        - {id: completed, goName: Completed, description: Spark returned one assistant text answer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Spark conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spark returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local prompt, model, or connection credentials are invalid.", optional: true}
+      mocks:
+        - name: completedDefault
+          branch: completed
+          default: true
+          description: Spark answers a greeting.
+          output: {content: 你好！, model: lite, promptTokens: 4, completionTokens: 3, totalTokens: 7}

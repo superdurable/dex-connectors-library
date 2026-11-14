@@ -1,0 +1,9 @@
+# Udesk connector
+
+The Go connector reads ticket status IDs and names through Udesk's [Open API v2 status endpoint](https://www.udesk.cn/doc/apiv2/tickets/). It exposes the `ListTicketStatuses` Query Step and a runnable [`ticket-status-list` Flow](go/examples/ticket-status-list/README.md). The optional `enabledOnly` input omits Udesk's `enable` filter when absent; `true` and `false` request the corresponding enabled state.
+
+Enter your account origin, `https://<subdomain>.udesk.cn`, in the connection settings. The connector accepts only one Udesk account subdomain over HTTPS and a loopback address for local tests. Obtain the `open_api_auth_token` from [POST `/open_api_v1/log_in`](https://www.udesk.cn/doc/apiv2/intro/) using the super administrator email and password on your trusted server. Put the email and returned token into Dex Web Connections; never put the password there. The connector generates a fresh one-use nonce, Unix-seconds timestamp, fixed `v2` version, and the provider's SHA-256 signature for each request. The token is never transmitted; the email and signature appear in Udesk's required HTTPS query. Redirects are disabled, and URLs, provider response messages, and credentials are excluded from failures and results.
+
+The Query retries HTTP 408, 429, 5xx, and transport failures under Dex's default retry budget. Other HTTP failures or non-1000 provider codes select `providerRejected`; code 2059 is classified as authentication failure. Malformed or oversized responses select `invalidResponse`; invalid connection fields select `defect`.
+
+Install `github.com/superdurable/dex-connectors-library/connectors/udesk/go@v0.1.0` after release. Provider tests use an HTTP test server. The mock-backed example integration test uses a real Dex Worker and Client. Live Udesk login-token acquisition and account status listing remain unverified without a user-configured account.

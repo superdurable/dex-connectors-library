@@ -1,0 +1,76 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: weimob
+  displayName: Weimob
+  description: Read the basic WOS store profile authorized to a Weimob Cloud self-use application.
+  company: Weimob
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: weimob
+  codegen:
+    go:
+      package: weimob
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Weimob Open API root. Blank uses the displayed production endpoint; override only for a trusted compatible test gateway. Do not include API paths or credentials.
+        default: https://dopen.weimob.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of each token or store HTTP call as a positive Go duration such as 15s. Blank uses the displayed default; increase only for slow responses.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete store JSON response in bytes as a positive integer. Blank uses the displayed default; increase only if the provider response exceeds it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: weimob-client-credentials
+    fields:
+      - name: clientID
+        goName: ClientID
+        type: string
+        required: true
+        description: Self-use application client_id from https://console.weimobcloud.com under Product Applications > select application > Overview > Development Configuration. Copy the full opaque application ID for the correct environment; it is not the store ID and is not secret. Blank prevents calls.
+      - name: clientSecret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret client_secret paired with clientID at https://console.weimobcloud.com under Product Applications > select application > Overview > Development Configuration. Copy the full opaque secret for the same environment into this secret field. Blank prevents calls; rotate it in the console if exposed.
+      - name: shopID
+        goName: ShopID
+        type: string
+        description: Optional WOS shop ID as decimal digits from https://console.weimobcloud.com under Product Applications > select application > Authorization Management > Authorized Stores. Supply it when the application authorizes multiple stores or re-added a store; blank lets Weimob select the single bound store. This is a nonsecret identifier; the connector fixes shop_type to business_operation_system_id.
+    guide:
+      startURL: https://console.weimobcloud.com
+      steps:
+        - Sign in at https://console.weimobcloud.com, create or select a self-use product application, and authorize the WOS store. Under Open Capabilities > Capability List select WOS Product, search 查询bos基本信息 (bos/info/get), and apply for access. See https://doc.weimobcloud.com/word?childMenuId=54&isold=2&menuId=53&tag=3481 for the official example.
+        - Under Product Applications > application > Overview > Development Configuration copy client_id into clientID and secret client_secret into clientSecret for the same environment. The secret stays in Dex credentials. Blank values prevent calls. For a multi-store application, copy the WOS store ID from Authorization Management > Authorized Stores into shopID; blank means the single bound store. No access token needs manual entry; the connector obtains and caches it.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The getStoreBasic Query has no input and returns only the authorized store profile. Weimob documentation does not list a fee for this specific API; check current pricing in the provider console.
+  operations:
+    - name: getStoreBasic
+      goName: GetStoreBasic
+      inputType: GetStoreBasicInput
+      outputType: StoreBasic
+      kind: query
+      description: Read the authorized WOS store ID, name, logo, and description.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Weimob returned the authorized WOS store.}
+        - {id: providerRejected, goName: ProviderRejected, description: Weimob conclusively rejected token acquisition or the store query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Weimob returned malformed or oversized token or store JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local client credentials or store ID are missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample WOS store is returned.
+          output: {storeID: 19, name: Sample Store, logo: "https://example.com/store.png", description: Sample store}

@@ -1,0 +1,64 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: qingflow
+  displayName: Qingflow
+  description: List application identifiers and names in the token's workspace without reading records.
+  company: Qingflow
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: qingflow
+  codegen:
+    go:
+      package: qingflow
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one application-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for unusually many applications. Other provider fields are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: qingflow-super-admin-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: "Secret super-admin accessToken from https://qingflow.com/ > 轻商城 > 插件中心 > 第三方连接 > OPEN API > 配置. Copy the opaque token exactly; blank prevents requests. A permission-group token cannot call this operation."
+    guide:
+      startURL: https://qingflow.com/
+      steps:
+        - Sign in at https://qingflow.com/ to the target workspace. An administrator opens 轻商城 > 插件中心 > 第三方连接 > OPEN API, installs the Enterprise-version plugin if needed, and opens 配置 to copy the secret super-admin accessToken into Dex. Blank prevents requests.
+        - The API explicitly restricts workspace application listing to the super-admin accessToken; a permission-group token cannot call it. The connector sends accessToken only in an HTTPS header. It omits userId so the API returns all applications in the token's workspace, without reading records.
+        - Start ListApplications with empty JSON {}. The token determines the workspace; no appKey or userId input is needed. Leave timeout and maxResponseBytes blank for displayed defaults. This connector uses only the public-cloud host https://api.qingflow.com, not DingTalk or private deployment hosts.
+  operations:
+    - name: listApplications
+      goName: ListApplications
+      inputType: ListApplicationsInput
+      outputType: ListApplicationsOutput
+      kind: query
+      description: List appKey and appName for applications in the token's workspace.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Qingflow returned workspace application metadata.}
+        - {id: providerRejected, goName: ProviderRejected, description: Qingflow rejected authentication or access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Qingflow returned malformed or oversized metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local accessToken is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneApplication
+          branch: listed
+          description: One application is available.
+          default: true
+          output: {applications: [{appKey: app_example, appName: Operations}]}

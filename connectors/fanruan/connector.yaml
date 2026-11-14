@@ -1,0 +1,64 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: fanruan
+  displayName: Jiandaoyun
+  description: Read one page of applications authorized by a Jiandaoyun API Key.
+  company: FanRuan
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: fanruan
+  codegen:
+    go:
+      package: fanruan
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one application-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for unusually large application names or metadata. Records are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: jiandaoyun-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "Secret API Key from https://www.jiandaoyun.com/ > 开放平台 > 密钥管理 > API Key. Create a key, grant only the needed applications, reveal and copy its full opaque value into Dex credentials without Bearer; blank prevents requests."
+    guide:
+      startURL: https://www.jiandaoyun.com/
+      steps:
+        - Sign in at https://www.jiandaoyun.com/ and open 开放平台 > 密钥管理 > API Key. Click 创建API Key, name it, and select the required application and interface authorization scope. Reveal the key with the eye icon, then copy its full secret value into Dex without the Bearer prefix.
+        - Restrict the key to the applications this connection should list. Disable or delete the key from the same API Key page when revoking access. The connector uses the fixed HTTPS API host and no tenant ID or manually entered endpoint.
+        - Start the ListAppsPage Flow with skip and limit as non-secret integers. skip is the number of earlier applications to omit (blank or zero starts at the beginning); limit is 1–100 applications per page (blank or zero uses 100). Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: listAppsPage
+      goName: ListAppsPage
+      inputType: ListAppsPageInput
+      outputType: ListAppsPageOutput
+      kind: query
+      description: List one page of applications authorized by the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Jiandaoyun returned one page of applications.}
+        - {id: providerRejected, goName: ProviderRejected, description: Jiandaoyun rejected the API Key or permissions., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jiandaoyun returned malformed or oversized app metadata., optional: true}
+        - {id: defect, goName: Defect, description: "Local pagination, credentials or settings are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneApp
+          branch: listed
+          description: One authorized application is available.
+          default: true
+          output: {apps: [{id: 5d5a5bbb850a6d0604ab119, name: 示例应用}], nextSkip: 0}

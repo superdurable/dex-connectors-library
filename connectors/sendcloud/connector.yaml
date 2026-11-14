@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: sendcloud
+  displayName: SendCloud (China)
+  description: Read SendCloud account balances and daily API quota without exposing contact information.
+  company: SendCloud
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: sendcloud
+  codegen:
+    go:
+      package: sendcloud
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the China SendCloud Email API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.sendcloud.net
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one account-balance request as a positive Go duration, such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum SendCloud response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate account result exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: sendcloud-email
+    fields:
+      - name: api_user
+        goName: APIUser
+        type: secretString
+        description: API_USER account name from https://www.sendcloud.net > log in > 发送设置 (Sending Settings) > API USER. Create or select the API_USER to query and copy its exact name; Dex stores it only as a credential. Blank prevents requests.
+        required: true
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret API_KEY paired with that API_USER from https://www.sendcloud.net > log in > 发送设置 (Sending Settings) > API USER > generate API_KEY. Copy the one-time key string exactly; Dex stores it only as a credential and never returns it. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://www.sendcloud.net
+      steps:
+        - Open https://www.sendcloud.net and log in to the China SendCloud account, then open 发送设置 (Sending Settings) > API USER.
+        - Create or select an API_USER. Generate its matching API_KEY and copy it when first shown; the secret is displayed only once. Enter both values in the secret credential fields.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults. Rotate the API_KEY in the SendCloud API USER page if exposed; a rotated key takes effect immediately.
+  operations:
+    - name: getAccountBalance
+      goName: GetAccountBalance
+      inputType: GetAccountBalanceInput
+      outputType: GetAccountBalanceOutput
+      kind: query
+      description: Read account available balance, total balance, and today's API quota counters.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: retrieved, goName: Retrieved, description: "SendCloud returned account balance and daily quota counters."}
+        - {id: providerRejected, goName: ProviderRejected, description: "SendCloud rejected credentials or access to the user information API.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "SendCloud returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleAccount
+          branch: retrieved
+          description: Synthetic balances and quota counters for local Flow verification, not customer data.
+          default: true
+          output: {availableBalance: "40.54", balance: "44.02", dailyQuota: 2500, todayUsedQuota: 2}

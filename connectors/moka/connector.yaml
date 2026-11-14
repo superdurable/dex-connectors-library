@@ -1,0 +1,78 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: moka
+  displayName: Moka
+  description: List recruitment job functions and their job counts.
+  company: Moka
+  categories: [hr-recruiting]
+  version: v0.1.0
+spec:
+  provider: moka
+  codegen:
+    go:
+      package: moka
+  configuration:
+    fields:
+      - name: orgId
+        goName: OrgID
+        type: string
+        required: true
+        description: "Organization ID from https://app.mokahr.com > Recruitment Website Management > copy your recruitment website link; use the segment after /apply/ in https://app.mokahr.com/apply/{orgId}/{siteId}. Enter that opaque ID without slashes. It is not secret; blank prevents requests."
+      - name: mode
+        goName: Mode
+        type: string
+        enum: [social, campus]
+        default: social
+        description: "Recruitment mode for this job-function query. Blank uses the displayed default for general recruiting; switch to the campus option when querying the campus recruitment website."
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum job-function request time as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only when the organization has an unusually large function tree.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: moka-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "Private API Key issued by your Moka Customer Success Manager; start at https://www.mokahr.com/docs/api/index.html#basic-auth and ask your CSM to issue or reset it. Copy the complete opaque key as a Dex secret. The connector sends it as the Basic Auth username with an empty password; blank prevents requests."
+    guide:
+      startURL: https://www.mokahr.com/docs/api/index.html#basic-auth
+      steps:
+        - Ask your Moka Customer Success Manager for your organization's private API Key. Enter it as a Dex secret; Moka's Basic Auth password is empty. This key grants broad API access and must be protected.
+        - In Moka Recruitment Website Management, copy the website URL. The organization ID is the segment after /apply/ in the website link, before the site ID; enter it in orgId. Choose social or campus mode for the website being queried, or leave mode blank for its displayed default.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The connector calls only the fixed HTTPS job-function endpoint and returns function IDs, names, parent IDs, and job counts; it never returns candidate or recruiter details.
+  operations:
+    - name: listJobFunctions
+      goName: ListJobFunctions
+      inputType: ListJobFunctionsInput
+      outputType: ListJobFunctionsOutput
+      kind: query
+      description: List recruitment job functions and counts for one organization and mode.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Moka returned the job function list.}
+        - {id: providerRejected, goName: ProviderRejected, description: Moka rejected the job-function request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Moka returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local connection credentials or settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: twoFunctions
+          branch: found
+          description: Two recruitment job functions are available.
+          default: true
+          output:
+            functions:
+              - {id: 2873, label: Technology, parentId: 0, jobCount: 64}
+              - {id: 2874, label: Product, parentId: 0, jobCount: 12}

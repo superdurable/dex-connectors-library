@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: rongcloud
+  displayName: RongCloud
+  description: Check whether a RongCloud domestic IM user is currently online.
+  company: RongCloud
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: rongcloud
+  codegen:
+    go:
+      package: rongcloud
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the RongCloud domestic Server API, without a path. Leave blank for the displayed primary domestic endpoint; override for the documented backup host or a trusted test server. The App Key must belong to the same data center.
+        default: https://api.rong-api.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one online-status request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum online-status response size in bytes as a positive integer. Leave blank for the displayed default; raise only if the documented response grows.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: rongcloud-server-api
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: string
+        description: App Key from https://console.rongcloud.cn/agile/apps/km > select the domestic IM application > App Key. Copy the complete application identifier without spaces; Dex stores it in the connection credential and sends it in the App-Key header. Blank prevents requests. This value is not the App Secret.
+        required: true
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        description: Secret paired with the selected App Key at https://console.rongcloud.cn/agile/apps/km > domestic IM application > App Secret. Copy it exactly; Dex stores it only as a secret credential and uses it locally to sign requests. Blank prevents requests. Never put it in Flow input.
+        required: true
+    guide:
+      startURL: https://console.rongcloud.cn/agile/apps/km
+      steps:
+        - Sign in to RongCloud at https://console.rongcloud.cn/agile/apps/km and create or select an IM application in the domestic data center.
+        - On the application's App Key page, copy the App Key into app_key and its paired App Secret into the secret app_secret field. The key and secret must belong to the same application and data center.
+        - Rotate the App Secret from the RongCloud console if exposed. Keep both values in Dex Web Connections; never use the App Secret in a Flow input or client-side code.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for defaults. Use the documented domestic backup host only when the primary is unavailable.
+  operations:
+    - name: checkUserOnline
+      goName: CheckUserOnline
+      inputType: CheckUserOnlineInput
+      outputType: CheckUserOnlineOutput
+      kind: query
+      description: Read one RongCloud user's current online status without returning their identifier.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: checked, goName: Checked, description: RongCloud returned the user's online state.}
+        - {id: providerRejected, goName: ProviderRejected, description: RongCloud rejected the app credentials or user query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: RongCloud returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: userOnline
+          branch: checked
+          description: Sample online result for local tests.
+          default: true
+          output: {isOnline: true}

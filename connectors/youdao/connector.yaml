@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: youdao
+  displayName: Youdao Translation
+  description: Translate text with Youdao Zhiyun's signed translation API.
+  company: Youdao
+  categories: [ai, productivity]
+  version: v0.1.0
+spec:
+  provider: youdao
+  codegen:
+    go:
+      package: youdao
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Youdao API root. Blank uses the displayed production endpoint; override only for a trusted compatible test gateway. Do not put credentials in the URL.
+        default: https://openapi.youdao.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one translation request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete translation JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually long translations.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: youdao-translation-v3
+    fields:
+      - name: appKey
+        goName: AppKey
+        type: string
+        required: true
+        description: Youdao application ID from https://ai.youdao.com after sign-in under Console > Application Management. Create or select a server API application with Text Translation service bound, then copy its full App Key; this is a nonsecret identifier. Blank prevents calls.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret application key paired with the App Key at https://ai.youdao.com under Console > Application Management > selected application's credentials. Copy the full opaque value into this secret field; it signs requests and is never sent directly. Blank prevents calls.
+    guide:
+      startURL: https://ai.youdao.com
+      steps:
+        - Sign in at https://ai.youdao.com and open Console > Application Management. Create or select a server API application and bind the Text Translation service.
+        - Copy its App Key to appKey and paired secret application key to appSecret. The second value is secret and signs requests; blank values prevent calls.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Translation is billable by source characters, and retries can incur another charge.
+  operations:
+    - name: translateText
+      goName: TranslateText
+      inputType: TranslateTextInput
+      outputType: TextTranslation
+      kind: query
+      description: Translate up to 5000 UTF-8 characters into a target language.
+      idempotency: none
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 20s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "A translation can be billed even if its response is lost; another attempt may incur another charge."}}
+      branches:
+        - {id: translated, goName: Translated, description: Youdao returned a translation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Youdao conclusively rejected the translation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Youdao returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local text, language, or connection credentials are invalid.", optional: true}
+      mocks:
+        - name: translatedDefault
+          branch: translated
+          default: true
+          description: English greeting translated into Chinese.
+          output: {translation: [你好], sourceLanguage: en, targetLanguage: zh-CHS}

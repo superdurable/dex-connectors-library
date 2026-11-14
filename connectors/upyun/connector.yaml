@@ -1,0 +1,78 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: upyun
+  displayName: UPYUN
+  description: Read storage usage in bytes for one UPYUN cloud storage service.
+  company: UPYUN
+  categories: [databases-storage, developer-tools]
+  version: v0.1.0
+spec:
+  provider: upyun
+  codegen:
+    go:
+      package: upyun
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS UPYUN REST endpoint. Blank uses the displayed intelligent-routing endpoint. Override only for a trusted test gateway or a documented regional API host.
+        default: https://v0.api.upyun.com
+      - name: bucket
+        goName: Bucket
+        type: string
+        required: true
+        description: Storage service name from https://console.upyun.com under Cloud Products > Cloud Storage > Service List. Select the service authorized for this operator and copy its bucket name of 5–20 lowercase letters, digits or hyphens. It is not secret. Blank prevents calls.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one usage query as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow provider responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete plain-text usage response in bytes as a positive integer. Blank uses the displayed default; increase only if a legitimate usage result exceeds the limit.
+        default: 1024
+  auth:
+    type: apiKey
+    connectionKind: upyun-operator
+    fields:
+      - name: operator
+        goName: Operator
+        type: string
+        required: true
+        description: Non-secret operator name from https://console.upyun.com under Account > Account Management > Operator Management. Create or select an operator with Read permission for the configured storage service and copy its exact name. Blank prevents calls.
+      - name: password
+        goName: Password
+        type: secretString
+        required: true
+        description: Secret plaintext password set for that operator at https://console.upyun.com under Account > Account Management > Operator Management. Enter the exact password, not its MD5 hash; Dex hashes it only in memory for request signatures. Blank prevents calls. Rotate it on the same page if exposed.
+    guide:
+      startURL: https://console.upyun.com
+      steps:
+        - Sign in at https://console.upyun.com, open Cloud Products > Cloud Storage > Service List, and create or select a service. Copy its 5–20 character lowercase bucket name into bucket; blank is invalid.
+        - Open the selected service's Configuration > Storage Management > Operator Authorization, or Account > Account Management > Operator Management, then create or select an operator with Read permission for that service. Copy the operator name into operator; blank is invalid.
+        - Set a password for that operator and store the plaintext secret in Dex Web password. Do not pre-hash it; Dex derives the MD5 signing key in memory and sends only a time-limited HMAC signature. Rotate or revoke the operator in the same console page if compromised.
+        - Leave baseUrl, timeout and maxResponseBytes blank for their displayed defaults. The getServiceUsage Query has no operation inputs and cannot write or delete storage objects.
+  operations:
+    - name: getServiceUsage
+      goName: GetServiceUsage
+      inputType: GetServiceUsageInput
+      outputType: ServiceUsage
+      kind: query
+      description: Read one storage service's used bytes without changing objects.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: read, goName: Read, description: UPYUN returned the service usage in bytes.}
+        - {id: providerRejected, goName: ProviderRejected, description: UPYUN conclusively rejected the usage query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: UPYUN returned malformed or oversized usage text., optional: true}
+        - {id: defect, goName: Defect, description: Local bucket or operator credentials are invalid., optional: true}
+      mocks:
+        - name: readDefault
+          branch: read
+          default: true
+          description: A sample service uses 1024 bytes.
+          output: {bytes: 1024}

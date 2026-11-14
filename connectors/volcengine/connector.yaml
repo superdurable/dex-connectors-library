@@ -1,0 +1,84 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: volcengine
+  displayName: Volcengine
+  description: List one page of Volcengine ECS region IDs through a signed OpenAPI request.
+  company: Volcengine
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: volcengine
+  codegen:
+    go:
+      package: volcengine
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Volcengine ECS Beijing API, without a path. Leave blank for the displayed regional endpoint; override only for a trusted test server or approved proxy matching the signing region.
+        default: https://ecs.cn-beijing.volcengineapi.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one DescribeRegions request as a positive Go duration, such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum ECS response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate region page exceeds it.
+        default: 262144
+      - name: region
+        goName: Region
+        type: string
+        description: Signing region ID from https://docs.volcengine.com/docs/ecs/service-address, matched to the endpoint host. Leave blank for the displayed Beijing default; override only together with baseUrl for a documented ECS region.
+        default: cn-beijing
+      - name: service
+        goName: Service
+        type: string
+        description: ECS signing service identifier from https://docs.volcengine.com/docs/ecs/public-parameters. Leave blank for the displayed ECS default; override only if Volcengine changes the DescribeRegions service contract.
+        default: ecs
+  auth:
+    type: apiKey
+    connectionKind: volcengine-ecs
+    fields:
+      - name: access_key_id
+        goName: AccessKeyID
+        type: secretString
+        description: Access Key ID from https://console.volcengine.com > 访问控制 > 用户管理 > selected IAM user > 密钥, created for ECS DescribeRegions access. Copy the AKLT-prefixed ID exactly; Dex stores it only as a credential and signs requests with it. Blank prevents requests.
+        required: true
+      - name: secret_access_key
+        goName: SecretAccessKey
+        type: secretString
+        description: Secret Access Key paired with that ID from https://console.volcengine.com > 访问控制 > 用户管理 > selected IAM user > 密钥 > 新建密钥. Copy the SK exactly; Dex stores it only as a credential and uses it only for HMAC signing. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://console.volcengine.com
+      steps:
+        - Sign in at https://console.volcengine.com, open 访问控制 > 用户管理, and create or select a dedicated IAM user with permission to call ECS DescribeRegions. This operation does not support project-scoped authorization.
+        - In the selected user's 密钥 tab, choose 新建密钥 and copy the Access Key ID and paired Secret Access Key into the two secret credential fields. Use Access Key, not an AI product API Key.
+        - Leave baseUrl, timeout, maxResponseBytes, region, and service blank for displayed defaults. Dex generates UTC X-Date and HMAC-SHA256 Authorization per request; rotate or disable a compromised key in IAM.
+  operations:
+    - name: describeRegions
+      goName: DescribeRegions
+      inputType: DescribeRegionsInput
+      outputType: DescribeRegionsOutput
+      kind: query
+      description: List one bounded page of ECS region IDs, with an optional NextToken for pagination.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "ECS returned one region page, which may be empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "ECS rejected the access key, permission, or query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "ECS returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleRegionPage
+          branch: listed
+          description: Synthetic ECS region page for local Flow verification, not live account data.
+          default: true
+          output: {regionIds: ["cn-beijing", "cn-shanghai"], nextToken: ""}

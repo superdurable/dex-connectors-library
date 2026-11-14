@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: bilibili
+  displayName: Bilibili
+  description: Read the authorized Bilibili user's public account identity.
+  company: Bilibili
+  categories: [social-media]
+  version: v0.1.0
+spec:
+  provider: bilibili
+  codegen:
+    go:
+      package: bilibili
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Bilibili Open Platform origin. Blank uses the displayed production origin; override only for a trusted compatible test gateway, without a path or credentials.
+        default: https://member.bilibili.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one account lookup as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete account JSON response in bytes as a positive integer. Blank uses the displayed default; increase only if a legitimate response exceeds it.
+        default: 32768
+  auth:
+    type: apiKey
+    connectionKind: bilibili-open-platform
+    fields:
+      - name: clientID
+        goName: ClientID
+        type: string
+        required: true
+        description: Application client_id from https://open.bilibili.com under 管理中心 > 应用管理 > selected application. Copy the full opaque ID, not the user open_id; it is nonsecret. Blank prevents calls.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret paired with clientID at https://open.bilibili.com under 管理中心 > 应用管理 > selected application. Copy the full app_secret into this protected credential; it signs each request locally. Blank prevents calls.
+      - name: accessToken
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: OAuth2 access_token for an authorized user from https://open.bilibili.com after that user accepts this application's USER_INFO permission under 管理中心 > 授权管理. Enter the full opaque token into this protected credential; it expires and must be refreshed by the application owner. Blank prevents calls.
+    guide:
+      startURL: https://open.bilibili.com
+      steps:
+        - Sign in at https://open.bilibili.com, complete developer identity review, and open 管理中心 > 应用管理. Create or select an application, obtain client_id and app_secret, and request the USER_INFO capability. Keep app_secret private; the connector uses it to sign requests with HMAC-SHA256.
+        - Have the account owner authorize USER_INFO in 管理中心 > 授权管理. Obtain an OAuth2 access_token through the application's official authorization flow and enter it as secret accessToken. See https://open.bilibili.com/doc/4/feb66f99-7d87-c206-00e7-d84164cd701c. Blank or expired tokens cannot read the account. Renew the token when it expires; adding a new scope requires reauthorization.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. getAuthorizedUser needs no input and reads only the authorized account's nickname and application-scoped open_id. The official API documents rate-limit error codes but no fixed per-app allowance; check approved quotas in 管理中心 > 应用管理.
+  operations:
+    - name: getAuthorizedUser
+      goName: GetAuthorizedUser
+      inputType: GetAuthorizedUserInput
+      outputType: AuthorizedUser
+      kind: query
+      description: Read the nickname and application-scoped open ID of the authorized user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Bilibili returned the authorized user's public identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Bilibili conclusively rejected the account lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bilibili returned malformed or oversized account JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials are missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample authorized account is returned.
+          output: {openID: fc9899b46ff443cea38190d355d49f3a, name: sample_creator}

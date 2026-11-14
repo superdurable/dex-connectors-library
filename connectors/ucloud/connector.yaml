@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: ucloud
+  displayName: UCloud
+  description: List UCloud regions and availability zones accessible to an account.
+  company: UCloud
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: ucloud
+  codegen:
+    go:
+      package: ucloud
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the UCloud public API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.ucloud.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one region query as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum GetRegion response size in bytes as a positive integer. Leave blank for the displayed default; raise only when a legitimate region list exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: ucloud-api-key
+    fields:
+      - name: public_key
+        goName: PublicKey
+        type: secretString
+        description: AccessKey ID (PublicKey) from https://console.ucloud.cn/uaccount/api_manage > Account Management > API Keys. Create or select an active key pair and copy the complete ID string, often email-like with a numeric suffix. Dex stores it only as a credential. Blank prevents requests.
+        required: true
+      - name: private_key
+        goName: PrivateKey
+        type: secretString
+        description: AccessKey Secret (PrivateKey) paired with the ID at https://console.ucloud.cn/uaccount/api_manage > Account Management > API Keys. Copy the complete secret when it is shown at creation; it cannot be retrieved later. Dex stores it only as a credential and uses it to sign requests, never sending it. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://console.ucloud.cn/uaccount/api_manage
+      steps:
+        - Sign in at https://console.ucloud.cn/uaccount/api_manage and open 账号管理 (Account Management) > API 密钥 (API Keys).
+        - Create an API key pair, or select an active pair with GetRegion access. Copy the AccessKey ID (PublicKey) and its paired AccessKey Secret (PrivateKey); the secret is shown only when created.
+        - Grant the key only the account permissions needed for GetRegion, preferably through a restricted subuser. Disable or rotate an exposed key through API 密钥. Dex stores both fields as secrets and sends only PublicKey and the derived Signature over HTTPS.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: getRegion
+      goName: GetRegion
+      inputType: GetRegionInput
+      outputType: GetRegionOutput
+      kind: query
+      description: List the account's UCloud regions and availability zones.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: UCloud returned zero or more accessible regions and zones.}
+        - {id: providerRejected, goName: ProviderRejected, description: UCloud rejected the key or request with a terminal RetCode., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: UCloud returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials or local configuration are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneRegion
+          branch: found
+          description: Account has access to one example UCloud zone.
+          default: true
+          output: {regions: [{regionId: 1, regionName: Beijing, isDefault: true, bitMaps: "1", region: cn-bj, zone: cn-bj-01}]}

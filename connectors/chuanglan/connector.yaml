@@ -1,0 +1,50 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: chuanglan
+  displayName: Chuanglan 253
+  description: Read remaining domestic SMS messages in a Chuanglan 253 API account.
+  company: Chuanglan
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: chuanglan
+  codegen:
+    go:
+      package: chuanglan
+  configuration:
+    fields:
+      - {name: baseUrl, goName: BaseURL, type: url, default: 'https://smssh1.253.com', description: 'HTTPS origin for the domestic SMS account node, without a path. Leave blank for the displayed East China node; override with the account-assigned node shown at https://zz.253.com in the SMS API interface settings.'}
+      - {name: timeout, goName: Timeout, type: duration, default: 10s, description: 'Maximum time for one balance lookup as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow approved proxy.'}
+      - {name: maxResponseBytes, goName: MaxResponseBytes, type: integer, default: 65536, description: 'Maximum balance response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a valid provider response exceeds it.'}
+  auth:
+    type: apiKey
+    connectionKind: chuanglan-sms
+    fields:
+      - {name: account, goName: Account, type: secretString, required: true, description: 'Secret domestic SMS API account from https://zz.253.com > 产品概览 > API 接口信息. Copy its exact account identifier, such as an N-prefixed ID; blank prevents requests. This is sent in the JSON request body.'}
+      - {name: password, goName: Password, type: secretString, required: true, description: 'Secret API password for the same account from https://zz.253.com > 产品概览 > API 接口信息. Copy the exact password; blank prevents requests. This is sent in the JSON request body, never Flow input.'}
+    guide:
+      startURL: https://zz.253.com
+      steps:
+        - Sign in at https://zz.253.com and open 产品概览 > API 接口信息. Copy the domestic SMS API account and API password into the two secret fields; both are required and never belong in Flow input.
+        - On the same product overview, find your account-assigned node hostname. If it differs from the displayed East China default, enter that HTTPS origin in baseUrl; a wrong node can return a failure or incorrect balance.
+        - Allow the Dex worker's outbound IP in the console IP whitelist when enabled. Leave timeout and maxResponseBytes blank for their displayed defaults. This connector performs only balance lookups; no SMS is sent.
+  operations:
+    - name: getBalance
+      goName: GetBalance
+      inputType: GetBalanceInput
+      outputType: GetBalanceOutput
+      kind: query
+      description: Read the number of domestic SMS messages remaining for the connected API account.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: 'Chuanglan returned the remaining SMS count.'}
+        - {id: providerRejected, goName: ProviderRejected, description: 'Chuanglan rejected the account, password, node, or request.', optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: 'Chuanglan returned malformed or oversized data.', optional: true}
+        - {id: defect, goName: Defect, description: 'Connection credentials are missing or invalid.', optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - {name: sampleBalance, branch: fetched, description: 'Synthetic remaining SMS count for local Flow verification; not a real account.', default: true, output: {remainingMessages: 953}}

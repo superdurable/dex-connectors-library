@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: baichuan
+  displayName: Baichuan AI
+  description: List Baichuan AI knowledge bases available to an API key.
+  company: Baichuan
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: baichuan
+  codegen:
+    go:
+      package: baichuan
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Baichuan AI API, without /v1. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.baichuan-ai.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one knowledge-base listing request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum knowledge-base list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate full list exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: baichuan-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret Baichuan API key from https://platform.baichuan-ai.com/console/apikey > API Key > 创建 API Key for an existing approved account. Copy the complete key without spaces; Dex stores it only as a credential and sends it in a Bearer header. Blank prevents requests. New applicants may need to request access from the platform home page first.
+        required: true
+    guide:
+      startURL: https://platform.baichuan-ai.com/
+      steps:
+        - Sign in at https://platform.baichuan-ai.com/. If the platform shows 申请体验, submit the provider's access request and wait for approval before attempting key creation.
+        - Existing approved accounts open https://platform.baichuan-ai.com/console/apikey, choose API Key and 创建 API Key, then copy the secret key into api_key. The console may redirect new or unapproved accounts to the home page.
+        - Rotate or revoke an exposed key from API Key management. Keep it in Dex Web Connections, never in Flow input or logs.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: listKnowledgeBases
+      goName: ListKnowledgeBases
+      inputType: ListKnowledgeBasesInput
+      outputType: ListKnowledgeBasesOutput
+      kind: query
+      description: Read all knowledge bases returned for the configured Baichuan API key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Baichuan returned zero or more knowledge bases.}
+        - {id: providerRejected, goName: ProviderRejected, description: Baichuan rejected the key or account permissions., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Baichuan returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Connection configuration or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleKnowledgeBase
+          branch: listed
+          description: Sample knowledge-base metadata for local tests.
+          default: true
+          output: {knowledgeBases: [{id: "kb-abc123", name: "sample", description: "Example knowledge base", status: "online", fileIds: ["file-123"], createdAt: 1701828706, updatedAt: 1701828706}]}

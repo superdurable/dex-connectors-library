@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: amap
+  displayName: Amap
+  description: Convert a Chinese street address into a location through Amap Web Service geocoding.
+  company: Amap
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: amap
+  codegen:
+    go:
+      package: amap
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Amap Web Service API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://restapi.amap.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one geocoding request as a positive Go duration, such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Amap response size in bytes as a positive integer. Leave blank for the displayed default; raise only if legitimate geocoding results exceed it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: amap-web-service
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret Web Service Key from https://console.amap.com/dev/key/app > 应用管理 (Application Management) > your application > 添加 Key (Add Key), with 服务平台 (Service Platform) set to Web 服务 (Web Service). Copy the key string without spaces. Amap requires it in the key query parameter; Dex stores it only as a credential and never returns it in a result. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://console.amap.com/dev/key/app
+      steps:
+        - Sign in to the Amap Open Platform console at https://console.amap.com/dev/key/app and register as a developer if prompted.
+        - Open 应用管理 (Application Management), create an application or select one, choose 添加 Key (Add Key), and select Web 服务 (Web Service) as the service platform.
+        - Copy the generated Key into the secret api_key field. Restrict its use to your Dex Worker egress IP in the Amap console when possible; rotate the Key there if exposed.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: geocodeAddress
+      goName: GeocodeAddress
+      inputType: GeocodeAddressInput
+      outputType: GeocodeAddressOutput
+      kind: query
+      description: Resolve one structured Chinese address to Amap's candidate locations, optionally limiting the search to a city.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: geocoded, goName: Geocoded, description: Amap completed the lookup and returned zero or more locations.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Amap rejected the key, quota, permissions, or query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Amap returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: beijingAddress
+          branch: geocoded
+          description: A Beijing street address resolves to one Amap coordinate.
+          default: true
+          output: {locations: [{formattedAddress: "北京市朝阳区阜通东大街6号", province: "北京市", city: "北京市", district: "朝阳区", adcode: "110105", longitude: 116.481488, latitude: 39.990464, level: "门牌号"}]}

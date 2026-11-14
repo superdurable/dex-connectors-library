@@ -1,0 +1,80 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: oceanbase
+  displayName: OceanBase Cloud
+  description: List OceanBase Cloud instances in a project.
+  company: OceanBase
+  categories: [databases-storage]
+  version: v0.1.0
+spec:
+  provider: oceanbase
+  codegen:
+    go:
+      package: oceanbase
+  configuration:
+    fields:
+      - name: site
+        goName: Site
+        type: enum
+        enum: [domestic, international]
+        description: "OceanBase Cloud service site where the instance was ordered. Sign in at https://cloud.oceanbase.com/ and choose domestic for the China site or international for the international site; this selects the official HTTPS API host independent of instance region. Blank uses the displayed selection."
+        default: domestic
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for each HTTP request in the Digest challenge and response as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum instance-list response size in bytes as a positive integer. Blank uses the displayed default; raise only when a legitimate page exceeds it. Output retains IDs, names, state, and region.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: oceanbase-cloud-accesskey
+    fields:
+      - name: access_key_id
+        goName: AccessKeyID
+        type: secretString
+        required: true
+        description: "AccessKey ID from https://cloud.oceanbase.com/ > AccessKey > Create AccessKey. Copy the complete opaque ID. Dex stores it only as a credential; HTTP Digest uses it as the username. Blank prevents requests."
+      - name: access_key_secret
+        goName: AccessKeySecret
+        type: secretString
+        required: true
+        description: "AccessKey Secret paired with the ID from https://cloud.oceanbase.com/ > AccessKey > Create AccessKey. Copy it when created; it is secret and HTTP Digest never sends it directly. Blank prevents requests."
+      - name: project_id
+        goName: ProjectID
+        type: secretString
+        required: true
+        description: "Project ID from https://cloud.oceanbase.com/ > Projects > target project > Configure Project > Project settings > Project information. Copy the complete opaque project ID. Dex stores it with credentials and sends it as X-Ob-Project-Id. Blank prevents requests."
+    guide:
+      startURL: https://docs.oceanbase.com/oceanbase-cloud/manage-accesskeys
+      steps:
+        - Sign in to https://cloud.oceanbase.com/ with project owner, project admin, or organization admin permission. In the left navigation choose AccessKey, then Create AccessKey; copy its ID and one-time Secret into Dex. OceanBase grants account-wide privileges, so protect both values.
+        - Open Projects, find the target project, choose Configure Project, then under Project settings > Project information copy Project ID into Dex. A blank ID prevents the instance query.
+        - Select the service site where the instance was ordered, not its deployment region. Domestic uses api-cloud-cn.oceanbase.com and international uses api-cloud.oceanbase.com. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listInstances
+      goName: ListInstances
+      inputType: ListInstancesInput
+      outputType: ListInstancesOutput
+      kind: query
+      description: List one page of instances in the configured project.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: OceanBase Cloud returned a page of instances.}
+        - {id: providerRejected, goName: ProviderRejected, description: "OceanBase Cloud rejected authentication, permission, or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OceanBase Cloud returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneInstance
+          branch: listed
+          description: One example instance in the project.
+          default: true
+          output: {items: [{id: obcluster-example, name: example, state: ONLINE, region: ap-guangzhou}], total: 1, pageNumber: 1, pageSize: 10}

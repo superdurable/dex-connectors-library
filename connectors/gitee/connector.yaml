@@ -1,0 +1,71 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: gitee
+  displayName: Gitee
+  description: Retrieve Gitee repository metadata for a selected owner and repository.
+  company: Gitee
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: gitee
+  codegen:
+    go:
+      package: gitee
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin for the Gitee API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://gitee.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one repository lookup as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum repository response size in bytes as a positive integer. Leave blank for the displayed default; raise only when legitimate repository metadata exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: gitee-personal-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Secret personal access token from https://gitee.com/profile/personal_access_tokens > avatar > Settings > Personal Access Tokens > Generate New Token. Copy the complete token without spaces; grant only repository read permission. Dex stores it only as a credential and sends it in Gitee's required access_token query parameter over HTTPS. Blank prevents private-repository requests.
+        required: true
+    guide:
+      startURL: https://gitee.com/profile/personal_access_tokens
+      steps:
+        - Sign in to Gitee at https://gitee.com/profile/personal_access_tokens and open avatar > Settings > Personal Access Tokens (私人令牌).
+        - Select Generate New Token (生成新令牌), grant the least repository-read scope needed for the target repository, and copy the generated complete token string into the secret access_token field.
+        - Restrict and revoke the token in Personal Access Tokens when no longer needed. Gitee's REST API requires access_token in the URL query; the connector suppresses URLs and provider response bodies from failures and disables redirects.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: getRepository
+      goName: GetRepository
+      inputType: GetRepositoryInput
+      outputType: GetRepositoryOutput
+      kind: query
+      description: Retrieve metadata for one Gitee repository by owner path and repository path.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Gitee returned repository metadata.}
+        - {id: notFound, goName: NotFound, description: The repository was not found or is not visible to this token., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Gitee rejected the token or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gitee returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: publicRepository
+          branch: found
+          description: One public repository with basic metadata.
+          default: true
+          output: {repository: {id: 101, fullName: open-source/demo, name: demo, description: Example repository, htmlUrl: "https://gitee.com/open-source/demo", private: false, defaultBranch: master, starsCount: 5, forksCount: 2}}

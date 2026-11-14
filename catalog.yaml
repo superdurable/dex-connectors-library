@@ -5,9 +5,12 @@ directories:
   - connectors/adobe/acrobat-sign
   - connectors/adobe/marketo
   - connectors/adyen
+  - connectors/agora
   - connectors/airtable
   - connectors/algolia
+  - connectors/alibaba
   - connectors/alphavantage
+  - connectors/amap
   - connectors/amazon/dynamodb
   - connectors/amazon/lambda
   - connectors/amazon/redshift
@@ -16,6 +19,8 @@ directories:
   - connectors/amazon/sns
   - connectors/amazon/sqs
   - connectors/amplitude
+  - connectors/apizero
+  - connectors/aqara
   - connectors/asana
   - connectors/ashby
   - connectors/atlassian/bitbucket
@@ -24,18 +29,27 @@ directories:
   - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
   - connectors/aweber
+  - connectors/baichuan
+  - connectors/baidu/maps
+  - connectors/baishancloud
   - connectors/bamboohr
   - connectors/basecamp
+  - connectors/bilibili
+  - connectors/bmob
   - connectors/box
   - connectors/braintree
   - connectors/braze
   - connectors/brevo
   - connectors/buffer
+  - connectors/cainiao
+  - connectors/caiyun
   - connectors/calendly
   - connectors/campaignmonitor
   - connectors/chargebee
+  - connectors/chuanglan
   - connectors/clickhouse
   - connectors/clickup
+  - connectors/cloopen
   - connectors/close
   - connectors/cloudflare
   - connectors/coda
@@ -45,24 +59,36 @@ directories:
   - connectors/copper
   - connectors/creatio
   - connectors/customerio
+  - connectors/dada
   - connectors/databricks
   - connectors/datadog
   - connectors/deel
+  - connectors/dieyuyun
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
+  - connectors/douyin
   - connectors/drip
   - connectors/dropbox
   - connectors/dropbox/sign
+  - connectors/easemob
   - connectors/elastic/elasticsearch
   - connectors/elevenlabs
+  - connectors/emq
+  - connectors/esign
   - connectors/eventbrite
+  - connectors/fanruan
   - connectors/figma
+  - connectors/flurouter
   - connectors/freshbooks
   - connectors/freshworks/freshdesk
   - connectors/freshworks/freshsales
   - connectors/front
+  - connectors/fxiaoke
   - connectors/getresponse
+  - connectors/getui
+  - connectors/gitcode
+  - connectors/gitee
   - connectors/github
   - connectors/gitlab
   - connectors/google/ads
@@ -85,6 +111,7 @@ directories:
   - connectors/google/youtube
   - connectors/gorgias
   - connectors/greenhouse
+  - connectors/guance
   - connectors/gusto
   - connectors/hackernews
   - connectors/harvest
@@ -92,16 +119,35 @@ directories:
   - connectors/helpscout
   - connectors/hiver
   - connectors/hootsuite
+  - connectors/huaweicloud
   - connectors/hubspot
+  - connectors/huoban
+  - connectors/iflytek
+  - connectors/infiniai
   - connectors/insightly
   - connectors/intercom
   - connectors/intuit/mailchimp
   - connectors/intuit/quickbooks
+  - connectors/ip138
+  - connectors/ipip
   - connectors/iterable
+  - connectors/jdlogistics
+  - connectors/jiguang
+  - connectors/jinshuju
+  - connectors/jisuapi
   - connectors/jotform
+  - connectors/juhe
+  - connectors/jushuitan
   - connectors/keap
+  - connectors/kingsoftcloud
+  - connectors/kingsoftoffice
   - connectors/kit
   - connectors/klaviyo
+  - connectors/knownsec/zoomeye
+  - connectors/kuaidi100
+  - connectors/kuaidibird
+  - connectors/kuaishou
+  - connectors/kunlun
   - connectors/lever
   - connectors/linear
   - connectors/linkedin
@@ -126,16 +172,25 @@ directories:
   - connectors/microsoft/sql-server
   - connectors/microsoft/teams
   - connectors/microsoft/todo
+  - connectors/mingdao
+  - connectors/minimax
   - connectors/miro
   - connectors/mixpanel
+  - connectors/moka
   - connectors/monday
   - connectors/mongodb
+  - connectors/moxin
   - connectors/mysql
+  - connectors/netease
   - connectors/netlify
   - connectors/newsapi
   - connectors/nimble
+  - connectors/niutrans
   - connectors/notion
+  - connectors/oceanbase
   - connectors/odoo
+  - connectors/okki
+  - connectors/onenet
   - connectors/onespan/sign
   - connectors/openai
   - connectors/opensearch
@@ -146,14 +201,24 @@ directories:
   - connectors/pandadoc
   - connectors/paypal
   - connectors/personio
+  - connectors/pgyer
   - connectors/pinecone
+  - connectors/pingcap
+  - connectors/pingpp
   - connectors/pinterest
   - connectors/pipedrive
   - connectors/plaid
   - connectors/postgresql
   - connectors/posthog
   - connectors/postmark
+  - connectors/ppio
   - connectors/productboard
+  - connectors/qichacha
+  - connectors/qihoo360
+  - connectors/qingcloud
+  - connectors/qingflow
+  - connectors/qiniu
+  - connectors/qweather
   - connectors/rabbitmq
   - connectors/razorpay
   - connectors/reamaze
@@ -161,46 +226,81 @@ directories:
   - connectors/reddit
   - connectors/resend
   - connectors/rippling
+  - connectors/rongcloud
   - connectors/sage/intacct
   - connectors/salesforce
+  - connectors/sendcloud
   - connectors/sendgrid
+  - connectors/seniverse
   - connectors/sentry
+  - connectors/shengshu
   - connectors/shopify
+  - connectors/shoplazza
   - connectors/shortcut
+  - connectors/showapi
+  - connectors/shumei
+  - connectors/siliconflow
   - connectors/slack
   - connectors/smartsheet
   - connectors/snowflake
   - connectors/spotify
   - connectors/square
+  - connectors/stepfun
+  - connectors/sto
   - connectors/stripe
+  - connectors/submail
   - connectors/supabase
   - connectors/superdurable/email
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http
   - connectors/superdurable/webhook
   - connectors/surveymonkey
+  - connectors/taosdata
   - connectors/teamwork
   - connectors/telegram
   - connectors/tencent/wecom
+  - connectors/textin
+  - connectors/tianapi
   - connectors/tiktok
+  - connectors/tingyun
   - connectors/tmdb
+  - connectors/tokenfactory
+  - connectors/tokengp
+  - connectors/tuya
   - connectors/twilio/messaging
   - connectors/twilio/segment
   - connectors/typeform
+  - connectors/ucloud
+  - connectors/udesk
   - connectors/unsplash
   - connectors/upstash/redis
+  - connectors/upyun
+  - connectors/vast/tripo
   - connectors/vercel
+  - connectors/vika
+  - connectors/volcengine
   - connectors/wave
   - connectors/webflow
+  - connectors/weimob
   - connectors/wise
   - connectors/woocommerce
   - connectors/wordpress
   - connectors/workday
+  - connectors/worktile
   - connectors/wrike
   - connectors/x/twitter
   - connectors/xero
+  - connectors/xiaoetech
+  - connectors/youdao
+  - connectors/youzan
+  - connectors/yunpian
+  - connectors/zego
   - connectors/zendesk/sell
   - connectors/zendesk/support
+  - connectors/zentao
+  - connectors/zhihu
+  - connectors/zhipu
   - connectors/zoho/crm
   - connectors/zoho/desk
   - connectors/zoom
+  - connectors/zto

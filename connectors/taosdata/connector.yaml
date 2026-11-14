@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: taosdata
+  displayName: TDengine Cloud
+  description: List TDengine Cloud database names, table counts, and status.
+  company: Taos Data
+  categories: [databases-storage]
+  version: v0.1.0
+spec:
+  provider: taosdata
+  codegen:
+    go:
+      package: taosdata
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one metadata request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size in bytes as a positive integer. Blank uses the displayed default; raise only for unusually many databases. Output retains names, table counts, and status.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: taosdata-cloud-token
+    fields:
+      - name: cloud_url
+        goName: CloudURL
+        type: secretString
+        required: true
+        description: "Instance-specific HTTPS Cloud URL from https://cloud.tdengine.com/ > select instance > Programming > REST API. Copy its HTTPS origin only, without /rest/sql or token. It identifies your instance and is stored as a secret credential. Blank prevents requests."
+      - name: cloud_token
+        goName: CloudToken
+        type: secretString
+        required: true
+        description: "Cloud Token from https://cloud.tdengine.com/ > select instance > Programming > REST API. Copy the complete opaque token. It is secret, stored only as a Dex credential, and sent as the documented token query parameter over HTTPS. Blank prevents requests."
+    guide:
+      startURL: https://docs.tdengine.com/cloud/programming/connect/rest-api/
+      steps:
+        - Sign in to https://cloud.tdengine.com/, select the intended instance, then open Programming > REST API. Copy its Cloud URL and Cloud Token into Dex. The token is per user and instance and can be reset in TDengine Cloud.
+        - Enter only the HTTPS origin for Cloud URL, with no path, query, fragment, credentials, or trailing slash. Keep the Cloud Token private. A blank URL or token prevents requests.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The connector sends only the fixed SELECT of name, ntables, and status from information_schema.ins_databases; it never accepts SQL from a Flow.
+  operations:
+    - name: listDatabases
+      goName: ListDatabases
+      inputType: ListDatabasesInput
+      outputType: ListDatabasesOutput
+      kind: query
+      description: List accessible databases using a fixed metadata SELECT.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: TDengine Cloud returned database metadata.}
+        - {id: providerRejected, goName: ProviderRejected, description: TDengine Cloud rejected authentication or the metadata query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TDengine Cloud returned malformed or oversized metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local credentials or settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sample
+          branch: listed
+          description: Example database metadata.
+          default: true
+          output:
+            databases:
+              - {name: information_schema, tableCount: 16, status: ready}
+              - {name: performance_schema, tableCount: 9, status: ready}

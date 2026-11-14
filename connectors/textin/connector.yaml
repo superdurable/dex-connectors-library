@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: textin
+  displayName: TextIn
+  description: Read available TextIn T-coin balance and payment type.
+  company: TextIn
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: textin
+  codegen:
+    go:
+      package: textin
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the TextIn API without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.textin.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one balance request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum TextIn response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate balance response exceeds it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: textin-api
+    fields:
+      - name: app_id
+        goName: AppID
+        type: string
+        required: true
+        description: TextIn App ID from https://www.textin.com/ > Workbench > Account Settings > Developer Information. Copy the opaque x-ti-app-id value. It identifies your account but is not a secret. Blank prevents requests.
+      - name: secret_code
+        goName: SecretCode
+        type: secretString
+        required: true
+        description: Secret x-ti-secret-code from https://www.textin.com/ > Workbench > Account Settings > Developer Information. Copy its opaque value. Dex stores it only as a credential and sends it in the provider header. Blank prevents requests.
+    guide:
+      startURL: https://www.textin.com/
+      steps:
+        - Sign in to https://www.textin.com/, open Workbench > Account Settings > Developer Information, and copy x-ti-app-id into app_id and x-ti-secret-code into the secret_code credential field.
+        - Keep secret_code private and rotate it in Developer Information if compromised. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - This operation reads only available T-coin balance and payment type; it does not submit documents or spend T-coins.
+  operations:
+    - name: getAccountBalance
+      goName: GetAccountBalance
+      inputType: GetAccountBalanceInput
+      outputType: GetAccountBalanceOutput
+      kind: query
+      description: Read available TextIn T-coins and whether billing is prepaid or postpaid.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: "TextIn returned the balance and payment type."}
+        - {id: providerRejected, goName: ProviderRejected, description: "TextIn rejected the credentials or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "TextIn returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or connection configuration are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleBalance
+          branch: fetched
+          description: Synthetic sample balance for local Flow verification, not live TextIn data.
+          default: true
+          output: {availableTCoins: "83.712", payType: 1}

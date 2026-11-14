@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zoomeye
+  displayName: ZoomEye
+  description: Read ZoomEye subscription plan and remaining points.
+  company: Knownsec
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: zoomeye
+  codegen:
+    go:
+      package: zoomeye
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the ZoomEye API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.zoomeye.ai
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one account quota request as a positive Go duration, such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum ZoomEye response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate account result exceeds it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: zoomeye-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: API-KEY from https://www.zoomeye.ai/profile, at the bottom of the signed-in personal profile page. Copy the exact string; Dex stores it only as a credential and sends it only in a header. Blank prevents requests.
+    guide:
+      startURL: https://www.zoomeye.ai/profile
+      steps:
+        - Sign in at https://www.zoomeye.ai/profile, scroll to the API-KEY section at the bottom of your personal profile, and copy the key into the secret api_key field.
+        - If needed, reset or revoke the key on that profile page; update the Dex connection immediately after rotation. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
+        - This operation reads the subscription plan and remaining points only. It does not search assets or spend search points.
+  operations:
+    - name: getAccountQuota
+      goName: GetAccountQuota
+      inputType: GetAccountQuotaInput
+      outputType: GetAccountQuotaOutput
+      kind: query
+      description: Read subscription plan and remaining general and ZoomEye points.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: "ZoomEye returned account subscription and points."}
+        - {id: providerRejected, goName: ProviderRejected, description: "ZoomEye rejected the key or account access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "ZoomEye returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or connection configuration are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleQuota
+          branch: fetched
+          description: Synthetic subscription and points for local Flow verification, not live ZoomEye data.
+          default: true
+          output: {plan: "Premium", generalPoints: "30000", zoomeyePoints: "10000000"}

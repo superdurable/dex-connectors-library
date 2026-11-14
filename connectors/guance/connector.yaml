@@ -1,0 +1,64 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: guance
+  displayName: Guance
+  description: List dashboard identifiers and names in the API Key's workspace.
+  company: Guance
+  categories: [analytics]
+  version: v0.1.0
+spec:
+  provider: guance
+  codegen:
+    go:
+      package: guance
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one dashboard-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for unusually large dashboard metadata. User details are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: guance-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "Secret API Key from https://console.guance.com/ > workspace > 管理 > API Key 管理 > 新建 Key. Copy the opaque value into Dex without a prefix; blank prevents requests. The key selects its own workspace."
+    guide:
+      startURL: https://console.guance.com/
+      steps:
+        - Sign in at https://console.guance.com/ and select the target workspace. Open 管理 > API Key 管理 > 新建 Key, select a role with dashboard read access, and copy the secret key into Dex. The connector sends it in DF-API-KEY; blank is invalid.
+        - The API Key selects its own workspace. Start ListDashboardsPage with pageIndex 1 and pageSize at most 100. Blank uses the displayed defaults. Later pages use the next page index while pageIndex times pageSize is below totalCount. The connector returns only dashboard UUID and name, never user details.
+        - The fixed endpoint https://openapi.guance.com is the documented Alibaba Cloud SaaS node. AWS and private nodes have other endpoints and are outside this connector's current scope. Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: listDashboardsPage
+      goName: ListDashboardsPage
+      inputType: ListDashboardsPageInput
+      outputType: ListDashboardsPageOutput
+      kind: query
+      description: List one page of dashboard UUIDs and names in the key's workspace.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Guance returned dashboard metadata and pagination.}
+        - {id: providerRejected, goName: ProviderRejected, description: Guance rejected authentication or access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Guance returned malformed or oversized metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneDashboard
+          branch: listed
+          description: One dashboard is available.
+          default: true
+          output: {totalCount: 1, pageIndex: 1, pageSize: 10, dashboards: [{uuid: dsbd_example, name: Operations}]}

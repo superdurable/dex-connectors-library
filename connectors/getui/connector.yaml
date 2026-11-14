@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: getui
+  displayName: Getui
+  description: Read one app's daily push delivery totals from Getui REST API v2.
+  company: Getui
+  categories: [communication, analytics]
+  version: v0.1.0
+spec:
+  provider: getui
+  codegen:
+    go:
+      package: getui
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one auth or report HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size for each auth or report call in bytes as a positive integer. Blank uses the displayed default; increase only if the single-day report grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: getui-app
+    fields:
+      - name: appId
+        goName: AppID
+        type: string
+        required: true
+        description: Non-secret appId for the selected push app from https://dev.getui.com/ > 配置管理 > 应用配置; copy its opaque identifier exactly. Blank prevents requests.
+      - name: appKey
+        goName: AppKey
+        type: secretString
+        required: true
+        description: Secret appKey for the same app from https://dev.getui.com/ > 配置管理 > 应用配置; copy its opaque value exactly. Blank prevents requests; Dex stores it as a secret.
+      - name: masterSecret
+        goName: MasterSecret
+        type: secretString
+        required: true
+        description: Secret MasterSecret for the same app from https://dev.getui.com/ > 配置管理 > 应用配置, after phone verification; copy its opaque value exactly. Blank prevents requests; Dex stores it as a secret.
+    guide:
+      startURL: https://dev.getui.com/
+      steps:
+        - Sign in at https://dev.getui.com/, open or create a 消息推送 app, select it, then go to 配置管理 > 应用配置. Copy appId, appKey, and MasterSecret for the same app into Dex Connections; 手机验证 is needed to reveal MasterSecret. Blank values prevent requests. Rotate MasterSecret by editing the app in 应用管理.
+        - Getui REST API v2 exchanges appKey, a current millisecond timestamp, and MasterSecret for a token via POST /auth. The connector caches the token in worker memory until its expiry and sends it only in the token header. It never returns or logs credentials, token, signature, or raw provider messages.
+        - Start GetDailyPushReport with a previous date formatted YYYY-MM-DD, such as 2021-01-01. The API does not support today's data. Leave timeout and maxResponseBytes blank for displayed defaults. Authorization calls are limited to 100 per minute and 100000 per day by Getui.
+  operations:
+    - name: getDailyPushReport
+      goName: GetDailyPushReport
+      inputType: GetDailyPushReportInput
+      outputType: GetDailyPushReportOutput
+      kind: query
+      description: Read one app's prior-day aggregate push request and delivery counts.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Getui returned the daily push totals.}
+        - {id: providerRejected, goName: ProviderRejected, description: Getui rejected the request or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Getui returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 4, totalDuration: 10m, reason: {kind: personWaiting, explanation: "A user waits for a historical daily report, so temporary failures are retried only three times before the Flow reports failure."}}
+      mocks:
+        - name: dailyTotals
+          branch: found
+          description: One prior-day aggregate push report.
+          default: true
+          output: {date: '2021-01-01', requestCount: 10, eligibleMessageCount: 4, sentCount: 4, receivedCount: 4, displayedCount: 2, clickedCount: 2}

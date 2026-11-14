@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: mingdao
+  displayName: Mingdao HAP
+  description: List application worksheet metadata without reading worksheet rows.
+  company: Mingdao
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: mingdao
+  codegen:
+    go:
+      package: mingdao
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one worksheet-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for an application with unusually many worksheets. Row data and remarks are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: mingdao-app-key-sign
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        required: true
+        description: "Secret AppKey from https://www.mingdao.com/ > application menu > API开发文档 > 授权管理 > 新建授权密钥. Copy the full opaque value into Dex credentials; blank prevents requests."
+      - name: sign
+        goName: Sign
+        type: secretString
+        required: true
+        description: "Secret Sign paired with AppKey at https://www.mingdao.com/ > application menu > API开发文档 > 授权管理. Copy the full opaque value into Dex credentials; blank prevents requests."
+    guide:
+      startURL: https://www.mingdao.com/
+      steps:
+        - Sign in at https://www.mingdao.com/, open the target application's name menu and select API开发文档. An application administrator opens 授权管理 > 新建授权密钥 and grants only worksheet metadata read access. Copy the AppKey and Sign into the two secret Dex fields; blank values prevent requests.
+        - Keep AppKey and Sign only in Dex credentials, never in a Flow input or browser script. Revoke or rotate the pair in the application's 授权管理 page. This connector calls the SaaS API at https://api.mingdao.com; private deployment hosts require a separate connector configuration and are not supported here.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The connector reads worksheet IDs and names but excludes remarks and all worksheet rows.
+  operations:
+    - name: listWorksheets
+      goName: ListWorksheets
+      inputType: ListWorksheetsInput
+      outputType: ListWorksheetsOutput
+      kind: query
+      description: List worksheets in the application authorized by AppKey and Sign.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Mingdao returned worksheet metadata.}
+        - {id: providerRejected, goName: ProviderRejected, description: Mingdao rejected the app authorization., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Mingdao returned malformed or oversized metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local app credentials or settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneWorksheet
+          branch: listed
+          description: One authorized worksheet is available.
+          default: true
+          output: {worksheets: [{id: sheet-123, name: 客户表}]}
