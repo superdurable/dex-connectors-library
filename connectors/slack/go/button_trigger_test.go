@@ -497,7 +497,10 @@ func TestSocketModeFullQueueCancellationReplaysAcknowledgedEventsAfterRestart(t 
 	secondSocket.envelopes <- floodEnvelope(t, held+1)
 	require.Equal(t, "envelope-EvFlood"+strconv.Itoa(held+1), receiveAcknowledgement(t, secondSocket.acknowledgements))
 	expected := append(acknowledged, "EvFlood"+strconv.Itoa(held+1))
-	require.Eventually(t, func() bool { return len(fixture.deliveredEventIDs()) >= len(expected) }, 2*time.Second, 5*time.Millisecond)
+	// The target records delivery before the durable inbox removes the event.
+	require.Eventually(t, func() bool {
+		return len(fixture.deliveredEventIDs()) >= len(expected) && len(fixture.pendingEventIDs()) == 0
+	}, 2*time.Second, 5*time.Millisecond)
 	require.Equal(t, expected, fixture.deliveredEventIDs(), "replay delivers every acknowledged event once, in order, before live ones")
 	require.Empty(t, fixture.pendingEventIDs())
 	cancel()
