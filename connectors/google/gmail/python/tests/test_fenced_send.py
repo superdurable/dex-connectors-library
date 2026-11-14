@@ -17,10 +17,11 @@ from dex_connectors.google_gmail import (
     Config,
     Credentials,
     GmailProvider,
+    ReplyToMessageInput,
     SendMessageInput,
     SendMessageOutput,
 )
-from dex_connectors.google_gmail.operations import SendMessageOperation
+from dex_connectors.google_gmail.operations import ReplyToMessageOperation, SendMessageOperation
 
 
 class HeartbeatContext:
@@ -48,10 +49,12 @@ class HeartbeatContext:
         self.heartbeats.append(value)
 
 
-def _call(context: HeartbeatContext, call_id: CallID | None = None) -> Call:
+def _call(
+    context: HeartbeatContext, call_id: CallID | None = None, operation_id: str = "sendMessage"
+) -> Call:
     call_id = call_id or CallID(str(uuid4()))
     return Call(
-        call_id, ConnectionRef("google", "support"), OperationRef("gmail", "sendMessage"),
+        call_id, ConnectionRef("google", "support"), OperationRef("gmail", operation_id),
         IdempotencyKey(call_id), context=cast(dex.AsyncContext, context),
     )
 
@@ -72,10 +75,57 @@ async def _invoke(
         provider = GmailProvider(
             Config(endpoint="http://localhost/gmail/v1"), credentials, http_client=http_client
         )
-        attempt = await SendMessageOperation(provider).invoke(
-            call, SendMessageInput(["ada@example.com"], "Progress", "Update")
+        attempt = (
+            await SendMessageOperation(provider).invoke(
+                call, SendMessageInput(["ada@example.com"], "Progress", "Update")
+            )
+            if call.operation.operation_id == "sendMessage"
+            else await ReplyToMessageOperation(provider).invoke(
+                call, ReplyToMessageInput("source-1", "Answer")
+            )
         )
     return attempt, requests
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_operation_accepts_context_without_flow_start(operation_id: str) -> None:
+    """The public Call context may omit Flow start time for agent tool Steps."""
+    context = HeartbeatContext()
+    del context.flow_started_at
+    call = _call(context, operation_id=operation_id)
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(200, json={"id": "sent-1", "threadId": "thread-1"})
+        return httpx.Response(200, json={
+            "id": "source-1", "threadId": "thread-1", "internalDate": "1772615700000",
+            "payload": {"headers": [
+                {"name": "From", "value": "ada@example.com"},
+                {"name": "Message-ID", "value": "<source@example.com>"},
+                {"name": "Subject", "value": "Question"},
+            ]},
+        })
+
+    attempt, requests = await _invoke(call, httpx.MockTransport(answer))
+    assert attempt.branch == "sent"
+    assert any(request.method == "POST" for request in requests)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_operation_reports_missing_context_run_id_without_http(operation_id: str) -> None:
+    """An omitted run ID reaches the clear no-send defect through the operation entrypoint."""
+    context = HeartbeatContext()
+    del context.run_id
+    call = _call(context, operation_id=operation_id)
+    attempt, requests = await _invoke(
+        call, httpx.MockTransport(lambda _: httpx.Response(200, json={}))
+    )
+    assert attempt.branch == "defect" and attempt.failure is not None
+    assert attempt.failure.kind.value == "LOCAL_DEFECT"
+    assert attempt.failure.message == "the Dex call context has no run ID, so nothing was sent"
+    assert requests == []
 
 
 @pytest.mark.asyncio

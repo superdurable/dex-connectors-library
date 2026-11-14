@@ -195,7 +195,8 @@ class SendMessageOperation:
             )
         return await self._send_service.send_message(
             SendExecution(
-                call, context.attempt, context.run_id, context.flow_started_at, context.deadline,
+                call, context.attempt, getattr(context, "run_id", None),
+                getattr(context, "flow_started_at", None), context.deadline,
                 SEND_MESSAGE_DEFINITION.step_defaults.execute_method_timeout,
                 Fence(call, SEND_MESSAGE_DEFINITION.step_defaults.execute_method_timeout),
             ),
@@ -231,7 +232,8 @@ class ReplyToMessageOperation:
             )
         return await self._send_service.reply_to_message(
             SendExecution(
-                call, context.attempt, context.run_id, context.flow_started_at, context.deadline,
+                call, context.attempt, getattr(context, "run_id", None),
+                getattr(context, "flow_started_at", None), context.deadline,
                 REPLY_TO_MESSAGE_DEFINITION.step_defaults.execute_method_timeout,
                 Fence(call, REPLY_TO_MESSAGE_DEFINITION.step_defaults.execute_method_timeout),
             ),

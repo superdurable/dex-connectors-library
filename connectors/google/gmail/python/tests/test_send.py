@@ -4,6 +4,7 @@
 
 import base64
 import json
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -19,7 +20,7 @@ from dex_connectors.google_gmail import (
     ReplyToMessageInput,
     SendMessageInput,
 )
-from dex_connectors.google_gmail.provider import build_send_message
+from dex_connectors.google_gmail.provider import build_send_message, rfc_message_id_address
 from dex_connectors.google_gmail.send import SendExecution, SendService
 
 
@@ -41,6 +42,157 @@ def execution(operation_id: str = "sendMessage", attempt: int = 1) -> SendExecut
 def send_input() -> SendMessageInput:
     """Use one valid recipient and simple body."""
     return SendMessageInput(["ada@example.com"], "Progress", "Update")
+
+
+def test_message_id_matches_typescript_context_vectors() -> None:
+    """Keep the Go timestamp and TypeScript no-flow-start hashes byte-identical."""
+    call_id = CallID("01234567-89ab-5cde-8f01-23456789abcd")
+    call = Call(
+        call_id, ConnectionRef("google", "support"), OperationRef("gmail", "sendMessage"),
+        IdempotencyKey(call_id),
+    )
+    timestamped = "92c961afe927cf6531fd616445d7a0d0f8023d04f8b05fd96c0a7b8d0b53eef5@dex.superdurable.dev"
+    run_only = "563d1dc32f8aa987145c20dbb42ed754ef6f3f3f4686be8ec0a6de11d0c9a11b@dex.superdurable.dev"
+    assert rfc_message_id_address(call, "run-1", datetime(2026, 1, 2, tzinfo=UTC)) == timestamped
+    assert rfc_message_id_address(call, "run-1", None) == run_only
+    assert rfc_message_id_address(call, "run-1") == run_only
+    assert rfc_message_id_address(call, "run-1", "invalid") == run_only  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="Dex run ID is required"):
+        rfc_message_id_address(call, "")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+@pytest.mark.parametrize("has_flow_start", [True, False])
+async def test_message_id_is_stable_across_send_and_readback(
+    operation_id: str, has_flow_start: bool
+) -> None:
+    """Every retry lookup uses the exact RFC Message-ID in the posted MIME body."""
+    run = execution(operation_id)
+    if not has_flow_start:
+        run = replace(run, flow_started_at=None)
+    expected_id = rfc_message_id_address(run.call, run.run_id, run.flow_started_at)
+    posted_ids: list[str] = []
+    search_queries: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            encoded = json.loads(request.content)["raw"]
+            raw = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
+            message_id_line = next(line for line in raw.split(b"\r\n") if line.startswith(b"Message-ID: "))
+            posted_ids.append(message_id_line.removeprefix(b"Message-ID: <").removesuffix(b">").decode())
+            return httpx.Response(200, json={"id": "sent-1", "threadId": "thread-1"})
+        if "q" in request.url.params:
+            search_queries.append(request.url.params["q"])
+            return httpx.Response(200, json={"messages": []})
+        return source_response()
+
+    sender = service(run, httpx.MockTransport(answer))
+    for attempt in (1, 1, 2):
+        current = replace(run, attempt=attempt)
+        result = (
+            await sender.send_message(current, send_input())
+            if operation_id == "sendMessage"
+            else await sender.reply_to_message(current, ReplyToMessageInput("source-1", "Answer"))
+        )
+        assert result.branch == "sent"
+    assert posted_ids == [expected_id] * 3
+    assert search_queries == [f"in:sent rfc822msgid:{expected_id}"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_missing_run_id_is_local_defect_without_provider_request(operation_id: str) -> None:
+    """A missing run identity returns a clear local defect before HTTP or encoding."""
+    run = replace(execution(operation_id), run_id=None)
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={})
+
+    sender = service(run, httpx.MockTransport(answer))
+    result = (
+        await sender.send_message(run, send_input())
+        if operation_id == "sendMessage"
+        else await sender.reply_to_message(run, ReplyToMessageInput("source-1", "Answer"))
+    )
+    assert result.branch == "defect" and result.failure is not None
+    assert result.failure.kind == FailureKind.LOCAL_DEFECT
+    assert result.failure.message == "the Dex call context has no run ID, so nothing was sent"
+    assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("operation_id", "expected_message"),
+    [
+        ("sendMessage", "message exceeds configured size limit"),
+        ("replyToMessage", "reply could not be encoded within the configured limit"),
+    ],
+)
+async def test_encoding_failure_keeps_existing_message(
+    operation_id: str, expected_message: str
+) -> None:
+    """MIME size errors retain each operation's previous validation message."""
+    run = replace(execution(operation_id), flow_started_at=None)
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return source_response()
+
+    sender = service(run, httpx.MockTransport(answer), max_message_bytes=1)
+    result = (
+        await sender.send_message(run, send_input())
+        if operation_id == "sendMessage"
+        else await sender.reply_to_message(run, ReplyToMessageInput("source-1", "Answer"))
+    )
+    assert result.branch == "defect" and result.failure is not None
+    assert result.failure.kind == FailureKind.VALIDATION
+    assert result.failure.message == expected_message
+    assert all(request.method != "POST" for request in requests)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("operation_id", "expected_message"),
+    [
+        ("sendMessage", "MIME encoding failed"),
+        ("replyToMessage", "reply could not be encoded within the configured limit"),
+    ],
+)
+async def test_mime_encoder_error_keeps_existing_message(
+    operation_id: str, expected_message: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A MIME ValueError is classified the same way with no Flow start time."""
+    run = replace(execution(operation_id), flow_started_at=None)
+    requests: list[httpx.Request] = []
+
+    def invalid_mime(*args: object, **kwargs: object) -> bytes:
+        raise ValueError("MIME encoding failed")
+
+    monkeypatch.setattr(
+        "dex_connectors.google_gmail.send.build_send_message"
+        if operation_id == "sendMessage"
+        else "dex_connectors.google_gmail.send.build_reply_message",
+        invalid_mime,
+    )
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return source_response()
+
+    sender = service(run, httpx.MockTransport(answer))
+    result = (
+        await sender.send_message(run, send_input())
+        if operation_id == "sendMessage"
+        else await sender.reply_to_message(run, ReplyToMessageInput("source-1", "Answer"))
+    )
+    assert result.branch == "defect" and result.failure is not None
+    assert result.failure.kind == FailureKind.VALIDATION
+    assert result.failure.message == expected_message
+    assert all(request.method != "POST" for request in requests)
 
 
 @pytest.mark.parametrize(

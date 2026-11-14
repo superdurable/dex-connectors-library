@@ -31,6 +31,7 @@ from .provider import (
     build_send_message,
     decode_message,
     parse_mailbox,
+    rfc_message_id_address,
     validate_send_input,
 )
 
@@ -44,9 +45,9 @@ class SendExecution:
     # One-based Dex Execute attempt number.
     attempt: int
     # Server-assigned Dex run identity.
-    run_id: str
+    run_id: str | None
     # Start time of the entire Flow, not this Step attempt.
-    flow_started_at: datetime
+    flow_started_at: datetime | None
     # Actual Dex attempt deadline, which can precede the configured method timeout.
     deadline: datetime
     # This operation's manifest Execute timeout.
@@ -59,6 +60,7 @@ class SendExecution:
 class _OutgoingMessage:
     payload: bytes
     recipients: list[str]
+    message_id_address: str
     requested_thread_id: str = ""
     has_pre_send_search: bool = False
 
@@ -176,6 +178,14 @@ class SendService:
             return _branch(
                 execution, _SEND, "defect", FailureKind.LOCAL_DEFECT, "Dex Execute attempt number is invalid"
             )
+        if not isinstance(execution.run_id, str) or not execution.run_id:
+            return _branch(
+                execution, _SEND, "defect", FailureKind.LOCAL_DEFECT,
+                "the Dex call context has no run ID, so nothing was sent",
+            )
+        message_id_address = rfc_message_id_address(
+            execution.call, execution.run_id, execution.flow_started_at
+        )
         fence_result = await self._decide_fence(execution, _SEND)
         if isinstance(fence_result, MutationAttempt):
             return fence_result
@@ -200,6 +210,7 @@ class SendService:
                 input,
                 execution.run_id,
                 execution.flow_started_at,
+                message_id_address=message_id_address,
             )
             if _raw_message_size(payload) > self._provider.max_message_bytes:
                 raise ValueError("message exceeds configured size limit")
@@ -211,7 +222,7 @@ class SendService:
                 FailureKind.VALIDATION,
                 str(error),
             )
-        outgoing = _OutgoingMessage(payload, recipients)
+        outgoing = _OutgoingMessage(payload, recipients, message_id_address)
         if fence_result == DecisionKind.READ_BACK_REQUIRED:
             return await self._read_back_only(execution, budget, credential, _SEND, outgoing)
         return await self._send_and_confirm(execution, budget, credential, _SEND, outgoing)
@@ -226,6 +237,14 @@ class SendService:
             return _branch(
                 execution, _REPLY, "defect", FailureKind.LOCAL_DEFECT, "Dex Execute attempt number is invalid"
             )
+        if not isinstance(execution.run_id, str) or not execution.run_id:
+            return _branch(
+                execution, _REPLY, "defect", FailureKind.LOCAL_DEFECT,
+                "the Dex call context has no run ID, so nothing was sent",
+            )
+        message_id_address = rfc_message_id_address(
+            execution.call, execution.run_id, execution.flow_started_at
+        )
         fence_result = await self._decide_fence(execution, _REPLY)
         if isinstance(fence_result, MutationAttempt):
             return fence_result
@@ -249,7 +268,8 @@ class SendService:
             try:
                 async with asyncio.timeout_at(budget.pre_send_end):
                     found, credential = await self._provider.find_sent_message(
-                        execution.call, credential, execution.run_id, execution.flow_started_at
+                        execution.call, credential, execution.run_id, execution.flow_started_at,
+                        message_id_address=message_id_address,
                     )
             except Exception:
                 await self._record_not_sent(execution)
@@ -262,7 +282,7 @@ class SendService:
                     budget,
                     credential,
                     _REPLY,
-                    _OutgoingMessage(b"", []),
+                    _OutgoingMessage(b"", [], message_id_address),
                     found,
                     _receipt(execution),
                 )
@@ -369,6 +389,7 @@ class SendService:
                 input,
                 execution.run_id,
                 execution.flow_started_at,
+                message_id_address=message_id_address,
             )
             if _raw_message_size(payload) > self._provider.max_message_bytes:
                 raise ValueError("reply exceeds configured size limit")
@@ -380,7 +401,9 @@ class SendService:
                 FailureKind.VALIDATION,
                 "reply could not be encoded within the configured limit",
             )
-        outgoing = _OutgoingMessage(payload, [recipient], message.thread_id, execution.attempt > 1)
+        outgoing = _OutgoingMessage(
+            payload, [recipient], message_id_address, message.thread_id, execution.attempt > 1
+        )
         return await self._send_and_confirm(execution, budget, credential, _REPLY, outgoing)
 
     async def _decide_fence(
@@ -409,7 +432,8 @@ class SendService:
         try:
             async with asyncio.timeout_at(budget.pre_send_end):
                 found, credential = await self._provider.find_sent_message(
-                    execution.call, credential, execution.run_id, execution.flow_started_at
+                    execution.call, credential, execution.run_id, execution.flow_started_at,
+                    message_id_address=message.message_id_address,
                 )
         except Exception:
             return _retry(outcome, FailureKind.AVAILABILITY, "Gmail sent-mail search did not answer")
@@ -444,7 +468,8 @@ class SendService:
             try:
                 async with asyncio.timeout_at(budget.pre_send_end):
                     found, credential = await self._provider.find_sent_message(
-                        execution.call, credential, execution.run_id, execution.flow_started_at
+                        execution.call, credential, execution.run_id, execution.flow_started_at,
+                        message_id_address=message.message_id_address,
                     )
             except Exception:
                 await self._record_not_sent(execution)
@@ -523,7 +548,7 @@ class SendService:
             )
         if status == 503:
             # Gmail documents 5xx as processing failures and Sent Mail search can lag, so the claim stays.
-            found, _ = await self._poll_sent(execution, budget, credential)
+            found, _ = await self._poll_sent(execution, budget, credential, message)
             if found:
                 if execution.fence is not None and found.get("id"):
                     await execution.fence.record_provider_id(found["id"])
@@ -550,7 +575,8 @@ class SendService:
                 try:
                     async with asyncio.timeout_at(budget.attempt_end):
                         found, credential = await self._provider.find_sent_message(
-                            execution.call, credential, execution.run_id, execution.flow_started_at
+                            execution.call, credential, execution.run_id, execution.flow_started_at,
+                            message_id_address=message.message_id_address,
                         )
                 except (ValueError, OSError, TimeoutError):
                     found = None
@@ -574,7 +600,7 @@ class SendService:
             ):
                 raise ValueError("Gmail accepted response has no message ID")
         except (ValueError, UnicodeDecodeError):
-            found, _ = await self._poll_sent(execution, budget, credential)
+            found, _ = await self._poll_sent(execution, budget, credential, message)
             sent = found or {"threadId": message.requested_thread_id}
         if execution.fence is not None and sent.get("id"):
             await execution.fence.record_provider_id(sent["id"])
@@ -591,7 +617,7 @@ class SendService:
         failure_message: str,
         receipt: Receipt,
     ) -> MutationAttempt[SendMessageOutput]:
-        found, has_lookup_error = await self._poll_sent(execution, budget, credential)
+        found, has_lookup_error = await self._poll_sent(execution, budget, credential, message)
         if found:
             if execution.fence is not None and found.get("id"):
                 await execution.fence.record_provider_id(found["id"])
@@ -608,6 +634,7 @@ class SendService:
         execution: SendExecution,
         budget: _SendBudget,
         credential: Credentials,
+        message: _OutgoingMessage,
     ) -> tuple[dict[str, str] | None, bool]:
         has_lookup_error = False
         for lookup in range(4):
@@ -616,7 +643,8 @@ class SendService:
                     if lookup:
                         await asyncio.sleep(0.075 * (2 ** (lookup - 1)))
                     found, credential = await self._provider.find_sent_message(
-                        execution.call, credential, execution.run_id, execution.flow_started_at
+                        execution.call, credential, execution.run_id, execution.flow_started_at,
+                        message_id_address=message.message_id_address,
                     )
             except TimeoutError:
                 return None, True
