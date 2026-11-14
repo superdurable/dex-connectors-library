@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/slack/go"
 	"github.com/superdurable/dex-connectors-library/connectors/slack/go/internal/testlog"
@@ -125,8 +126,9 @@ func TestButtonApprovalAcknowledgesClicksWhileWorkerIsDownWithRealDex(t *testing
 	require.Equal(t, []string{clickID}, setup.pendingEventIDs(t), "the acknowledged click is recorded in its durable inbox")
 	// The read loop keeps reading while that delivery retries.
 	laterFlowID := approvalFlowID(teamID, "C1", "40.0")
+	laterEventID := "EvRoot2-" + teamID
 	stopFlowAtCleanup(t, setup.client, laterFlowID)
-	elapsed = setup.slack.sendMessage(t, teamID, "EvRoot2-"+teamID, "40.0", "U1", sentinelText+" request approval")
+	elapsed = setup.slack.sendMessage(t, teamID, laterEventID, "40.0", "U1", sentinelText+" request approval")
 	require.Less(t, elapsed, slackInteractiveAcknowledgementLimit)
 
 	setup.startWorker(t)
@@ -134,6 +136,20 @@ func TestButtonApprovalAcknowledgesClicksWhileWorkerIsDownWithRealDex(t *testing
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status)
 	require.Equal(t, []string{"Approved by <@U2>."}, setup.slack.replyTexts("30.0"))
+	require.Eventually(t, func() bool {
+		return len(setup.logs.Find("trigger event delivered", map[string]string{"event_id": laterEventID, "flow_id": laterFlowID})) == 1
+	}, 20*time.Second, 50*time.Millisecond, "the later root reaches its Flow after the Worker returns")
+	// Poll the committed Attribute without occupying the restarted Worker's RPC queue.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		var state ApprovalState
+		attributes, err := setup.client.GetAttributes(ctx, laterFlowID, dex.ReadAttribute(approvalStateAttribute, &state))
+		if !assert.NoError(collect, err) {
+			return
+		}
+		if assert.True(collect, attributes.IsSet(approvalStateAttribute)) {
+			assert.Equal(collect, StatusWaitingForDecision, state.Status)
+		}
+	}, 20*time.Second, 100*time.Millisecond)
 	waitForApprovalStatus(t, ctx, setup.client, setup.flow, laterFlowID, StatusWaitingForDecision)
 	require.Len(t, setup.logs.Find("trigger delivered after retry", map[string]string{"event_id": clickID}), 1)
 	require.Empty(t, setup.logs.Find("slack interactive envelope acknowledged late", nil))
@@ -318,10 +334,20 @@ func (running *runningTriggerRunner) stop(t *testing.T) {
 func waitForApprovalStatus(t *testing.T, ctx context.Context, client *dex.Client, flow *ButtonApprovalFlow, flowID string, expected Status) ApprovalState {
 	t.Helper()
 	var state ApprovalState
-	require.Eventually(t, func() bool {
+	if assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 		state = ApprovalState{}
-		return client.InvokeRPC(ctx, flowID, flow.GetApprovalStatus, nil, &state) == nil && state.Status == expected
-	}, 20*time.Second, 100*time.Millisecond)
+		if !assert.NoError(collect, client.InvokeRPC(ctx, flowID, flow.GetApprovalStatus, nil, &state)) {
+			return
+		}
+		assert.Equal(collect, expected, state.Status)
+	}, 20*time.Second, 100*time.Millisecond) {
+		return state
+	}
+	flowInfo, describeErr := client.DescribeFlow(ctx, flowID)
+	var persistedState ApprovalState
+	attributeRead, attributeErr := client.GetAttributes(ctx, flowID, dex.ReadAttribute(approvalStateAttribute, &persistedState))
+	t.Fatalf("approval status did not converge: Flow info=%+v (error=%v), Attribute set=%t state=%+v (error=%v)",
+		flowInfo, describeErr, attributeRead.IsSet(approvalStateAttribute), persistedState, attributeErr)
 	return state
 }
 
