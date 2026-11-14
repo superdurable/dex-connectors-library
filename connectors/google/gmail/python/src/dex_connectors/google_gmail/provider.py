@@ -6,6 +6,7 @@ import base64
 import binascii
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email import policy
@@ -216,16 +217,28 @@ def validate_send_input(input_value: SendMessageInput, sender: str) -> list[str]
     return [_format_go_mailbox(value) for value in recipients]
 
 
-def rfc_message_id_address(call: Call, run_id: str, flow_started_at: datetime) -> str:
-    """Derive Go's run-scoped Message-ID address from the stable call key."""
-    run_identity = f"{run_id}\0{int(flow_started_at.timestamp())}"
+def rfc_message_id_address(call: Call, run_id: str | None, flow_started_at: datetime | None = None) -> str:
+    """Derive a stable run-scoped Message-ID, retaining Go parity for valid Flow start times."""
+    if not isinstance(run_id, str) or not run_id:
+        raise TypeError("Dex run ID is required")
+    try:
+        seconds = flow_started_at.timestamp() if isinstance(flow_started_at, datetime) else math.nan
+    except (OverflowError, OSError, ValueError):
+        seconds = math.nan
+    run_identity = f"{run_id}\0{math.floor(seconds) if math.isfinite(seconds) else 'no-flow-start'}"
     digest = hashlib.sha256(f"{call.idempotency_key}\0{run_identity}".encode()).hexdigest()
     return f"{digest}@dex.superdurable.dev"
 
 
-def sent_message_search_query(call: Call, run_id: str, flow_started_at: datetime) -> str:
+def sent_message_search_query(
+    call: Call, run_id: str | None, flow_started_at: datetime | None,
+    *, message_id_address: str | None = None,
+) -> str:
     """Search Sent Mail by deterministic RFC Message-ID without angle brackets."""
-    return "in:sent rfc822msgid:" + rfc_message_id_address(call, run_id, flow_started_at)
+    return "in:sent rfc822msgid:" + (
+        message_id_address if message_id_address is not None
+        else rfc_message_id_address(call, run_id, flow_started_at)
+    )
 
 
 def _crlf(value: str) -> str:
@@ -246,14 +259,18 @@ def _mime_message(
     text_body: str,
     html_body: str,
     run_id: str,
-    flow_started_at: datetime,
+    flow_started_at: datetime | None,
     reply_headers: tuple[str, str] = ("", ""),
+    *, message_id_address: str | None = None,
 ) -> bytes:
+    address = message_id_address if message_id_address is not None else rfc_message_id_address(
+        call, run_id, flow_started_at
+    )
     lines = [
         f"From: {sender}",
         f"To: {recipient}",
         f"Subject: {_q_encode_subject(subject)}",
-        f"Message-ID: <{rfc_message_id_address(call, run_id, flow_started_at)}>",
+        f"Message-ID: <{address}>",
     ]
     if reply_headers[0]:
         lines.append(f"In-Reply-To: {reply_headers[0]}")
@@ -277,7 +294,8 @@ def build_send_message(
     recipients: list[str],
     input_value: SendMessageInput,
     run_id: str,
-    flow_started_at: datetime,
+    flow_started_at: datetime | None,
+    *, message_id_address: str | None = None,
 ) -> bytes:
     """Encode Go-compatible messages.send JSON with a deterministic MIME body."""
     raw = _mime_message(
@@ -289,6 +307,7 @@ def build_send_message(
         input_value.html_body,
         run_id,
         flow_started_at,
+        message_id_address=message_id_address,
     )
     return json.dumps(
         {"raw": base64.urlsafe_b64encode(raw).rstrip(b"=").decode()}, separators=(",", ":")
@@ -302,7 +321,8 @@ def build_reply_message(
     source: Message,
     input_value: ReplyToMessageInput,
     run_id: str,
-    flow_started_at: datetime,
+    flow_started_at: datetime | None,
+    *, message_id_address: str | None = None,
 ) -> bytes:
     """Encode a threaded messages.send body with source reply headers."""
     subject = source.subject if source.subject.strip().lower().startswith("re:") else "Re: " + source.subject
@@ -317,6 +337,7 @@ def build_reply_message(
         run_id,
         flow_started_at,
         (source.rfc_message_id, references),
+        message_id_address=message_id_address,
     )
     encoded = base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
     return json.dumps({"raw": encoded, "threadId": source.thread_id}, separators=(",", ":")).encode()
@@ -442,8 +463,9 @@ class GmailProvider:
         self,
         call: Call,
         credential: Credentials,
-        run_id: str,
-        flow_started_at: datetime,
+        run_id: str | None,
+        flow_started_at: datetime | None,
+        *, message_id_address: str | None = None,
     ) -> tuple[dict[str, str] | None, Credentials]:
         """Return first Sent Mail match for the run-specific RFC Message-ID."""
         result, credential = await self.request(
@@ -452,7 +474,9 @@ class GmailProvider:
             "GET",
             "/users/me/messages",
             query={
-                "q": sent_message_search_query(call, run_id, flow_started_at),
+                "q": sent_message_search_query(
+                    call, run_id, flow_started_at, message_id_address=message_id_address
+                ),
                 "maxResults": "1",
                 "includeSpamTrash": "true",
             },
