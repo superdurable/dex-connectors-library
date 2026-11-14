@@ -1606,7 +1606,7 @@ is generated from `conformance_adapter_test.go` by `connectorctl generate`;
 CONNECTOR_DIRECTORY=connectors/<directory>` after editing the fixture. CI also
 mutates classification, output including a wrong nonempty list, exchange, optional query, form, MIME, production
 idempotency key, read 5xx, and rejected pending cases to prove
-every applicable runner fails. Legacy packages without fixtures warn on Go-only
-edits; new or edited language packages require fixtures. A shared matcher fixture checks missing, empty, repeated,
+every applicable runner fails. Every Python and TypeScript package requires
+fixtures unless `conformance/exemptions.yaml` exempts its connector. A shared matcher fixture checks missing, empty, repeated,
 JSON array, and decoded MIME request fields in all three languages.
 Existing runnable examples remain the end-to-end verification path.

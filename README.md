@@ -77,7 +77,7 @@ const readStep = newGetMessageStep<GetMessageInput>({
 });
 ```
 
-A Mutation Step has the same shape, for example `new_reply_to_message_step(..., sent=...)`. Runnable examples: [Python](connectors/google/gmail/python/examples/thread_reply/flow.py) and [TypeScript](connectors/google/gmail/typescript/examples/gmail-flow/). The [directory](https://connectors.superdurable.io/) shows which languages each connector supports. Python and TypeScript packages implement operations; Triggers are Go only.
+A Mutation Step has the same shape, for example `new_reply_to_message_step(..., sent=...)`. Runnable examples: [Python](connectors/google/gmail/python/examples/thread_reply/flow.py) and [TypeScript](connectors/google/gmail/typescript/examples/gmail-flow/). The [directory](https://connectors.superdurable.io/) shows which languages each connector supports. Python and TypeScript packages implement operations, and TypeScript packages can also implement Triggers, such as [Slack](connectors/slack/typescript/examples/thread-approval/).
 
 ## 📚 Learn more
 
