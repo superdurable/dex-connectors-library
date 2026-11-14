@@ -11,6 +11,7 @@ import json
 import os
 import ssl
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -49,6 +50,10 @@ def is_certificate_verification_failure(error: BaseException) -> bool:
 
 class GitHubNotFoundError(RuntimeError):
     """The requested GitHub API resource does not exist."""
+
+
+class GitHubRateLimitError(RuntimeError):
+    """GitHub rejected a request because its API rate limit is exhausted."""
 
 
 def github_json(url: str, *, body: object | None = None, sleep=time.sleep, clock=time.time) -> tuple[object, str]:
@@ -117,8 +122,8 @@ def sleep_until_rate_limit_reset(description: str, headers, deadline: float, *, 
     wait = max(1.0, float(retry_after) if retry_after.isdigit() else
                float(reset) - clock() + 2 if reset.isdigit() else 60.0)
     if clock() + wait > deadline:
-        raise RuntimeError(f"GitHub API rate limit ({description}); reset in {int(wait)} s "
-                           f"exceeds the {MAXIMUM_RATE_LIMIT_WAIT_SECONDS} s wait budget")
+        raise GitHubRateLimitError(f"GitHub API rate limit ({description}); reset in {int(wait)} s "
+                                   f"exceeds the {MAXIMUM_RATE_LIMIT_WAIT_SECONDS} s wait budget")
     print(f"GitHub API rate limit ({description}); waiting {int(wait)} s for reset", file=sys.stderr, flush=True)
     sleep(wait)
 
@@ -188,7 +193,8 @@ def next_page_url(links: str) -> str:
                  if 'rel="next"' in part and "<" in part and ">" in part), "")
 
 
-def release_assets(tag: str, inventory_path: str | None = None, *, fetch=github_json) -> frozenset[str] | None:
+def release_assets(tag: str, inventory_path: str | None = None, *, fetch=github_json,
+                   cache_path: str | None = None) -> frozenset[str] | None:
     if inventory_path:
         inventory = json.loads(Path(inventory_path).read_text(encoding="utf-8"))
         if not isinstance(inventory, dict):
@@ -196,14 +202,36 @@ def release_assets(tag: str, inventory_path: str | None = None, *, fetch=github_
         if not inventory.get("_inventory_unavailable"):
             assets = inventory.get(tag)
             return frozenset(assets) if assets is not None else None
+    cache_file = Path(cache_path) if cache_path else None
+    cache: dict[str, list[str] | None] = {}
+    if cache_file is not None and cache_file.exists():
+        cache = json.loads(cache_file.read_text(encoding="utf-8"))
+        if not isinstance(cache, dict) or any(not isinstance(key, str) or
+                                               (value is not None and (not isinstance(value, list) or
+                                                any(not isinstance(asset, str) for asset in value)))
+                                               for key, value in cache.items()):
+            raise RuntimeError(f"invalid GitHub release lookup cache: {cache_file}")
+        if tag in cache:
+            return frozenset(cache[tag]) if cache[tag] is not None else None
     url = f"https://api.github.com/repos/{REPOSITORY}/releases/tags/{urllib.parse.quote(tag, safe='')}"
     try:
         release, _ = fetch(url)
     except GitHubNotFoundError:
-        return None
-    if not isinstance(release, dict):
-        raise RuntimeError(f"GitHub release lookup returned invalid data for {tag}")
-    return frozenset(asset["name"] for asset in release.get("assets", []))
+        assets = None
+    else:
+        if not isinstance(release, dict):
+            raise RuntimeError(f"GitHub release lookup returned invalid data for {tag}")
+        assets = frozenset(asset["name"] for asset in release.get("assets", []))
+    if cache_file is not None:
+        cache[tag] = sorted(assets) if assets is not None else None
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=cache_file.parent,
+                                         prefix=f".{cache_file.name}.", delete=False) as temporary:
+            temporary_path = Path(temporary.name)
+            json.dump(cache, temporary, sort_keys=True)
+            temporary.write("\n")
+        os.replace(temporary_path, cache_file)
+    return assets
 
 
 def main() -> None:

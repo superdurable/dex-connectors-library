@@ -163,8 +163,55 @@ class GitHubReleaseInventoryTests(unittest.TestCase):
                                         {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "2500"},
                                         io.BytesIO(b'{"message":"API rate limit exceeded"}'))
         with patch.object(inventory.urllib.request, "urlopen", side_effect=limited):
-            with self.assertRaisesRegex(RuntimeError, "rate limit.*exceeds"):
+            with self.assertRaisesRegex(inventory.GitHubRateLimitError, "rate limit.*exceeds"):
                 inventory.github_json("https://api.github.com/test", sleep=lambda _: None, clock=lambda: 1000)
+
+    def test_release_lookup_cache_reuses_each_tag_across_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            cache_path = str(Path(temporary) / "sdk-releases.json")
+            calls: list[str] = []
+
+            def fetch(url: str):
+                calls.append(url)
+                return {"assets": [{"name": "language-release.json"}]}, ""
+
+            self.assertEqual(frozenset({"language-release.json"}),
+                             inventory.release_assets("sdkts/v0.1.1", fetch=fetch, cache_path=cache_path))
+            self.assertEqual(frozenset({"language-release.json"}),
+                             inventory.release_assets("sdkts/v0.1.1", fetch=fetch, cache_path=cache_path))
+            self.assertEqual(frozenset({"language-release.json"}),
+                             inventory.release_assets("sdkpython/v0.1.1", fetch=fetch, cache_path=cache_path))
+            self.assertEqual(2, len(calls))
+
+    def test_release_lookup_cache_preserves_missing_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            cache_path = str(Path(temporary) / "sdk-releases.json")
+            calls: list[str] = []
+
+            def fetch(url: str):
+                calls.append(url)
+                raise inventory.GitHubNotFoundError("missing")
+
+            self.assertIsNone(inventory.release_assets("sdkts/v0.9.9", fetch=fetch, cache_path=cache_path))
+            self.assertIsNone(inventory.release_assets("sdkts/v0.9.9", fetch=fetch, cache_path=cache_path))
+            self.assertEqual(1, len(calls))
+
+    def test_rate_limited_lookup_is_not_cached(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            cache_path = str(Path(temporary) / "sdk-releases.json")
+            calls: list[str] = []
+
+            def fetch(url: str):
+                calls.append(url)
+                if len(calls) == 1:
+                    raise inventory.GitHubRateLimitError("HTTP 403")
+                return {"assets": [{"name": "language-release.json"}]}, ""
+
+            with self.assertRaises(inventory.GitHubRateLimitError):
+                inventory.release_assets("sdkts/v0.1.1", fetch=fetch, cache_path=cache_path)
+            self.assertEqual(frozenset({"language-release.json"}),
+                             inventory.release_assets("sdkts/v0.1.1", fetch=fetch, cache_path=cache_path))
+            self.assertEqual(2, len(calls))
 
     def test_cached_assets_distinguish_missing_release(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
