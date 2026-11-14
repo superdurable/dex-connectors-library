@@ -147,6 +147,36 @@ derives the Flow-start request ID from the provider event ID. RPC targets use
 the same direct bound Flow method for registration and target invocation. The
 application owns RPC options, durable state, locking, and event deduplication.
 RPC names are code identities, not binding configuration.
+The TypeScript SDK RPC target sends one request ID on every delivery attempt
+of an event (except the few handler shapes the SDK README lists as invoked
+without one), so Dex Server applies the RPC's Flow changes at most once per
+event while the Flow run keeps that ID, provided the input mapper is
+deterministic. The ID is `trigger-rpc-` followed by the first 16 bytes, as
+unpadded base64url, of the SHA-256 digest of the UTF-8 RPC name, one 0x00
+byte, and the UTF-8 event ID. The RPC name is the target's `rpcName` option
+or else the handler's JavaScript method name. Set `rpcName` to the RPC's wire
+name when it has an `@rpc({ name })` override or when a build may minify or
+rename methods; otherwise renaming the method changes the ID. The mapped
+input and the binding are not part of the ID, so two bindings that route one
+event to the same RPC on the same Flow share it. A run keeps only its newest
+request IDs, up to the server's `limits.maxRequestIdsPerRun` (1000 by
+default). Declare such an RPC transactional or with Attribute locks so a
+repeat returns the recorded reply without running the handler again. A
+deterministic mapper repeats an identical request, which Dex joins while it
+is in flight and answers from the recorded reply once it committed. A
+conflict happens only when the same event maps to a different request: a
+non-deterministic or changed input mapper, two bindings that route it to the
+same RPC on the same Flow, or changed RPC options. Dex then answers
+`INVALID_ARGUMENT` "request ID ... was already used for a different
+request", and the target logs the event, request, RPC, and Flow IDs at ERROR
+and drops the event as undeliverable with `TriggerRPCRequestConflictError`.
+Dex reports the same conflict while the earlier request is still in flight,
+so if that request later fails without committing, the event is lost. Keep
+mappers deterministic and set `rpcName` where the method name can change.
+Once Dex distinguishes committed conflicts (superdurable/dex#1866), a future
+release can drop only events whose earlier request committed. The Go SDK
+RPC target still sends a new request ID per call, so its RPC treats a
+repeated event ID as a duplicate.
 
 Trigger binding configuration is separate from connection configuration and
 credentials. Its identity is connector ID, connection name, trigger name, and

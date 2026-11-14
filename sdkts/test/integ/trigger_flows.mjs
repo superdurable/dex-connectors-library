@@ -13,9 +13,10 @@ import process from 'node:process';
 import { setTimeout } from 'node:timers/promises';
 import { URL, fileURLToPath } from 'node:url';
 import { Buffer } from 'node:buffer';
-import { Client, Registry, StepList, Worker, deadEnd, forceComplete, openBlobCache, rpc } from '@superdurable/dex';
+import { Attribute, Client, Registry, StepList, Worker, deadEnd, doubleCodec, forceComplete, jsonCodec, openBlobCache, rpc } from '@superdurable/dex';
 import {
-  StaticCredentialProvider, UndeliverableTriggerError, deliverTrigger, isTriggerUndeliverable, newDexFlowTriggerTarget, newDexRPCTriggerTarget, newTrigger, newTriggerContext,
+  StaticCredentialProvider, TriggerRPCRequestConflictError, UndeliverableTriggerError, deliverTrigger, isTriggerUndeliverable, newDexFlowTriggerTarget, newDexRPCTriggerTarget,
+  newTrigger, newTriggerContext, triggerRPCRequestId,
 } from '../../dist/index.js';
 import { InMemoryObjectStore, TriggerInbox, loadFromEnvironment, newDurableTriggerTarget } from '../../dist/projectconfig/index.js';
 import { RelaySignatureHeader, RelayTimestampHeader, signRelayedRequest, verifyRelaySignature } from '../../dist/relaysignature/index.js';
@@ -52,9 +53,49 @@ class ApprovalFlow {
 }
 rpc()(ApprovalFlow.prototype.receiveReply, { kind: 'method', name: 'receiveReply' });
 
+// Counts handler runs per RPC; the Worker runs in this process.
+const ledgerHandlerCalls = { recordTransactional: 0, recordNonTransactional: 0, recordDefaultedAmount: 0, incrementTotal: 0, recordWired: 0 };
+// Each queued gate holds one recordGated run in flight until the test settles it.
+const ledgerGates = [];
+const ledgerTotal = new Attribute('total', doubleCodec);
+class AwaitLedgerEntries {
+  getStepType() { return 'AwaitLedgerEntries'; }
+  execute() { return deadEnd(); }
+}
+class LedgerFlow {
+  getFlowType() { return `SdktsTriggerLedger${suffix}`; }
+  getSteps() { return StepList.startStep(new AwaitLedgerEntries()); }
+  getPersistenceSchema() { return { attributes: [ledgerTotal] }; }
+  recordTransactional(context, input) { ledgerHandlerCalls.recordTransactional++; return this.addToTotal(context, input); }
+  recordNonTransactional(context, input) { ledgerHandlerCalls.recordNonTransactional++; return this.addToTotal(context, input); }
+  // A default-valued input parameter leaves length 1, so the Client reads the input through its inputCodec.
+  recordDefaultedAmount(context, input = { amount: 1 }) { ledgerHandlerCalls.recordDefaultedAmount++; return this.addToTotal(context, input); }
+  incrementTotal(context) { ledgerHandlerCalls.incrementTotal++; return this.addToTotal(context, { amount: 1 }); }
+  recordWired(context, input) { ledgerHandlerCalls.recordWired++; return this.addToTotal(context, input); }
+  async recordGated(context, input) {
+    const gate = ledgerGates.shift();
+    if (gate) { gate.entered.resolve(); await gate.settled.promise; }
+    return this.addToTotal(context, input);
+  }
+  getTotal(context) { return { output: ledgerTotal.get(context) ?? 0 }; }
+  addToTotal(context, input) {
+    const total = (ledgerTotal.get(context) ?? 0) + input.amount;
+    ledgerTotal.set(context, total);
+    return { output: total };
+  }
+}
+rpc({ outputCodec: doubleCodec, isTransactional: true })(LedgerFlow.prototype.recordTransactional, { kind: 'method', name: 'recordTransactional' });
+rpc({ outputCodec: doubleCodec })(LedgerFlow.prototype.recordNonTransactional, { kind: 'method', name: 'recordNonTransactional' });
+rpc({ inputCodec: jsonCodec(), outputCodec: doubleCodec, isTransactional: true })(LedgerFlow.prototype.recordDefaultedAmount, { kind: 'method', name: 'recordDefaultedAmount' });
+rpc({ outputCodec: doubleCodec, isTransactional: true })(LedgerFlow.prototype.incrementTotal, { kind: 'method', name: 'incrementTotal' });
+rpc({ name: 'recordLedgerEntry', outputCodec: doubleCodec, isTransactional: true })(LedgerFlow.prototype.recordWired, { kind: 'method', name: 'recordWired' });
+rpc({ outputCodec: doubleCodec, isTransactional: true, timeoutMs: 30_000 })(LedgerFlow.prototype.recordGated, { kind: 'method', name: 'recordGated' });
+rpc({ outputCodec: doubleCodec })(LedgerFlow.prototype.getTotal, { kind: 'method', name: 'getTotal' });
+
 const itemFlow = new ItemFlow();
 const approvalFlow = new ApprovalFlow();
-const registry = new Registry([itemFlow, approvalFlow]);
+const ledgerFlow = new LedgerFlow();
+const registry = new Registry([itemFlow, approvalFlow, ledgerFlow]);
 const directory = await mkdtemp(join(tmpdir(), 'sdkts-trigger-integration-'));
 const directories = [directory];
 const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
@@ -90,6 +131,91 @@ try {
   await assert.rejects(replyTarget.handleTrigger(newTriggerContext(), event(`Ev-${suffix}-rejected`, { flowId: approvalId, kind: 'reject' })), error => isTriggerUndeliverable(error), 'a handler marker is undeliverable');
   await assert.rejects(replyTarget.handleTrigger(newTriggerContext(), event(`Ev-${suffix}-early`, { flowId: approvalId, kind: 'notReady' })), error => !isTriggerUndeliverable(error), 'another handler error stays retryable');
   await assert.rejects(replyTarget.handleTrigger(newTriggerContext(), event(`Ev-${suffix}-orphan`, { flowId: `missing-${suffix}`, kind: 'approve' })), error => isTriggerUndeliverable(error), 'a never-started Flow is undeliverable');
+
+  // Every redelivery of an event carries one request ID, so Dex applies its Flow changes once.
+  const ledgerId = `ledger-${suffix}`;
+  await client.startFlow(ledgerFlow, ledgerId, {});
+  const toLedgerEntry = received => ({ amount: received.payload.amount });
+  const transactionalTarget = newDexRPCTriggerTarget(client, ledgerFlow.recordTransactional, () => true, () => ledgerId, toLedgerEntry, { logger: quietLogger });
+  const nonTransactionalTarget = newDexRPCTriggerTarget(client, ledgerFlow.recordNonTransactional, () => true, () => ledgerId, toLedgerEntry, { logger: quietLogger });
+  const payment = event(`Ev-${suffix}-payment`, { amount: 5 });
+  await deliverTrigger(newTriggerContext(), transactionalTarget, payment, { logger: quietLogger });
+  await deliverTrigger(newTriggerContext(), transactionalTarget, payment, { logger: quietLogger });
+  assert.equal(ledgerHandlerCalls.recordTransactional, 1, 'a transactional repeat is answered from the recorded reply');
+  assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 5, 'a transactional redelivery applies once');
+  // A mapper whose input changes on every call, as one reading the clock would, applies its first delivery
+  // once. A redelivery maps the event to a different request, which Dex refuses for the event's one request
+  // ID; the target logs the drop at ERROR and the durable inbox consumes the event as undeliverable.
+  const bonus = event(`Ev-${suffix}-bonus`, { amount: 3 });
+  let bonusMappings = 0;
+  const toChangingBonus = received => ({ amount: received.payload.amount, mappedAt: ++bonusMappings });
+  const conflictRecords = [];
+  const conflictLogger = { isEnabled: () => true, log: (level, message, attributes) => { conflictRecords.push({ level, message, attributes }); } };
+  const changingTarget = newDexRPCTriggerTarget(client, ledgerFlow.recordTransactional, () => true, () => ledgerId, toChangingBonus, { logger: conflictLogger });
+  const bonusKey = { connectorId: 'sample', connectionName: 'workspace', triggerName: 'bonusCreated', bindingName: 'bonus' };
+  const bonusInbox = new TriggerInbox(new InMemoryObjectStore(), { projectId: 'bonus', kind: 'live' }, bonusKey);
+  const durableChangingTarget = newDurableTriggerTarget(bonusInbox, bonusKey, changingTarget, { logger: quietLogger });
+  await durableChangingTarget.prepareTrigger(newTriggerContext(), bonus);
+  await durableChangingTarget.handleTrigger(newTriggerContext(), bonus);
+  assert.equal(ledgerHandlerCalls.recordTransactional, 2, 'the first changing delivery ran the handler');
+  assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 8, 'the first changing delivery applied once');
+  await durableChangingTarget.prepareTrigger(newTriggerContext(), bonus);
+  await durableChangingTarget.handleTrigger(newTriggerContext(), bonus);
+  assert.deepEqual(await bonusInbox.pending(), [], 'the conflicting redelivery was consumed on its first attempt');
+  const dropRecords = conflictRecords.filter(record => record.message === 'trigger rpc request conflict; event dropped');
+  assert.equal(dropRecords.length, 1);
+  assert.equal(dropRecords[0].level, 'error');
+  assert.deepEqual(dropRecords[0].attributes, { target: 'rpc', event_id: bonus.id, request_id: triggerRPCRequestId('recordTransactional', bonus.id), rpc_name: 'recordTransactional', flow_id: ledgerId });
+  const bonusRejection = await changingTarget.handleTrigger(newTriggerContext(), bonus).then(() => undefined, error => error);
+  assert.ok(bonusRejection instanceof TriggerRPCRequestConflictError && isTriggerUndeliverable(bonusRejection), `a changed redelivery is an undeliverable conflict: ${bonusRejection}`);
+  assert.match(bonusRejection.cause.detail, /was already used for a different request/);
+  assert.equal(ledgerHandlerCalls.recordTransactional, 2, 'no changed redelivery ran the handler');
+  assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 8, 'the bonus applied once');
+
+  // A real Client accepts the request ID in each RPC shape: a default-valued input with an inputCodec, and
+  // an input-free RPC without a mapper, and both apply a redelivery once.
+  const fee = event(`Ev-${suffix}-fee`, { amount: 2 });
+  const defaultedTarget = newDexRPCTriggerTarget(client, ledgerFlow.recordDefaultedAmount, () => true, () => ledgerId, toLedgerEntry, { logger: quietLogger });
+  await deliverTrigger(newTriggerContext(), defaultedTarget, fee, { logger: quietLogger });
+  await deliverTrigger(newTriggerContext(), defaultedTarget, fee, { logger: quietLogger });
+  assert.equal(ledgerHandlerCalls.recordDefaultedAmount, 1, 'a defaulted-input repeat is answered from the recorded reply');
+  const tick = event(`Ev-${suffix}-tick`, {});
+  const inputFreeTarget = newDexRPCTriggerTarget(client, ledgerFlow.incrementTotal, () => true, () => ledgerId, undefined, { logger: quietLogger });
+  await deliverTrigger(newTriggerContext(), inputFreeTarget, tick, { logger: quietLogger });
+  await deliverTrigger(newTriggerContext(), inputFreeTarget, tick, { logger: quietLogger });
+  assert.equal(ledgerHandlerCalls.incrementTotal, 1, 'an input-free repeat is answered from the recorded reply');
+  assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 11, 'each shape applied its event once');
+  // options.rpcName replaces the method name in the request ID, so the wire name keeps IDs stable.
+  const wired = event(`Ev-${suffix}-wired`, { amount: 4 });
+  const wiredTarget = newDexRPCTriggerTarget(client, ledgerFlow.recordWired, () => true, () => ledgerId, toLedgerEntry, { logger: quietLogger, rpcName: 'recordLedgerEntry' });
+  await deliverTrigger(newTriggerContext(), wiredTarget, wired, { logger: quietLogger });
+  assert.equal(await client.invokeRPCWithOptions(ledgerFlow.recordWired, ledgerId, { amount: 4 }, { requestId: triggerRPCRequestId('recordLedgerEntry', wired.id) }), 15, 'the wire-name request ID returns the recorded reply');
+  assert.equal(ledgerHandlerCalls.recordWired, 1, 'the wire-name request ID matched the target delivery');
+  // The same event to another RPC on the same Flow is a different request.
+  await deliverTrigger(newTriggerContext(), nonTransactionalTarget, payment, { logger: quietLogger });
+  await deliverTrigger(newTriggerContext(), nonTransactionalTarget, payment, { logger: quietLogger });
+  assert.equal(ledgerHandlerCalls.recordNonTransactional, 2, 'a non-transactional repeat reruns its handler');
+  assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 20, 'each RPC applied the event once');
+
+  // An earlier attempt with another input, such as one a crashed process sent, is still in flight: Dex
+  // reports the same conflict, so the target drops the event. When that attempt then fails without
+  // committing, this delivery of the event is lost: neither request applied it.
+  const deposit = event(`Ev-${suffix}-deposit`, { amount: 7 });
+  const gate = { entered: Promise.withResolvers(), settled: Promise.withResolvers() };
+  ledgerGates.push(gate);
+  const earlierAttempt = client.invokeRPCWithOptions(ledgerFlow.recordGated, ledgerId, { amount: 100 }, { requestId: triggerRPCRequestId('recordGated', deposit.id) });
+  await gate.entered.promise;
+  const gatedTarget = newDexRPCTriggerTarget(client, ledgerFlow.recordGated, () => true, () => ledgerId, toLedgerEntry, { logger: quietLogger });
+  const inFlightRejection = await gatedTarget.handleTrigger(newTriggerContext(), deposit).then(() => undefined, error => error);
+  assert.ok(inFlightRejection instanceof TriggerRPCRequestConflictError && isTriggerUndeliverable(inFlightRejection), `an in-flight conflict drops the event: ${inFlightRejection}`);
+  assert.match(inFlightRejection.cause.detail, /was already used for a different request/);
+  gate.settled.reject(new Error('earlier attempt failed'));
+  await assert.rejects(earlierAttempt, 'the earlier attempt failed without applying the event');
+  assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 20, 'the dropped deposit was lost when the earlier attempt failed');
+  // Only a later redelivery of the same event, such as a provider retry, can still apply it, because no request ID was recorded.
+  await deliverTrigger(newTriggerContext(), gatedTarget, deposit, { logger: quietLogger });
+  assert.equal(await client.invokeRPC(ledgerFlow.getTotal, ledgerId), 27, 'a later redelivery applied the deposit once');
+  await client.stopFlow(ledgerId);
 
   // A local Dex Web inbox survives a real process restart: another process recorded the event and exited
   // before delivering it, and this process replays it from the files beside connections.json into Dex.
