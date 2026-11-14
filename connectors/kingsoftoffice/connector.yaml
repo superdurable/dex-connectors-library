@@ -1,0 +1,52 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: kingsoftoffice
+  displayName: WPS 365
+  description: List metadata for files in a WPS 365 enterprise drive folder.
+  company: KingsoftOffice
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: kingsoftoffice
+  codegen:
+    go:
+      package: kingsoftoffice
+  configuration:
+    fields:
+      - {name: baseUrl, goName: BaseURL, type: url, default: 'https://openapi.wps.cn', description: 'HTTPS origin of WPS 365 OpenAPI without a path. Leave blank for the displayed production endpoint; override only for an approved proxy or local test server.'}
+      - {name: timeout, goName: Timeout, type: duration, default: 10s, description: 'Maximum time for one WPS token or file-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow approved proxy.'}
+      - {name: maxResponseBytes, goName: MaxResponseBytes, type: integer, default: 1048576, description: 'Maximum WPS response size in bytes as a positive integer. Leave blank for the displayed default; increase only if a valid file-list page exceeds it.'}
+      - {name: pageSize, goName: PageSize, type: integer, default: 100, description: 'Maximum file metadata items per page as an integer from 1 to 500. Leave blank for the displayed default; reduce when a folder contains large metadata records.'}
+      - {name: requestSigningEnabled, goName: RequestSigningEnabled, type: boolean, default: false, description: 'Whether WPS 开发者后台 > 安全设置 > 接口签名 is enabled for this application. Leave blank for the displayed disabled setting; set true when that security setting is on so requests carry KSO-1 signatures.'}
+  auth:
+    type: apiKey
+    connectionKind: wps365-self-app
+    fields:
+      - {name: app_id, goName: AppID, type: string, required: true, description: 'Application APPID from https://open.wps.cn > 开发者后台 > 应用信息 for an enterprise self-built application. Copy its exact identifier, usually beginning AK; this identifier is not secret. Blank prevents requests.'}
+      - {name: app_key, goName: AppKey, type: secretString, required: true, description: 'Secret APPKEY paired with APPID at https://open.wps.cn > 开发者后台 > 应用信息. Copy the exact key into this secret field; blank prevents requests. It is sent only to the HTTPS token endpoint and used locally for optional KSO-1 signing.'}
+    guide:
+      startURL: https://open.wps.cn
+      steps:
+        - Complete enterprise developer certification at https://open.wps.cn, then open 开发者后台 and create an 企业自建应用. In 权限申请 request `kso.file.read` (应用授权), publish a version, and have the enterprise administrator approve it.
+        - In 开发者后台 > 应用信息 copy APPID and paired APPKEY into the fields above. The connector exchanges them for a two-hour application access token and caches it in memory; never paste a token into Flow input.
+        - Inspect 开发者后台 > 安全设置 > 接口签名. Set requestSigningEnabled true only if that switch is on; the connector then sends KSO-1 signed file-list requests. Leave baseUrl, timeout, maxResponseBytes, and pageSize blank for their displayed defaults.
+  operations:
+    - name: listFolderFiles
+      goName: ListFolderFiles
+      inputType: ListFolderFilesInput
+      outputType: ListFolderFilesOutput
+      kind: query
+      description: List one bounded page of file and folder metadata from a drive folder.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: 'WPS returned one file metadata page.'}
+        - {id: providerRejected, goName: ProviderRejected, description: 'WPS rejected credentials, scope, drive, folder, or page token.', optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: 'WPS returned malformed or oversized data.', optional: true}
+        - {id: defect, goName: Defect, description: 'Local input or connection configuration is invalid.', optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - {name: sampleFolder, branch: listed, description: 'Synthetic file metadata for local Flow verification; no WPS call or document content.', default: true, output: {items: [{id: 'file_sample_1', name: 'Example.txt', type: file, sizeBytes: 12}], nextPageToken: ''}}

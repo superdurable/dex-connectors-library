@@ -1,0 +1,66 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: infiniai
+  displayName: Infini AI GenStudio
+  description: Discover models available to a GenStudio tenant.
+  company: Infini AI
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: infiniai
+  codegen:
+    go:
+      package: infiniai
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for the model-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Blank uses the displayed default; raise only when the tenant has an unusually large model catalog. Output retains only model IDs, types, and token limits.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: infiniai-genstudio-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "GenStudio API key from https://cloud.infini-ai.com/ > avatar > Access Control > API Key Management. Create or select an API key, copy its complete sk- prefixed value, and keep it secret. Dex stores it only as a credential and sends it in Authorization: Bearer over HTTPS. Blank prevents requests."
+    guide:
+      startURL: https://docs.infini-ai.com/fundamentals/tenant/iam-credentials-api-key.html
+      steps:
+        - Sign in at https://cloud.infini-ai.com/, click your avatar, then open Access Control > API Key Management. Create or select a key permitted to access GenStudio, copy its complete sk- prefixed value, and enter it in Dex.
+        - Keep the API key private and revoke it from API Key Management when no longer needed. Leave timeout and maxResponseBytes blank for their displayed defaults. The endpoint is fixed at https://cloud.infini-ai.com/maas/v1/models.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List models currently available to the tenant.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: GenStudio returned the tenant's model catalog.}
+        - {id: providerRejected, goName: ProviderRejected, description: "GenStudio rejected authentication or the model query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GenStudio returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: Local API key or settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sample
+          branch: listed
+          description: Example available GenStudio models.
+          default: true
+          output:
+            models:
+              - {id: deepseek-v4-pro, modelType: 大语言模型, contextLength: 1024000, maxOutputLength: 393216}
+              - {id: bge-m3, modelType: 向量模型, contextLength: 8192, maxOutputLength: 0}

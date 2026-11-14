@@ -1,0 +1,71 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tokengp
+  displayName: TokenGP
+  description: List model IDs available to a TokenGP API key.
+  company: TokenGP
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: tokengp
+  codegen:
+    go:
+      package: tokengp
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the TokenGP API without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.tokengp.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one model-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate catalog response exceeds it.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: tokengp-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API key from https://www.tokengp.com/keys > Create Key. Copy the sk-tokengp-prefixed value; Dex stores it only as a credential. Blank prevents requests.
+    guide:
+      startURL: https://www.tokengp.com/keys
+      steps:
+        - Sign in at https://www.tokengp.com/keys, choose Create Key, and copy the sk-tokengp-prefixed secret into api_key. The key determines which active models are listed.
+        - If your key has model or IP restrictions, check its settings on the Keys page. To rotate a key, revoke it there and create a replacement. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
+        - This Query lists model IDs and does not submit a model request or expose prices, key details, or account information.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List model IDs accessible to the connected API key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "TokenGP returned accessible model IDs."}
+        - {id: providerRejected, goName: ProviderRejected, description: "TokenGP rejected the API key or account access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "TokenGP returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or connection configuration are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleModels
+          branch: listed
+          description: Synthetic model catalog for local Flow verification, not live account data.
+          default: true
+          output:
+            models:
+              - {id: qwen3.8-max}

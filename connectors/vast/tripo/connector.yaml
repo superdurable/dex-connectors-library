@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tripo
+  displayName: Tripo
+  description: Read available and frozen Tripo API credits.
+  company: VAST
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: tripo
+  codegen:
+    go:
+      package: tripo
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Tripo API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://openapi.tripo3d.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one account balance request as a positive Go duration, such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Tripo response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate account result exceeds it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: tripo-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: One-time-shown API Key from https://developers.tripo3d.com/en/keys > API Keys > Create Key. Copy the exact secret after creation; Dex stores it only as a credential. Blank prevents requests.
+    guide:
+      startURL: https://developers.tripo3d.com/en/keys
+      steps:
+        - Sign in at https://developers.tripo3d.com/en/keys, open API Keys, click Create Key, and copy the one-time-shown API Key into the secret api_key field.
+        - To rotate a leaked key, delete it on the API Keys page and create a new one, then update this Dex connection. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
+        - This operation only reads available and frozen credits. It does not create generation tasks or spend credits.
+  operations:
+    - name: getAccountBalance
+      goName: GetAccountBalance
+      inputType: GetAccountBalanceInput
+      outputType: GetAccountBalanceOutput
+      kind: query
+      description: Read available and frozen Tripo credits without creating a task.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: "Tripo returned the account balance."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Tripo rejected the API key or account access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Tripo returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or connection configuration are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleBalance
+          branch: fetched
+          description: Synthetic balance for local Flow verification, not live Tripo data.
+          default: true
+          output: {availableCredits: "10000.00", frozenCredits: "200.00"}

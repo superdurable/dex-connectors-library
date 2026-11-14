@@ -1,0 +1,9 @@
+# Jushuitan connector
+
+This connector implements the current Open Platform [shop query](https://isv-openweb.jushuitan.com/dev-doc) as a read-only Dex Query. It sends a signed form POST to the fixed `https://openapi.jushuitan.com/open/shops/query` endpoint and returns one page of enabled shops. `PageIndex` starts at 1; `PageSize` is 1–100. `HasNext` tells the caller whether to request another page. The Query returns only shop ID, name, and platform site. It does not expose keys, tokens, signatures, or raw provider errors in Flow state.
+
+In the [Open Platform console](https://openweb.jushuitan.com/user/login), complete developer qualification, create an application, and apply for the Shop Query API permission. Copy the App Key and App Secret from the application's basic information. For an own-store application, copy the Access Token from **My Authorizations**. For a service-provider application, have the merchant authorize through the [User Authorization Tool](https://openweb.jushuitan.com/doc?docId=130), then copy the token. Add the Dex worker's outbound IP to the application's allowlist. [Jushuitan's current authorization guide](https://openweb.jushuitan.com/doc?docId=2) says access tokens expire after 30 days; renew them in the platform and update the Dex Connection. The connector does not perform authorization or token renewal.
+
+[Jushuitan's API rules](https://openweb.jushuitan.com/doc?docId=30) require HTTPS POST with form fields, a lowercase MD5 signature, and limit calls to 5 concurrent requests per second and 100 per minute per merchant. Provider rate limits and temporary failures retry; rejected credentials and permissions select `providerRejected`.
+
+The runnable [shop-list example](go/examples/list-shops/README.md) demonstrates the generated operation-specific Step and static `jushuitan` connection. Real Jushuitan authorization remains to be tested with a user-controlled Dex Web Connection.

@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: onenet
+  displayName: OneNET AIoT
+  description: Read nonsecret device status and metadata from OneNET AIoT.
+  company: OneNET
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: onenet
+  codegen:
+    go:
+      package: onenet
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS OneNET AIoT API host root. Blank uses the displayed production endpoint; override only for a trusted compatible test gateway. Do not include /device/detail or credentials.
+        default: https://iot-api.heclouds.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one device detail request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete device JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for larger provider responses.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: onenet-aiot-access-key
+    fields:
+      - name: userId
+        goName: UserID
+        type: string
+        required: true
+        description: OneNET main user ID from https://iot.10086.cn in personal Account Information after sign-in. Copy the decimal user ID, used as the userid/{id} token resource; this is nonsecret. Blank prevents calls.
+      - name: accessKey
+        goName: AccessKey
+        type: secretString
+        required: true
+        description: Secret OneNET main-user access key from https://iot.10086.cn under personal Access Permissions. Copy the full Base64 value paired with userId; Dex uses it only to sign a one-hour Authorization token. Blank prevents calls. Keep the key secret.
+      - name: productId
+        goName: ProductID
+        type: string
+        required: true
+        description: OneNET product ID from https://iot.10086.cn under Product Development > Product List > Product Information. Copy the product's exact ID for the devices this connection reads; this is nonsecret. Blank prevents calls.
+    guide:
+      startURL: https://iot.10086.cn
+      steps:
+        - Sign in at https://iot.10086.cn, open personal Account Information and copy the main user ID. Open personal Access Permissions and copy its paired main-user access key, a secret Base64 string.
+        - Under Product Development > Product List, select the product and copy its Product ID from Product Information. Enter it as productId. The device name is provided when starting the Flow.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. queryDeviceDetail reads nonsecret device metadata; OneNET may return device keys in its raw response, which the connector discards before producing a Dex result.
+  operations:
+    - name: queryDeviceDetail
+      goName: QueryDeviceDetail
+      inputType: QueryDeviceDetailInput
+      outputType: DeviceDetail
+      kind: query
+      description: Read one device's nonsecret status and metadata by device name in the configured product.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: OneNET returned the device detail.}
+        - {id: providerRejected, goName: ProviderRejected, description: OneNET conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneNET returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials, product ID, or device name are missing or invalid.", optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample online device is found.
+          output: {productId: demo123, deviceName: sensor-1, status: 1, description: Sample sensor, createTime: '2025-11-28T09:49:00+08:00', lastOnlineTime: '2025-12-01T15:38:51+08:00'}

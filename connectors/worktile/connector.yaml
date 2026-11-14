@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: worktile
+  displayName: Worktile
+  description: List one page of Worktile projects.
+  company: Worktile
+  categories: [project-management]
+  version: v0.1.0
+spec:
+  provider: worktile
+  codegen:
+    go:
+      package: worktile
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for each token or project-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum size of each provider response in bytes as a positive integer. Blank uses the displayed default; raise only for an unusually large project page.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: worktile-tenant-client
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: secretString
+        required: true
+        description: "Client ID from https://worktile.com > Management Backend > Application Management > My Apps > create or select an app. Copy the full opaque ID as a Dex secret; blank prevents requests."
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: "Client Secret from https://worktile.com > Management Backend > Application Management > My Apps > the same app. Copy the full opaque secret into Dex; blank prevents requests."
+    guide:
+      startURL: https://worktile.com
+      steps:
+        - Ask a Worktile administrator to open Management Backend > Application Management > My Apps and create or select an application. Copy that application's Client ID and Client Secret into Dex secret fields. Tenant authorization can read team-wide data.
+        - The connector obtains a short-lived tenant access token from Worktile before each project-list Query. The token lasts 7200 seconds; Dex does not ask you to enter it, and it is never stored in Flow data or logs.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. This connector supports the fixed public-cloud HTTPS API; private deployments have a different base URL and are outside this connection.
+  operations:
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: ListProjectsOutput
+      kind: query
+      description: List one zero-based page of projects available to the tenant.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Worktile returned one page of projects.}
+        - {id: providerRejected, goName: ProviderRejected, description: Worktile rejected the token or project-list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Worktile returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local connection credentials, input, or settings are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: twoProjects
+          branch: found
+          description: One page of two projects.
+          default: true
+          output:
+            pageIndex: 0
+            pageSize: 10
+            hasMore: false
+            projects:
+              - {id: 5b98e38cdf09ce57a2bf7151, name: Example Project, identifier: ABC, visibility: 1}
+              - {id: 5b98e38cdf09ce57a2bf7152, name: Private Project, identifier: XYZ, visibility: 2}

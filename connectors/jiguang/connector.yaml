@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jiguang
+  displayName: Jiguang JPush
+  description: List application tags through the JPush device API.
+  company: Jiguang
+  categories: [communication, marketing]
+  version: v0.1.0
+spec:
+  provider: jiguang
+  codegen:
+    go:
+      package: jiguang
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS JPush Device API root. Blank uses the displayed production endpoint; override only for a trusted compatible test gateway. Do not include /v3/tags/ or credentials.
+        default: https://device.jpush.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one tag list query as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete tags JSON response in bytes as a positive integer. Blank uses the displayed default; increase only if an application has a larger tag list.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: jiguang-jpush-basic
+    fields:
+      - name: appKey
+        goName: AppKey
+        type: string
+        required: true
+        description: JPush application AppKey from https://www.jiguang.cn after sign-in under Developer Platform > Application Management > App Settings. Select the intended app and copy its full AppKey identifier, typically 24 lowercase hexadecimal characters; this is the nonsecret HTTP Basic username. Blank prevents calls.
+      - name: masterSecret
+        goName: MasterSecret
+        type: secretString
+        required: true
+        description: Secret Master Secret paired with the AppKey at https://www.jiguang.cn under Developer Platform > Application Management > App Settings. Reveal or regenerate it there and copy the full value into this secret field; Dex sends it only in an HTTPS Basic Authorization header. Blank prevents calls. Regenerate it on that page if exposed.
+    guide:
+      startURL: https://www.jiguang.cn
+      steps:
+        - Sign in at https://www.jiguang.cn, open Developer Platform > Application Management, and create or select a JPush application. Open App Settings to find its AppKey and Master Secret.
+        - Copy the full AppKey to appKey and the paired secret to masterSecret. The AppKey is the nonsecret HTTP Basic username and the Master Secret is the secret password stored only as a Dex credential. Blank values prevent calls; regenerate a compromised secret in App Settings.
+        - Leave baseUrl, timeout and maxResponseBytes blank for their displayed defaults. The listApplicationTags Query has no operation inputs and only reads tag names; it never sends a push.
+  operations:
+    - name: listApplicationTags
+      goName: ListApplicationTags
+      inputType: ListApplicationTagsInput
+      outputType: ApplicationTags
+      kind: query
+      description: Read the JPush application's tag names without device identifiers.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: JPush returned the application tag names.}
+        - {id: providerRejected, goName: ProviderRejected, description: JPush conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: JPush returned malformed or oversized tags JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local AppKey or Master Secret is missing or invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Two sample application tags are listed.
+          output: {tags: [news, alerts]}

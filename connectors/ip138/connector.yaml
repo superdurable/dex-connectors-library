@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: ip138
+  displayName: iP138
+  description: Read the current IP lookup token usage and quota from iP138.
+  company: iP138
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: ip138
+  codegen:
+    go:
+      package: ip138
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one token-usage HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only if the token-usage response grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: ip138-token
+    fields:
+      - name: token
+        goName: Token
+        type: secretString
+        required: true
+        description: Secret opaque IP lookup service token supplied after application or purchase at https://user.ip138.com/ip/ > 在线API申请. Copy it exactly; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://user.ip138.com/ip/
+      steps:
+        - Register or sign in at https://user.ip138.com/, open iP查询 > 在线API申请, and apply for the IP lookup API. The provider supplies a secret token after purchase; copy that opaque token into Dex Connections. Blank prevents requests. If the token is not visible in your account or order details, contact the provider through its 联系我们 page.
+        - The status endpoint requires the token in an HTTPS query parameter. Redirects are disabled. Neither URL nor token nor raw provider message is included in Flow output, receipts, or failures. Contact iP138 support to replace a compromised token.
+        - Start GetTokenUsage with empty JSON {}. No IP address is read. Leave timeout and maxResponseBytes blank for the displayed defaults. The response's reqs and hour fields count current-hour requests and purchased hourly calls; package reports the package quota.
+  operations:
+    - name: getTokenUsage
+      goName: GetTokenUsage
+      inputType: GetTokenUsageInput
+      outputType: GetTokenUsageOutput
+      kind: query
+      description: Read the current-hour request count and purchased token quota.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: iP138 returned token usage and quota.}
+        - {id: providerRejected, goName: ProviderRejected, description: iP138 rejected the token or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: iP138 returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local token is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: personWaiting, explanation: "A user waits for current quota, so transient failures are retried at most twice before the Flow fails."}}
+      mocks:
+        - name: availableQuota
+          branch: found
+          description: Example current-hour and package usage.
+          default: true
+          output: {currentHourRequests: 10, hourlyAllowance: 3000, packageQuota: 19767}

@@ -1,0 +1,66 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: yunpian
+  displayName: Yunpian
+  description: Read the remaining balance of a Yunpian SMS account.
+  company: Yunpian
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: yunpian
+  codegen:
+    go:
+      package: yunpian
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Yunpian SMS API root. Blank uses the displayed mainland China endpoint; override with the documented overseas endpoint only for an overseas account or a trusted test gateway.
+        default: https://sms.yunpian.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one account query as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow network responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete account JSON response in bytes as a positive integer. Blank uses the displayed default; increase only if the provider returns a larger account record.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: yunpian-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API key from https://www.yunpian.com after sign-in under Account Settings > Subaccount Management. Copy the full key string into this secret field; blank prevents calls. Dex sends it only in the HTTPS form body, never in Flow data.
+    guide:
+      startURL: https://www.yunpian.com
+      steps:
+        - Sign in to Yunpian, open Account Settings > Subaccount Management, select the account, and copy its API key. Save the full secret string in Dex Web apiKey; blank prevents calls. Restrict the calling IP under System Settings > IP Whitelist before production use. Rotate or revoke the key from account settings.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. For overseas Yunpian accounts, set baseUrl to https://us.yunpian.com. The account balance Query has no operation fields.
+  operations:
+    - name: getAccountBalance
+      goName: GetAccountBalance
+      inputType: GetAccountBalanceInput
+      outputType: AccountBalance
+      kind: query
+      description: Read the SMS account balance without exposing account contact details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: read, goName: Read, description: Yunpian returned the account balance.}
+        - {id: providerRejected, goName: ProviderRejected, description: Yunpian conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Yunpian returned invalid account JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local connection credential is missing or invalid., optional: true}
+      mocks:
+        - name: readDefault
+          branch: read
+          default: true
+          description: A sample remaining account balance is returned.
+          output: {balance: 1000}

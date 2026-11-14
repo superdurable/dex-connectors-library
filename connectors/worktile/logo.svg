@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Worktile">
+  <rect width="64" height="64" rx="12" fill="#2f79d6"/>
+  <path d="M9 20h9l6 24 7-19h5l7 19 5-24h8l-9 28h-8l-6-16-6 16h-8z" fill="#fff"/>
+</svg>

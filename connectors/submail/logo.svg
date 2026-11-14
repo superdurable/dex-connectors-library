@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SUBMAIL">
+  <rect width="64" height="64" rx="12" fill="#2f6fbb"/>
+  <path d="M11 19h42v27H11z" fill="none" stroke="#fff" stroke-width="4"/>
+  <path d="m13 21 19 15 19-15" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+</svg>

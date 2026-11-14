@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: submail
+  displayName: SUBMAIL SMS
+  description: Read SUBMAIL general and transactional SMS balances.
+  company: SUBMAIL
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: submail
+  codegen:
+    go:
+      package: submail
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS SUBMAIL API root. Blank uses the displayed V4 production endpoint; override only for a trusted compatible test gateway. Do not include /balance/sms.json or credentials.
+        default: https://api-v4.mysubmail.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one balance query as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete balance JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for unexpectedly large provider responses.
+        default: 4096
+  auth:
+    type: apiKey
+    connectionKind: submail-sms-app
+    fields:
+      - name: appId
+        goName: AppID
+        type: string
+        required: true
+        description: Nonsecret SMS AppID from https://www.mysubmail.com/chs/sms/apps after sign-in, under Console > SMS > Create/Manage AppID. Create or select an enabled SMS application, then copy its full AppID identifier. Blank prevents calls.
+      - name: appKey
+        goName: AppKey
+        type: secretString
+        required: true
+        description: Secret AppKey paired with the SMS AppID at https://www.mysubmail.com/chs/sms/apps under Console > SMS > Create/Manage AppID. Copy its full opaque key into this secret field; SUBMAIL's documented normal mode sends it as the signature form value over HTTPS. Blank prevents calls.
+    guide:
+      startURL: https://www.mysubmail.com/chs/sms/apps
+      steps:
+        - Sign in at https://www.mysubmail.com/chs/sms/apps, open Console > SMS > Create/Manage AppID, and create or select an enabled SMS application.
+        - Copy the nonsecret AppID to appId and its paired secret AppKey to appKey. The key is sent only as a form signature over HTTPS in SUBMAIL normal authorization mode. Blank values prevent calls; rotate an exposed key in the same application page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The getSMSBalance Query only reads balances; it never sends messages.
+  operations:
+    - name: getSMSBalance
+      goName: GetSMSBalance
+      inputType: GetSMSBalanceInput
+      outputType: SMSBalance
+      kind: query
+      description: Read general and transactional SMS credit balances.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: SUBMAIL returned both SMS credit balances.}
+        - {id: providerRejected, goName: ProviderRejected, description: SUBMAIL conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SUBMAIL returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local AppID or AppKey is missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: General and transactional SMS credits are available.
+          output: {generalCredits: "9410", transactionalCredits: "9775"}

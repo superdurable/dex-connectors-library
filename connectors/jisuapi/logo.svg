@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="JisuAPI">
+  <rect width="64" height="64" rx="15" fill="#f28c22"/>
+  <path d="M18 18h28v6H34v16c0 6-3 9-10 9-4 0-7-1-10-4l4-5c2 2 4 3 6 3 3 0 4-1 4-4V24H18z" fill="#fff"/>
+</svg>

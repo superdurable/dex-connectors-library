@@ -1,0 +1,7 @@
+# WPS 365 file metadata
+
+This Kingsoft Office connector lists one page of file and folder metadata from a WPS 365 enterprise drive. It uses the official [child file list API](https://open.wps.cn/documents/app-integration-dev/wps365/server/yundoc/file/get-file-list) with the `kso.file.read` application permission. Results contain only file ID, name, type, and size, plus an opaque next-page token; document content, user profiles, links, and permissions are omitted. The caller supplies a drive ID and parent folder ID (`0` for root); the next-page token can be passed back for another page. Each page is bounded to 1–500 items, with 100 by default.
+
+The connector is for an approved **enterprise self-built application**. It exchanges APPID and APPKEY for a [two-hour application access token](https://open.wps.cn/documents/app-integration-dev/wps365/server/certification-authorization/get-token/selfapp-tenant-access-token), caches it in memory, and refreshes it before expiry. Both the key and token stay out of Flow results. WPS [KSO-1 request signing](https://open.wps.cn/documents/app-integration-dev/wps365/server/api-description/signature-description) is supported when enabled for the application. Set `requestSigningEnabled` to match **开发者后台 > 安全设置 > 接口签名**; WPS says signed headers must be absent when the switch is off.
+
+See the [runnable Dex Flow](go/examples/folder-files/README.md). Its default mock is synthetic and contains no provider document data. Live enterprise authorization and file responses have not been verified.

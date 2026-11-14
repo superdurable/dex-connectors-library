@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: minimax
+  displayName: MiniMax
+  description: Read MiniMax China Token Plan remaining usage by model group.
+  company: MiniMax
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: minimax
+  codegen:
+    go:
+      package: minimax
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the MiniMax China Token Plan API, without /v1. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://www.minimaxi.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one Token Plan usage request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Token Plan response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate model-group list exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: minimax-token-plan
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret Token Plan API Key from https://platform.minimaxi.com/subscribe/token-plan > 获取 API Key, typically starting sk-cp-. Copy the complete key without spaces; Dex stores it only as a credential and sends it in a Bearer header. Blank prevents requests. A standard pay-as-you-go key does not provide Token Plan usage.
+        required: true
+    guide:
+      startURL: https://platform.minimaxi.com/subscribe/token-plan
+      steps:
+        - Sign in to MiniMax China at https://platform.minimaxi.com/subscribe/token-plan and activate a Token Plan subscription.
+        - Choose 获取 API Key on the Token Plan page and copy the secret subscription key, typically beginning sk-cp-, into api_key. A standard pay-as-you-go API key is a different product and cannot query this plan's usage.
+        - Use 订阅付费 > 套餐用量 to inspect the same plan manually. Revoke or rotate the key from the provider's API key management page if exposed.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: getTokenPlanRemains
+      goName: GetTokenPlanRemains
+      inputType: GetTokenPlanRemainsInput
+      outputType: GetTokenPlanRemainsOutput
+      kind: query
+      description: Read remaining percentages and reset times for MiniMax China Token Plan model groups.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: MiniMax returned Token Plan usage for zero or more model groups.}
+        - {id: providerRejected, goName: ProviderRejected, description: MiniMax rejected the key or plan state., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MiniMax returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Connection configuration or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleUsage
+          branch: fetched
+          description: Sample Token Plan percentages and reset times for local tests.
+          default: true
+          output: {modelGroups: [{modelName: "MiniMax-M*", intervalRemainingPercent: 85, weeklyRemainingPercent: 97, intervalResetAtMillis: 1776373200000, weeklyResetAtMillis: 1776614400000}]}

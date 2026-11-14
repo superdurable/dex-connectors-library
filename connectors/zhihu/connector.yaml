@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zhihu
+  displayName: Zhihu
+  description: Read daily free quota balances for APIs enabled on a Zhihu Data Open Platform account.
+  company: Zhihu
+  categories: [analytics]
+  version: v0.1.0
+spec:
+  provider: zhihu
+  codegen:
+    go:
+      package: zhihu
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Zhihu Data Open Platform API. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://developer.zhihu.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one quota request as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum quota response size in bytes as a positive integer. Leave blank for the displayed default; raise only if the account has many enabled APIs.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: zhihu-access-secret
+    fields:
+      - name: access_secret
+        goName: AccessSecret
+        type: secretString
+        description: Secret Access Secret found after signing in at https://developer.zhihu.com/profile > Personal Center. Paste the token string without Bearer; blank prevents requests. It is sent only in the Authorization header and must be renewed on the provider page when rotated.
+        required: true
+    guide:
+      startURL: https://developer.zhihu.com/profile
+      steps:
+        - Sign in at https://developer.zhihu.com/profile and open Personal Center. Copy the Access Secret shown for the Data Open Platform account; request platform access if the page has no secret.
+        - Paste the token string into the secret access_secret field without the Bearer prefix. Keep the secret private and update the Dex connection when it is rotated.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The connector sends the required X-Request-Timestamp in Unix seconds automatically.
+  operations:
+    - name: listQuotas
+      goName: ListQuotas
+      inputType: ListQuotasInput
+      outputType: QuotaPage
+      kind: query
+      description: List daily available and consumed quota for APIs enabled on the account; no APIIDs selector is required.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Zhihu returned quota categories, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zhihu rejected the credential or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Zhihu returned malformed or oversized quota data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedQuota
+          branch: listed
+          description: Synthetic API quota for local Dex Flow verification.
+          default: true
+          output: {quotas: [{apiId: knowledge, apiName: Knowledge Base, totalQuota: 500, totalUsed: 12, remainingQuota: 488}]}

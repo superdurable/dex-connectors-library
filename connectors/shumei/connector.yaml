@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: shumei
+  displayName: Shumei
+  description: Read the account balance in yuan from Shumei's SaaS API.
+  company: Shumei
+  categories: [analytics]
+  version: v0.1.0
+spec:
+  provider: shumei
+  codegen:
+    go:
+      package: shumei
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Shumei SaaS API. Leave blank for the displayed Beijing endpoint; override only for a Shumei-assigned regional endpoint or a trusted test server.
+        default: https://api-web-bj.fengkongcloud.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one balance request as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum balance response size in bytes as a positive integer. Leave blank for the displayed default; raise only if Shumei changes the response contract.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: shumei-access-key
+    fields:
+      - name: access_key
+        goName: AccessKey
+        type: secretString
+        description: Secret accessKey provided by Shumei when account service is activated; start at https://console.ishumei.com/ and contact your Shumei account manager if it is not shown. Copy the exact token string without quotes. Blank prevents requests. It is sent only in the JSON request body.
+        required: true
+    guide:
+      startURL: https://console.ishumei.com/
+      steps:
+        - Sign in to https://console.ishumei.com/ with the activated SaaS account. The official API manual states that Shumei provides the accessKey during account service activation; contact your Shumei account manager if you cannot locate it, as no self-service key page is documented.
+        - Copy the accessKey string into the secret access_key field without JSON quotes. Keep it private and update the Dex connection when Shumei rotates it.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The balance request is read-only and uses the Beijing endpoint documented by Shumei.
+  operations:
+    - name: getBalance
+      goName: GetBalance
+      inputType: GetBalanceInput
+      outputType: Balance
+      kind: query
+      description: Read the current SaaS account balance in yuan without listing bills or customer data.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: retrieved, goName: Retrieved, description: "Shumei returned the account balance in yuan."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Shumei rejected the accessKey or balance query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Shumei returned malformed or oversized balance data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: retrievedBalance
+          branch: retrieved
+          description: Synthetic account balance for local Dex Flow verification.
+          default: true
+          output: {balanceYuan: 1357.65}

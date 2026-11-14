@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: dada
+  displayName: Dada Express
+  description: Query the delivery status of an order through the Dada Open Platform.
+  company: Dada
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: dada
+  codegen:
+    go:
+      package: dada
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Dada Open Platform root. Blank uses the displayed production endpoint; override only for a trusted compatible test gateway. Do not include /api/order/status/query or credentials.
+        default: https://newopen.imdada.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one order status query as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete order-status JSON response in bytes as a positive integer. Blank uses the displayed default; increase only if a response exceeds it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: dada-signed-api
+    fields:
+      - name: appKey
+        goName: AppKey
+        type: string
+        required: true
+        description: Application app_key from https://newopen.imdada.cn after developer sign-in under 开发助手 > 应用信息. Copy the full opaque key, not the merchant source ID; it is nonsecret. Blank prevents calls.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret app_secret paired with appKey at https://newopen.imdada.cn under 开发助手 > 应用信息. Copy the full opaque secret into this secret credential; it signs each request and is never sent directly. Blank prevents calls; regenerate it in the portal if exposed.
+      - name: sourceID
+        goName: SourceID
+        type: string
+        required: true
+        description: Merchant source_id issued when the merchant account is created at https://newopen.imdada.cn under 账户中心 > 基本资料. Copy its full decimal identifier, not an order ID or app key. It is nonsecret and selects the merchant whose orders can be queried; blank prevents calls.
+    guide:
+      startURL: https://newopen.imdada.cn
+      steps:
+        - Sign in at https://newopen.imdada.cn as a developer and open 开发助手 > 应用信息. Copy app_key into appKey and the paired secret app_secret into appSecret. The secret is stored only as a Dex credential and used to compute the official uppercase MD5 signature.
+        - In 账户中心 > 基本资料, find the merchant source_id assigned when the account was created and put its decimal identifier in sourceID. The application must have access to that merchant's orders. Blank appKey, appSecret, or sourceID prevents calls. See https://newopen.imdada.cn/#/development/file/api for the official request fields.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The queryOrderStatus input orderID is the third-party order_id used when creating the Dada delivery order. This Query only reads status. The official documentation does not state a fee for this status query; check current pricing in the portal.
+  operations:
+    - name: queryOrderStatus
+      goName: QueryOrderStatus
+      inputType: QueryOrderStatusInput
+      outputType: OrderStatus
+      kind: query
+      description: Read the current delivery status for one third-party order ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Dada returned the order's current delivery status.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dada conclusively rejected the status query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dada returned malformed or oversized status JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or order ID are missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample order is waiting for a rider to accept it.
+          output: {orderID: orderNo1653708880866, statusCode: 1, statusMessage: 待接单}

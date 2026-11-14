@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: moxin
+  displayName: Moxin (Kokoni)
+  description: List AI models available to a Moxin platform token and group.
+  company: Moxin
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: moxin
+  codegen:
+    go:
+      package: moxin
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Moxin platform API. Leave blank for the displayed public endpoint; override only when your platform administrator assigns another trusted HTTPS address or for a local test server.
+        default: https://api.kokoniworld.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one model-list request as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if your token sees unusually many models.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: moxin-platform-token
+    fields:
+      - name: platform_token
+        goName: PlatformToken
+        type: secretString
+        description: Secret sk-prefixed token created after sign-in at https://api.kokoniworld.com/ > Console > Token Management > New Token. Your administrator must first open an account and assign a group. Copy the token without Bearer; blank prevents requests. Dex sends it only in the Authorization header.
+        required: true
+    guide:
+      startURL: https://api.kokoniworld.com/
+      steps:
+        - Ask your Moxin platform administrator to open an enterprise account and assign a group. Sign in at https://api.kokoniworld.com/ and open Console > Token Management > New Token.
+        - Choose the allowed models and quota limit, create the sk-prefixed platform token, and paste it into secret platform_token without the Bearer prefix. Update the Dex connection when it is rotated or disabled.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. This query lists only models available to that token and group; the model list may change when permissions change.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ModelPage
+      kind: query
+      description: List current model IDs available to the configured token and group.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Moxin returned the authorized model list, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Moxin rejected the token or model-list request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Moxin returned malformed or oversized model data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedModel
+          branch: listed
+          description: Synthetic model list for local Dex Flow verification.
+          default: true
+          output: {models: [{id: example-model}]}

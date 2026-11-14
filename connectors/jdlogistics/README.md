@@ -1,0 +1,11 @@
+# JD Logistics
+
+The Go `queryWaybillTrace` Query reads one signed B2C merchant waybill's tracking scans. The [official API definition](https://open.jdl.com/#/open-business-document/api-doc/267/1039) defines the request and response. The result contains only the waybill, status code, stage name, and timestamp; operator names, phone numbers, addresses, and free-text remarks are excluded.
+
+## Connection
+
+At [JD Logistics Open Platform](https://open.jdl.com), register and certify as a self-developed merchant after signing with JD Logistics, create an application under **控制台 → 开发管理 → 应用管理**, and subscribe to **京东快递快运**. Copy its AppKey and AppSecret. In the [official authorization guide's simplified mode](https://open.jdl.com/#/devSupport/53392), open `https://oauth.jdl.com/oauth/authorize?client_id=YOUR_APP_KEY&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code` with your AppKey. Sign in with the merchant account enabled by JD Logistics sales. The platform then displays access and refresh tokens directly; copy the access token into Dex's protected field. The separate authorization-code mode requires a code exchange and is not needed here. Enter the merchant customer code issued at signing. The [platform guide](https://open.jdl.com/#/devSupport/53220) says its APIs are free; it does not publish a fixed rate limit. The access token lasts one year. Refresh it in JD Logistics' authorization system during its final ten days, then update the protected Dex field, or reauthorize when expired. Dex does not refresh this token automatically.
+
+The connector POSTs to the production HTTPS gateway with a body array and computes the documented uppercase MD5 signature over the exact body, UTC+8 timestamp, method path, AppKey, and access token. See the [official non-SDK calling guide](https://open.jdl.com/#/devSupport/53211). HTTP 429, HTTP 5xx, transport errors, and provider service errors retry. Conclusive provider failures select the optional `providerRejected` branch; malformed or oversized responses select `invalidResponse`.
+
+The [waybill-trace example](go/examples/waybill-trace/README.md) starts `JDLogisticsWaybillTrace` with `{"waybillNo":"JDX009866825381"}`. Its static ConnectionName is `jdlogistics`. The real Dex integration test runs the same Flow with a generated mock. Live authorization and provider tracking remain unverified.

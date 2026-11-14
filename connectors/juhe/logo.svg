@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Juhe Data">
+  <rect width="128" height="128" rx="24" fill="#1684cf"/>
+  <path d="M76 25v54c0 16-10 25-25 25-13 0-22-7-25-19l15-5c2 6 5 9 10 9 6 0 9-4 9-11V25z" fill="#fff"/>
+  <circle cx="94" cy="31" r="10" fill="#ffad39"/>
+</svg>

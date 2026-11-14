@@ -1,0 +1,84 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: fxiaoke
+  displayName: FXiaoke CRM
+  description: List CRM object names and availability without reading customer records.
+  company: FXiaoke
+  categories: [crm-sales]
+  version: v0.1.0
+spec:
+  provider: fxiaoke
+  codegen:
+    go:
+      package: fxiaoke
+  configuration:
+    fields:
+      - name: cloudHost
+        goName: CloudHost
+        type: string
+        description: "OpenAPI hostname for your company's cloud, without https:// or a path. Start at https://developer.fxiaoke.com/openapi_v2/start/guide/cloud.html and match the host to your CRM login cloud; blank uses the displayed FXiaoke Cloud default. Only official fxiaoke.com or sharecrm.com OpenAPI hosts are accepted."
+        default: open.fxiaoke.com
+      - name: employeeId
+        goName: EmployeeID
+        type: string
+        required: true
+        description: "Non-secret CRM employee ID for this application's access context. At https://www.fxiaoke.com/ open CRM > 人员, select the intended employee's 系统名 and copy 员工ID from 账号信息. Use the full opaque ID, not a name; blank prevents requests. Grant this employee only the needed CRM access."
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for each token or object-list request, as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes, as a positive integer. Blank uses the displayed default; raise only for enterprises with unusually large object metadata. Customer records are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: fxiaoke-app-credentials
+    fields:
+      - name: app_id
+        goName: AppID
+        type: string
+        required: true
+        description: "Non-secret AppId from https://www.fxiaoke.com/ > 管理后台 > 应用列表 > 企业自建应用 > 开发模式. Copy the full FSAID_ value after enabling developer mode; blank prevents token requests."
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: "Secret APPSecret from https://www.fxiaoke.com/ > 管理后台 > 应用列表 > 企业自建应用 > 开发模式. Copy the full opaque value into Dex credentials; blank prevents token requests."
+      - name: permanent_code
+        goName: PermanentCode
+        type: secretString
+        required: true
+        description: "Secret 永久授权码 from https://www.fxiaoke.com/ > 管理后台 > 应用列表 > 企业自建应用 > 开发模式. Copy the full opaque value into Dex credentials; blank prevents token requests."
+    guide:
+      startURL: https://www.fxiaoke.com/
+      steps:
+        - Sign in at https://www.fxiaoke.com/ and open 管理后台 > 应用列表 > 新建企业自建应用. Save the app, open its configuration, and enable 开发模式. Copy AppId, APPSecret, and 永久授权码; keep the latter two secret. Revoke or rotate them from the application configuration when necessary.
+        - In the app's CRM接口查询权限设置, restrict access to the object metadata needed by this connection. Add the Dex Worker's outbound IP to the app's 白名单ip. The connector uses client-credentials grantType app_secret, sends the resulting token as Bearer, and refreshes it before expiry; no browser consent or redirect is needed.
+        - At https://developer.fxiaoke.com/openapi_v2/start/guide/cloud.html select the official OpenAPI hostname for the company's login cloud. In CRM > 人员, select the service employee and copy 账号信息 > 员工ID. This non-secret ID controls whose CRM permissions apply. Leave cloudHost, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listObjectMetadata
+      goName: ListObjectMetadata
+      inputType: ListObjectMetadataInput
+      outputType: ListObjectMetadataOutput
+      kind: query
+      description: "List CRM object API names, display names, and active flags."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: FXiaoke returned available CRM object metadata.}
+        - {id: providerRejected, goName: ProviderRejected, description: "FXiaoke rejected credentials, permissions, or account quota.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: FXiaoke returned malformed or oversized metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local connection settings or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: accountObject
+          branch: listed
+          description: CRM customer object metadata is available.
+          default: true
+          output: {objects: [{apiName: AccountObj, displayName: 客户, active: true}]}

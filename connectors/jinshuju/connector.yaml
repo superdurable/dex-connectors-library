@@ -1,0 +1,64 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jinshuju
+  displayName: Jinshuju
+  description: Read one page of form names and tokens without submission data.
+  company: Jinshuju
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: jinshuju
+  codegen:
+    go:
+      package: jinshuju
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one form-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for unusually large form metadata. Submission and creator details are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: jinshuju-access-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: "Secret Access Token from https://jinshuju.net/ > avatar > 个人中心 > API > 个人 Access Token > 创建 Token, or 企业管理员 > 系统设置 > 企业 API > 企业 Access Token. Copy the one-time opaque value into Dex without Bearer; blank prevents requests."
+    guide:
+      startURL: https://jinshuju.net/
+      steps:
+        - Sign in at https://jinshuju.net/. For a personal token, open avatar > 个人中心 > API > 个人 Access Token > 创建 Token, name it, and copy the one-time secret value. This token sees the account's own forms; use it when sufficient.
+        - For enterprise-wide access on an enterprise plan, an administrator opens 系统设置 > 企业 API > 企业 Access Token > 创建 Token. It can see all enterprise forms. Copy its one-time secret value into Dex and revoke it from the same page when access is no longer needed. The connector adds Bearer automatically.
+        - Start the ListFormsPage Flow with an optional next cursor copied verbatim from a prior page. Blank means the first page. Each page has up to 50 forms. Leave timeout and maxResponseBytes blank for displayed defaults. The connector returns only form names and tokens, not creators or submitted data.
+  operations:
+    - name: listFormsPage
+      goName: ListFormsPage
+      inputType: ListFormsPageInput
+      outputType: ListFormsPageOutput
+      kind: query
+      description: List one page of forms accessible to the Access Token.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Jinshuju returned form metadata and pagination.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Jinshuju rejected authentication, access, or billing.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jinshuju returned malformed or oversized metadata., optional: true}
+        - {id: defect, goName: Defect, description: "Local cursor, credentials or settings are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneForm
+          branch: listed
+          description: One accessible form is available.
+          default: true
+          output: {total: 1, count: 1, forms: [{name: 需求调研表, token: a1B2C3}], next: ""}

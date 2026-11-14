@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: vika
+  displayName: Vika
+  description: List authorized Vika workspaces and their display names without reading datasheet records.
+  company: Vika
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: vika
+  codegen:
+    go:
+      package: vika
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Vika cloud API. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://vika.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one workspace-list request as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum workspace-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for unusually many authorized workspaces.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: vika-api-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: Secret API Token created at https://vika.cn after signing in, lower-left profile > User Center > Developer Configuration > plus button. Copy the token string (for example, beginning usk) without the Bearer prefix. Dex stores it only as a credential and sends it in an Authorization header; blank prevents requests.
+        required: true
+    guide:
+      startURL: https://vika.cn
+      steps:
+        - Sign in at https://vika.cn, click the lower-left profile, then User Center > Developer Configuration. Bind an email if prompted and click + to generate an API Token.
+        - Copy the token string into the secret api_token field without the Bearer prefix. The token uses your Vika account's workspace permissions; regenerate it on the same page if exposed.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The free plan permits two API requests per second per user and datasheet; higher tiers permit more.
+  operations:
+    - name: listSpaces
+      goName: ListSpaces
+      inputType: ListSpacesInput
+      outputType: SpacePage
+      kind: query
+      description: List workspaces the token's user created or joined, returning only IDs, names, and administrator flags.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Vika returned the authorized workspace list, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Vika rejected the token or permissions.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Vika returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration or credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedWorkspace
+          branch: listed
+          description: Synthetic workspace list for local Dex Flow verification.
+          default: true
+          output: {spaces: [{id: spczdmQDfBAn5, name: Example Workspace, isAdmin: true}]}

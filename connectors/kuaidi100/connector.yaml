@@ -1,0 +1,82 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: kuaidi100
+  displayName: Kuaidi100
+  description: Query a parcel's current carrier status and chronological tracking events through Kuaidi100's real-time API.
+  company: Kuaidi100
+  categories: [data-search, ecommerce]
+  version: v0.1.0
+spec:
+  provider: kuaidi100
+  codegen:
+    go:
+      package: kuaidi100
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin for the Kuaidi100 real-time query API, without a path. Leave blank for the displayed production endpoint; override only for a trusted test server or approved proxy.
+        default: https://poll.kuaidi100.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one provider request, as a positive Go duration such as 5s. Leave blank for the displayed default; raise only for an approved slow proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate unusually long parcel history.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: kuaidi100
+    fields:
+      - name: customer
+        goName: Customer
+        type: secretString
+        description: Secret customer authorization code from https://api.kuaidi100.com/manager/v2/myinfo/enterprise > 我的信息 (My Information) > 企业信息 (Enterprise Information). Create an enterprise account, enable the Real-time Query API, and copy its customer code exactly; Dex stores it only as a credential. Blank prevents requests.
+        required: true
+      - name: key
+        goName: Key
+        type: secretString
+        description: Secret key paired with customer from https://api.kuaidi100.com/manager/v2/myinfo/enterprise > 我的信息 (My Information) > 企业信息 (Enterprise Information). Copy the key exactly after enabling Real-time Query; Dex stores it only as a credential. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://api.kuaidi100.com/login
+      steps:
+        - Open https://api.kuaidi100.com/login, register or sign in to the enterprise management console, and enable or purchase the Real-time Query API.
+        - In the enterprise management console open 我的信息 (My Information) > 企业信息 (Enterprise Information), locate the production customer authorization code and its paired key, and enter both in Dex as secret credentials. Use a matched pair from the same account.
+        - Query only when a user needs tracking information. The provider requires at least 30 minutes between queries for one parcel and no more than 48 queries per parcel per day; a repeat of the same carrier and waybill within 40 days is billed once.
+        - Rotate exposed credentials in the Kuaidi100 console, then update the Dex connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: queryTracking
+      goName: QueryTracking
+      inputType: QueryTrackingInput
+      outputType: QueryTrackingOutput
+      kind: query
+      description: Query one carrier waybill for its current state and latest-first tracking events.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: retrieved, goName: Retrieved, description: "The carrier returned tracking state and events."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Kuaidi100 definitively rejected or could not find this waybill.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The provider returned an invalid or oversized response.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection or request configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 30m, backoffCoefficient: 1, maximumInterval: 30m, maximumAttempts: 2, totalDuration: 61m, reason: {kind: billedOperation, explanation: "A provider call can consume a paid query and repeated calls inside 30 minutes may lock the parcel; allow one delayed retry."}}
+      mocks:
+        - name: sampleTracking
+          branch: retrieved
+          description: Synthetic parcel events for local Flow verification; these are not customer records.
+          default: true
+          output:
+            carrierCode: yuantong
+            trackingNumber: 'YT1234567890123'
+            state: '0'
+            events:
+              - {time: '2026-11-13 10:00:00', content: 'Parcel reached the destination sorting center.'}
+              - {time: '2026-11-12 15:30:00', content: 'Parcel was collected by the carrier.'}

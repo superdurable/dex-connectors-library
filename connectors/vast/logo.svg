@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="VAST Tripo">
+  <rect width="128" height="128" rx="24" fill="#262240"/>
+  <path d="M21 34h19l24 54 24-54h19L72 108H56z" fill="#c4a8ff"/>
+  <circle cx="64" cy="31" r="8" fill="#fff"/>
+</svg>

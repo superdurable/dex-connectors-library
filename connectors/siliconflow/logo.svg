@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SiliconFlow">
+  <rect width="64" height="64" rx="14" fill="#1749e9"/>
+  <path d="M45 18H27c-7 0-12 5-12 11s5 11 12 11h10a4 4 0 0 1 0 8H19" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+</svg>

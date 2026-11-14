@@ -1,0 +1,50 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: alibaba
+  displayName: Alibaba Cloud
+  description: List ECS regions with Alibaba Cloud OpenAPI signature V3.
+  company: Alibaba
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: alibaba
+  codegen:
+    go:
+      package: alibaba
+  configuration:
+    fields:
+      - {name: baseUrl, goName: BaseURL, type: url, default: 'https://ecs.cn-hangzhou.aliyuncs.com', description: 'HTTPS origin of the ECS public OpenAPI endpoint, without a path. Leave blank for the displayed China Hangzhou endpoint; override only for another official ECS public region endpoint or an approved proxy.'}
+      - {name: timeout, goName: Timeout, type: duration, default: 10s, description: 'Maximum time for one DescribeRegions call as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow approved proxy.'}
+      - {name: maxResponseBytes, goName: MaxResponseBytes, type: integer, default: 1048576, description: 'Maximum response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a valid ECS regions response exceeds it.'}
+  auth:
+    type: apiKey
+    connectionKind: alibaba-ecs
+    fields:
+      - {name: access_key_id, goName: AccessKeyID, type: secretString, required: true, description: 'AccessKey ID from https://ram.console.aliyun.com > Identities > Users > your RAM user > Authentication > AccessKey. Copy its exact ID; it appears only in the signed Authorization header. Treat it as a credential; blank prevents requests.'}
+      - {name: access_key_secret, goName: AccessKeySecret, type: secretString, required: true, description: 'AccessKey secret from https://ram.console.aliyun.com > Identities > Users > your RAM user > Authentication > AccessKey. Copy it when creating the key; it is secret and used only to sign requests. Blank prevents requests.'}
+    guide:
+      startURL: https://ram.console.aliyun.com
+      steps:
+        - Sign in at https://ram.console.aliyun.com and open Identities > Users. Create or select a RAM user, then open Authentication > AccessKey and create an AccessKey pair.
+        - Copy the AccessKey ID and AccessKey secret into the two secret fields. Store the secret only in Dex Connections and rotate the key in RAM if exposed. ECS DescribeRegions is documented without a RAM permission requirement.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults. Change baseUrl only to an official ECS public endpoint in the region you intend to call.
+  operations:
+    - name: describeRegions
+      goName: DescribeRegions
+      inputType: DescribeRegionsInput
+      outputType: DescribeRegionsOutput
+      kind: query
+      description: List ECS region IDs, local names, endpoints, and sale status.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: 'Alibaba Cloud returned its ECS regions.'}
+        - {id: providerRejected, goName: ProviderRejected, description: 'Alibaba Cloud rejected the credentials or request.', optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: 'Alibaba Cloud returned malformed or oversized data.', optional: true}
+        - {id: defect, goName: Defect, description: 'Local connection configuration is invalid.', optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - {name: sampleRegions, branch: fetched, description: 'Synthetic region catalog for local Flow verification; not live ECS availability.', default: true, output: {regions: [{regionId: cn-hangzhou, localName: '华东1（杭州）', endpoint: 'ecs.cn-hangzhou.aliyuncs.com', status: available}]}}

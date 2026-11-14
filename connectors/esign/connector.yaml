@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: esign
+  displayName: eSign
+  description: Read a contract signing flow's status without exposing documents or signers.
+  company: Esign
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: esign
+  codegen:
+    go:
+      package: esign
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one sign-flow status request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for unusually large flow details. Documents and signers are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: esign-app-signature
+    fields:
+      - name: app_id
+        goName: AppID
+        type: string
+        required: true
+        description: "Application AppID from https://open.esign.cn/my-apps/home > 正式服务 > 应用管理 > 我的应用 > the app's AppID. Use the production app ID as opaque text; blank prevents requests."
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: "Secret AppSecret from https://open.esign.cn/my-apps/home > 正式服务 > 应用管理 > 我的应用 > the same app's AppSecret. Copy the secret exactly; blank prevents requests. The connector signs each request without fetching OAuthToken."
+    guide:
+      startURL: https://open.esign.cn/my-apps/home
+      steps:
+        - Sign in at https://open.esign.cn/my-apps/home. Under 正式服务 > 应用管理 > 我的应用, select the application and copy its AppID plus secret AppSecret into Dex. Blank credentials prevent requests. Use credentials for production https://openapi.esign.cn, not sandbox credentials.
+        - The connector uses the documented HmacSHA256 request signature with an epoch-millisecond timestamp. It does not request an OAuthToken and does not put AppSecret in a URL. Grant the app access to the signing flow being queried.
+        - Start GetSignFlowStatus with a signFlowId returned by your existing eSign signing workflow or visible in its flow list. It is an opaque ID; blank is invalid. Only the ID and numeric signFlowStatus are returned, never contract text or signer details. Leave timeout and maxResponseBytes blank for displayed defaults.
+        - eSign offers SaaS API through a paid service plan at https://open.esign.cn/prices. The status-query documentation does not state a separate per-request charge; confirm plan entitlements in your account before production use.
+  operations:
+    - name: getSignFlowStatus
+      goName: GetSignFlowStatus
+      inputType: GetSignFlowStatusInput
+      outputType: GetSignFlowStatusOutput
+      kind: query
+      description: Read one existing signing flow's numeric status.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: eSign returned the flow status.}
+        - {id: providerRejected, goName: ProviderRejected, description: eSign rejected authentication or access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: eSign returned malformed or oversized details., optional: true}
+        - {id: defect, goName: Defect, description: Local flow ID or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: signing
+          branch: found
+          description: The existing flow is in progress.
+          default: true
+          output: {signFlowId: flow_example, signFlowStatus: 1}

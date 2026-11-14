@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: baishancloud
+  displayName: BaishanCloud
+  description: Read one CDN domain status and CNAME without its origin configuration.
+  company: BaishanCloud
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: baishancloud
+  codegen:
+    go:
+      package: baishancloud
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the BaishanCloud CDN API. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://cdn.api.baishan.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one domain query as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum domain-detail response size in bytes as a positive integer. Leave blank for the displayed default; raise only when provider configuration data makes the response unusually large.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: baishancloud-api-token
+    fields:
+      - name: token
+        goName: Token
+        type: secretString
+        description: Secret CDN API token requested from your BaishanCloud account team via https://cdn.portal.baishan.com/track/document/api/1/1139. Copy the exact token without a token= prefix; blank prevents requests. The provider requires it in an HTTPS query parameter.
+        required: true
+    guide:
+      startURL: https://cdn.portal.baishan.com/track/document/api/1/1139
+      steps:
+        - Sign in to the BaishanCloud CDN portal at https://cdn.portal.baishan.com and contact your account team to request an API token for the Domain Details endpoint.
+        - Copy the issued token into the secret token field without a token= prefix. BaishanCloud requires it in the HTTPS query string; Dex does not expose it in results or errors.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Domain Details allows at most 60 requests per minute; the response headers report the remaining allowance.
+  operations:
+    - name: describeDomain
+      goName: DescribeDomain
+      inputType: DescribeDomainInput
+      outputType: DomainDetail
+      kind: query
+      description: Describe one CDN domain by name, returning only ID, name, type, status, and CNAME.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "BaishanCloud returned the requested CDN domain."}
+        - {id: notFound, goName: NotFound, description: "The authorized response has no matching domain.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "BaishanCloud rejected the token, access, or domain.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "BaishanCloud returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration or input is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundDomain
+          branch: found
+          description: Synthetic CDN domain metadata for local Dex Flow verification.
+          default: true
+          output: {id: '31335', domain: cdn.example.com, type: download, status: serving, cname: cdn.example.com.qingcdn.com.}

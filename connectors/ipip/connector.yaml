@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: ipip
+  displayName: IPIP
+  description: Look up country, region, and city metadata for an IP address.
+  company: IPIP
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: ipip
+  codegen:
+    go:
+      package: ipip
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one IP lookup request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only if the default IP location response grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: ipip-token
+    fields:
+      - name: token
+        goName: Token
+        type: secretString
+        required: true
+        description: Secret opaque token for the IPIP online query service documented at https://www.ipip.net/document/api_v2.html. Obtain it through your IPIP account or provider sales contact; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://www.ipip.net/document/api_v2.html
+      steps:
+        - Review the IP 在线查询定制版接口 at https://www.ipip.net/document/api_v2.html, then sign in or register at https://user.ipip.net/ and obtain a service token for your purchased online query plan. The public API document does not identify a specific account page for token retrieval; contact IPIP sales at https://www.ipip.net/contact.html if it is not shown in your account. Copy the secret opaque token into Dex Connections; blank prevents requests.
+        - The provider requires token in the HTTPS query string. Redirects are disabled, and token, request URL, raw provider message, and custom-only location fields are excluded from results and failures. Contact IPIP to revoke or replace a compromised token.
+        - Start LookupIPLocation with an IPv4 or IPv6 address such as 118.28.8.8 from the documented example. Blank or malformed IP is invalid. Leave timeout and maxResponseBytes blank for the displayed defaults. Only default country, region, city, and country code fields are returned.
+  operations:
+    - name: lookupIPLocation
+      goName: LookupIPLocation
+      inputType: LookupIPLocationInput
+      outputType: LookupIPLocationOutput
+      kind: query
+      description: Return default country, region, city, and country code fields for one IP.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: IPIP returned default location fields.}
+        - {id: providerRejected, goName: ProviderRejected, description: IPIP rejected the token or query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: IPIP returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local token or IP address is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An IP lookup can consume plan quota, so an unconfirmed request is retried at most twice."}}
+      mocks:
+        - name: beijing
+          branch: found
+          description: Sample country, region, and city from the official response.
+          default: true
+          output: {countryName: 中国, regionName: 北京, cityName: 北京, countryCode: CN}

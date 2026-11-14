@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: kuaishou
+  displayName: Kuaishou
+  description: List videos belonging to the authorized Kuaishou user.
+  company: Kuaishou
+  categories: [social-media]
+  version: v0.1.0
+spec:
+  provider: kuaishou
+  codegen:
+    go:
+      package: kuaishou
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Kuaishou Open Platform origin. Blank uses the displayed production origin; override only for a trusted compatible test gateway, without a path or credentials.
+        default: https://open.kuaishou.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one video-list request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete video-list JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for known large pages.
+        default: 262144
+      - name: pageSize
+        goName: PageSize
+        type: integer
+        description: Number of videos requested per page as an integer from one to two hundred. Blank uses the displayed default; reduce it to limit payload size or API usage. See https://open.kuaishou.com/platformDocs/openAbility/contentManagement/searchForVideos for the provider limit.
+        default: 20
+  auth:
+    type: apiKey
+    connectionKind: kuaishou-user-access-token
+    fields:
+      - name: appID
+        goName: AppID
+        type: string
+        required: true
+        description: Application app_id from https://open.kuaishou.com under 控制台 > 应用管理 > selected application. Copy the full opaque ID, not a video photo_id; it is nonsecret. Blank prevents calls.
+      - name: accessToken
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: OAuth2 access_token issued after the user authorizes user_video_info at https://open.kuaishou.com under 控制台 > 应用管理 > selected application. Enter the full opaque token as a secret; it typically expires after 48 hours and must be renewed. Blank prevents calls.
+    guide:
+      startURL: https://open.kuaishou.com
+      steps:
+        - Sign in at https://open.kuaishou.com and open 控制台 > 应用管理. Create or select a website or client application and copy its app_id to appID. Request the user_video_info scope and have the account owner approve it through the official authorization flow. Application app_secret stays with the app owner and is not required for this list request.
+        - After OAuth2 authorization, copy the resulting access_token into secret accessToken. See https://open.kuaishou.com/platformDocs/openAbility/kwaiLogin. The token normally expires in 48 hours; refresh it using the official /oauth2/refresh_token flow and update the Dex credential. Blank, expired, or unscoped tokens cannot list videos. Never put the token in a Flow input.
+        - Leave baseUrl, timeout, maxResponseBytes, and pageSize blank for displayed defaults. The listUserVideos input cursor is blank for the first page; for another page use the previous page's nextCursor (a photo_id). See https://open.kuaishou.com/platformDocs/openAbility/contentManagement/searchForVideos. The documentation does not publish a fixed list-endpoint quota; check current app limits in the console.
+  operations:
+    - name: listUserVideos
+      goName: ListUserVideos
+      inputType: ListUserVideosInput
+      outputType: UserVideosPage
+      kind: query
+      description: Read one bounded page of the authorized user's videos.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Kuaishou returned one video page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kuaishou conclusively rejected the list query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kuaishou returned malformed or oversized video JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The local credentials, page size, or cursor are invalid.", optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample authorized video appears on the page.
+          output: {videos: [{photoID: 3xwn3kkerxj6g9n, caption: 测试标题, createdAtMilliseconds: 1596629598574, likeCount: 1, commentCount: 1, viewCount: 1, pending: false}], nextCursor: 3xwn3kkerxj6g9n}

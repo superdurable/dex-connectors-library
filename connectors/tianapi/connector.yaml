@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tianapi
+  displayName: TianAPI
+  description: Look up the Chinese holiday and workday status of one calendar date.
+  company: TianAPI
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: tianapi
+  codegen:
+    go:
+      package: tianapi
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one holiday lookup as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only if TianAPI's single-day response grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: tianapi-key
+    fields:
+      - name: key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret opaque API key from https://www.tianapi.com/ > 控制台 > 数据管理 > 我的密钥key after applying for 节假日. Copy it exactly; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://www.tianapi.com/apiview/139
+      steps:
+        - Register or sign in at https://www.tianapi.com/, open 节假日 at https://www.tianapi.com/apiview/139, and choose 申请接口. Then open 控制台 > 数据管理 > 我的密钥key and copy the secret opaque key into Dex Connections. Blank prevents requests; revoke or regenerate the key in the TianAPI console when needed.
+        - The connector sends the key in an HTTPS form POST body, never the URL. Redirects are disabled, and the key, provider message, and unrelated response fields are omitted from Flow output and failures.
+        - Start GetHolidayStatus with one date formatted YYYY-MM-DD, such as 2025-01-01, from a calendar you trust. Blank is invalid. Leave timeout and maxResponseBytes blank for the displayed defaults. TianAPI lists 100 free calls per day for ordinary members; successful calls consume quota.
+  operations:
+    - name: getHolidayStatus
+      goName: GetHolidayStatus
+      inputType: GetHolidayStatusInput
+      outputType: GetHolidayStatusOutput
+      kind: query
+      description: Read one Chinese calendar date's holiday type and work/rest indicator.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: TianAPI returned one date's holiday status.}
+        - {id: providerRejected, goName: ProviderRejected, description: TianAPI rejected the request or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TianAPI returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local input or key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "A successful holiday lookup consumes a plan call, so an unconfirmed request is retried at most twice."}}
+      mocks:
+        - name: newYearsDay
+          branch: found
+          description: January 1, 2021 is a rest day.
+          default: true
+          output: {date: '2021-01-01', dayCode: 1, isNotWork: 1}

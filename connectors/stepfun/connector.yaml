@@ -1,0 +1,67 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: stepfun
+  displayName: StepFun
+  description: List models available to a StepFun API key.
+  company: StepFun
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: stepfun
+  codegen:
+    go:
+      package: stepfun
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for the model-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only when your account has an unusually large model list.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: stepfun-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "API key from https://platform.stepfun.com/interface-key > Interface Keys, or an organization project's Account Management > Interface Keys page. Create and copy the full opaque key. It is secret, stored only as a Dex credential, and sent as a Bearer header; blank prevents requests."
+    guide:
+      startURL: https://platform.stepfun.com/interface-key
+      steps:
+        - Sign in to https://platform.stepfun.com/interface-key and open Interface Keys. Create a personal API key and copy its full value into Dex as a secret credential.
+        - For an organization project, use User Center > Switch Space, then Account Management > Interface Keys, select the project row, click Create Key, and copy the full API key. The same API endpoint accepts personal and project keys; no organization ID is required.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The connector sends the key only to the fixed HTTPS model-list endpoint and never places it in Flow results or errors.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List models visible to this API key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: StepFun returned the available model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: StepFun rejected the key or model-list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: StepFun returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local connection credentials or settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: twoModels
+          branch: found
+          description: Two StepFun text models are available.
+          default: true
+          output:
+            models:
+              - {id: step-5-preview, createdAtUnix: 1789747200, ownedBy: stepai}
+              - {id: step-3.7-flash, createdAtUnix: 1713196800, ownedBy: stepai}

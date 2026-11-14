@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: qingcloud
+  displayName: QingCloud
+  description: List accessible QingCloud IaaS zones with their status.
+  company: QingCloud
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: qingcloud
+  codegen:
+    go:
+      package: qingcloud
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS QingCloud IaaS API root. Blank uses the displayed public-cloud endpoint; override only for a compatible trusted test gateway. Do not include /iaas/ or a query string.
+        default: https://api.qingcloud.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one zone query as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete zones JSON response in bytes as a positive integer. Blank uses the displayed default; increase only if an authorized account exposes a larger zone set.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: qingcloud-access-key
+    fields:
+      - name: accessKeyId
+        goName: AccessKeyID
+        type: string
+        required: true
+        description: Access Key ID from https://console.qingcloud.com under Products & Services > Access & Authorization > API Keys. Create or select an enabled key and copy its full ID, typically uppercase letters such as QYACCESSKEYIDEXAMPLE. The ID is sent in signed HTTPS queries but is not the secret. Blank prevents calls.
+      - name: secretAccessKey
+        goName: SecretAccessKey
+        type: secretString
+        required: true
+        description: Secret Access Key paired with the ID at https://console.qingcloud.com under Products & Services > Access & Authorization > API Keys. Copy the full secret when the key is created or reveal it through the console's key controls; Dex stores it only as a credential and uses it for HmacSHA256 signing. Blank prevents calls. Delete and recreate the key to rotate it.
+    guide:
+      startURL: https://console.qingcloud.com
+      steps:
+        - Sign in at https://console.qingcloud.com, open Products & Services > Access & Authorization > API Keys, and create an enabled key for an account permitted to call DescribeZones. Prefer a scoped subaccount or IAM user; an optional IP whitelist can restrict Worker egress.
+        - Copy the Access Key ID to accessKeyId and the paired secret to secretAccessKey. The ID is nonsecret and appears in HTTPS query parameters; the secret is stored as a Dex credential and never sent. Blank values prevent calls.
+        - Leave baseUrl, timeout and maxResponseBytes blank for their displayed defaults. Delete and recreate a compromised key in the same API Keys page. No zone or region input is needed for DescribeZones.
+  operations:
+    - name: describeZones
+      goName: DescribeZones
+      inputType: DescribeZonesInput
+      outputType: ZonesPage
+      kind: query
+      description: Return up to 100 accessible IaaS zones and their availability status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: QingCloud returned accessible zones.}
+        - {id: providerRejected, goName: ProviderRejected, description: QingCloud conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: QingCloud returned malformed or oversized zones JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local access key is missing or invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One active sample zone is listed.
+          output: {zones: [{zoneId: pek3a, status: active}], totalCount: 1}

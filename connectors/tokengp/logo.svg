@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="TokenGP">
+  <rect width="128" height="128" rx="24" fill="#14213d"/>
+  <path d="M28 38h72v13H70v49H57V51H28z" fill="#fff"/>
+  <circle cx="96" cy="85" r="12" fill="#4cc9f0"/>
+</svg>

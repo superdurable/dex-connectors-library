@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: cainiao
+  displayName: Cainiao Waybill
+  description: Query logistics events for a Cainiao electronic waybill through Alibaba TOP.
+  company: Cainiao
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: cainiao
+  codegen:
+    go:
+      package: cainiao
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Alibaba TOP router URL including /router/rest. Blank uses the displayed production endpoint; override only for a trusted compatible test router, never with credentials or query parameters.
+        default: https://eco.taobao.com/router/rest
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one waybill trace request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete waybill trace JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually long event histories.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: cainiao-top-session
+    fields:
+      - name: appKey
+        goName: AppKey
+        type: string
+        required: true
+        description: TOP application AppKey from https://developer.alibaba.com under 控制台 > 开发 > 我的应用 > 应用管理. Copy the full opaque application key, not a waybill number; it is nonsecret. Blank prevents calls.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret paired with AppKey at https://developer.alibaba.com under 控制台 > 开发 > 我的应用 > 应用管理 > 应用信息. Copy the full secret into this protected credential. It signs requests and is never transmitted; blank prevents calls.
+      - name: sessionKey
+        goName: SessionKey
+        type: secretString
+        required: true
+        description: Authorized merchant SessionKey (access token) from https://developer.alibaba.com under 控制台 > 开发 > 我的应用 > 授权工具 after the merchant authorizes this application for the electronic-waybill API. Copy the full opaque token into this protected credential; it expires and must be renewed. Blank prevents calls.
+    guide:
+      startURL: https://developer.alibaba.com
+      steps:
+        - Sign in at https://developer.alibaba.com and open 控制台 > 开发 > 我的应用 > 应用管理. Select an application with permission for cainiao.waybill.logisticstrace.get; copy its AppKey and AppSecret. The AppSecret is secret and used locally for TOP HMAC-MD5 signatures.
+        - Have the relevant merchant authorize that application. Use 控制台 > 开发 > 我的应用 > 授权工具 to obtain a SessionKey (access token) for development, or your existing TOP authorization flow for production; paste it as the secret sessionKey. See https://developer.alibaba.com/docs/doc.htm?articleId=102635&docType=1 for token lifetime and renewal. Blank or expired authorization cannot query waybills.
+        - The queryWaybillTrace input requires waybillCode (the Cainiao electronic waybill number) and carrierCode (its cp_code); ordinary carrier tracking numbers may not have trace data. See https://developer.alibaba.com/docs/api.htm?apiId=27230. The documented API is free but TOP app permissions and rate limits still apply. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: queryWaybillTrace
+      goName: QueryWaybillTrace
+      inputType: QueryWaybillTraceInput
+      outputType: WaybillTrace
+      kind: query
+      description: Read logistics events for one authorized Cainiao electronic waybill.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: TOP returned the waybill's logistics events.}
+        - {id: providerRejected, goName: ProviderRejected, description: TOP conclusively rejected the query or waybill., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TOP returned malformed or oversized trace JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or input are missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample electronic waybill has a pickup event.
+          output: {carrierCode: YTO, waybillCode: '12345', events: [{action: GOT, description: 已揽收, time: '2016-07-14 17:00:42'}]}

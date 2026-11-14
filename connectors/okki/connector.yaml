@@ -1,0 +1,90 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: okki
+  displayName: OKKI Customer Fields
+  description: List CRM customer field definitions without reading customer records.
+  company: OKKI
+  categories: [crm-sales]
+  version: v0.1.0
+spec:
+  provider: okki
+  codegen:
+    go:
+      package: okki
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: OKKI Open API HTTPS origin from https://open.xiaoman.cn/ under 快速开始, labeled 正式域名 despite its sandbox-looking name. Blank uses the displayed official origin; override only for a trusted compatible HTTPS test endpoint without credentials, path, or query.
+        default: https://api-sandbox.xiaoman.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one customer field request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for a slow tenant response.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete customer field JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for tenants with many custom fields.
+        default: 1048576
+  auth:
+    refreshable: true
+    type: apiKey
+    connectionKind: okki-client-credentials
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: string
+        required: true
+        description: Nonsecret client_id at https://open.xiaoman.cn/ after the OKKI main account enables API对接 under 企业管理 > 外部对接 > API对接. Copy the complete opaque ID for this CRM company; blank prevents token exchange.
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret client_secret shown at https://open.xiaoman.cn/ through 企业管理 > 外部对接 > API对接 after enabling the feature. Copy into this protected field for the same CRM company; blank prevents token exchange.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Short-lived secret access token Dex obtains with client_credentials and company scope from the OKKI auth endpoint. This is an output; leave blank and never paste a token here.
+    guide:
+      startURL: https://open.xiaoman.cn/
+      steps:
+        - Sign in to the intended OKKI CRM company as its main account, open 企业管理 > 外部对接 > API对接, and enable API integration. This page shows client_id and client_secret. See https://open.xiaoman.cn/.
+        - Copy the nonsecret client_id and protected client_secret from the same company into Dex Web. Dex requests only the company scope via client_credentials from https://api-sandbox.xiaoman.cn/v1/oauth2/access_token and renews the token automatically; no redirect URI or user consent screen is involved. See https://open.xiaoman.cn/api-3473041.
+        - The operation reads only customer field definitions from https://open.xiaoman.cn/api-3478270 and excludes field defaults, options, customer values, names, email addresses, and phone numbers. Keep separate Dex connections for separate OKKI companies because CRM data is tenant-isolated. Leave access_token, baseUrl, timeout, and maxResponseBytes blank for displayed defaults. The public documentation does not state a fixed API quota or charge.
+    clientCredentials:
+      tokenEndpoint: https://api-sandbox.xiaoman.cn/v1/oauth2/access_token
+      tokenEndpointAuthMethod: client_secret_post
+      tokenExchangeTimeout: 15s
+      responseScopes: ignore
+      missingExpiry: {lifetime: 8h}
+      storedMissingExpiry: refresh
+      clientIDCredential: client_id
+      clientSecretCredential: client_secret
+      scopes: [company]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+      terminalErrorCodes: [invalid_client, invalid_scope]
+  operations:
+    - name: listCustomerFields
+      goName: ListCustomerFields
+      inputType: ListCustomerFieldsInput
+      outputType: CustomerFields
+      kind: query
+      description: Return a bounded set of customer field IDs, labels, and types.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: OKKI returned the customer field definitions.}
+        - {id: providerRejected, goName: ProviderRejected, description: OKKI conclusively rejected the query or authorization., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OKKI returned malformed or oversized field JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local connection credentials are missing or invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Two sample customer field definitions.
+          output: {fields: [{id: origin_list, name: 客户来源, fieldType: 7}, {id: trail_status, name: 客户阶段, fieldType: 3}]}

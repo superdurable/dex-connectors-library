@@ -1,0 +1,50 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: gitcode
+  displayName: GitCode
+  description: Read a GitCode repository's identity and visibility.
+  company: GitCode
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: gitcode
+  codegen:
+    go:
+      package: gitcode
+  configuration:
+    fields:
+      - {name: baseUrl, goName: BaseURL, type: url, default: 'https://api.gitcode.com', description: 'HTTPS origin of the GitCode API without a path. Leave blank for the displayed public endpoint; override only for a trusted proxy or local test server.'}
+      - {name: timeout, goName: Timeout, type: duration, default: 10s, description: 'Maximum time for one repository lookup as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow approved proxy.'}
+      - {name: maxResponseBytes, goName: MaxResponseBytes, type: integer, default: 262144, description: 'Maximum repository response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a valid response exceeds it.'}
+  auth:
+    type: apiKey
+    connectionKind: gitcode-repository
+    fields:
+      - {name: access_token, goName: AccessToken, type: secretString, required: true, description: 'Secret personal access token from https://gitcode.com > avatar > 个人设置 > 访问令牌 > 新建访问令牌. Select project read permission and an expiry; copy the exact token (visible once). Sent in an Authorization Bearer header. Blank prevents requests.'}
+    guide:
+      startURL: https://gitcode.com
+      steps:
+        - Sign in at https://gitcode.com, click your avatar, then open 个人设置 > 访问令牌 > 新建访问令牌.
+        - Select the minimum project read permission and an expiry, create the personal access token, and copy it into the secret access_token field. The token is shown only once; do not put it in Flow input.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults. GitCode defaults to 400 requests per minute and 4000 per hour; this connector only reads one repository per call.
+  operations:
+    - name: getRepository
+      goName: GetRepository
+      inputType: GetRepositoryInput
+      outputType: GetRepositoryOutput
+      kind: query
+      description: Read one repository's ID, full name, visibility, and default branch.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: 'GitCode returned the repository.'}
+        - {id: notFound, goName: NotFound, description: 'The repository does not exist or is inaccessible.', optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: 'GitCode rejected the token or request.', optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: 'GitCode returned malformed or oversized data.', optional: true}
+        - {id: defect, goName: Defect, description: 'Local owner/repository path or connection credentials are invalid.', optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - {name: sampleRepository, branch: fetched, description: 'Synthetic public repository for local Flow verification; not a real GitCode repository.', default: true, output: {id: 12345, fullName: example/sample, private: false, defaultBranch: main}}

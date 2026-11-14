@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: showapi
+  displayName: ShowAPI
+  description: Look up weather region codes by place name without reading personal data.
+  company: ShowAPI
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: showapi
+  codegen:
+    go:
+      package: showapi
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the ShowAPI route service. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://route.showapi.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one lookup as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size in bytes as a positive integer. Leave blank for the displayed default; raise only for unusually many region matches.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: showapi-app-key
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        description: Secret AppKey from https://www.showapi.com/console#/myApp > AppKey Management after signing in and ordering Weather Forecast. Copy its exact value without an appKey= prefix; blank prevents requests.
+        required: true
+    guide:
+      startURL: https://www.showapi.com/console#/myApp
+      steps:
+        - Sign in to https://www.showapi.com, open Console > My Apps > AppKey Management, and copy your AppKey; order the Weather Forecast API product before calling its 9-3 endpoint.
+        - Enter the AppKey in the secret app_key field without an appKey= prefix. ShowAPI requires it in the HTTPS query string; Dex never returns it in Flow data or errors. Rotate the key in AppKey Management if exposed.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Weather Forecast uses paid resource packages, including a zero-price trial; check the selected package in the console for its call allowance and frequency.
+  operations:
+    - name: lookupAreaCodes
+      goName: LookupAreaCodes
+      inputType: LookupAreaCodesInput
+      outputType: AreaCodeMatches
+      kind: query
+      description: Find weather region codes for a place name, returning only province, area, and area code.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "ShowAPI returned zero or more area-code matches."}
+        - {id: providerRejected, goName: ProviderRejected, description: "ShowAPI rejected credentials, entitlement, quota, or place name.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "ShowAPI returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local connection configuration or input is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 15s, maximumAttempts: 3, totalDuration: 1m, reason: {kind: billedOperation, explanation: "A repeated ShowAPI weather-region lookup may consume another paid package call after an unconfirmed response."}}
+      mocks:
+        - name: foundArea
+          branch: found
+          description: Synthetic area-code lookup for local Dex Flow verification.
+          default: true
+          output: {matches: [{province: Yunnan, area: Lijiang, areaCode: '530700'}]}

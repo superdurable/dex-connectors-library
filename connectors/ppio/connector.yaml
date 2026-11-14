@@ -1,0 +1,66 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: ppio
+  displayName: PPIO
+  description: List language models available through PPIO.
+  company: PPIO
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: ppio
+  codegen:
+    go:
+      package: ppio
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for the model-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only if PPIO offers an unusually large number of models.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: ppio-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "API key from https://ppio.com/settings/key-management > API 密钥管理. Click 创建, give the key a name, and copy its full opaque value when shown. It is secret, stored only as a Dex credential, and sent as a Bearer header; blank prevents requests."
+    guide:
+      startURL: https://ppio.com/settings/key-management
+      steps:
+        - Sign in at https://ppio.com/settings/key-management and open 用户头像 > API 密钥管理. Click 创建, enter a key name, then copy the complete API key into Dex as a secret credential. PPIO shows the key only at creation.
+        - If the key is lost, delete and recreate it on that page. Leave timeout and maxResponseBytes blank for the displayed defaults. The connector sends the key only to the fixed HTTPS model-list endpoint and never puts it in Flow results or errors.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List PPIO language models and their availability metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: PPIO returned the available model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: PPIO rejected the key or model-list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: PPIO returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local connection credentials or settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: twoModels
+          branch: found
+          description: Two language models are available.
+          default: true
+          output:
+            models:
+              - {id: tencent/hy4, displayName: Hy4, status: 1, contextSize: 1000000, endpoints: [chat/completions, anthropic, responses], createdAtUnix: 1793772213, ownedBy: ppio}
+              - {id: moonshotai/kimi-k3.1-pro-highspeed, displayName: Kimi K3.1 Pro Highspeed, status: 1, contextSize: 1048576, endpoints: [chat/completions, anthropic, responses], createdAtUnix: 1792802645, ownedBy: ppio}

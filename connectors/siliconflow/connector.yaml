@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: siliconflow
+  displayName: SiliconFlow
+  description: List models available to a SiliconFlow China API key.
+  company: SiliconFlow
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: siliconflow
+  codegen:
+    go:
+      package: siliconflow
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the SiliconFlow China API, without /v1. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.siliconflow.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one model-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate model catalog exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: siliconflow-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret API Key from https://cloud.siliconflow.cn/account/ak > API 密钥 > 新建 API 密钥. Copy the complete key string without spaces; Dex stores it only as a credential and sends it in a Bearer header. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://cloud.siliconflow.cn/account/ak
+      steps:
+        - Sign in to SiliconFlow China at https://cloud.siliconflow.cn/account/ak.
+        - Open API 密钥, choose 新建 API 密钥, and copy the complete secret key into api_key.
+        - Revoke or rotate an exposed key on the same API 密钥 page. Keep the key in Dex Web Connections, never in a Flow input.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: Read model IDs available to the configured SiliconFlow China API key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: SiliconFlow returned zero or more models.}
+        - {id: providerRejected, goName: ProviderRejected, description: SiliconFlow rejected the key or permissions., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SiliconFlow returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Connection configuration or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: twoModels
+          branch: listed
+          description: Sample SiliconFlow model IDs for local tests; live availability varies.
+          default: true
+          output: {models: [{id: "deepseek-ai/DeepSeek-V4-Flash", object: "model"}, {id: "Qwen/Qwen3-32B", object: "model"}]}

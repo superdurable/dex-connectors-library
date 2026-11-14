@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: qiniu
+  displayName: Qiniu Kodo
+  description: List storage buckets owned by a Qiniu Cloud access key.
+  company: Qiniu
+  categories: [databases-storage]
+  version: v0.1.0
+spec:
+  provider: qiniu
+  codegen:
+    go:
+      package: qiniu
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin for the Qiniu Kodo UC API. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://uc.qiniuapi.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one bucket-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bucket-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only when a legitimate large bucket list exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: qiniu-kodo
+    fields:
+      - name: access_key
+        goName: AccessKey
+        type: secretString
+        description: Secret AccessKey from https://portal.qiniu.com/user/key > personal center > 密钥管理 (Key Management). Copy the complete paired AccessKey string without spaces. Dex stores it only as a credential. Blank prevents requests.
+        required: true
+      - name: secret_key
+        goName: SecretKey
+        type: secretString
+        description: Secret SecretKey paired with the AccessKey at https://portal.qiniu.com/user/key > personal center > 密钥管理 (Key Management). Reveal and copy the complete string without spaces. Dex stores it only as a credential and uses it to sign requests. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://portal.qiniu.com/user/key
+      steps:
+        - Sign in to the Qiniu Cloud console at https://portal.qiniu.com/user/key and open 个人中心 (Personal Center) > 密钥管理 (Key Management).
+        - Create a new AccessKey/SecretKey pair there or select an existing active pair. Copy both full strings into their respective secret fields; the values must be paired. Use a restricted subuser key when your account policy allows it.
+        - Keep SecretKey private and rotate the pair through 密钥管理 if exposed. The connector sends only the signed Authorization header to Qiniu over HTTPS; it never sends SecretKey.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listBuckets
+      goName: ListBuckets
+      inputType: ListBucketsInput
+      outputType: ListBucketsOutput
+      kind: query
+      description: List storage bucket names owned by the signing AccessKey account.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Qiniu returned zero or more bucket names.}
+        - {id: providerRejected, goName: ProviderRejected, description: Qiniu rejected the credentials or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Qiniu returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials or local configuration are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: twoBuckets
+          branch: listed
+          description: The account owns two Kodo storage buckets.
+          default: true
+          output: {buckets: [demo-images, archive-data]}

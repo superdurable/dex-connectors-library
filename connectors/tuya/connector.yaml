@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tuya
+  displayName: Tuya
+  description: Read safe metadata about one linked Tuya device.
+  company: Tuya
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: tuya
+  codegen:
+    go:
+      package: tuya
+  configuration:
+    fields:
+      - name: endpoint
+        goName: Endpoint
+        type: enum
+        enum: [https://openapi.tuyacn.com, https://openapi.tuyaus.com, https://openapi-ueaz.tuyaus.com, https://openapi.tuyaeu.com, https://openapi-weaz.tuyaeu.com, https://openapi.tuyain.com, https://openapi-sg.iotbing.com]
+        description: "Tuya API data-center endpoint for the project's Data Center shown at https://platform.tuya.com/ > Cloud > Development > My Cloud Projects > Open Project > Overview. Select the matching region from the fixed list; China is the displayed default. This URL is not secret; blank uses the displayed default. A mismatch prevents token acquisition or device access."
+        default: https://openapi.tuyacn.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for each token or device request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum size of each provider response in bytes as a positive integer. Blank uses the displayed default; raise only for unusually large device metadata. The connector omits local_key and status values from durable results.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: tuya-cloud-project
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: secretString
+        required: true
+        description: "Access ID/client ID shown at https://platform.tuya.com/ > Cloud > Development > My Cloud Projects > Open Project > Overview > Authorization Key. Copy the project's opaque access ID. Dex stores it as a credential and sends it only to the selected Tuya data center in the client_id header. Blank prevents requests."
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: "Access Secret/client secret from https://platform.tuya.com/ > Cloud > Development > My Cloud Projects > Open Project > Overview > Authorization Key. Copy the project's opaque secret; Dex stores it only as a credential and uses it locally for HMAC-SHA256 signatures. It is never sent to Tuya. Blank prevents requests."
+    guide:
+      startURL: https://developer.tuya.com/en/docs/iot/manage-projects?id=Ka49p0n8vkzm6
+      steps:
+        - Sign in at https://platform.tuya.com/ and open Cloud > Development > My Cloud Projects > Open Project > Overview. Copy Access ID and Access Secret under Authorization Key into client_id and client_secret as Dex credentials.
+        - Confirm that the project has the IoT Core and Authorization Token Management API services, and that the target device is linked to it. Use the project's Data Center on Overview to choose the matching endpoint from the fixed list.
+        - Find a device ID at Cloud > Development > My Cloud Projects > Open Project > Devices > All Devices. The Flow input uses this ID; no device local key is needed or stored.
+        - Leave timeout and maxResponseBytes blank for the displayed defaults. The connector obtains a simple-mode token and signs every request automatically. Rotate project credentials on the same Overview page if needed.
+  operations:
+    - name: getDeviceDetails
+      goName: GetDeviceDetails
+      inputType: GetDeviceDetailsInput
+      outputType: GetDeviceDetailsOutput
+      kind: query
+      description: Read safe metadata about a linked device by its device ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Tuya returned the device's safe metadata.}
+        - {id: notFound, goName: NotFound, description: Tuya reported the device does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Tuya rejected token acquisition, signature, permission, or device access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Tuya returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection settings are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: linkedDevice
+          branch: found
+          description: A linked smart sensor is online, with only non-secret metadata.
+          default: true
+          output: {deviceId: 60613135b121cddc294a, name: Body fat scale, online: true, category: qt, productId: g0er6hSKgMqr, createdAtUnix: 1560827137, updatedAtUnix: 1589764585}

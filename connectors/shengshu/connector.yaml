@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: shengshu
+  displayName: Vidu
+  description: Read status and safe metadata for an existing Vidu generation task.
+  company: Shengshu
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: shengshu
+  codegen:
+    go:
+      package: shengshu
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for the task-status request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for unusually large generation records. Output omits signed media URLs and payload.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: vidu-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "API key from https://platform.vidu.cn/ > API Key 管理. Sign in, create a key, and copy the full opaque value. It is secret, stored only as a Dex credential, and sent with the provider's Token authorization scheme; blank prevents requests."
+    guide:
+      startURL: https://platform.vidu.cn/
+      steps:
+        - Sign in at https://platform.vidu.cn/ and open API Key 管理. Create a new API key and copy the complete value into Dex as a secret credential. The connector adds the required Token prefix automatically; do not include it in the field.
+        - Get an existing task ID from a Vidu task-creation response as task_id, or find it in the Vidu task list. Supply that ID as the Flow input taskId. The connector does not create or charge for a task.
+        - Leave timeout and maxResponseBytes blank for the displayed defaults. The task-detail response can contain 24-hour signed media URLs and an arbitrary payload; this connector returns only state, error code, credits and generation IDs.
+  operations:
+    - name: getTaskStatus
+      goName: GetTaskStatus
+      inputType: GetTaskStatusInput
+      outputType: GetTaskStatusOutput
+      kind: query
+      description: Read the state and safe metadata of one existing Vidu task.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Vidu returned the task state and safe metadata.}
+        - {id: notFound, goName: NotFound, description: Vidu did not find the task., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Vidu rejected authentication or task access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Vidu returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local task ID, credentials or settings are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: completedTask
+          branch: found
+          description: An existing video task completed and produced one creation.
+          default: true
+          output: {taskId: task-123, state: success, errorCode: "", credits: 4, creationIds: [creation-456]}

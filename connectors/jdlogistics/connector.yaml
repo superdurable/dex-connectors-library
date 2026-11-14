@@ -1,0 +1,82 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jdlogistics
+  displayName: JD Logistics Tracking
+  description: Query tracking scans for an authorized JD Logistics B2C merchant waybill.
+  company: JD Logistics
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: jdlogistics
+  codegen:
+    go:
+      package: jdlogistics
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS JD Logistics API origin from https://open.jdl.com under 能力中心 > 京东快递快运 > 订单轨迹查询. Blank uses the displayed production origin; override only for a trusted HTTPS test endpoint without credentials or query parameters.
+        default: https://api.jdl.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one tracking request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete tracking JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually long scan histories.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: jdlogistics-lop
+    fields:
+      - name: appKey
+        goName: AppKey
+        type: string
+        required: true
+        description: Application AppKey from https://open.jdl.com under 控制台 > 开发管理 > 应用管理 > 概览 after creating a merchant application. Copy the complete nonsecret identifier; blank prevents calls.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Application AppSecret from https://open.jdl.com under 控制台 > 开发管理 > 应用管理 > 概览. Copy the complete secret into this protected field; it signs each request and is never sent; blank prevents calls.
+      - name: accessToken
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Access token shown by https://oauth.jdl.com/oauth/authorize in 授权介绍 > 简化模式 after the JD Logistics enabled merchant account authorizes the application. Copy the full secret token into this protected field; it expires after one year and blank prevents calls.
+      - name: customerCode
+        goName: CustomerCode
+        type: string
+        required: true
+        description: Merchant customer code issued by JD Logistics sales after signing, then shown at https://open.jdl.com under 控制台 > 个人中心 > 资质管理. Copy the complete 1 to 32 character code, usually starting 010K; blank prevents B2C calls.
+    guide:
+      startURL: https://open.jdl.com
+      steps:
+        - Sign with JD Logistics and obtain a customer code, register at https://open.jdl.com, certify as 自研商家, create an application under 控制台 > 开发管理 > 应用管理, and subscribe to 京东快递快运. The platform says its APIs are free. See https://open.jdl.com/#/devSupport/53220.
+        - Copy AppKey and secret AppSecret from the application overview. Follow https://open.jdl.com/#/devSupport/53392 under 简化模式; open https://oauth.jdl.com/oauth/authorize with client_id set to AppKey, redirect_uri set to urn:ietf:wg:oauth:2.0:oob, and response_type set to code. Sign in with the merchant account enabled by JD Logistics sales. This mode displays access and refresh tokens directly without a code exchange. Copy the access token into protected accessToken; refresh it in JD Logistics and update Dex during its final ten days of the one-year lifetime.
+        - Copy the customer code from qualification details or JD Logistics sales. Query a B2C waybill belonging to this merchant; results omit operator names, phone numbers, addresses and free-text remarks. See https://open.jdl.com/#/open-business-document/api-doc/267/1039. Leave baseUrl, timeout and maxResponseBytes blank for displayed defaults; no fixed public rate limit is published.
+  operations:
+    - name: queryWaybillTrace
+      goName: QueryWaybillTrace
+      inputType: QueryWaybillTraceInput
+      outputType: WaybillTrace
+      kind: query
+      description: Read tracking scans for one authorized JD Logistics B2C merchant waybill.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: JD Logistics returned the requested waybill's tracking scans.}
+        - {id: providerRejected, goName: ProviderRejected, description: JD Logistics conclusively rejected the query or authorization., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: JD Logistics returned malformed or oversized tracking JSON., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or input are missing or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample B2C waybill has a pickup scan.
+          output: {waybillNo: JDX009866825381, events: [{state: '200001', categoryName: 已揽收, operationTime: '2022-04-07 20:22:50'}]}

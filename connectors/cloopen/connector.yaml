@@ -1,0 +1,49 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: cloopen
+  displayName: Cloopen
+  description: Read the main account balance from Cloopen's REST API.
+  company: Cloopen
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: cloopen
+  codegen:
+    go:
+      package: cloopen
+  configuration:
+    fields:
+      - {name: baseUrl, goName: BaseURL, type: url, default: 'https://app.cloopen.com:8883', description: 'HTTPS origin of the Cloopen REST API without the version path. Leave blank for the displayed production endpoint; override only for an approved proxy or local test server.'}
+      - {name: timeout, goName: Timeout, type: duration, default: 10s, description: 'Maximum time for one account lookup as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for a slow approved proxy.'}
+      - {name: maxResponseBytes, goName: MaxResponseBytes, type: integer, default: 65536, description: 'Maximum account response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a valid provider response exceeds it.'}
+  auth:
+    type: apiKey
+    connectionKind: cloopen-account
+    fields:
+      - {name: account_sid, goName: AccountSID, type: secretString, required: true, description: 'Main-account ACCOUNT SID from https://console.yuntongxun.com > management console > account information. Copy the exact 32-character alphanumeric ID; it is placed in the API path and signed header. Blank prevents requests.'}
+      - {name: auth_token, goName: AuthToken, type: secretString, required: true, description: 'Main-account AUTH TOKEN from https://console.yuntongxun.com > management console > account information. Copy the exact 32-character secret; it is used only to create the request signature. Blank prevents requests.'}
+    guide:
+      startURL: https://console.yuntongxun.com
+      steps:
+        - Sign in at https://console.yuntongxun.com and open the management console account information. Copy main-account ACCOUNT SID and AUTH TOKEN into the two secret fields; do not use a subaccount or place either value in Flow input.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. This connector uses the published HTTPS REST endpoint and only reads AccountInfo; it does not send messages or change the account.
+  operations:
+    - name: getBalance
+      goName: GetBalance
+      inputType: GetBalanceInput
+      outputType: GetBalanceOutput
+      kind: query
+      description: Read the main account balance as the provider's exact decimal string.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: 'Cloopen returned the main-account balance.'}
+        - {id: providerRejected, goName: ProviderRejected, description: 'Cloopen rejected the account or request.', optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: 'Cloopen returned malformed or oversized data.', optional: true}
+        - {id: defect, goName: Defect, description: 'Connection credentials are missing or invalid.', optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - {name: sampleBalance, branch: fetched, description: 'Synthetic account balance for local Flow verification; not a real account.', default: true, output: {balance: '211'}}

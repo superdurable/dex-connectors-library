@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zego
+  displayName: ZEGO
+  description: Read the current member count of a ZIM room without returning member identities.
+  company: ZEGO
+  categories: [communication]
+  version: v0.1.0
+spec:
+  provider: zego
+  codegen:
+    go:
+      package: zego
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one ZIM room count HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only if the one-member response grows. User identities are discarded.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: zego-zim-project
+    fields:
+      - name: appId
+        goName: AppID
+        type: string
+        required: true
+        description: Non-secret decimal uint32 AppId from https://console.zego.im/ > 控制台 > 项目管理 for the selected ZIM project. Copy digits exactly, such as 12345; blank prevents requests.
+      - name: serverSecret
+        goName: ServerSecret
+        type: secretString
+        required: true
+        description: Secret ServerSecret for the same project from https://console.zego.im/ > 控制台 > 项目管理 > 查看 > 项目配置. Copy the opaque value exactly; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://console.zego.im/
+      steps:
+        - Sign in at https://console.zego.im/, create or select the ZIM project, open 控制台 > 项目管理 and copy the decimal AppId. Click 查看 on that project, open 项目配置, and copy its secret ServerSecret into Dex Connections. Blank prevents requests; rotate the secret in ZEGO Console when needed.
+        - Each request uses a fresh 16-character hexadecimal nonce and Unix timestamp in seconds; Signature is lowercase MD5 of AppId, nonce, ServerSecret, and timestamp in that order. The signed HTTPS URL, ServerSecret, and raw provider response are omitted from Flow results, receipts, and failures. Redirects are disabled.
+        - Start GetRoomUserCount with a RoomId assigned by your ZIM application, at most 32 ASCII bytes using the characters in the official QueryRoomUserList document. Blank is invalid; the ID is not a secret. The connector requests one member at most and returns only Count. Leave timeout and maxResponseBytes blank for displayed defaults. ZEGO limits this API to 20 calls per second.
+  operations:
+    - name: getRoomUserCount
+      goName: GetRoomUserCount
+      inputType: GetRoomUserCountInput
+      outputType: GetRoomUserCountOutput
+      kind: query
+      description: Read a ZIM room's current member count without returning the member list.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: ZEGO returned the current room member count.}
+        - {id: providerRejected, goName: ProviderRejected, description: ZEGO rejected the project or room., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ZEGO returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local project credentials or RoomId are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: personWaiting, explanation: "A user waits for the current room count, so temporary failures are retried at most twice."}}
+      mocks:
+        - name: twoMembers
+          branch: found
+          description: A ZIM room has two members.
+          default: true
+          output: {count: 2}

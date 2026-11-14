@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40" role="img" aria-label="川流 Token">
+  <defs>
+    <linearGradient id="clMark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0071E3"/>
+      <stop offset="0.55" stop-color="#3D8BFD"/>
+      <stop offset="1" stop-color="#5EE7D0"/>
+    </linearGradient>
+  </defs>
+  <rect width="40" height="40" rx="10" fill="url(#clMark)"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" opacity="0.96">
+    <path d="M9 15.5c3.4-3.2 5.6 3.2 9 0s5.6-3.2 13.2-.6"/>
+    <path d="M9 22c3.4-3.2 5.6 3.2 9 0s5.6-3.2 13.2-.6" opacity="0.72"/>
+    <path d="M9 28.5c3.4-3.2 5.6 3.2 9 0s5.6-3.2 13.2-.6" opacity="0.42"/>
+  </g>
+</svg>

@@ -1,0 +1,64 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: huoban
+  displayName: Huoban
+  description: List the workspaces an API Key can access without reading table records.
+  company: Huoban
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: huoban
+  codegen:
+    go:
+      package: huoban
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one workspace-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; raise only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; raise only for unusually many workspaces. Cover images and other fields are never returned.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: huoban-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: "Secret API Key from https://app.huoban.com/v5 > enterprise space > 企业设置 > 企业后台 > 接口授权 > 创建 API Key. Copy its opaque value without Bearer; blank prevents requests. Only an enterprise administrator of a paid enterprise can create it."
+    guide:
+      startURL: https://app.huoban.com/v5
+      steps:
+        - Sign in at https://app.huoban.com/v5 and enter the target enterprise space. An enterprise administrator opens 企业设置 > 企业后台 > 接口授权 > 创建 API Key. Copy the secret opaque API Key into Dex without the Bearer prefix; blank prevents requests. A currently paid enterprise version is required to create a key.
+        - In 接口授权, restrict the API Key's 授权范围 to the workspaces Dex should list. A trusted-IP restriction must allow the Dex worker's outbound address. The connector sends Open-Authorization Bearer over HTTPS and does not read table records.
+        - Start ListSpaces with empty JSON {}. The key determines the enterprise and authorized workspaces; no workspace ID input is needed. Leave timeout and maxResponseBytes blank for displayed defaults. The provider's default limit is 10 API calls per second per key, with a plan-specific per-minute limit.
+  operations:
+    - name: listSpaces
+      goName: ListSpaces
+      inputType: ListSpacesInput
+      outputType: ListSpacesOutput
+      kind: query
+      description: List IDs and names of workspaces accessible to the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Huoban returned authorized workspace metadata.}
+        - {id: providerRejected, goName: ProviderRejected, description: Huoban rejected authentication or access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Huoban returned malformed or oversized metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneSpace
+          branch: listed
+          description: One authorized workspace is available.
+          default: true
+          output: {spaces: [{spaceId: '4000000000000001', name: Operations}]}

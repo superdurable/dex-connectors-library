@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: dieyuyun
+  displayName: Wuliang AI (无量AI)
+  description: Read available CNY balance from the Wuliang AI platform.
+  company: Dieyuyun
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: dieyuyun
+  codegen:
+    go:
+      package: dieyuyun
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the Wuliang AI API without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://open.dieyuyun.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one balance request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum balance response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate balance response exceeds it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: dieyuyun-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: One-time-shown secret API Key from https://open-console.dieyuyun.com/ > API Keys > Key Management > Create API Key. Copy the opaque sk-prefixed value; Dex stores it only as a credential. Blank prevents requests.
+    guide:
+      startURL: https://open-console.dieyuyun.com/
+      steps:
+        - Sign in to https://open-console.dieyuyun.com/, open API Keys > Key Management, choose Create API Key, select the application, and copy the one-time-shown secret into api_key.
+        - Give the Key only the needed API ability and budget. To rotate a lost key, delete or disable it in Key Management and create another. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
+        - This Query reads the tenant balance in CNY yuan and does not call a billed model or expose the Key's name or budget details.
+  operations:
+    - name: getAccountBalance
+      goName: GetAccountBalance
+      inputType: GetAccountBalanceInput
+      outputType: GetAccountBalanceOutput
+      kind: query
+      description: Read available tenant balance in CNY yuan.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: "Wuliang AI returned the available balance."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Wuliang AI rejected the API Key or account access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Wuliang AI returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or connection configuration are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleBalance
+          branch: fetched
+          description: Synthetic CNY balance for local Flow verification, not live account data.
+          default: true
+          output: {availableCNY: "138.5"}

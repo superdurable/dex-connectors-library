@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: pingcap
+  displayName: PingCAP TiDB Cloud
+  description: List projects accessible to a TiDB Cloud organization API key.
+  company: PingCAP
+  categories: [databases-storage]
+  version: v0.1.0
+spec:
+  provider: pingcap
+  codegen:
+    go:
+      package: pingcap
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin for the TiDB Cloud API, without a path. Leave blank for the displayed public endpoint; override only for a trusted test server or approved proxy.
+        default: https://api.tidbcloud.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for each HTTP request in a challenge-and-response project query as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum project-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only when a legitimate page exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: tidb-cloud-api-key
+    fields:
+      - name: public_key
+        goName: PublicKey
+        type: secretString
+        description: Public key from https://tidbcloud.com/ > target organization > Organization Settings > API Keys > Create API Key. Copy the complete generated public key string. Dex stores it only as a credential; Digest sends it as the username. Blank prevents requests.
+        required: true
+      - name: private_key
+        goName: PrivateKey
+        type: secretString
+        description: Private key paired with the public key from https://tidbcloud.com/ > target organization > Organization Settings > API Keys > Create API Key. Copy the complete secret at creation; it is not shown later. Dex stores it only as a credential and never sends it. Blank prevents requests.
+        required: true
+    guide:
+      startURL: https://tidbcloud.com/
+      steps:
+        - Sign in to https://tidbcloud.com/, choose the target organization in the upper-left selector, then open Organization Settings > API Keys.
+        - Click Create API Key, enter a description, assign a role and scope that permit listing projects, then click Generate API Key. Copy both the public key and one-time private key into Dex secret fields.
+        - The private key cannot be viewed after leaving this page. Configure an IP allow list when available, and disable or delete the API key in Organization Settings > API Keys if exposed.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: ListProjectsOutput
+      kind: query
+      description: List one page of projects accessible to the TiDB Cloud organization API key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: TiDB Cloud returned a page of accessible projects.}
+        - {id: providerRejected, goName: ProviderRejected, description: "TiDB Cloud rejected authentication, permission, or request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TiDB Cloud returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneProject
+          branch: listed
+          description: The organization has one example project.
+          default: true
+          output: {items: [{id: "101", orgId: "201", name: demo, clusterCount: 3, userCount: 1, createTimestamp: "1652407748", type: dedicated}], total: 1, page: 1, pageSize: 10}

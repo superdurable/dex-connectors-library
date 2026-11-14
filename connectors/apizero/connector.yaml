@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: apizero
+  displayName: ApiZero
+  description: Read the current ApiZero account balance or prepaid API Key quota.
+  company: ApiZero
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: apizero
+  codegen:
+    go:
+      package: apizero
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one account-information HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only if the account-information response grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: apizero-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret sk_live_ API Key from https://apizero.cn/account/keys > API Key. Copy exactly from the console; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://apizero.cn/account/keys
+      steps:
+        - Sign in at https://apizero.cn/account/keys, open Console > API Key, and create or copy a secret sk_live_ API Key. Enter it in Dex Connections; blank prevents requests. A standard Key reveals your own wallet balance; a prepaid Key reveals only its own remaining call quota.
+        - Start GetAccountInfo with empty JSON {}. The provider's fixed HTTPS endpoint is selected automatically. No user ID or other account identifier is accepted. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - This free read-only endpoint has a default 1-request-per-second limit and a daily quota. Every HTTP 429, including per-second and daily quota limits, retries with Retry-After until the retry budget runs out. Keep the Key out of URLs and Flow data and replace a compromised Key in the ApiZero console.
+  operations:
+    - name: getAccountInfo
+      goName: GetAccountInfo
+      inputType: GetAccountInfoInput
+      outputType: GetAccountInfoOutput
+      kind: query
+      description: Read the current standard Key wallet balance or prepaid Key remaining calls.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: ApiZero returned account or prepaid Key information.}
+        - {id: providerRejected, goName: ProviderRejected, description: ApiZero rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ApiZero returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: personWaiting, explanation: "A user waits for current account information, so transient failures are retried at most twice before the Flow fails."}}
+      mocks:
+        - name: standardAccount
+          branch: found
+          description: Standard Key returns its owner's wallet balance in yuan.
+          default: true
+          output: {scope: account, balanceYuan: "123.4000"}
+        - name: prepaidKey
+          branch: found
+          description: Prepaid Key returns only its own remaining call quota.
+          output: {scope: key, keyQuotaRemaining: 42}
