@@ -382,6 +382,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_SDK_RELEASE_CACHE_PATH: ${{ runner.temp }}/sdk-release-cache.json
       GH_RELEASE_INVENTORY_PATH: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '/tmp/release-inventory.json' || '' }}
       CONNECTOR_SCOPE: ${{ needs.connector-plan.outputs.connector_scope }}
       CONNECTOR_BASE: ${{ needs.connector-plan.outputs.connector_base }}
