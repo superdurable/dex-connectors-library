@@ -490,6 +490,13 @@ class ComponentReleaseTest(unittest.TestCase):
         )
         lookup.is_language_sdk_published.return_value = True
         self.assertEqual(release.validate_language_package(str(python_package), "python", lookup), "sdkpython/v0.1.0")
+        lookup.release_asset_names.side_effect = lambda tag: frozenset()
+        with self.assertRaisesRegex(ValueError, "required SDK GitHub release is missing: sdkpython/v0.1.0"):
+            release.validate_language_package(str(python_package), "python", lookup)
+        lookup.release_asset_names.side_effect = lambda tag: (
+            frozenset({"language-release.json"}) if tag.startswith("sdkpython/") else
+            frozenset({"connector-release.complete"})
+        )
         lookup.is_language_sdk_published.return_value = False
         with self.assertRaisesRegex(ValueError, "not published in the registry"):
             release.validate_language_package(str(python_package), "python", lookup)
@@ -679,6 +686,18 @@ class ComponentReleaseTest(unittest.TestCase):
         with mock.patch.object(release, "release_assets", side_effect=RuntimeError("GitHub API rate limit (HTTP 403)")):
             with self.assertRaisesRegex(ValueError, "rate limit"):
                 lookup.release_asset_names("connectors/newsapi/go/v0.23.0", allow_missing=True)
+
+    def test_sdk_rate_limit_is_reported_as_infrastructure_failure(self) -> None:
+        lookup = release.DependencyReleaseLookup("origin/main")
+        with mock.patch.object(release, "release_assets", side_effect=release.GitHubRateLimitError("HTTP 403")):
+            with self.assertRaisesRegex(RuntimeError, "infrastructure failure: GitHub release lookup for sdkts/v0.1.1: HTTP 403"):
+                lookup.release_asset_names("sdkts/v0.1.1")
+
+    def test_missing_sdk_release_still_fails_validation(self) -> None:
+        lookup = release.DependencyReleaseLookup("origin/main")
+        with mock.patch.object(release, "release_assets", return_value=None):
+            with self.assertRaisesRegex(ValueError, "sdkts/v0.9.9: release not found"):
+                lookup.release_asset_names("sdkts/v0.9.9")
 
     def test_language_capability_coverage_rejects_missing_factories_and_triggers(self) -> None:
         source_manifest = self.repository / "connector.yaml"

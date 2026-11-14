@@ -23,10 +23,12 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 if __package__:
-    from .github_release_inventory import TRANSIENT_CONNECTION_ERRORS, github_json, is_certificate_verification_failure, release_assets
+    from .github_release_inventory import (GitHubRateLimitError, TRANSIENT_CONNECTION_ERRORS, github_json,
+                                           is_certificate_verification_failure, release_assets)
 else:
     sys.path.insert(0, str(Path(__file__).parent))
-    from github_release_inventory import TRANSIENT_CONNECTION_ERRORS, github_json, is_certificate_verification_failure, release_assets
+    from github_release_inventory import (GitHubRateLimitError, TRANSIENT_CONNECTION_ERRORS, github_json,
+                                          is_certificate_verification_failure, release_assets)
 
 PYPI_LOOKUP_ATTEMPTS = 4
 NPM_LOOKUP_ATTEMPTS = 4
@@ -91,7 +93,10 @@ class DependencyReleaseLookup:
 
     def release_asset_names(self, tag: str, allow_missing: bool = False) -> frozenset[str]:
         try:
-            assets = release_assets(tag, os.environ.get("GH_RELEASE_INVENTORY_PATH"))
+            cache_path = os.environ.get("GH_SDK_RELEASE_CACHE_PATH") if tag.startswith(("sdkpython/", "sdkts/")) else None
+            assets = release_assets(tag, os.environ.get("GH_RELEASE_INVENTORY_PATH"), cache_path=cache_path)
+        except GitHubRateLimitError as error:
+            raise RuntimeError(f"infrastructure failure: GitHub release lookup for {tag}: {error}") from error
         except RuntimeError as error:
             raise ValueError(f"cannot read the GitHub release for {tag}: {error}") from error
         if assets is None:
