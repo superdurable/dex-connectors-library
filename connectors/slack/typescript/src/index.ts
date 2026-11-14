@@ -8,3 +8,6 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { SlackClient } from './client.js';
 export { GetThreadReplyOperation, GetWorkspaceIdentityOperation, ListChannelMessagesOperation, ListChannelsOperation, ListThreadMessagesOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
 export { newProjectConnection } from './project.js';
+export * from './trigger.js';
+export { dialSlackSocket, type SlackSocketConnection, type SlackSocketDialer } from './socket_mode.js';
+export { DefaultSlackTriggerTimings, type SlackClientOptions, type SlackTriggerTimings } from './client.js';

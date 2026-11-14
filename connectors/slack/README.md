@@ -37,9 +37,11 @@ the same tools for host tests.
 
 ## TypeScript package
 
-`@superdurable/connector-slack@0.5.0` implements the channel discovery,
-channel history and thread reads, and message post operations for TypeScript Dex Flows. Socket Mode Triggers remain
-Go-only. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
+`@superdurable/connector-slack@0.6.0` implements the channel discovery,
+channel history and thread reads, and message post operations for TypeScript Dex Flows, and from 0.6.0 the
+`channelThreadCreated` and `threadReplyCreated` Triggers through Socket Mode or a host's relay, at parity
+with Go. `buttonClicked` remains Go-only. The [runnable thread approval example](typescript/examples/thread-approval/README.md)
+starts a Flow from a root message and approves it from a reply. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
 uses the static `slack-thread-reader` connection name, and the
 [channel history example](typescript/examples/list-channel-messages/README.md)
 uses `slack-channel-history-reader`; both obtain OAuth bot and user tokens
@@ -482,7 +484,7 @@ with the request and button Triggers on one shared runner.
 The [Python package](python/README.md) provides all six Slack operations:
 `listChannels`, `getWorkspaceIdentity`, `listThreadMessages`, `getThreadReply`,
 `postChannelMessage`, and `postThreadReply`. It uses generated OAuth credential decoding and refresh for
-private or shared Dex project connections. Socket Mode Triggers remain Go-only.
+private or shared Dex project connections. Triggers are not in the Python package.
 The runnable [thread messages example](python/examples/thread_messages/README.md)
 posts through a Mutation Step and reads the new thread through a Query Step.
 Its integration test uses a real Dex Worker and Client with a local Slack HTTP
