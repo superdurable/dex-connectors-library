@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zhuanqicloud
+  displayName: ZhuanqiCloud Model Catalog
+  description: List the model IDs available to a ZhuanqiCloud API Key.
+  company: ZhuanqiCloud
+  categories: [ai, developer-tools]
+  version: v0.1.0
+spec:
+  provider: zhuanqicloud
+  codegen:
+    go:
+      package: zhuanqicloud
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS model-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider adds more model metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: zhuanqicloud-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API Key from https://zhuanqicloud.com > 控制台 > API Key. Create a key with model-list access and copy it into Dex Connections; blank prevents requests.
+    guide:
+      startURL: https://docs.zhuanqicloud.com/9347147m0
+      steps:
+        - Sign in at https://zhuanqicloud.com, open 控制台 > API Key, create a secret key and confirm its group and model restrictions. Copy it into Dex Connections; blank prevents requests.
+        - Start ListModels with {}. The connector calls the fixed HTTPS GET /v1/models API and returns at most the first 50 model IDs visible to this Key. It does not call inference or expose model metadata.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. A listed model may not support every API capability; check the provider console before choosing one.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List up to 50 model IDs visible to the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: ZhuanqiCloud returned the available model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: ZhuanqiCloud rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ZhuanqiCloud returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneModel
+          branch: found
+          description: One available API model ID.
+          default: true
+          output: {total: 1, modelIDs: [model-id-0]}
+        - name: noModels
+          branch: found
+          description: No models are enabled for the Key.
+          output: {total: 0, modelIDs: []}

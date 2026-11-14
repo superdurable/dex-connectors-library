@@ -1,0 +1,66 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: ipplus360
+  displayName: IPPlus360 IP Lookup
+  description: Look up a public IPv4 address with IPPlus360's IP location service.
+  company: IPPlus360
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: ipplus360
+  codegen:
+    go:
+      package: ipplus360
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS IP lookup as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size in bytes as a positive integer. Blank uses the displayed default; increase only if a valid IP lookup response grows beyond it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: ipplus360-ip
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret district-level IPv4 product KEY from https://account.ipplus360.com/setting > 我的订单 after purchasing the district-level IPv4 geolocation API. Copy its opaque value; Dex stores it as a credential. Blank prevents requests.
+    guide:
+      startURL: https://mall.ipplus360.com/pros/IPVFourGeoAPI
+      steps:
+        - Open https://mall.ipplus360.com/pros/IPVFourGeoAPI, select the IPv4 区县级 product, and purchase or activate its plan.
+        - Sign in at https://account.ipplus360.com/setting, open 我的订单, and copy the product-specific secret KEY into api_key. Keep it private and rotate it in the provider console if exposed.
+        - Pass one public IPv4 address such as 8.8.8.8 as the Flow input. Blank or malformed values are rejected. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - The connector submits the KEY to the documented HTTPS endpoint; lookup calls may consume the purchased query quota. It returns only country, province, city, district, and ISP.
+  operations:
+    - name: lookupIPLocation
+      goName: LookupIPLocation
+      inputType: LookupIPLocationInput
+      outputType: LookupIPLocationOutput
+      kind: query
+      description: Look up country, province, city, district, and operator for one public IPv4 address.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: IPPlus360 returned the IP location.}
+        - {id: providerRejected, goName: ProviderRejected, description: "IPPlus360 rejected credentials, quota, or the query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: IPPlus360 returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or IP address are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An IP lookup may consume purchased quota, so transport failures are retried at most twice."}}
+      mocks:
+        - name: shenzhen
+          branch: found
+          description: Synthetic Shenzhen IP location for local Flow verification, not a live provider result.
+          default: true
+          output: {country: 中国, province: 广东, city: 深圳, district: 龙岗区, operator: 移动}

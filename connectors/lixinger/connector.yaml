@@ -1,0 +1,71 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: lixinger
+  displayName: Lixinger
+  description: Read basic A-share company identifiers and listing metadata.
+  company: Lixinger
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: lixinger
+  codegen:
+    go:
+      package: lixinger
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Lixinger HTTPS OpenAPI origin. Leave blank for the displayed production default; override only if Lixinger documents a replacement host. See https://www.lixinger.com/api/open-api/html-doc/cn/company.
+        default: https://open.lixinger.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one stock-company metadata request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for slow responses.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum stock-company response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate larger response.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: lixinger-api
+    fields:
+      - name: token
+        goName: Token
+        type: secretString
+        required: true
+        description: Your unique OpenAPI Token from Lixinger account > 开放平台 > 我的Token at https://www.lixinger.com/open/api/token. Copy it into this secret field; blank prevents requests. The provider requires it in the JSON body and the connector never returns it.
+    guide:
+      startURL: https://www.lixinger.com/open/api/token
+      steps:
+        - Sign in to Lixinger, open 开放平台 > 我的Token, and copy your unique API Token into secret token. Blank prevents requests; manage or replace it on that page if disclosed. Ensure the account has API access for A-share company basic information.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. The Query requests only the stock codes supplied in the Flow input and returns identifiers and listing metadata, not prices or recommendations.
+  operations:
+    - name: listStockCompanies
+      goName: ListStockCompanies
+      inputType: ListStockCompaniesInput
+      outputType: ListStockCompaniesOutput
+      kind: query
+      description: Retrieve basic metadata for 1 to 100 A-share stock codes.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Lixinger returned company metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Lixinger rejected token or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Lixinger returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local token or stock codes are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "API access may consume a paid plan allowance, so transient retries are limited to three attempts."}}
+      mocks:
+        - name: sampleStockCompanies
+          branch: listed
+          description: Synthetic A-share company metadata for local Flow verification, not live investment data.
+          default: true
+          output:
+            companies:
+              - {stockCode: "300750", name: Example Company, exchange: sz, listingStatus: normally_listed}

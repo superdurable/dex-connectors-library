@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="格物知心">
+  <!--
+    GOWU 标志。取自品牌规范页（https://public.gowu.ai/logo/）的内联定义——
+    那页上「下载 SVG/PNG」的几个链接实测都是 404，标志本体只存在于页面的
+    <symbol> 里，所以这里按同样的几何原样落到仓库中，不依赖那个域名可用性。
+
+    构型：3×3 模块方阵裁进圆角方，中心挖一个白圆再放一个实心小圆。
+    模块间距 10、圆角 94，都是规范页上的原值，别顺手改成"整数好看一点"。
+  -->
+  <defs>
+    <clipPath id="gowu-round"><rect width="400" height="400" rx="94"/></clipPath>
+  </defs>
+  <g fill="#21a57b" clip-path="url(#gowu-round)">
+    <rect x="0" y="0" width="128.333" height="128.333"/>
+    <rect x="138.333" y="0" width="123.334" height="128.333"/>
+    <rect x="271.667" y="0" width="128.333" height="128.333"/>
+    <rect x="0" y="138.333" width="128.333" height="123.334"/>
+    <rect x="138.333" y="138.333" width="123.334" height="123.334"/>
+    <rect x="271.667" y="138.333" width="128.333" height="123.334"/>
+    <rect x="0" y="271.667" width="128.333" height="128.333"/>
+    <rect x="138.333" y="271.667" width="123.334" height="128.333"/>
+    <rect x="271.667" y="271.667" width="128.333" height="128.333"/>
+  </g>
+  <circle cx="200" cy="200" r="52" fill="#ffffff"/>
+  <circle cx="200" cy="200" r="24" fill="#21a57b"/>
+</svg>

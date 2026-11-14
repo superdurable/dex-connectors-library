@@ -1,0 +1,73 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: fastgpt
+  displayName: FastGPT
+  description: Read FastGPT knowledge base metadata by ID.
+  company: FastGPT
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: fastgpt
+  codegen:
+    go:
+      package: fastgpt
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS address of your FastGPT instance as opened in the browser, including any sub-path prefix the deployment was built with through NEXT_PUBLIC_BASE_URL, such as /fastgpt, but without /api. Leave blank for the displayed China cloud origin; override only for your organization's approved HTTPS private deployment or a local loopback test server.
+        default: https://cloud.fastgpt.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one knowledge-base detail request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum knowledge-base detail response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate response exceeds it.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: fastgpt-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Personal API Key from https://cloud.fastgpt.cn/ > 账号 > API 密钥; see https://doc.fastgpt.cn/zh-CN/openapi/intro for the page path. Create a key as a member with read access to the target knowledge base; application-scoped chat keys cannot read it. Dex stores it only as a credential. Blank prevents requests.
+    guide:
+      startURL: https://doc.fastgpt.cn/zh-CN/openapi/intro
+      steps:
+        - Sign in to https://cloud.fastgpt.cn/ or your HTTPS private deployment. Open 账号 > API 密钥 and create a personal API Key with access to the target knowledge base; ask a team owner to enable 创建 API 密钥 permission if the menu is missing.
+        - Enter the personal key in api_key. Application Keys under 工作台 > 应用 > 发布渠道 > API 访问 are limited to that application's chat APIs and do not authorize knowledge-base queries. Leave baseUrl blank for China cloud or use the private HTTPS instance address, keeping its sub-path prefix if it has one.
+        - Copy a knowledge-base ID from its FastGPT interface URL. The Query returns only its ID, name, type, and status; it omits descriptions, models, permissions, and owner details.
+  operations:
+    - name: getDatasetDetails
+      goName: GetDatasetDetails
+      inputType: GetDatasetDetailsInput
+      outputType: GetDatasetDetailsOutput
+      kind: query
+      description: Read metadata of one accessible knowledge base.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "FastGPT returned the knowledge base metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "FastGPT rejected access or the knowledge base ID.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "FastGPT returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or knowledge base ID are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleDataset
+          branch: found
+          description: Synthetic knowledge base metadata for local Flow verification, not tenant data.
+          default: true
+          output:
+            id: 65abc9bd9d1448617cba5e6c
+            name: Example Knowledge Base
+            type: dataset
+            status: active

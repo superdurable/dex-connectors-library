@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: gshapi
+  displayName: GSH API Model Catalog
+  description: List model IDs available to a GSH API API Key.
+  company: GSH API
+  categories: [ai, developer-tools]
+  version: v0.1.0
+spec:
+  provider: gshapi
+  codegen:
+    go:
+      package: gshapi
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS model-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum model-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider adds more model metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: gshapi-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret sk-gsh- prefixed API Key issued after subscription at https://api.gshpay.com/pricing.html. Copy it into Dex Connections; blank prevents requests.
+    guide:
+      startURL: https://api.gshpay.com/docs.html
+      steps:
+        - Open https://api.gshpay.com/pricing.html, submit a subscription request, and obtain the issued secret sk-gsh- prefixed API Key. Copy it into Dex Connections; blank prevents requests.
+        - Start ListModels with {}. The connector calls the current HTTPS api.gshpay.com domain and returns at most the first 50 model IDs visible to the Key. It does not call inference or expose model metadata.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The fixed production endpoint is api.gshpay.com; model availability follows the Key and provider catalog.
+  operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ListModelsOutput
+      kind: query
+      description: List up to 50 model IDs enabled for the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: GSH API returned the available model list.}
+        - {id: providerRejected, goName: ProviderRejected, description: GSH API rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GSH API returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneModel
+          branch: found
+          description: One available API model ID.
+          default: true
+          output: {total: 1, modelIDs: [deepseek-chat]}
+        - name: noModels
+          branch: found
+          description: No models are enabled for the Key.
+          output: {total: 0, modelIDs: []}

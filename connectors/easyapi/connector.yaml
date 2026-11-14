@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: easyapi
+  displayName: EasyAPI E-Invoice
+  description: Query an authorized invoicing company's service configuration.
+  company: EasyAPI
+  categories: [finance-payments]
+  version: v0.1.0
+spec:
+  provider: easyapi
+  codegen:
+    go:
+      package: easyapi
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the EasyAPI E-Invoice API. Leave blank for the displayed production endpoint; override only for a trusted provider-issued HTTPS endpoint.
+        default: https://fapiao-api.easyapi.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one company configuration query as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise it only when the provider responds slowly from your network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum company response size in bytes as a positive integer. Leave blank for the displayed default; raise only if provider responses exceed it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: easyapi-invoice-key
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        description: Service Key from https://fapiao.easyapi.com/console/ > 服务认证. Copy exactly into this protected field; blank prevents requests.
+        required: true
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        description: Service Secret paired with the Key on the same 服务认证 page. Copy exactly into this protected field; blank prevents requests.
+        required: true
+    guide:
+      startURL: https://fapiao.easyapi.com/docs/auth/
+      steps:
+        - Sign in to https://fapiao.easyapi.com/console/ and open 服务认证. Create or select a service key pair associated with the invoicing company. Copy its Key into the protected app_key field and paired Secret into the protected app_secret field; blank prevents requests.
+        - The Query requires the company's 15, 17, 18, 19, or 20-character tax number from the same company's invoicing setup. The key pair must be associated with that company; use only authorized company tax numbers.
+        - The provider's GET contract places credentials and tax number in the HTTPS query string. This connector disables redirects and excludes those values from Flow results, receipts, and errors. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults; rotate the key pair in Dex after provider rotation.
+  operations:
+    - name: queryShop
+      goName: QueryShop
+      inputType: QueryShopInput
+      outputType: ShopResult
+      kind: query
+      description: Read service status for one authorized invoicing company, excluding tax number, address, phone, bank, staff, and certificate fields.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "EasyAPI returned the company's invoicing service configuration."}
+        - {id: providerRejected, goName: ProviderRejected, description: "EasyAPI rejected the credentials or tax number.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "EasyAPI returned malformed or oversized company data.", optional: true}
+        - {id: defect, goName: Defect, description: "The local tax number or connection is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundShop
+          branch: found
+          description: Synthetic company service status for local Dex Flow verification.
+          default: true
+          output: {shopId: 1001, name: Example Company, apiState: 1, endTime: "2027-01-01 00:00:00"}

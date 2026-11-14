@@ -1,0 +1,73 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: likelic
+  displayName: Likelic Room Directory
+  description: List group identifiers and delivery readiness for Likelic outbound notifications.
+  company: Likelic
+  categories: [communication, customer-support]
+  version: v0.1.0
+spec:
+  provider: likelic
+  codegen:
+    go:
+      package: likelic
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS room-list request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only when a legitimate page of room identifiers exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: likelic-api-key
+    fields:
+      - name: customerCode
+        goName: CustomerCode
+        type: string
+        required: true
+        description: Nonsecret 1-50 character customer code assigned by your Likelic administrator at https://agent.likelic.com > 企业设置. Copy the code exactly; blank prevents requests.
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret sk- prefixed API Key from https://agent.likelic.com > 外部拓展 > API 设置. Create a key and grant 推送通知 in 系统设置 > 开放 API 权限; blank prevents requests.
+    guide:
+      startURL: https://agent.likelic.com/doc/v1/
+      steps:
+        - Sign in at https://agent.likelic.com and obtain the nonsecret 1-50 character Customer Code from your enterprise administrator. In 外部拓展 > API 设置, create a secret sk- API Key and copy it into Dex Connections. In 系统设置 > 开放 API 权限, enable 推送通知 and authorize that Key. Blank credentials prevent requests.
+        - Start ListRooms with page 1. The connector calls the fixed HTTPS GET /api/v1/rooms endpoint with a fixed limit of 20 and returns only channel, instance ID, room ID, push state, and total count. Group and company names and member counts are discarded.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The page field starts at 1 and can be increased to read subsequent pages; no page is sent automatically.
+  operations:
+    - name: listRooms
+      goName: ListRooms
+      inputType: ListRoomsInput
+      outputType: ListRoomsOutput
+      kind: query
+      description: Read one page of group notification targets without group names or members.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Likelic returned a room page.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Likelic rejected authorization, permission, or the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Likelic returned malformed or oversized room data., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or page are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneRoom
+          branch: found
+          description: One synthetic notification room.
+          default: true
+          output: {page: 1, total: 1, rooms: [{channel: wework, instanceID: 3, roomID: room-123, pushState: ready}]}
+        - name: noRooms
+          branch: found
+          description: No rooms appear on this page.
+          output: {page: 1, total: 0, rooms: []}

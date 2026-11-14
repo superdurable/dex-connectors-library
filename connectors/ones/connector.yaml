@@ -1,0 +1,71 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: ones
+  displayName: ONES
+  description: List teams accessible to a ONES API key.
+  company: ONES
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: ones
+  codegen:
+    go:
+      package: ones
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: HTTPS origin of your ONES tenant, from the address bar after signing in to https://ones.cn/. Include only scheme and host, without a path. Blank prevents requests; use your organization-approved tenant host.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one team-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum team-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate response exceeds it.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: ones-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: One-time-shown secret from your ONES tenant > Personal Settings > Personal API keys > Create API key, with read:account:teams scope. Start at https://docs.ones.cn/developer/openapi/auth/personal-api-keys/ for the exact page path. Dex stores it only as a credential. Blank prevents requests.
+    guide:
+      startURL: https://docs.ones.cn/developer/openapi/auth/personal-api-keys/
+      steps:
+        - Sign in to your ONES tenant from https://ones.cn/, open Personal Settings > Personal API keys, create a key with read:account:teams scope, and copy its one-time-shown secret into api_key.
+        - Set baseUrl to that tenant's HTTPS origin, without /openapi/v2 or any other path. Leave timeout and maxResponseBytes blank for displayed defaults. Revoke a lost key from Personal API keys and create a replacement.
+        - This Query lists accessible team IDs, names, and numeric statuses. It omits owner IDs and creation timestamps.
+  operations:
+    - name: listTeams
+      goName: ListTeams
+      inputType: ListTeamsInput
+      outputType: ListTeamsOutput
+      kind: query
+      description: List teams accessible to the connected user.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "ONES returned accessible teams."}
+        - {id: providerRejected, goName: ProviderRejected, description: "ONES rejected the key or permissions.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "ONES returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or tenant configuration are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleTeams
+          branch: listed
+          description: Synthetic team data for local Flow verification, not a live tenant.
+          default: true
+          output:
+            teams:
+              - {id: team-example-1, name: Example Team, status: 1}

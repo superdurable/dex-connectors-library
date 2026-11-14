@@ -1,0 +1,71 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: ihuyi
+  displayName: Ihuyi IP Lookup
+  description: Look up a public IPv4 address with Ihuyi's IP location service.
+  company: Ihuyi
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: ihuyi
+  codegen:
+    go:
+      package: ihuyi
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS IP lookup as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size in bytes as a positive integer. Blank uses the displayed default; increase only if a valid IP lookup response grows beyond it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: ihuyi-ip
+    fields:
+      - name: api_id
+        goName: APIID
+        type: string
+        required: true
+        description: API ID from https://user.ihuyi.com/ > IP查询 > 产品总览, shown at the upper right. Copy its opaque account value; it identifies the account but is not a secret. Blank prevents requests.
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API KEY from https://user.ihuyi.com/ > IP查询 > 产品总览. Copy its opaque value; Dex stores it as a credential and sends only its MD5 time-bound signature. Blank prevents requests.
+    guide:
+      startURL: https://user.ihuyi.com/
+      steps:
+        - Sign in at https://user.ihuyi.com/, open IP查询 > 产品总览, enable the IP lookup product, and copy the API ID and API KEY from the upper-right credentials panel.
+        - Enter the ID in api_id and secret key in api_key. Keep the key private and rotate it in the provider console if exposed. Configure any required outbound IP allowlist with the Dex Worker IP.
+        - Pass one public IPv4 address such as 8.8.8.8 as the Flow input. Blank or malformed values are rejected. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - The connector submits a time-bound MD5 signature over HTTPS; lookup calls may consume the purchased query quota. It returns only country, province, city, district, and operator.
+  operations:
+    - name: lookupIPLocation
+      goName: LookupIPLocation
+      inputType: LookupIPLocationInput
+      outputType: LookupIPLocationOutput
+      kind: query
+      description: Look up country, province, city, district, and operator for one public IPv4 address.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Ihuyi returned the IP location.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Ihuyi rejected credentials, quota, or the query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ihuyi returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or IP address are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An IP lookup may consume purchased quota, so transport failures are retried at most twice."}}
+      mocks:
+        - name: shenzhen
+          branch: found
+          description: Synthetic Shenzhen IP location for local Flow verification, not a live provider result.
+          default: true
+          output: {country: 中国, province: 广东, city: 深圳, district: 龙岗区, operator: 移动}

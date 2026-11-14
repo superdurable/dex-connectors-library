@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: rainbond
+  displayName: Rainbond
+  description: List Rainbond teams accessible to a console access token.
+  company: Rainbond
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: rainbond
+  codegen:
+    go:
+      package: rainbond
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: HTTPS origin of your organization's Rainbond console, copied from its address bar after sign-in. Include only scheme and host without /openapi; blank prevents requests. Your administrator must expose the console over HTTPS.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one team-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for an approved slow proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum team-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate larger page.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: rainbond-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Console access token from your Rainbond HTTPS console > top-right user menu > 个人中心 > 访问令牌 > 新增. See https://v5.12-docs.rainbond.com/docs/intro/ for the page path. Copy the token into this secret field; Dex stores it only as a credential. Blank prevents requests. Use an account with team read access.
+    guide:
+      startURL: https://v5.12-docs.rainbond.com/docs/intro/
+      steps:
+        - Open your organization's HTTPS Rainbond console, select the top-right 个人中心 > 访问令牌 > 新增, and copy the token into api_key. The token inherits that user's team access.
+        - Copy the console HTTPS origin into baseUrl without /openapi. Leave timeout and maxResponseBytes blank for the displayed defaults. This connector uses the documented v5.12 OpenAPI Authorization header with the raw token.
+        - The Query reads one page of team IDs, names, active flags, and the total count. It omits owner IDs, creator names, roles, and timestamps.
+  operations:
+    - name: listTeams
+      goName: ListTeams
+      inputType: ListTeamsInput
+      outputType: ListTeamsOutput
+      kind: query
+      description: List one page of teams visible to the console token.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Rainbond returned one team page."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Rainbond rejected the token or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Rainbond returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination options are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleTeams
+          branch: listed
+          description: Synthetic team metadata for local Flow verification, not console data.
+          default: true
+          output:
+            teams:
+              - {id: team-example-1, name: Example Team, active: true}
+            total: 1

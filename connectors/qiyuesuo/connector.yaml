@@ -1,0 +1,78 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: qiyuesuo
+  displayName: Qiyuesuo
+  description: Read one page of e-signature contract IDs and statuses.
+  company: Qiyuesuo
+  categories: [files-documents]
+  version: v0.1.0
+spec:
+  provider: qiyuesuo
+  codegen:
+    go:
+      package: qiyuesuo
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Qiyuesuo HTTPS API origin. Leave blank for the displayed production default; override only with the documented sandbox origin while testing. See https://help.qiyuesuo.com/document/open/detail/2725986623018775399.
+        default: https://openapi.qiyuesuo.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one contract-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow response.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum contract-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate larger page.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: qiyuesuo-api
+    fields:
+      - name: app_token
+        goName: AppToken
+        type: secretString
+        required: true
+        description: App Token from your Qiyuesuo electronic signing platform > 集成管理 > selected application. Copy the token into this secret field; it identifies your approved API application, and blank prevents requests. See https://open.qiyuesuo.com/notice/detail?id=2708871885193495439.
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: App Secret for the same application from Qiyuesuo electronic signing platform > 集成管理 > selected application > 系统配置. Copy it into this secret field; it signs each request, and blank prevents requests. Reset it there if disclosed. See https://open.qiyuesuo.com/notice/detail?id=2708871885193495439.
+    guide:
+      startURL: https://open.qiyuesuo.com/signup
+      steps:
+        - Register and complete enterprise verification on the Qiyuesuo open platform; request access to the contract-list API for your application. In the electronic signing platform open 集成管理, select the application, and copy its App Token to secret app_token.
+        - In the same application's 系统配置, copy App Secret to secret app_secret and configure its IP allowlist if required. Revoke or reset exposed credentials there. Both fields are secret and required.
+        - Leave baseUrl blank for production or choose the documented sandbox HTTPS origin for tests. Leave timeout and maxResponseBytes blank for displayed defaults. The Query returns only contract IDs and statuses; no document body or signer details.
+  operations:
+    - name: listContracts
+      goName: ListContracts
+      inputType: ListContractsInput
+      outputType: ListContractsOutput
+      kind: query
+      description: List one bounded page of contract IDs and statuses.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Qiyuesuo returned contract statuses."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Qiyuesuo rejected the token, signature, or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Qiyuesuo returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleContracts
+          branch: listed
+          description: Synthetic contract IDs and statuses for local Flow verification, not live customer data.
+          default: true
+          output:
+            contracts:
+              - {id: "2966583458579853505", status: SIGNING}
+            totalCount: 1
+            nextOffset: 0

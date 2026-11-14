@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: bocha
+  displayName: Bocha AI
+  description: Search public web pages using Bocha AI Search.
+  company: Bocha
+  categories: [data-search, ai]
+  version: v0.1.0
+spec:
+  provider: bocha
+  codegen:
+    go:
+      package: bocha
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one web search HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only if the search response grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: bocha-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API Key from https://open.bocha.cn/api-keys > API KEY. Create or copy it there; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://open.bocha.cn/api-keys
+      steps:
+        - Register or sign in at https://open.bocha.cn, open API KEY at https://open.bocha.cn/api-keys, create or copy your secret API Key, and enter it in Dex Connections. Blank prevents requests; never put it in Flow input or a URL.
+        - Start SearchWeb with a nonblank query of at most 256 Unicode characters, for example {"query":"博查 搜索 API"}. The connector requests five public web results with no freshness filter and no long summaries. Leave timeout and maxResponseBytes blank for the displayed defaults.
+        - Search calls may consume provider credit. Retry is limited because a response lost after a successful billed search could cause a second charge. Inspect the provider console for quota and rotate a compromised Key there.
+  operations:
+    - name: searchWeb
+      goName: SearchWeb
+      inputType: SearchWebInput
+      outputType: SearchWebOutput
+      kind: query
+      description: Search public web pages and return up to five titles, URLs, and snippets.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Bocha returned public web search results.}
+        - {id: providerRejected, goName: ProviderRejected, description: Bocha rejected the Key or query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Bocha returned malformed or oversized search data., optional: true}
+        - {id: defect, goName: Defect, description: The local query or API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 10s, maximumAttempts: 2, totalDuration: 1m, reason: {kind: billedOperation, explanation: "Successful web searches can consume credit; one retry handles brief failures while limiting duplicate charges after an ambiguous response loss."}}
+      mocks:
+        - name: searchResults
+          branch: found
+          description: One public web search result.
+          default: true
+          output: {results: [{title: Example page, url: "https://example.com/article", snippet: Example search excerpt.}]}
+        - name: noResults
+          branch: found
+          description: Search found no matching public web pages.
+          output: {results: []}

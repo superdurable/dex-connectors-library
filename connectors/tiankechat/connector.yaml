@@ -1,0 +1,79 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tiankechat
+  displayName: TiankeChat (天科云客服)
+  description: List knowledge entry metadata from TiankeChat.
+  company: TiankeChat
+  categories: [customer-support]
+  version: v0.1.0
+spec:
+  provider: tiankechat
+  codegen:
+    go:
+      package: tiankechat
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of TiankeChat without /api. Leave blank for the displayed public endpoint; override only with your organization's approved HTTPS private deployment or a local loopback test server.
+        default: https://chat.open-code.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one knowledge-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow approved proxy.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum knowledge-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only if a legitimate response exceeds it.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: tiankechat-api
+    fields:
+      - name: app_id
+        goName: AppID
+        type: string
+        required: true
+        description: Application ID (production ap_ or sandbox sb_ prefix) from https://chat.open-code.cn/ > 系统 > 开放平台 > 应用. Copy the ID for an app belonging to your enterprise; blank prevents requests.
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: One-time-shown secret (tks_ prefix) from https://chat.open-code.cn/ > 系统 > 开放平台 > 应用 > create or reset secret. Dex stores it only as a credential and uses v3 HMAC signatures; blank prevents requests. Resetting an existing v2 secret revokes old credentials.
+    guide:
+      startURL: https://www.tiankechat.cn/developer.html
+      steps:
+        - Sign in to https://chat.open-code.cn/ or your private deployment, open 系统 > 开放平台 > 应用, create an app, and copy its ap_ production or sb_ sandbox app_id and one-time-shown tks_ app_secret.
+        - This connector uses v3 HMAC-SHA256 signatures, so the secret never travels in a request header. For an old v2-only app, coordinate a secret reset in 开放平台 > 应用 before switching; reset revokes its old credentials. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
+        - The Query reads one page of knowledge entry IDs, categories, enabled flags, and hit counts. It omits customer questions, answers, and attachments.
+  operations:
+    - name: listKnowledgeEntries
+      goName: ListKnowledgeEntries
+      inputType: ListKnowledgeEntriesInput
+      outputType: ListKnowledgeEntriesOutput
+      kind: query
+      description: Read one page of knowledge entry metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "TiankeChat returned a knowledge page."}
+        - {id: providerRejected, goName: ProviderRejected, description: "TiankeChat rejected credentials or application access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "TiankeChat returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or page options are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleKnowledge
+          branch: listed
+          description: Synthetic knowledge metadata for local Flow verification, not tenant data.
+          default: true
+          output:
+            entries:
+              - {id: 128, category: Example, active: true, hitCount: 36}
+            total: 1
+            page: 1
+            limit: 20

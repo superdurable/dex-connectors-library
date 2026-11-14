@@ -1,0 +1,66 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: haimou
+  displayName: Haimou IP Lookup
+  description: Look up an IP address with Haimou Data.
+  company: Haimou
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: haimou
+  codegen:
+    go:
+      package: haimou
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS IP lookup as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size in bytes as a positive integer. Blank uses the displayed default; increase only if a valid IP lookup response grows beyond it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: haimou-ip
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret apikey from https://hmkj4399.com/ > 控制台 > 应用管理 after creating an application for IP 归属地. Copy the opaque key into this secret credential field; the provider requires it in the HTTPS query. Blank prevents requests.
+    guide:
+      startURL: https://hmkj4399.com/docs.html
+      steps:
+        - Register at https://hmkj4399.com/, complete the provider's account verification, then open 控制台 > 应用管理 and create an application authorized for IP 归属地.
+        - Copy its secret apikey into api_key. The provider requires it as an HTTPS query parameter; keep it private, avoid logging URLs, and reset it in application details if exposed.
+        - Pass one public IPv4 address such as 8.8.8.8 as the Flow input. Blank or malformed values are rejected. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - The connector queries country, province, city, district, and ISP. Each call consumes provider quota; check remaining calls in the provider console.
+  operations:
+    - name: lookupIPLocation
+      goName: LookupIPLocation
+      inputType: LookupIPLocationInput
+      outputType: LookupIPLocationOutput
+      kind: query
+      description: Look up country, province, city, district, and ISP for one public IPv4 address.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Haimou returned the IP location.}
+        - {id: providerRejected, goName: ProviderRejected, description: "Haimou rejected credentials, quota, or the query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Haimou returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or IP address are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An IP lookup may consume purchased quota, so transport failures are retried at most twice."}}
+      mocks:
+        - name: shenzhen
+          branch: found
+          description: Synthetic Shenzhen IP location for local Flow verification, not a live provider result.
+          default: true
+          output: {country: 中国, province: 广东, city: 深圳, district: 龙岗区, operator: 中国电信}

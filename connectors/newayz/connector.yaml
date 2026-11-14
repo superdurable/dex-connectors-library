@@ -1,0 +1,65 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: newayz
+  displayName: WAYZ Weather
+  description: Read current weather in a Chinese city from WAYZ's location API.
+  company: Newayz
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: newayz
+  codegen:
+    go:
+      package: newayz
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS weather request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum weather response size in bytes as a positive integer. Blank uses the displayed default; increase only if a valid response grows beyond it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: newayz-weather
+    fields:
+      - name: access_key
+        goName: AccessKey
+        type: secretString
+        required: true
+        description: Secret AccessKey from https://lotboard.newayz.com/ after registration, application approval, and enabling the Weather API. Copy its opaque value; Dex stores it as a credential. Blank prevents requests.
+    guide:
+      startURL: https://lotboard.newayz.com/
+      steps:
+        - Register at https://lotboard.newayz.com/, sign in, and apply for an application with Weather API access. Wait for approval.
+        - In the approved application's AccessKey page, copy the secret AccessKey into access_key. Restrict and rotate it in LoTBoard if exposed.
+        - Enter a six-digit Chinese city or district code, such as 420100 for Wuhan. Leave timeout and maxResponseBytes blank for the displayed defaults. Weather queries may consume quota.
+  operations:
+    - name: getCurrentWeather
+      goName: GetCurrentWeather
+      inputType: GetCurrentWeatherInput
+      outputType: GetCurrentWeatherOutput
+      kind: query
+      description: Get current weather, temperature, humidity, and wind for one city code.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: fetched, goName: Fetched, description: WAYZ returned current weather for the city.}
+        - {id: providerRejected, goName: ProviderRejected, description: "WAYZ rejected the key, permission, quota, or city code.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: WAYZ returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "A weather lookup may consume purchased quota, so transport failures are retried at most twice."}}
+      mocks:
+        - name: wuhanCurrentWeather
+          branch: fetched
+          description: Synthetic Wuhan weather for local Flow verification, not live data.
+          default: true
+          output: {province: 湖北省, city: 武汉市, cityCode: "420100", weather: 晴, temperatureCelsius: "20", windDirection: 东风, windPower: "2", humidityPercent: "50", reportTime: "2026-01-01 12:00:00"}

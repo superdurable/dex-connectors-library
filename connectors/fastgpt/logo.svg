@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="FastGPT">
+  <rect width="128" height="128" rx="24" fill="#193a2d"/>
+  <path d="M30 34h67M30 34v61M30 63h56" fill="none" stroke="#f2fff7" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="94" cy="82" r="13" fill="#50df9b"/>
+</svg>

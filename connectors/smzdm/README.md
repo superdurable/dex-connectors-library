@@ -1,0 +1,7 @@
+# SMZDM product search
+
+This Go connector searches the public product index of 北京值得买科技股份有限公司 by keyword. `SearchProducts` returns up to 20 first-page titles and prices in yuan, plus the provider's total count. It does not read customer, order, or account data.
+
+The [official search API](https://openapi.zhidemai.com/pages/search/3.%E6%90%9C%E7%B4%A2%E5%95%86%E5%93%81%E5%88%97%E8%A1%A8%E6%8E%A5%E5%8F%A3.html) specifies `GET https://openapi.smzdm.com/v1/searchapi/search/list`, the required `c=new_wiki`, `request_from`, keyword, page size, and response fields. The [official signing guide](https://openapi.zhidemai.com/pages/rookie/2.API%E8%B0%83%E7%94%A8%E6%96%B9%E6%B3%95%E8%AF%A6%E8%A7%A3.html) requires an uppercase MD5 digest of the App Secret, sorted key/value pairs, and App Secret. The App Secret stays local. App Key and signature appear in the required URL query, so the connector never includes the URL in errors or results and forbids redirects.
+
+[Developer onboarding](https://openapi.zhidemai.com/pages/rookie/1.%E6%96%B0%E6%89%8B%E6%8C%87%E5%8D%97.html) is not self-service: contact `group-content@zhidemai.com` for an App Key, App Secret, and access to this API. Confirm the `request_from` source value during onboarding if the default Dex label is not accepted. The [runnable Dex Flow](go/examples/product-search/README.md) covers setup and output. The logo embeds the unmodified [official website mark](https://openapi.zhidemai.com/assets/img/logo.11729c7d.png). No live provider account has been verified.

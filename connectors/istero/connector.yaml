@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: istero
+  displayName: ISAS Data
+  description: Read an ISAS Data account's daily API call quota.
+  company: Istero
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: istero
+  codegen:
+    go:
+      package: istero
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one account-status request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum account-status response size in bytes as a positive integer. Leave blank for the displayed default; raise only if the provider expands its response.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: istero-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret application Token from https://api.istero.com/ > 开发者中心 > 应用管理 after registering. Copy its exact opaque value into this secret credential field; Dex sends it in an HTTPS Bearer header. Blank prevents requests.
+      - name: isid
+        goName: ISID
+        type: string
+        required: true
+        description: Numeric ISAS account ID from https://api.istero.com/ > 个人中心 after sign-in, such as 60066023. This is an account identifier, not a secret. Copy its exact digits; blank prevents requests.
+    guide:
+      startURL: https://api.istero.com/service/doc/isas-user-info
+      steps:
+        - Sign in at https://api.istero.com/; open 开发者中心 > 应用管理, create or choose an application, and copy its secret Token to api_key. Keep the Token private and rotate it if disclosed.
+        - Open 个人中心 and copy the numeric 起零ISID into isid. It identifies the account being queried and is not secret. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - The Query calls the fixed HTTPS ISAS account endpoint with Bearer authentication. It is free and does not consume the daily quota; it returns only the ISID and call counters, not profile or contact details.
+  operations:
+    - name: getAccountStatus
+      goName: GetAccountStatus
+      inputType: GetAccountStatusInput
+      outputType: GetAccountStatusOutput
+      kind: query
+      description: Read the ISAS account's daily API call counters without charge.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: retrieved, goName: Retrieved, description: "ISAS returned account quota counters."}
+        - {id: providerRejected, goName: ProviderRejected, description: "ISAS rejected the token or account ID.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The account response was malformed or oversized.", optional: true}
+        - {id: defect, goName: Defect, description: "Local key configuration is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleAccountStatus
+          branch: retrieved
+          description: Synthetic daily quota counters for local Flow verification, not a real account.
+          default: true
+          output: {isid: 60066023, todayUsed: 3, todayRemaining: 997}

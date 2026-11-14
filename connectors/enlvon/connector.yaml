@@ -1,0 +1,78 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: enlvon
+  displayName: Enlvon
+  description: Search Chinese electricity policy cards with government source links.
+  company: Enlvon
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: enlvon
+  codegen:
+    go:
+      package: enlvon
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Enlvon production HTTPS API origin. Leave blank for the displayed default; override only if the provider formally changes its production origin.
+        default: https://enlvon.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of a search request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for slow provider responses.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum search response size in bytes. Leave blank for the displayed default; increase only for a legitimate larger policy result.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: enlvon-api
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Dedicated programmatic API Key beginning enl_ from https://enlvon.com/apply after applying for Enlvon access; enter it as a secret. Blank prevents authenticated search.
+    guide:
+      startURL: https://enlvon.com/docs
+      steps:
+        - Read the Enlvon API guide, use 申请内测 at https://enlvon.com/docs to request a dedicated programmatic API Key, and enter the enl_ prefixed secret in api_key. Blank prevents authorization.
+        - Search uses X-API-Key in a header; Enlvon documents 401 for an invalid key and 429 for exhausted quota. The connector does not put the key in URLs or Flow state.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Search outputs only title, date, source identifier, and original government URL.
+  operations:
+    - name: searchPolicies
+      goName: SearchPolicies
+      inputType: SearchPoliciesInput
+      outputType: SearchPoliciesOutput
+      kind: query
+      description: Search electricity policy cards by natural-language query.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Enlvon returned policy cards."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Enlvon rejected credentials or input.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Enlvon returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or query are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry:
+          initialInterval: 1s
+          backoffCoefficient: 2
+          maximumInterval: 1m
+          maximumAttempts: 3
+          totalDuration: 3m
+          reason: {kind: personWaiting, explanation: "Interactive policy search has a waiting user and consumes a limited provider quota, so retries stop after three attempts."}
+      mocks:
+        - name: samplePolicies
+          branch: found
+          description: Synthetic policy card for local Flow verification, not live Enlvon data.
+          default: true
+          output:
+            policies:
+              - {title: Example electricity policy, date: "2026-01-01", source: ndrc, originalURL: "https://www.ndrc.gov.cn/example"}

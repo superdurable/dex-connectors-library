@@ -1,0 +1,80 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: caoliao
+  displayName: Caoliao
+  description: List QR code names and coding identifiers from a Caoliao organization.
+  company: Caoliao
+  categories: [productivity]
+  version: v0.1.0
+spec:
+  provider: caoliao
+  codegen:
+    go:
+      package: caoliao
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Caoliao OpenAPI V2 HTTPS origin. Leave blank for the displayed default; override only after the provider formally changes its production endpoint.
+        default: https://open.cli.im
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one QR-code list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; increase only for slow responses.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum QR-code list response size in bytes. Leave blank for the displayed default; increase only for a legitimate larger page.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: caoliao-openapi
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: OpenAPI Key from https://user.cli.im/ 数据API > 添加配置 > OpenAPI > 开通 > 保存, then use the list's 复制 action. Keep the Key secret; blank prevents authorization.
+    guide:
+      startURL: https://cli.im/open-api/openapi/v2/auth.html
+      steps:
+        - Sign in to https://user.cli.im/ and open 数据API > 添加配置 > OpenAPI > 开通. Name the configuration, save it, and use the list's 复制 action to copy the secret OpenAPI Key into api_key. Blank prevents authorization.
+        - The connector uses Authorization Bearer on the read-only V2 QR-code list. Ensure the Key is scoped to the intended organization; it returns QR-code names and coding identifiers but not scanned records.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Supply pageToken only to continue from a previous nextPageToken; blank starts the first page.
+  operations:
+    - name: listQRCodes
+      goName: ListQRCodes
+      inputType: ListQRCodesInput
+      outputType: ListQRCodesOutput
+      kind: query
+      description: List one page of organization QR-code names and coding identifiers.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Caoliao returned a QR-code page."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Caoliao rejected credentials, access, or pagination input.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Caoliao returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination input are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry:
+          initialInterval: 1s
+          backoffCoefficient: 2
+          maximumInterval: 1m
+          maximumAttempts: 3
+          totalDuration: 3m
+          reason: {kind: personWaiting, explanation: "A person waiting for a QR-code page should receive a prompt failure after repeated provider outages or rate limits."}
+      mocks:
+        - name: sampleQRCodes
+          branch: listed
+          description: Synthetic QR-code metadata for local Flow verification, not live Caoliao data.
+          default: true
+          output:
+            qrCodes:
+              - {name: Example inspection point, coding: qk3mJHJ}
+            nextPageToken: ""
+            total: 1

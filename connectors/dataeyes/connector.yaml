@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: dataeyes
+  displayName: DataEyes AI
+  description: Read a public web page as Markdown using DataEyes AI.
+  company: DataEyes
+  categories: [data-search, ai]
+  version: v0.1.0
+spec:
+  provider: dataeyes
+  codegen:
+    go:
+      package: dataeyes
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one web page reading HTTP request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 20s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only for large public pages. Results remain limited to 100000 Markdown bytes.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: dataeyes-reader-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret search/reading Key from https://doc.shuyanai.com/doc-8441886 > Console > MCP产品 > 接入与密钥. Copy that Key, not a model Key; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://doc.shuyanai.com/doc-8441886
+      steps:
+        - Sign in to the DataEyes console, switch to MCP产品, open 接入与密钥, and copy or create the secret search/reading Key. Enter it in Dex Connections; blank prevents requests. The AI-model API Key cannot call this endpoint.
+        - Start ReadWebPage with an HTTPS URL for a public page, for example {"url":"https://example.com"}. The URL must be a domain name without user info, query, or fragment; never use signed or private links. Markdown format is fixed. Leave timeout and maxResponseBytes blank for the displayed defaults.
+        - Reading consumes the provider's separate reading quota. Limit retries because a lost successful response could consume quota twice. The result contains only a page title and up to 100000 Markdown bytes; no raw URL, response metadata, or provider error message enters Flow output.
+  operations:
+    - name: readWebPage
+      goName: ReadWebPage
+      inputType: ReadWebPageInput
+      outputType: ReadWebPageOutput
+      kind: query
+      description: Read one public HTTPS page and return its title and Markdown content.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: DataEyes returned the public page content.}
+        - {id: providerRejected, goName: ProviderRejected, description: DataEyes rejected the Key or could not read this page., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: DataEyes returned malformed or oversized page data., optional: true}
+        - {id: defect, goName: Defect, description: The local URL or API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 10s, maximumAttempts: 2, totalDuration: 1m, reason: {kind: billedOperation, explanation: "A successful read can consume quota; one retry handles brief failures while limiting duplicate usage after an ambiguous response loss."}}
+      mocks:
+        - name: pageRead
+          branch: found
+          description: A public example page converted to Markdown.
+          default: true
+          output: {title: Example Domain, markdown: "# Example Domain\n\nExample page content."}
+        - name: emptyPage
+          branch: found
+          description: A public page with no extractable Markdown.
+          output: {title: Empty Page, markdown: ""}

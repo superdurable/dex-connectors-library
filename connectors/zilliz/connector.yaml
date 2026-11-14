@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zilliz
+  displayName: Zilliz Cloud
+  description: List the clusters accessible to a Zilliz Cloud API Key.
+  company: Zilliz
+  categories: [databases-storage, ai]
+  version: v0.1.0
+spec:
+  provider: zilliz
+  codegen:
+    go:
+      package: zilliz
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one cluster-list HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum cluster-list response size in bytes as a positive integer. Blank uses the displayed default; increase only if the cluster page grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: zilliz-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API Key from https://cloud.zilliz.com > organization > API Keys > + API Key. Choose project Read-Only access, copy the Key exactly, and save it in Dex. Blank prevents requests.
+    guide:
+      startURL: https://docs.zilliz.com/docs/manage-api-keys
+      steps:
+        - Sign in at https://cloud.zilliz.com, open your organization > API Keys > + API Key, and create a customized Key with project Read-Only access to the clusters to list. Organization Owners and Project Admins can create such Keys. Copy the secret Key into Dex Connections; blank prevents requests.
+        - Start ListClusters with {}. The connector reads the first page of at most 25 clusters scoped to the Key and returns only cluster ID, name, region, plan, and status. Leave timeout and maxResponseBytes blank for displayed defaults.
+        - A personal Key can also be copied from the same API Keys page, but it is deleted when its owner leaves the organization. Reset a compromised Key on that page. The Query does not read vector data or reveal cluster endpoints.
+  operations:
+    - name: listClusters
+      goName: ListClusters
+      inputType: ListClustersInput
+      outputType: ListClustersOutput
+      kind: query
+      description: List the first 25 clusters visible to the API Key.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Zilliz returned the visible cluster page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zilliz rejected the Key or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zilliz returned malformed or oversized cluster data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: oneCluster
+          branch: found
+          description: One visible running cluster.
+          default: true
+          output: {total: 1, clusters: [{clusterID: inxx-example, name: example-cluster, regionID: aws-us-west-2, plan: Enterprise, status: RUNNING}]}
+        - name: noClusters
+          branch: found
+          description: No clusters are visible to the Key.
+          output: {total: 0, clusters: []}

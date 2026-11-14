@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: yikeapi
+  displayName: YikeAPI IP Lookup
+  description: Look up an IPv4 address using YikeAPI's IP location service.
+  company: YikeAPI
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: yikeapi
+  codegen:
+    go:
+      package: yikeapi
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS IP lookup as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only if a valid IP lookup response grows beyond it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: yikeapi-ip
+    fields:
+      - name: appID
+        goName: AppID
+        type: secretString
+        required: true
+        description: Secret appid from https://www.yikeapi.com > 用户中心 after registering a developer account; copy it exactly. The provider requires it in the HTTPS query. Blank prevents requests.
+      - name: appSecret
+        goName: AppSecret
+        type: secretString
+        required: true
+        description: Secret appsecret paired with appid in https://www.yikeapi.com > 用户中心; copy it exactly. The provider requires it in the HTTPS query. Blank prevents requests.
+    guide:
+      startURL: https://www.yikeapi.com/index/ip
+      steps:
+        - Register at https://www.yikeapi.com and open 用户中心 to find appid and appsecret. Keep both secret; YikeAPI requires them in the HTTPS query, so avoid logging URLs or request objects. Blank credentials prevent requests.
+        - Activate IP地址归属地查询 in the provider's API market and confirm your quota. Supply one public IPv4 address, for example 8.8.8.8, in ipAddress.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The result includes country, province, city, and district only; it omits the IP address and raw response.
+  operations:
+    - name: lookupIPLocation
+      goName: LookupIPLocation
+      inputType: LookupIPLocationInput
+      outputType: LookupIPLocationOutput
+      kind: query
+      description: Read country, province, city, and district for one public IPv4 address.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: YikeAPI returned the IP location.}
+        - {id: providerRejected, goName: ProviderRejected, description: "YikeAPI rejected credentials, quota, or the query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: YikeAPI returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or IP address are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An IP lookup may consume purchased quota, so transport failures are retried at most twice."}}
+      mocks:
+        - name: shenzhen
+          branch: found
+          description: Synthetic Shenzhen IP location for local Flow verification, not a live provider result.
+          default: true
+          output: {country: 中国, province: 广东省, city: 深圳市, district: 龙岗区}

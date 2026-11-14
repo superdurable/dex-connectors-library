@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: honor
+  displayName: HONOR App Market
+  description: Look up an owned Android app ID by package name.
+  company: HONOR
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: honor
+  codegen:
+    go:
+      package: honor
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of each HONOR HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for slow approved networks.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum HONOR response size in bytes as a positive integer. Blank uses the displayed default; increase only if the app list grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: honor-api-credentials
+    fields:
+      - name: clientID
+        goName: ClientID
+        type: secretString
+        required: true
+        description: Secret Client ID from https://developer.honor.com/ > Management Center > Open Capabilities > Credentials > API Key. Request an API key, then copy Client ID here; blank prevents requests.
+      - name: clientSecret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret API key paired with Client ID from https://developer.honor.com/ > Management Center > Open Capabilities > Credentials > API Key. Copy the complete key into Dex; blank prevents requests.
+    guide:
+      startURL: https://developer.honor.com/cn/doc/guides/101359
+      steps:
+        - Sign in at https://developer.honor.com/, open Management Center > Open Capabilities > Credentials, request an API key, then copy Client ID and its paired API key into Dex. Both are secret; blank prevents requests.
+        - In Management Center > App Management, create an Android app and bind its package name. Start LookupAppID with that exact Java package name, such as com.example.app; blank is invalid. Only apps owned by this developer account are returned.
+        - The connector exchanges credentials for a short-lived Bearer token and reads only app IDs and package names. Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: lookupAppID
+      goName: LookupAppID
+      inputType: LookupAppIDInput
+      outputType: LookupAppIDOutput
+      kind: query
+      description: Look up an owned app ID by Android package name.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: HONOR returned the owned app ID.}
+        - {id: notFound, goName: NotFound, description: No owned app matches the package name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: HONOR rejected the credentials or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: HONOR returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials, package name, or settings are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundApp
+          branch: found
+          description: An owned example Android app.
+          default: true
+          output: {packageName: com.example.app, appID: 123456}
+        - name: noApp
+          branch: notFound
+          description: No owned app for the package name.
+          output: {packageName: com.example.app, appID: 0}

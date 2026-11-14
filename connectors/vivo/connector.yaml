@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: vivo
+  displayName: vivo App Store
+  description: Read the online version of an Android app in the vivo store.
+  company: vivo
+  categories: [developer-tools]
+  version: v0.1.0
+spec:
+  provider: vivo
+  codegen:
+    go:
+      package: vivo
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one vivo store HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum online-version response size in bytes as a positive integer. Blank uses the displayed default; increase only if provider metadata grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: vivo-developer-secret
+    fields:
+      - name: account
+        goName: Account
+        type: secretString
+        required: true
+        description: Secret developer account name from https://developers.vivo.com/ > Account Information. Copy the exact account identifier used for vivo App Store publishing; blank prevents requests.
+      - name: secret
+        goName: Secret
+        type: secretString
+        required: true
+        description: Secret HMAC key assigned to that developer account at https://developers.vivo.com/ > Account Information. Copy the complete secret into Dex; blank prevents requests.
+    guide:
+      startURL: https://swsdl.vivo.com.cn/appstore/developer/uploadFile/20241224/vxpbua/vivo%E5%BC%80%E6%94%BE%E5%B9%B3%E5%8F%B0%E5%95%86%E5%BA%97%E8%87%AA%E6%9B%B4%E6%96%B02.0.pdf
+      steps:
+        - Sign in at https://developers.vivo.com/, open Account Information, copy the developer account and assigned secret into Dex Connections. Both are secret; blank prevents requests.
+        - Publish and approve the Android app in vivo App Store. Start GetOnlineVersion with its exact Java package name, such as com.example.app; blank is invalid. Only the package version metadata is returned.
+        - The connector signs each request with HMAC-SHA256 and the current millisecond timestamp. Leave timeout and maxResponseBytes blank for displayed defaults. A missing or unpublished app returns the noData branch.
+  operations:
+    - name: getOnlineVersion
+      goName: GetOnlineVersion
+      inputType: GetOnlineVersionInput
+      outputType: GetOnlineVersionOutput
+      kind: query
+      description: Read published vivo App Store version metadata by package name.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: vivo returned the online app version.}
+        - {id: noData, goName: NoData, description: vivo has no online app for this package., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: vivo rejected the credentials or request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: vivo returned malformed or oversized version data., optional: true}
+        - {id: defect, goName: Defect, description: Local credentials or package name are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: onlineVersion
+          branch: found
+          description: An example published Android version.
+          default: true
+          output: {packageName: com.example.app, versionName: 3.2.1, versionCode: 100}
+        - name: noApp
+          branch: noData
+          description: No published app for this package.
+          output: {packageName: com.example.app, versionName: "", versionCode: 0}

@@ -1,0 +1,78 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: useasy
+  displayName: Useasy
+  description: List one page of contact center agent IDs and enabled states.
+  company: Useasy
+  categories: [customer-support]
+  version: v0.1.0
+spec:
+  provider: useasy
+  codegen:
+    go:
+      package: useasy
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Useasy HTTPS OpenAPI origin. Leave blank for the displayed production default; override only for a provider documented tenant origin. See https://help.useasy.cn/developer/authentication/authentication_instructions.
+        default: https://openapi.useasy.cn
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum time for one agent-list request as a positive Go duration such as 5s or 1m. Leave blank for the displayed default; raise only for a slow response.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum agent-list response size in bytes as a positive integer. Leave blank for the displayed default; raise only for a legitimate larger page.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: useasy-api
+    fields:
+      - name: app_id
+        goName: AppID
+        type: secretString
+        required: true
+        description: Appid from Useasy console > upper-right personal settings, or your account opening form > 鉴权信息. Copy its decimal account identifier here; blank prevents requests. Treat it as a credential paired with secret_key. See https://help.useasy.cn/developer/authentication/authentication_instructions.
+      - name: secret_key
+        goName: SecretKey
+        type: secretString
+        required: true
+        description: SecretKey from your Useasy account opening form > 鉴权信息. Copy it into this secret field to sign each request; blank prevents requests. Contact Useasy to rotate a disclosed key. See https://help.useasy.cn/developer/authentication/authentication_instructions.
+    guide:
+      startURL: https://app.useasy.cn/login
+      steps:
+        - Sign in to Useasy, open upper-right personal settings and copy appid, or find it in your account opening form's 鉴权信息. Copy the paired secretKey from the same form. Both values are required secret credentials; ask your Useasy account manager for the form if unavailable.
+        - Ensure your application has permission for the agent information API. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The Query returns only agent IDs, numbers, enabled states, and page metadata; never passwords or contact details.
+  operations:
+    - name: listAgents
+      goName: ListAgents
+      inputType: ListAgentsInput
+      outputType: ListAgentsOutput
+      kind: query
+      description: List one bounded page of agent IDs, numbers, and enabled states.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Useasy returned agent metadata."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Useasy rejected authentication or access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Useasy returned malformed or oversized data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials or pagination are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleAgents
+          branch: listed
+          description: Synthetic agent IDs and states for local Flow verification, not live Useasy data.
+          default: true
+          output:
+            agents:
+              - {id: "663578842498871236", number: "8010", enabled: true}
+            page: 1
+            total: 1
+            totalPages: 1

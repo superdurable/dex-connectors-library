@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: doc2x
+  displayName: Doc2X Parse Status
+  description: Read the state and progress of an existing Doc2X PDF parsing task.
+  company: Doc2X
+  categories: [ai, productivity]
+  version: v0.1.0
+spec:
+  provider: doc2x
+  codegen:
+    go:
+      package: doc2x
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS status request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum status response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider adds more metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: doc2x-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API Key from https://open.noedgeai.com > API Keys. Sign in, create or select a key and copy it into Dex Connections. Blank prevents requests; never paste a Doc2X desktop login token.
+    guide:
+      startURL: https://doc2x.noedgeai.com/help/zh-cn/api/doc2x-api-v2-pdf-interface.html
+      steps:
+        - Sign in at https://open.noedgeai.com, open API Keys, create or select a platform API Key and copy it into Dex Connections. This required field is secret; blank prevents requests. Desktop login tokens are not API keys.
+        - Start GetParseStatus with the uid returned by the PDF preupload API. The connector reads only status and progress and never returns PDF text, result URLs or failure details.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. The fixed production endpoint is v2.doc2x.noedgeai.com; increase limits only for a slow or large approved response.
+  operations:
+    - name: getParseStatus
+      goName: GetParseStatus
+      inputType: GetParseStatusInput
+      outputType: GetParseStatusOutput
+      kind: query
+      description: Read the status and progress of an existing PDF parse task.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Doc2X returned the current task state.}
+        - {id: providerRejected, goName: ProviderRejected, description: Doc2X rejected the key or task identifier., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Doc2X returned malformed or oversized status data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key or task identifier is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: processing
+          branch: found
+          description: A PDF parse task is still processing.
+          default: true
+          output: {status: processing, progress: 50}
+        - name: completed
+          branch: found
+          description: A PDF parse task completed successfully.
+          output: {status: success, progress: 100}

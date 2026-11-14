@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zhihuiya
+  displayName: Zhihuiya Patent Valuation
+  description: Read patent valuation metrics from Zhihuiya Data API by publication number.
+  company: Zhihuiya
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: zhihuiya
+  codegen:
+    go:
+      package: zhihuiya
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS patent valuation request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only if an approved valuation response exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: zhihuiya-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret sk- API Key from https://developers.zhihuiya.com management console > API 密钥. Create a key with patent valuation entitlement and copy it once; blank prevents requests.
+    guide:
+      startURL: https://developers.zhihuiya.com/devportal/guides/authentication
+      steps:
+        - Sign in at https://developers.zhihuiya.com and open the management console > API 密钥. Create an API Key with the patent valuation API entitlement; copy the sk- prefixed secret once into Dex Web Connections. Blank prevents requests.
+        - In getPatentValuation, enter one patent publication number such as JP6012277B2 from a record in the Zhihuiya patent search UI. This query returns the provider's valuation in USD and five scores when available.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. Patent abstracts, parties, and raw provider data are discarded.
+  operations:
+    - name: getPatentValuation
+      goName: GetPatentValuation
+      inputType: GetPatentValuationInput
+      outputType: GetPatentValuationOutput
+      kind: query
+      description: Read provider valuation metrics for one patent publication number.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Zhihuiya returned one patent valuation.}
+        - {id: noData, goName: NoData, description: Zhihuiya returned no patent valuation., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zhihuiya rejected authorization, permission, or the query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zhihuiya returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local API Key or publication number is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleValuation
+          branch: found
+          description: Synthetic patent valuation for local Flow verification.
+          default: true
+          output: {publicationNumber: JP6012277B2, patentID: 92ccf76a-a718-47e9-8cd6-6c5c9df19ae3, patentValueUSD: 43000, legalScore: 71, marketScore: 18, economyScore: 23, strategicScore: 71, technologyScore: 28}
+        - name: noValuation
+          branch: noData
+          description: No valuation matches the publication number.
+          failure: {kind: NOT_FOUND, message: Zhihuiya did not find a valuation.}

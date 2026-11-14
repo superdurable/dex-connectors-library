@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: fanyigou
+  displayName: Fanyigou
+  description: Read the document-translation account balance from Fanyigou.
+  company: Fanyigou
+  categories: [ai]
+  version: v0.1.0
+spec:
+  provider: fanyigou
+  codegen:
+    go:
+      package: fanyigou
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one Fanyigou HTTPS request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum account response size in bytes as a positive integer. Blank uses the displayed default; increase only if provider account metadata grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: fanyigou-private-key
+    fields:
+      - name: appID
+        goName: AppID
+        type: secretString
+        required: true
+        description: Secret application ID from https://open.fanyigou.com/ > Console > Applications > select your app. Copy its exact identifier; blank prevents requests.
+      - name: privateKey
+        goName: PrivateKey
+        type: secretString
+        required: true
+        description: Secret privatekey from https://open.fanyigou.com/ > profile avatar > Overview > Developer Information > Key. Copy the exact key; blank prevents requests.
+    guide:
+      startURL: https://open.fanyigou.com/filecore.html
+      steps:
+        - Register at https://open.fanyigou.com/, complete developer information, and create or select an application in Console > Applications. Copy its appid into Dex Connections; blank prevents requests.
+        - Open profile avatar > Overview > Developer Information > Key and copy the privatekey into Dex Connections. This is secret; blank prevents requests. The connector uses the official Bearer privatekey authorization mode.
+        - Start GetAccountBalance with empty input to read the document-translation resource package (type 1). Balance units depend on deductType (0 points, 1 pages). Leave timeout and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: getAccountBalance
+      goName: GetAccountBalance
+      inputType: GetAccountBalanceInput
+      outputType: GetAccountBalanceOutput
+      kind: query
+      description: Read the document-translation resource package balance and billing mode.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Fanyigou returned the account resource balance.}
+        - {id: providerRejected, goName: ProviderRejected, description: Fanyigou rejected credentials or account query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Fanyigou returned malformed or oversized account data., optional: true}
+        - {id: defect, goName: Defect, description: Local application credentials are missing or invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: balance
+          branch: found
+          description: Example document-translation balance in pages.
+          default: true
+          output: {deductType: 1, balance: 137684}

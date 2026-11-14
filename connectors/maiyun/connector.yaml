@@ -1,0 +1,66 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: maiyun
+  displayName: Maiyun IP Location
+  description: Look up an IP address with Maiyun Location Services.
+  company: Maiyun
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: maiyun
+  codegen:
+    go:
+      package: maiyun
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS IP lookup as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response size in bytes as a positive integer. Blank uses the displayed default; increase only if a valid IP lookup response grows beyond it.
+        default: 65536
+  auth:
+    type: apiKey
+    connectionKind: maiyun-ip
+    fields:
+      - name: token
+        goName: Token
+        type: secretString
+        required: true
+        description: Secret Bearer Token from https://lts.maiyun.net/ > 控制台 > Token after enabling IP 定位. Copy its opaque value; Dex stores it as a credential and sends it only in the Authorization header. Blank prevents requests.
+    guide:
+      startURL: https://lts.maiyun.net/
+      steps:
+        - Sign in at https://lts.maiyun.net/, enable IP 定位, then open 控制台 > Token and create or find a Token authorized for this service.
+        - Copy the secret token into token. Keep it private and rotate it in the provider console if exposed.
+        - Pass one public IPv4 address such as 8.8.8.8 as the Flow input. Blank or malformed values are rejected. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - The connector submits the token as an HTTPS Bearer credential; lookup calls may consume the purchased query quota. It returns only country, province, city, and district.
+  operations:
+    - name: lookupIPLocation
+      goName: LookupIPLocation
+      inputType: LookupIPLocationInput
+      outputType: LookupIPLocationOutput
+      kind: query
+      description: Look up country, province, city, and district for one public IPv4 address.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: MAIYUN returned the IP location.}
+        - {id: providerRejected, goName: ProviderRejected, description: "MAIYUN rejected credentials, quota, or the query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MAIYUN returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local credentials or IP address are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An IP lookup may consume purchased quota, so transport failures are retried at most twice."}}
+      mocks:
+        - name: shenzhen
+          branch: found
+          description: Synthetic Shenzhen IP location for local Flow verification, not a live provider result.
+          default: true
+          output: {country: 中国, province: 广东, city: 深圳, district: 龙岗区}

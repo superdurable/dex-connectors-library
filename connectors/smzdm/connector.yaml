@@ -1,0 +1,79 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: smzdm
+  displayName: SMZDM
+  description: Search the SMZDM product index by keyword and return a bounded first page.
+  company: SMZDM
+  categories: [ecommerce]
+  version: v0.1.0
+spec:
+  provider: smzdm
+  codegen:
+    go:
+      package: smzdm
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS origin of the SMZDM OpenAPI. Leave blank for the displayed production endpoint; override only for a trusted test server or a provider-approved proxy.
+        default: https://openapi.smzdm.com
+      - name: requestFrom
+        goName: RequestFrom
+        type: string
+        description: Non-secret source label required by the product-search API. Leave blank to use the displayed Dex integration label; override only if your SMZDM onboarding contact assigns a different request source string.
+        default: dex
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one product-search request as a positive Go duration such as 30s or 1m. Leave blank for the displayed default; raise it only when the provider responds slowly from your network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum product-search response size in bytes as a positive integer. Leave blank for the displayed default; raise only if the first page exceeds this limit.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: smzdm-app-credentials
+    fields:
+      - name: app_key
+        goName: AppKey
+        type: secretString
+        description: Secret App Key supplied after SMZDM developer onboarding at https://openapi.zhidemai.com/pages/rookie/1.%E6%96%B0%E6%89%8B%E6%8C%87%E5%8D%97.html. Contact group-content@zhidemai.com; copy the exact assigned string. Blank prevents requests. The API requires it in the signed URL query.
+        required: true
+      - name: app_secret
+        goName: AppSecret
+        type: secretString
+        description: Secret App Secret supplied with the App Key after onboarding at https://openapi.zhidemai.com/pages/rookie/1.%E6%96%B0%E6%89%8B%E6%8C%87%E5%8D%97.html. Contact group-content@zhidemai.com; copy the exact assigned string. Blank prevents requests. It is used locally for MD5 signing and is never sent.
+        required: true
+    guide:
+      startURL: https://openapi.zhidemai.com/pages/rookie/1.%E6%96%B0%E6%89%8B%E6%8C%87%E5%8D%97.html
+      steps:
+        - Read the SMZDM New Developer Guide at https://openapi.zhidemai.com/pages/rookie/1.%E6%96%B0%E6%89%8B%E6%8C%87%E5%8D%97.html. Self-service registration is unavailable; email group-content@zhidemai.com to onboard and obtain the assigned App Key and App Secret.
+        - Copy the App Key and App Secret into the protected app_key and app_secret fields. Both are required; the App Key is sent in a signed query and the App Secret stays local for signing. Ask your onboarding contact to enable the product-search API.
+        - Leave baseUrl, requestFrom, timeout, and maxResponseBytes blank for their displayed defaults. Override requestFrom only if SMZDM assigns a source label; the API requires this string.
+  operations:
+    - name: searchProducts
+      goName: SearchProducts
+      inputType: SearchProductsInput
+      outputType: ProductPage
+      kind: query
+      description: Search the first page of product-index entries for a bounded keyword, returning titles and prices only.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "SMZDM returned a first page of products, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "SMZDM rejected the credentials, authorization, or query.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "SMZDM returned malformed or oversized product data.", optional: true}
+        - {id: defect, goName: Defect, description: "Local configuration, credentials, or keyword are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedProduct
+          branch: listed
+          description: Synthetic product result for local Dex Flow verification.
+          default: true
+          output: {total: 1, products: [{title: Example Product, priceYuan: 99.9}]}

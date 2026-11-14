@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: meiqia
+  displayName: Meiqia Conversation Read
+  description: Read limited metadata for one Meiqia customer service conversation.
+  company: Meiqia
+  categories: [customer-support]
+  version: v0.1.0
+spec:
+  provider: meiqia
+  codegen:
+    go:
+      package: meiqia
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one HTTPS conversation request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 10s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum provider response size in bytes as a positive integer. Blank uses the displayed default; increase only when a legitimate conversation record exceeds it.
+        default: 262144
+  auth:
+    type: apiKey
+    connectionKind: meiqia-access-token
+    fields:
+      - name: accessToken
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Access Token from https://app.meiqia.com > 设置 > 开发者 > APIs. Copy the current token exactly; creating another invalidates the previous one. Blank prevents requests.
+    guide:
+      startURL: https://www.meiqia.com/help/article/apiv2-0/
+      steps:
+        - Sign in at https://app.meiqia.com and open 设置 > 开发者 > APIs. Copy the current secret Access Token into Dex Web Connections. Do not create a new token solely for each request because doing so invalidates the previous token; blank prevents requests.
+        - Pass one positive numeric Meiqia conversation ID in conversationID. The connector calls the HTTPS single-conversation API with Authorization Bearer and returns only ID, start time, end time, and main channel.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. Customer details, message content, agent identity, source URLs, and raw provider response are discarded.
+  operations:
+    - name: getConversation
+      goName: GetConversation
+      inputType: GetConversationInput
+      outputType: GetConversationOutput
+      kind: query
+      description: Read only ID, timestamps, and channel for one Meiqia conversation.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Meiqia returned conversation metadata.}
+        - {id: noData, goName: NoData, description: Meiqia did not find the conversation., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Meiqia rejected authorization, permission, or the request.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meiqia returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "The local token or conversation ID is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: sampleConversation
+          branch: found
+          description: Synthetic conversation metadata for local Flow verification.
+          default: true
+          output: {conversationID: 123, startedAt: "2026-11-13 10:00:00", endedAt: "2026-11-13 10:20:00", mainChannel: web}
+        - name: noConversation
+          branch: noData
+          description: No conversation matches the supplied ID.
+          failure: {kind: NOT_FOUND, message: Meiqia did not find the conversation.}

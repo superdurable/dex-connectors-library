@@ -1,0 +1,69 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: fofa
+  displayName: FOFA
+  description: Search FOFA's public internet asset index for one domain.
+  company: FOFA
+  categories: [security-identity, data-search]
+  version: v0.1.0
+spec:
+  provider: fofa
+  codegen:
+    go:
+      package: fofa
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one FOFA search HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum FOFA response size in bytes as a positive integer. Blank uses the displayed default; increase only if the search response grows.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: fofa-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API Key from https://fofa.info > account avatar > personal center > API. Copy the Key exactly; blank prevents requests. Dex stores it as a secret.
+    guide:
+      startURL: https://fofa.info/api
+      steps:
+        - Sign in at https://fofa.info, open your account avatar > personal center > API, and copy the secret Key into Dex Connections. Blank prevents requests. Your FOFA plan must allow the query interface.
+        - Start SearchDomainAssets with one domain, for example {"domain":"example.com"}. The connector builds FOFA's exact domain query and returns at most five host/IP/port records from the first page. Leave timeout and maxResponseBytes blank for the displayed defaults.
+        - FOFA requires Key in the URL query. Redirects are disabled, and failures omit the Key and raw URL. Search may consume F-points; retries are limited to one to reduce duplicate billing after an ambiguous response loss.
+  operations:
+    - name: searchDomainAssets
+      goName: SearchDomainAssets
+      inputType: SearchDomainAssetsInput
+      outputType: SearchDomainAssetsOutput
+      kind: query
+      description: Search public indexed hosts for one exact domain.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: FOFA returned indexed hosts for the domain.}
+        - {id: providerRejected, goName: ProviderRejected, description: FOFA rejected the Key or domain query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: FOFA returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: The local domain or API Key is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 10s, maximumAttempts: 2, totalDuration: 1m, reason: {kind: billedOperation, explanation: "FOFA searches can consume F-points, so one retry limits duplicate charges after an ambiguous response loss."}}
+      mocks:
+        - name: oneHost
+          branch: found
+          description: One public indexed host for the domain.
+          default: true
+          output: {total: 1, assets: [{host: "https://www.example.com", ipAddress: "93.184.215.14", port: 443}]}
+        - name: noHosts
+          branch: found
+          description: No indexed hosts match the domain.
+          output: {total: 0, assets: []}

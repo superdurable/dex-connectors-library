@@ -1,0 +1,75 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: variflight
+  displayName: VariFlight DataWorks
+  description: Query flight status by flight number and departure date.
+  company: VariFlight
+  categories: [data-search]
+  version: v0.1.0
+spec:
+  provider: variflight
+  codegen:
+    go:
+      package: variflight
+  configuration:
+    fields:
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one flight-status HTTP request as a positive Go duration such as 5s or 1m. Blank uses the displayed default; increase only for a slow approved network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum flight-status response size in bytes as a positive integer. Blank uses the displayed default; increase only if the provider expands flight metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: variflight-partner-key
+    fields:
+      - name: appID
+        goName: AppID
+        type: secretString
+        required: true
+        description: Partner appid assigned by VariFlight after a DataWorks partnership at https://dataworks.variflight.com/ > Contact Us. Copy the exact value; it is sent in the signed query and kept secret by Dex. Blank prevents requests.
+      - name: appSecurity
+        goName: AppSecurity
+        type: secretString
+        required: true
+        description: Secret appsecurity registration code paired with appid by VariFlight DataWorks at https://dataworks.variflight.com/ > Contact Us. Copy it exactly; Dex uses it only to sign requests. Blank prevents requests.
+    guide:
+      startURL: https://dataworks.variflight.com/about-us/download-zone/flight-status-query-api-docs/
+      steps:
+        - Contact VariFlight DataWorks from https://dataworks.variflight.com/ and establish a partner account. Request the assigned appid and appsecurity registration code, then copy them into the two secret Dex fields. Blank prevents requests.
+        - Ask VariFlight to allowlist the outbound public IP of your Dex Worker; otherwise the API returns error_code 2. Supply a flight number such as GX8915 and departure date in YYYY-MM-DD format in the Flow input.
+        - The connector signs every request and calls the fixed HTTPS endpoint for at most 20 flight statuses. Leave timeout and maxResponseBytes blank for displayed defaults. The provider may charge for queries under the partner agreement.
+  operations:
+    - name: getFlightStatus
+      goName: GetFlightStatus
+      inputType: GetFlightStatusInput
+      outputType: GetFlightStatusOutput
+      kind: query
+      description: Read up to 20 flight statuses for a number and departure date.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: VariFlight returned flight status records.}
+        - {id: noData, goName: NoData, description: VariFlight has no matching flight data., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "VariFlight rejected authentication, permission, or input.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: VariFlight returned malformed or oversized flight data., optional: true}
+        - {id: defect, goName: Defect, description: "Local credentials, flight number, or date are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 20s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "Flight status queries may be billed under the partner agreement, so limit retries to three temporary-failure attempts."}}
+      mocks:
+        - name: scheduledFlight
+          branch: found
+          description: One scheduled example flight.
+          default: true
+          output: {total: 1, flights: [{flightNumber: GX8915, state: schedule, stateCode: 0, scheduledDeparture: "2026-11-13 08:20:00", actualDeparture: ""}]}
+        - name: noFlight
+          branch: noData
+          description: No matching flight status data.
+          output: {total: 0, flights: []}
