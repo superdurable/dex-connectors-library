@@ -1,11 +1,15 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { FlowAlreadyStartedError, FlowNotActiveOrNotFoundError, FlowNotFoundError, IdReusePolicy, ValueMappingError, WorkerInvocationError, type Client, type Context, type Flow, type RPCResult } from '@superdurable/dex';
+import { createHash } from 'node:crypto';
+import {
+  DexServiceError, FlowAlreadyStartedError, FlowNotActiveOrNotFoundError, FlowNotFoundError, IdReusePolicy, ValueMappingError, WorkerInvocationError, type Client, type Context, type Flow, type RPCInvokeOptions,
+  type RPCResult,
+} from '@superdurable/dex';
 import { z } from 'zod';
 import { ConnectionRefSchema, ConnectorConfigurationUISchema, type ConnectorConfigurationUI } from './types.js';
 import {
-  UndeliverableTriggerErrorType, UndeliverableTriggerMessage, isTriggerUndeliverable, logTriggerRecord, markTriggerUndeliverable, prepareTriggerDelivery, triggerErrorAttributes,
+  UndeliverableTriggerError, UndeliverableTriggerErrorType, UndeliverableTriggerMessage, isTriggerUndeliverable, logTriggerRecord, markTriggerUndeliverable, prepareTriggerDelivery, triggerErrorAttributes,
   withTriggerLoggerAttributes, type TriggerContext, type TriggerEvent, type TriggerLogger, type TriggerOptions, type TriggerTarget,
 } from './trigger_delivery.js';
 
@@ -158,41 +162,181 @@ export function newDexFlowTriggerTarget<Event, Input>(
   };
 }
 
+/** Optional behavior of newDexRPCTriggerTarget. */
+export interface RPCTriggerOptions extends TriggerOptions {
+  /**
+   * The RPC's wire name, used instead of rpcMethod.name to derive the request ID. Set it to the name
+   * override given to `@rpc({ name })` or `declareRPCMethod` when the RPC has one, and whenever a build may
+   * minify or rename handler methods, so every redelivery of an event keeps one request ID. It only feeds
+   * the request ID; the Dex Client still resolves the RPC from rpcMethod. Omitted uses the handler's
+   * JavaScript method name. It must contain a non-blank character and no NUL character. Setting it to the
+   * current method name keeps the request IDs unchanged.
+   */
+  rpcName?: string;
+}
+
+/**
+ * The undeliverable failure of newDexRPCTriggerTarget when Dex Server reports that the event's request ID
+ * "was already used for a different request": this attempt mapped the event to a different RPC request
+ * than an earlier attempt did.
+ *
+ * Dex compares the whole request, so the cause is a non-deterministic or changed input mapper, another
+ * binding that routes the same event to the same RPC on the same Flow, or changed RPC options such as the
+ * timeout, locks, loads, or transactional flag. Trigger delivery consumes the event: it is dropped. Dex
+ * reports the same conflict while the earlier request is still in flight, so when that request later
+ * fails without committing, the event is lost. cause is the DexServiceError.
+ */
+export class TriggerRPCRequestConflictError extends UndeliverableTriggerError {
+  /**
+   * Describe the conflict of one delivery attempt.
+   * @param eventId - The Trigger event ID.
+   * @param flowId - The resolved Flow ID.
+   * @param rpcName - The RPC name in the request ID: RPCTriggerOptions.rpcName or the handler's method name.
+   * @param requestId - The request ID this attempt sent, from triggerRPCRequestId.
+   * @param cause - The DexServiceError that reported the conflict.
+   */
+  constructor(readonly eventId: string, readonly flowId: string, readonly rpcName: string, readonly requestId: string, cause: unknown) {
+    super(cause);
+    this.message = `${UndeliverableTriggerMessage}: RPC trigger event ${eventId} for RPC ${rpcName} on Flow ${flowId} mapped to a different RPC request than an earlier attempt `
+      + `with request ID ${requestId} (non-deterministic or changed input mapper, another binding, or changed RPC options); the event was dropped`;
+    this.name = 'TriggerRPCRequestConflictError';
+  }
+}
+
 /**
  * Create a filtered target that invokes one RPC on the resolved Flow.
  *
+ * Every delivery attempt of an event passes the same request ID, triggerRPCRequestId(rpcName, event.id),
+ * where rpcName is options.rpcName or else rpcMethod.name, so Dex Server applies the RPC's Flow changes at
+ * most once per event while the Flow run keeps that request ID. A run keeps its newest request IDs only,
+ * as many as the server limit limits.maxRequestIdsPerRun (1000 by default), shared with its other requests
+ * that carry request IDs, such as Client Attribute writes; a redelivery after its ID was evicted applies
+ * again. Declare the handler transactional (`isTransactional: true`) or with Attribute locks, so a repeat
+ * returns the recorded reply without running the handler again. Any other handler runs again on a repeat,
+ * and Dex discards its Flow changes when it makes any. A handler that must also ignore repeats beyond that
+ * window keeps its own record of event IDs.
+ *
+ * The ID covers the RPC name and the event ID only, never the mapped input or the binding. Without
+ * options.rpcName, renaming the method, or a build that minifies method names, changes the IDs of events
+ * still being redelivered. Two bindings that route one event to the same RPC on the same Flow share one ID.
+ *
+ * Dex rejects a repeat whose request differs, such as one whose input mapper returned another value, with
+ * INVALID_ARGUMENT "request ID ... was already used for a different request". A deterministic mapper never
+ * causes it, because a repeat then sends an identical request, which Dex joins while it is in flight and
+ * answers from the recorded reply once it committed. The target logs such a conflict at ERROR and rejects
+ * with TriggerRPCRequestConflictError, an UndeliverableTriggerError, so delivery drops the event. Dex
+ * reports the same conflict while the earlier request is still in flight; when that request later fails
+ * without committing, the event is lost. Keep mapToRPCInput deterministic and set options.rpcName where
+ * the method name can change.
+ *
+ * The Dex Client reads an input when the RPC handler declares two or more parameters or an input codec,
+ * which the target cannot see, so the target picks its call as follows:
+ * - mapToRPCInput undefined: an input-free call with the request ID; a handler that declares two or more
+ *   parameters requires a mapper.
+ * - a handler with two or more parameters, or a mapper that returns a value other than undefined: the
+ *   mapped input with the request ID. An input-free RPC therefore needs no mapper, or one that returns
+ *   undefined.
+ * - a shorter handler whose mapper returns undefined: the RPC may be input-free or take an input codec, so
+ *   the target invokes it as 0.10.0 did, without a request ID. Omit the mapper of an input-free RPC to
+ *   deduplicate its deliveries.
+ * - a handler whose name is empty or contains NUL, without options.rpcName: also without a request ID.
+ *
  * It rejects with an UndeliverableTriggerError when the Flow has closed or was never started, when the
- * RPC handler throws an UndeliverableTriggerError, when the input cannot be encoded, or when the Flow ID
- * or event ID is empty. It cannot tell an event that arrived before its Flow started from one whose Flow
- * never existed, so deliver a Flow's start before its RPC events. A response that cannot be decoded
- * after Dex applied the RPC resolves, because the target discards the output. Every other error is
- * rethrown unchanged for a retry. Dex does not deduplicate retried RPCs, so the RPC must treat a repeated
- * event ID as a duplicate. It logs INFO "trigger event skipped: filtered", DEBUG "trigger event
- * delivered", and WARN when Dex applied the RPC but its response cannot be decoded.
+ * RPC handler throws an UndeliverableTriggerError, when the input cannot be encoded, when the Flow ID or
+ * event ID is empty, or on a request ID conflict. It cannot tell an event that arrived before its Flow started from one whose Flow
+ * never existed, so deliver a Flow's start before its RPC events. A response that cannot be decoded after
+ * Dex applied the RPC resolves, because the target discards the output. Every other error is rethrown
+ * unchanged for a retry. It logs INFO "trigger event skipped: filtered", DEBUG "trigger event delivered",
+ * ERROR "trigger rpc request conflict; event dropped" with the event, request, RPC, and Flow IDs before
+ * rejecting with a TriggerRPCRequestConflictError, and WARN when Dex applied the RPC but its response
+ * cannot be decoded.
+ *
+ * It throws a TypeError at construction when a required argument is missing, when mapToRPCInput is
+ * undefined for a handler that declares two or more parameters, or when options.rpcName is blank or
+ * contains NUL.
  */
 export function newDexRPCTriggerTarget<Event, Input, Output>(
-  client: Client, rpcMethod: TriggerRPCMethod<Input, Output>, filterEvent: TriggerFilter<Event>, resolveFlowId: FlowIdResolver<Event>, mapToRPCInput: RPCInputMapper<Event, Input>, options: TriggerOptions = {},
+  client: Client, rpcMethod: TriggerRPCMethod<Input, Output>, filterEvent: TriggerFilter<Event>, resolveFlowId: FlowIdResolver<Event>, mapToRPCInput: RPCInputMapper<Event, Input> | undefined,
+  options: RPCTriggerOptions = {},
 ): TriggerTarget<Event> {
-  if (!client || !rpcMethod || !filterEvent || !resolveFlowId || !mapToRPCInput) throw new TypeError('Dex client, RPC, Trigger filter, Flow ID resolver, and RPC input mapper are required');
+  if (!client || !rpcMethod || !filterEvent || !resolveFlowId) throw new TypeError('Dex client, RPC, Trigger filter, and Flow ID resolver are required');
+  if (!mapToRPCInput && rpcMethod.length >= 2) throw new TypeError('RPC trigger requires an RPC input mapper for a handler declared with (context, input) parameters');
+  if (options.rpcName !== undefined && !isTriggerRPCNameUsable(options.rpcName)) throw new TypeError('RPC trigger rpcName must contain a non-blank character and no NUL characters');
+  const rpcName = options.rpcName ?? (isTriggerRPCNameUsable(rpcMethod.name) ? rpcMethod.name : undefined);
   const logger = withTriggerLoggerAttributes(options.logger, { target: 'rpc' });
-  const invoke = client.invokeRPC.bind(client) as (method: TriggerRPCMethod<Input, Output>, flowId: string, input: Input) => Promise<unknown>;
+  // The Client overloads cannot type a handler whose input presence is decided at run time.
+  const rpcClient = client as unknown as {
+    invokeRPC(method: TriggerRPCMethod<Input, Output>, flowId: string, input: Input | undefined): Promise<unknown>;
+    invokeRPCWithOptions(method: TriggerRPCMethod<Input, Output>, flowId: string, ...inputAndOptions: unknown[]): Promise<unknown>;
+  };
   return {
     async handleTrigger(context, event) {
       if (!filterEvent(event)) { logTriggerRecord(logger, context, 'info', 'trigger event skipped: filtered', { event_id: event.id }); return; }
       const flowId = resolveFlowId(event);
       if (!flowId?.trim() || !event.id?.trim()) throw markTriggerUndeliverable(new Error('RPC trigger requires Flow ID and event ID'));
+      let requestId: string | undefined;
       try {
-        await invoke(rpcMethod, flowId, mapToRPCInput(event));
-        logTriggerRecord(logger, context, 'debug', 'trigger event delivered', { event_id: event.id, flow_id: flowId });
+        if (!mapToRPCInput) {
+          requestId = rpcName === undefined ? undefined : triggerRPCRequestId(rpcName, event.id);
+          await (requestId === undefined ? rpcClient.invokeRPC(rpcMethod, flowId, undefined) : rpcClient.invokeRPCWithOptions(rpcMethod, flowId, { requestId } satisfies RPCInvokeOptions));
+        } else {
+          const input = mapToRPCInput(event);
+          // Only these shapes certainly reach the Client's input-bearing overload.
+          const isInputCertain = rpcMethod.length >= 2 || input !== undefined;
+          requestId = rpcName === undefined || !isInputCertain ? undefined : triggerRPCRequestId(rpcName, event.id);
+          await (requestId === undefined ? rpcClient.invokeRPC(rpcMethod, flowId, input) : rpcClient.invokeRPCWithOptions(rpcMethod, flowId, input, { requestId } satisfies RPCInvokeOptions));
+        }
+        logTriggerRecord(logger, context, 'debug', 'trigger event delivered', { event_id: event.id, flow_id: flowId, ...(requestId === undefined ? {} : { request_id: requestId }) });
       } catch (error: unknown) {
+        const requestAttributes = requestId === undefined ? {} : { request_id: requestId };
         if (error instanceof ValueMappingError && error.operation === 'decode') {
-          logTriggerRecord(logger, context, 'warn', 'trigger event delivered; rpc response undecodable', { event_id: event.id, flow_id: flowId, ...triggerErrorAttributes(error) });
+          logTriggerRecord(logger, context, 'warn', 'trigger event delivered; rpc response undecodable', { event_id: event.id, flow_id: flowId, ...requestAttributes, ...triggerErrorAttributes(error) });
           return;
+        }
+        if (rpcName !== undefined && requestId !== undefined && isRequestIdUsedForDifferentRequest(error, requestId)) {
+          logTriggerRecord(logger, context, 'error', 'trigger rpc request conflict; event dropped', { event_id: event.id, request_id: requestId, rpc_name: rpcName, flow_id: flowId });
+          throw new TriggerRPCRequestConflictError(event.id, flowId, rpcName, requestId, error);
         }
         throw classifyDexTriggerError(error);
       }
     },
   };
+}
+
+/** Report whether a name can derive a request ID: it has a non-blank character and no NUL. */
+function isTriggerRPCNameUsable(name: string): boolean {
+  return name.trim() !== '' && !name.includes('\0');
+}
+
+/** Prefix of every request ID that newDexRPCTriggerTarget derives. */
+export const TriggerRPCRequestIdPrefix = 'trigger-rpc-';
+
+/**
+ * Derive the Dex request ID that newDexRPCTriggerTarget sends for every delivery attempt of one event.
+ *
+ * The ID is TriggerRPCRequestIdPrefix followed by the first 16 bytes, as unpadded base64url (22
+ * characters), of the SHA-256 digest of the UTF-8 bytes of rpcName, one 0x00 byte, and the UTF-8 bytes of
+ * eventId; an unpaired UTF-16 surrogate is encoded as U+FFFD. rpcName is RPCTriggerOptions.rpcName or the
+ * handler's JavaScript method name. For example, rpcName "receiveReply" and eventId "Ev1" hash the 16
+ * bytes "receiveReply\x00Ev1" and yield "trigger-rpc-kDFFz9I4ELDtzXkmvRTzlA". Throws a TypeError when
+ * rpcName is empty or contains NUL.
+ */
+export function triggerRPCRequestId(rpcName: string, eventId: string): string {
+  if (!rpcName || rpcName.includes('\0')) throw new TypeError('RPC request ID requires an RPC name without NUL characters');
+  const digest = createHash('sha256').update(rpcName, 'utf8').update(Uint8Array.of(0)).update(eventId, 'utf8').digest();
+  return `${TriggerRPCRequestIdPrefix}${digest.subarray(0, 16).toString('base64url')}`;
+}
+
+const grpcInvalidArgumentCode = 3;
+
+/**
+ * Report whether Dex rejected this call because a different request holds its request ID, committed or
+ * still in flight. The detail must name this call's own request ID, so another INVALID_ARGUMENT keeps its
+ * own classification.
+ */
+function isRequestIdUsedForDifferentRequest(error: unknown, requestId: string): boolean {
+  return error instanceof DexServiceError && error.code === grpcInvalidArgumentCode
+    && error.detail.includes(`request ID ${requestId} was already used for a different request`);
 }
 
 /**
