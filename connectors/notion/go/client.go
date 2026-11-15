@@ -30,6 +30,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -75,7 +76,11 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 }
+
+// minimumPollInterval keeps a databaseRowChanged poll loop well inside Notion's query rate limit.
+const minimumPollInterval = 5 * time.Second
 
 // WithHTTPClient replaces the HTTP client used for Notion requests. The caller
 // keeps ownership of client and its transport. Requests use a copy that never
@@ -85,6 +90,13 @@ func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
+// WithLogger sends the databaseRowChanged Trigger runner's records to logger: seeds, reseeds, retries,
+// rate-limit pauses, and delivery retries, never row contents or the API token. Without the option, or
+// with a nil logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Notion REST requests for one connection. It is
 // safe for concurrent use by several Steps.
 type Client struct {
@@ -92,6 +104,9 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	pollPageSize     int
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -188,6 +203,12 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes < 1 {
 		return nil, fmt.Errorf("Notion maxResponseBytes must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Notion pollInterval must be at least %s", minimumPollInterval)
+	}
+	if config.PollPageSize < 1 || config.PollPageSize > MaximumPageSize {
+		return nil, fmt.Errorf("Notion pollPageSize must be between 1 and %d", MaximumPageSize)
+	}
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
@@ -203,6 +224,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		httpClient:       providerhttp.NewProviderHTTPClient(dependencies.httpClient, writeRequestTimeout),
 		credentials:      credentials,
 		maxResponseBytes: config.MaxResponseBytes,
+		pollInterval:     config.PollInterval,
+		pollPageSize:     int(config.PollPageSize),
+		logger:           dependencies.logger,
 		now:              time.Now,
 	}, nil
 }

@@ -27,7 +27,20 @@ type guidanceManifest struct {
 				Steps    []string `yaml:"steps"`
 			} `yaml:"guide"`
 		} `yaml:"auth"`
-		Studio *struct{} `yaml:"studio"`
+		Studio *struct {
+			Commands []struct {
+				ID      string `yaml:"id"`
+				Request struct {
+					Method       string            `yaml:"method"`
+					URL          string            `yaml:"url"`
+					FixedHeaders map[string]string `yaml:"fixedHeaders"`
+				} `yaml:"request"`
+			} `yaml:"commands"`
+			Units []struct {
+				ID          string `yaml:"id"`
+				Description string `yaml:"description"`
+			} `yaml:"units"`
+		} `yaml:"studio"`
 	} `yaml:"spec"`
 }
 
@@ -46,7 +59,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"endpoint", "maxResponseBytes", "api_token"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"endpoint", "maxResponseBytes", "pollInterval", "pollPageSize", "api_token"}, names, "a new visible field needs its own guidance review")
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
 			require.GreaterOrEqual(t, len(field.Description), 120, "a label-length description is not guidance")
@@ -59,7 +72,12 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 			}
 		})
 	}
-	token := visibleFields[2]
+	for _, field := range visibleFields[2:4] {
+		require.Contains(t, field.Description, "databaseRowChanged", "poll settings name the Trigger they tune")
+	}
+	require.Contains(t, visibleFields[2].Description, "at least 5s")
+	require.Contains(t, visibleFields[3].Description, "maximum query page size")
+	token := visibleFields[4]
 	require.True(t, token.Required)
 	for _, text := range []string{"https://app.notion.com/developers/connections", "Internal connections", "Configuration", "API token", "ntn_"} {
 		require.Contains(t, token.Description, text)
@@ -78,7 +96,27 @@ func TestTheAuthorizationGuideNamesThePortalCapabilitiesAndSharing(t *testing.T)
 	} {
 		require.Contains(t, guide, text)
 	}
-	require.Nil(t, manifest.Spec.Studio, "Notion offers no GET listing for a picker, so the connector ships no Studio UI")
+}
+
+// Notion lists data sources only through POST search, so the picker resolves a pasted database link with GET.
+func TestTheDataSourcePickerResolvesThroughReadOnlyNotionCommands(t *testing.T) {
+	studio := readGuidanceManifest(t).Spec.Studio
+	require.NotNil(t, studio)
+	urls := map[string]string{}
+	for _, command := range studio.Commands {
+		require.Equal(t, "GET", command.Request.Method)
+		require.Equal(t, map[string]string{"Notion-Version": "2026-03-11"}, command.Request.FixedHeaders)
+		urls[command.ID] = command.Request.URL
+	}
+	require.Equal(t, map[string]string{
+		"getDatabase":   "https://api.notion.com/v1/databases/{databaseId}",
+		"getDataSource": "https://api.notion.com/v1/data_sources/{dataSourceId}",
+	}, urls)
+	require.Len(t, studio.Units, 1)
+	require.Equal(t, "dataSourcePicker", studio.Units[0].ID)
+	for _, text := range []string{"https://app.notion.com", "Copy link", "Manage data sources", "Copy data source ID", "blank"} {
+		require.Contains(t, studio.Units[0].Description, text)
+	}
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {

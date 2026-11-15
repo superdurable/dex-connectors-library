@@ -1,6 +1,6 @@
 # Notion Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.25.0`.
 
 Install the Python package with `pip install dex-connector-notion==0.1.0`.
 The Python package implements all five operations in the table below; its
@@ -22,7 +22,9 @@ The TypeScript package `@superdurable/connector-notion@0.1.0` implements all fiv
 The Notion connector runs Notion's public REST API as Dex Steps. It can search
 the pages and data sources shared with a connection by title, query a
 database's rows with typed filters, read a page's properties and plain-text
-content, create database rows, and update page properties. Every request
+content, create database rows, and update page properties. The Go
+`databaseRowChanged` Trigger starts a Flow for each row created or edited in
+one data source. Every request
 sends `Notion-Version: 2026-03-11`, Notion's current version, and the request
 and response shapes follow it.
 
@@ -41,8 +43,9 @@ ID. A database ID resolves, with one extra read, to the database's only data
 source. A database with several data sources selects `defect` and names their
 IDs, so the caller can pick one.
 
-The connector ships no Triggers and no Studio pickers; see
-[Not in this release](#not-in-this-release).
+The [databaseRowChanged Trigger](#databaserowchanged-trigger) is Go only; the
+Python and TypeScript packages implement the operations. Its Studio
+`dataSourcePicker` unit resolves a database link to its data sources.
 
 ## Notion setup
 
@@ -71,7 +74,7 @@ creator and has that user's page permissions instead of the connection's.
 ### Finding IDs
 
 Notion has no GET endpoint that lists databases or data sources, so the
-connector cannot offer a picker. It accepts the values users can copy, and
+operations cannot offer a picker. They accept the values users can copy, and
 `notion.ParseID` normalizes them to the dashed form:
 
 - a database ID from the database's address bar, with or without dashes, or
@@ -93,12 +96,14 @@ configuration fields as its settings. The application reads it through the
 `DEX_PROJECT_*` environment described in
 [project configuration loading](../../sdkgo/projectconfig/README.md#application-loading)
 and opens the connection with `NewProjectConnection`, as the
-[example](#example) does.
+[examples](#examples) do.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `endpoint` | `https://api.notion.com` | API base URL without `/v1`; change it only for a supported gateway or a loopback test server. |
 | `maxResponseBytes` | `4194304` | Largest accepted response. An oversized read selects `invalidResponse`; an oversized response to an accepted create selects `uncertain`. |
+| `pollInterval` | `30s` | Wait between `databaseRowChanged` polls, at least `5s`. |
+| `pollPageSize` | `100` | Rows per `databaseRowChanged` query page, 1 to 100. |
 | `api_token` | | Secret internal connection API token. |
 
 Configuration is read when the application starts; the token is reread before
@@ -173,6 +178,75 @@ Sets property values on one page with a `PATCH`. Properties it omits keep
 their values. Each listed value replaces the whole property, including every
 entry of a multi-select, people, or relation value. `ClearedValue` empties a
 property; checkbox and status properties cannot be cleared.
+
+## databaseRowChanged Trigger
+
+`databaseRowChanged` delivers each row created or edited in one data source,
+read by polling `POST /v1/data_sources/{id}/query` with a `last_edited_time`
+`on_or_after` filter, sorted by `last_edited_time` ascending. It needs only
+the **Read content** capability the connection already has.
+
+- **Baseline.** The first poll reads the newest `last_edited_time` with one
+  descending query of one row, then remembers every row edited in the two
+  minutes before it. Existing rows are never delivered. An empty data source
+  starts at the Unix epoch instead of the host clock, so a clock running
+  ahead of Notion's cannot hide its first rows.
+- **Cursor.** The committed cursor holds the newest `last_edited_time` read
+  (the high water), a 96-bit digest of each row ID seen at each time inside
+  the two-minute lookback, and Notion's `start_cursor` while one query spans
+  pages. Each poll queries from the high water minus the lookback, so rows
+  that share a timestamp, rows Notion indexes late, and timestamps Notion
+  rounds down are still delivered once. At most 2,000 seen rows, and 48 KiB
+  of them once encoded, are kept, which keeps the cursor under the kit's
+  64 KiB limit even when every row has its own millisecond timestamp; a row
+  evicted past that bound can arrive again with the same event ID, which a Dex Flow target
+  does not start twice.
+- **Events.** `DatabaseRowChangedEvent` carries the data source ID, the row
+  as `notion.Page` with its properties, and a derived `changeKind`: `created`
+  when `created_time` equals `last_edited_time`, otherwise `updated`. The
+  event ID hashes the data source, row ID, and `last_edited_time`, so a
+  refetch after a crash yields the same ID. Several edits Notion reports with
+  one `last_edited_time` arrive once. Trashed and archived rows are not
+  returned by the query, so they are not delivered.
+- **Limits.** Each request reads `pollPageSize` rows, at most Notion's 100,
+  and a poll follows at most ten pages. A sequence ends at Notion's
+  10,000-row query limit, and the next poll queries again from the new high
+  water.
+- **Failures.** A 429 `rate_limited` or 529 `service_overload` pauses every
+  binding of the connection for Notion's `Retry-After` seconds, or backs off
+  exponentially without it. Notion averages three requests per second per
+  connection, shared with the Flows' own Steps. A 400 `validation_error` for
+  a stored `start_cursor` restarts the query from the high water, without a
+  gap. A cursor for another data source, after the binding is re-picked,
+  records a new baseline and logs `poll cursor invalid; reseeding`. A
+  `404 object_not_found` (the database is no longer shared), a revoked token,
+  or `public_api_request_blocked` backs off per binding up to 15 minutes.
+
+The binding saves `dataSourceId` and `dataSourceName` through the
+`dataSourcePicker` unit. The user pastes a database link from **•••** >
+**Copy link**, and the unit lists that database's data sources with
+`GET /v1/databases/{id}`. A pasted data source ID is checked with
+`GET /v1/data_sources/{id}`. A binding without a saved data source fails
+the runner at startup.
+
+`notion.NewProjectDatabaseRowTriggerRunner` records each change in the
+binding's project Trigger inbox before the cursor commits in its project poll
+cursor, as the [row-changed example](go/examples/row-changed) does:
+
+```go
+triggerRunner, err := notion.NewProjectDatabaseRowTriggerRunner(project, rowchanged.ConnectionName, notion.ProjectDatabaseRowTriggerRunnerConfig{
+	DatabaseRowChangedRoutes: []notion.ProjectDatabaseRowChangedTriggerRoute{{
+		BindingName: rowchanged.DatabaseRowChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, rowchanged.AcceptEveryRowChange, rowchanged.ResolveFlowID,
+			rowchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, notion.WithLogger(logger))
+```
+
+`notion.NewDatabaseRowTriggerRunner` takes targets and cursor stores
+directly. The generated `NewDatabaseRowChangedTrigger` keeps the cursor in
+memory, so each start records a new baseline. The module requires sdkgo
+v0.38.0, which provides the `pollingtrigger` kit.
 
 ## Avoiding duplicate rows
 
@@ -267,14 +341,18 @@ finds such a duplicate on the next run.
   `scope` string. It also sends a form-encoded body with the client secret in
   the body. A Notion OAuth method therefore cannot complete authorization in
   Dex Web, and the connector ships only the API token method.
-- **Pickers.** Studio commands are HTTPS `GET` only. Notion lists databases
-  and data sources only through `POST /v1/search`, and `GET /v1/views` needs a
-  database or data source ID first. Operations take guided ID input instead.
-- **Triggers.** Notion webhooks start with a one-time POST of a
+- **Listing pickers.** Studio commands are HTTPS `GET` only. Notion lists
+  databases and data sources only through `POST /v1/search`, so no picker
+  lists the workspace. The Trigger's `dataSourcePicker` resolves a pasted
+  database link with `GET /v1/databases/{id}` instead, and operations take
+  guided ID input.
+- **Webhook Triggers.** Notion webhooks start with a one-time POST of a
   `verification_token` that the user pastes back into Notion, then sign
   deliveries with `X-Notion-Signature` as an HMAC-SHA256 of the body. The
   shared `webhooktrigger` endpoint has no handshake hook yet, and the events
-  carry IDs only, so each would also need a follow-up read.
+  carry IDs only, so each would also need a follow-up read. The
+  `databaseRowChanged` poll Trigger covers new and edited rows; trashed rows,
+  comments, and schema changes have no Trigger.
 - Nested block content, Notion's markdown endpoints, formula and rollup
   filters, page property pagination beyond Notion's 25-entry page values,
   trashing pages, and comments.
@@ -307,7 +385,11 @@ record := runSubmissionFlow(t, integrationContext(t), harness, flow, "mock-defau
 require.Equal(t, PhaseUpdated, record.Phase)
 ```
 
-## Example
+## Examples
+
+[examples/row-changed](go/examples/row-changed) starts one Flow per row
+created or edited in the picked data source and reads the row back with
+`getPage`.
 
 [examples/submission-intake](go/examples/submission-intake) records a form
 submission as a database row and reads it back. It finds the database by
@@ -360,6 +442,15 @@ through a real Dex Server against a stateful fake Notion. The scenarios are:
 - a delayed update that currently completes with one dispatch and leaves the row in the intended state;
 - an unwired optional branch;
 - invalid Start Flow input.
+
+The row-changed integration tests run the `databaseRowChanged` Trigger
+against a stateful fake data source. Existing rows are a baseline. Each later
+row version starts exactly one Flow, and a trashed row starts none. Edits
+made while the Trigger process is stopped arrive after a restart. A 429
+pauses for `Retry-After`, and a cursor for another data source records a new
+baseline. The UI tests in `ui/` cover the picker's guidance, ID parsing, both
+read-only commands, and secret-safe rendering. Live Notion polling and the
+picker against a real workspace have not been verified.
 
 `go test -tags=live -run TestLive ./...` exercises every operation against a
 real workspace when `NOTION_CONNECTOR_TEST_TOKEN` and
