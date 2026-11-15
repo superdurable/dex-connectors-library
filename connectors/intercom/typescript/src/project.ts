@@ -8,14 +8,18 @@ import {
 } from "@superdurable/connectors-sdk";
 import type { LoadedProject } from "@superdurable/connectors-sdk/projectconfig";
 import { z } from "zod";
-import { IntercomClient } from "./client.js";
+import { IntercomClient, type IntercomClientOptions } from "./client.js";
 import { newProjectConnection as newGeneratedProjectConnection } from "./generated/connection.js";
 import type { Config, Credentials } from "./generated/models.js";
 
-/** Bind one named Intercom project connection with live credential resolution. */
+/**
+ * Bind one named Intercom project connection with live credential resolution. options override the
+ * transport for tests and set the Trigger logger.
+ */
 export function newProjectConnection(
   project: LoadedProject,
   connectionName: string,
+  options: IntercomClientOptions = {},
 ) {
   return newGeneratedProjectConnection(
     project,
@@ -56,7 +60,7 @@ export function newProjectConnection(
           };
         },
       };
-      return new IntercomClient(config, credentials);
+      return new IntercomClient(config, credentials, options);
     },
   );
 }

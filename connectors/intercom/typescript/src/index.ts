@@ -22,3 +22,4 @@ export {
   UpdateConversationStateOperation,
   FindContactByEmailOperation,
 } from "./operations.js";
+export * from "./trigger.js";

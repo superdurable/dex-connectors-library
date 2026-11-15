@@ -16,10 +16,10 @@ spec:
       operations: [searchConversations, getConversation, replyToConversation, updateConversationState, findContactByEmail]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       package: "@superdurable/connector-intercom"
       operations: [searchConversations, getConversation, replyToConversation, updateConversationState, findContactByEmail]
-      triggers: []
+      triggers: [conversationEvent]
   codegen:
     go:
       package: intercom

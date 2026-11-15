@@ -1083,3 +1083,18 @@ export class FindContactByEmailOperation
     }
   }
 }
+
+/**
+ * @internal Decode a webhook notification's conversation item as the Go connector does: exact numeric IDs,
+ * no parts, and no first-message body. Throws when the item is not a valid conversation.
+ */
+export function decodeNotificationConversation(body: Uint8Array): Conversation {
+  const data = obj(obj(parseProviderJSON(body)).data ?? {});
+  if (data.item === undefined) throw new Error("notification item is missing");
+  return conversation(obj(data.item), false);
+}
+
+/** @internal Decode Intercom Unix seconds, an integer, a numeric string, or null, as RFC 3339; zero is the Go zero time. */
+export function decodeUnixSecondsTime(value: unknown): string {
+  return time(value);
+}
