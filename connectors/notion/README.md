@@ -2,14 +2,17 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.25.0`.
 
-Install the Python package with `pip install dex-connector-notion==0.1.0`.
-The Python package implements all five operations in the table below; its
+Install the Python package with `pip install dex-connector-notion==0.2.0`.
+The Python package implements all five operations in the table below and,
+from 0.2.0, the `databaseRowChanged` Trigger; its
 [submission intake example](python/examples/submission_intake/README.md)
 runs them through a Dex Flow using the static `notion-submissions` connection.
 Python requests and outcomes replay 52 Go-recorded provider scenarios,
 including retry and uncertain create decisions. The example ran through a
 real local Dex Worker and Client with connector mocks and a local HTTP
-stand-in; live Notion provider behavior has not been verified.
+stand-in; live Notion provider behavior has not been verified. Its
+[row-changed example](python/examples/row_changed/README.md) starts one Flow
+per row version through the Python `databaseRowChanged` Trigger.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/notion`.
 
@@ -22,8 +25,8 @@ The TypeScript package `@superdurable/connector-notion@0.2.0` implements all fiv
 The Notion connector runs Notion's public REST API as Dex Steps. It can search
 the pages and data sources shared with a connection by title, query a
 database's rows with typed filters, read a page's properties and plain-text
-content, create database rows, and update page properties. The Go and TypeScript
-`databaseRowChanged` Trigger starts a Flow for each row created or edited in
+content, create database rows, and update page properties. The Go, Python, and
+TypeScript `databaseRowChanged` Trigger starts a Flow for each row created or edited in
 one data source. Every request
 sends `Notion-Version: 2026-03-11`, Notion's current version, and the request
 and response shapes follow it.
@@ -38,7 +41,7 @@ and response shapes follow it.
 
 | Trigger | Source | Languages |
 | --- | --- | --- |
-| `databaseRowChanged` | `POST /v1/data_sources/{id}/query` by `last_edited_time` | Go, TypeScript |
+| `databaseRowChanged` | `POST /v1/data_sources/{id}/query` by `last_edited_time` | Go, Python, TypeScript |
 
 Since `2025-09-03`, a Notion database is a container for one or more data
 sources, and a database row is a page whose parent is a data source.
@@ -48,8 +51,8 @@ source. A database with several data sources selects `defect` and names their
 IDs, so the caller can pick one.
 
 The [databaseRowChanged Trigger](#databaserowchanged-trigger) runs in Go and,
-from 0.2.0, in TypeScript; the Python package implements only the operations.
-See the
+from 0.2.0, in Python and TypeScript. See the
+[Python README](python/README.md) and the
 [TypeScript README](typescript/README.md#databaserowchanged-trigger). Its Studio
 `dataSourcePicker` unit resolves a database link to its data sources.
 
@@ -254,6 +257,28 @@ directly. The generated `NewDatabaseRowChangedTrigger` keeps the cursor in
 memory, so each start records a new baseline. The module requires sdkgo
 v0.38.0, which provides the `pollingtrigger` kit.
 
+## Python databaseRowChanged Trigger
+
+The Python package's `databaseRowChanged` Trigger delivers each row created or
+edited in one data source, read by polling `POST /v1/data_sources/{id}/query`
+with a `last_edited_time` `on_or_after` filter, sorted by `last_edited_time`
+ascending, on the Python Connector SDK's poll Trigger kit
+(`dex-connectors-sdk` 0.12.0 or newer). It needs only the **Read content**
+capability the connection already has. The first poll records a baseline and
+delivers no existing row; each poll then queries again from two minutes before
+the newest `last_edited_time` read, so shared, rounded, or late-indexed
+timestamps are delivered once, and a trashed row is never delivered. See the
+[Python README](python/README.md#databaserowchanged-trigger) for the cursor,
+event IDs, limits, and failures.
+
+`new_project_database_row_trigger_runner`, `new_database_row_trigger_runner`,
+and `new_database_row_changed_trigger` mirror the Go Trigger's constructors. The
+Python fetcher sends the same queries, commits the same cursor documents byte
+for byte, and derives the same Trigger event IDs as the Go Trigger, so Go and
+Python replicas can share one binding's cursor and inbox; its unit tests replay
+polls recorded from the Go fetcher. See the
+[Python row-changed example](python/examples/row_changed/README.md).
+
 ## Avoiding duplicate rows
 
 Notion has no idempotency key or client request ID. Its [request-limit guidance](https://developers.notion.com/reference/request-limits)
@@ -396,6 +421,10 @@ require.Equal(t, PhaseUpdated, record.Phase)
 [examples/row-changed](go/examples/row-changed) starts one Flow per row
 created or edited in the picked data source and reads the row back with
 `getPage`.
+
+[python/examples/row_changed](python/examples/row_changed/README.md) starts one
+Flow per row created or edited in the picked data source through the Python
+`databaseRowChanged` Trigger and reads the row back with `getPage`.
 
 [examples/submission-intake](go/examples/submission-intake) records a form
 submission as a database row and reads it back. It finds the database by

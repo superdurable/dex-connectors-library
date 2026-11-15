@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import CreatePageInput, CreatePageOutput, DateRange, GetPageInput, GetPageOutput, Page, PageContent, PageProperty, Parent, PropertyValue, QueryDatabaseInput, QueryDatabaseOutput, QueryFilter, QuerySort, SearchInput, SearchMatch, SearchOutput, UpdatePagePropertiesInput, UpdatePagePropertiesOutput
+from ..models import CreatePageInput, CreatePageOutput, DatabaseRowChangedEvent, DatabaseRowChangedTriggerConfiguration, DateRange, GetPageInput, GetPageOutput, Page, PageContent, PageProperty, Parent, PropertyValue, QueryDatabaseInput, QueryDatabaseOutput, QueryFilter, QuerySort, SearchInput, SearchMatch, SearchOutput, UpdatePagePropertiesInput, UpdatePagePropertiesOutput
 from .definitions import CONNECTOR_ID, CREATED, CREATE_PAGE_DEFINITION, DEFECT, FOUND, GET_PAGE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, NO_MATCH, PROVIDER_REJECTED, QUERIED, QUERY_DATABASE_DEFINITION, SEARCHED, SEARCH_DEFINITION, UNCERTAIN, UPDATED, UPDATE_PAGE_PROPERTIES_DEFINITION
 
 def search_searched(value: SearchOutput, failure: Failure | None = None) -> Case[SearchOutput]:

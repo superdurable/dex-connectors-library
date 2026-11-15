@@ -1,10 +1,12 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed inputs and outputs generated from the Notion Go connector."""
+"""Typed operation inputs and outputs and Trigger models generated from the Notion Go connector."""
 
 from ._generated.models import (
     CreatePageInput,
     CreatePageOutput,
+    DatabaseRowChangedEvent,
+    DatabaseRowChangedTriggerConfiguration,
     DateRange,
     GetPageInput,
     GetPageOutput,
@@ -27,6 +29,8 @@ from ._generated.models import (
 __all__ = [
     "CreatePageInput",
     "CreatePageOutput",
+    "DatabaseRowChangedEvent",
+    "DatabaseRowChangedTriggerConfiguration",
     "DateRange",
     "GetPageInput",
     "GetPageOutput",
