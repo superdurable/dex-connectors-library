@@ -17,10 +17,10 @@ spec:
       operations: [searchConversations, getConversation, replyToConversation, updateConversation, findCustomerByEmail]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-helpscout'
       operations: [searchConversations, getConversation, replyToConversation, updateConversation, findCustomerByEmail]
-      triggers: []
+      triggers: [conversationEvent]
   codegen:
     go:
       package: helpscout

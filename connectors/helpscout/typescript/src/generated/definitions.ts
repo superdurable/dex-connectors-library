@@ -104,6 +104,8 @@ export const ReplyToConversationDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for replyToConversation. */
 export const ReplyToConversationMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -137,6 +139,8 @@ export const UpdateConversationDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for updateConversation. */
 export const UpdateConversationMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
