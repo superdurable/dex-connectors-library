@@ -12,6 +12,8 @@ class Config:
 
     max_response_bytes: int = 4194304
     request_interval_milliseconds: int = 1000
+    poll_interval_seconds: float = 300
+    poll_pages_per_poll: int = 3
 
 setattr(Config, '__module__', 'dex_connectors.hiver.client')
 
