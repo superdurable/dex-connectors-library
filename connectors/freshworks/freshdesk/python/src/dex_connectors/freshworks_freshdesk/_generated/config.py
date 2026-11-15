@@ -12,6 +12,7 @@ class Config:
 
     domain: str
     max_response_bytes: int = 4194304
+    poll_interval_seconds: float = 60
 
 setattr(Config, '__module__', 'dex_connectors.freshworks_freshdesk.client')
 

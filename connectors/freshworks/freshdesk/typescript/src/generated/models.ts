@@ -46,12 +46,15 @@ export interface Config {
   domain: string;
   /** Maximum complete Freshdesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or notes are unusually large. An oversized response selects invalidResponse, or uncertain for a write. */
   maxResponseBytes?: number;
+  /** Delay between ticketChanged Trigger polls of Freshdesk's ticket list, as a Go duration of at least 10s such as 30s or 2m. Leave blank to keep the displayed interval. Each poll normally makes one List All Tickets request, which counts against the account's per-minute API limit and its lower Tickets List sublimit (40 per minute on the Growth plan); lower it only when changes must arrive sooner, and raise it when other apps share the helpdesk's API limit. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "domain": z.string(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: freshdesk
   displayName: Freshdesk
-  description: Search, read, create, and update Freshdesk tickets and add private notes or public replies, keeping Freshdesk's own integer statuses and priorities.
+  description: Search, read, create, and update Freshdesk tickets, add private notes or public replies, and start Flows when tickets are created or updated, keeping Freshdesk's own integer statuses and priorities.
   company: Freshworks
   categories: [customer-support]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: freshdesk
   codegen:
@@ -36,6 +36,12 @@ spec:
         description: "Maximum complete Freshdesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or notes are unusually large. An oversized response selects invalidResponse, or uncertain for a write."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between ticketChanged Trigger polls of Freshdesk's ticket list, as a Go duration of at least 10s such as 30s or 2m. Leave blank to keep the displayed interval. Each poll normally makes one List All Tickets request, which counts against the account's per-minute API limit and its lower Tickets List sublimit (40 per minute on the Growth plan); lower it only when changes must arrive sooner, and raise it when other apps share the helpdesk's API limit."
+        required: false
+        default: 60s
   auth:
     type: apiKey
     connectionKind: freshdesk-api-key
@@ -53,6 +59,12 @@ spec:
         - In the right pane choose View API key, complete the captcha, and copy the key into api_key; Freshdesk shows the key only to a verified agent, and the Sprout and Free plans have no API access.
         - Enter the domain field as the acme in https://acme.freshdesk.com; Freshdesk serves its API only on freshdesk.com domains, not on a custom support domain.
         - To revoke access, reset the API key in Freshdesk; resetting disconnects every app that uses that key, so paste the new key here.
+  triggers:
+    - name: ticketChanged
+      goName: TicketChanged
+      eventType: TicketChangedEvent
+      configurationType: TicketChangedTriggerConfiguration
+      description: Receive each Freshdesk ticket created or updated after the binding first started, read by polling the ticket list in updated_at order; the first run records a baseline and delivers no existing tickets.
   operations:
     - name: searchTickets
       goName: SearchTickets

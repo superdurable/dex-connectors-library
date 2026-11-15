@@ -57,7 +57,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"domain", "maxResponseBytes", "api_key"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"domain", "maxResponseBytes", "pollInterval", "api_key"}, names, "a new visible field needs its own guidance review")
 
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
@@ -107,6 +107,22 @@ func TestManifestDeclaresNoStudioBundle(t *testing.T) {
 	require.Nil(t, readGuidanceManifest(t).Spec.Studio)
 	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err))
+}
+
+// TestPollIntervalGuidanceNamesTheRateLimitItSpends keeps the ticketChanged interval tied to Freshdesk's quota.
+func TestPollIntervalGuidanceNamesTheRateLimitItSpends(t *testing.T) {
+	for _, field := range readGuidanceManifest(t).Spec.Configuration.Fields {
+		if field.Name != "pollInterval" {
+			continue
+		}
+		require.Equal(t, "duration", field.Type)
+		require.Equal(t, "60s", field.Default)
+		for _, guidance := range []string{"ticketChanged", "Go duration", "at least 10s", "Tickets List sublimit", "per-minute API limit", "Leave blank"} {
+			require.Contains(t, field.Description, guidance)
+		}
+		return
+	}
+	t.Fatal("pollInterval is not declared")
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {
