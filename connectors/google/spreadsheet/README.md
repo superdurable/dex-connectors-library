@@ -10,6 +10,13 @@ The Google Sheets Connector exposes operation-specific Dex Step factories:
 - `spreadsheet.NewFindRowStep`
 - `spreadsheet.NewUpsertRowStep`
 
+| Name | Kind | What it does | Happy branch | Languages |
+| --- | --- | --- | --- | --- |
+| `getValues` | Query | Reads one bounded A1 range as formatted values | `read` | Go, Python, TypeScript |
+| `findRow` | Query | Finds the one row whose key column holds a stable key | `found` | Go, Python, TypeScript |
+| `upsertRow` | Mutation | Replaces the row with a stable key, or appends it when absent | `upserted` | Go, Python, TypeScript |
+| `rowAdded` | Trigger | Each row appended below the last processed row of one picked tab | | Go, Python |
+
 It uses a separate `google-sheets-oauth` Connection with the least-privilege
 `drive.file` scope. A Google Picker grant selects each accessible spreadsheet;
 manual IDs work only for files already granted to the application. The
@@ -132,15 +139,18 @@ The `ui/` package builds the credential-safe Studio setup bundle published as
 
 ## Python package
 
-Install `dex-connector-google-spreadsheet==0.1.0` to use the Python `getValues`,
-`findRow`, and `upsertRow` Step factories. The package uses the manifest-generated
+Install `dex-connector-google-spreadsheet==0.2.0` to use the Python `getValues`,
+`findRow`, and `upsertRow` Step factories and the `rowAdded` Trigger. The package uses the manifest-generated
 OAuth refresh driver and project connection. Its
 [`upsert_contact` example](python/examples/upsert_contact/README.md) binds the
 static `google-sheets-contacts` connection and verifies retry, deduplication
 checkpointing, and optional-branch failure through a local Dex Worker and Client.
+Its [`new_row_intake` example](python/examples/new_row_intake/README.md) starts
+one Flow per added row through `new_project_row_added_trigger_runner`, with the
+same cursor, realignment, and quota behavior as Go.
 Go-recorded provider responses are replayed by the Python conformance suite.
-Live Google authorization, scope consent, and spreadsheet read/write behavior
-have not been verified for this Python port.
+Live Google authorization, scope consent, and spreadsheet read/write and poll
+behavior have not been verified for this Python port.
 
 ## Test with spreadsheetmock
 

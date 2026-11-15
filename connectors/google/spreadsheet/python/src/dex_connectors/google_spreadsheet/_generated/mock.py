@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import FindRowInput, FindRowOutput, GetValuesInput, GetValuesOutput, UpsertRowInput, UpsertRowOutput
+from ..models import FindRowInput, FindRowOutput, GetValuesInput, GetValuesOutput, RowAddedEvent, RowAddedTriggerConfiguration, UpsertRowInput, UpsertRowOutput
 from .definitions import CONNECTOR_ID, PROVIDER, CONFLICT, DEFECT, FIND_ROW_DEFINITION, FOUND, GET_VALUES_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, READ, UNCERTAIN, UPSERTED, UPSERT_ROW_DEFINITION
 
 def get_values_read(value: GetValuesOutput, failure: Failure | None = None) -> Case[GetValuesOutput]:
