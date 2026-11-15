@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import CancelScheduledEventInput, Cancellation, CreateSchedulingLinkInput, CreateWebhookSubscriptionInput, EventInviteePage, GetScheduledEventInput, Invitee, InviteeAnswer, ListEventInviteesInput, ListScheduledEventsInput, ScheduledEvent, ScheduledEventCancellation, ScheduledEventHost, ScheduledEventInviteesCounter, ScheduledEventLocation, ScheduledEventPage, SchedulingLink, WebhookSubscription
+from ..models import CancelScheduledEventInput, Cancellation, CreateSchedulingLinkInput, CreateWebhookSubscriptionInput, EventInviteePage, GetScheduledEventInput, Invitee, InviteeAnswer, InviteeEvent, InviteeEventReceivedTriggerConfiguration, ListEventInviteesInput, ListScheduledEventsInput, ScheduledEvent, ScheduledEventCancellation, ScheduledEventHost, ScheduledEventInviteesCounter, ScheduledEventLocation, ScheduledEventPage, SchedulingLink, WebhookSubscription
 from .definitions import CONNECTOR_ID, CANCELED, CANCEL_SCHEDULED_EVENT_DEFINITION, CONFLICTING_SUBSCRIPTION, CREATED, CREATE_SCHEDULING_LINK_DEFINITION, CREATE_WEBHOOK_SUBSCRIPTION_DEFINITION, DEFECT, FOUND, GET_SCHEDULED_EVENT_DEFINITION, INVALID_RESPONSE, LISTED, LIST_EVENT_INVITEES_DEFINITION, LIST_SCHEDULED_EVENTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, SUBSCRIBED, UNCERTAIN
 
 def list_scheduled_events_listed(value: ScheduledEventPage, failure: Failure | None = None) -> Case[ScheduledEventPage]:

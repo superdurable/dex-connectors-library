@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Calendly scheduling operations for Dex Flows."""
+"""Calendly scheduling operations and signed invitee webhook Triggers for Dex Flows."""
 
 from ._generated.definitions import *  # noqa: F403
 from .client import Client as Client
@@ -108,8 +108,28 @@ from .steps import (
 from .steps import (
     new_list_scheduled_events_step as new_list_scheduled_events_step,
 )
+from .triggers import (
+    UI_EVENT_TYPE_PICKER_PORT_EVENT_TYPE_URI,
+    UI_UNIT_EVENT_TYPE_PICKER,
+    WEBHOOK_EVENT_INVITEE_CANCELED,
+    WEBHOOK_EVENT_INVITEE_CREATED,
+    InviteeEvent,
+    InviteeEventReceivedEndpointRunner,
+    InviteeEventReceivedTriggerConfiguration,
+    ProjectInviteeEventReceivedTriggerRoute,
+    decode_invitee_event_received_trigger_configuration,
+    define_invitee_event_received_trigger_binding,
+    invitee_event_received_webhook_handler,
+    new_invitee_event_received_trigger,
+    new_project_invitee_event_received_endpoint_runner,
+    validate_invitee_event_received_trigger_configuration,
+)
 
 __all__ = [
+    "UI_EVENT_TYPE_PICKER_PORT_EVENT_TYPE_URI",
+    "UI_UNIT_EVENT_TYPE_PICKER",
+    "WEBHOOK_EVENT_INVITEE_CANCELED",
+    "WEBHOOK_EVENT_INVITEE_CREATED",
     "CancelScheduledEventInput",
     "CancelScheduledEventOperation",
     "Cancellation",
@@ -126,10 +146,14 @@ __all__ = [
     "GetScheduledEventOperation",
     "Invitee",
     "InviteeAnswer",
+    "InviteeEvent",
+    "InviteeEventReceivedEndpointRunner",
+    "InviteeEventReceivedTriggerConfiguration",
     "ListEventInviteesInput",
     "ListEventInviteesOperation",
     "ListScheduledEventsInput",
     "ListScheduledEventsOperation",
+    "ProjectInviteeEventReceivedTriggerRoute",
     "ScheduledEvent",
     "ScheduledEventCancellation",
     "ScheduledEventHost",
@@ -138,13 +162,19 @@ __all__ = [
     "ScheduledEventPage",
     "SchedulingLink",
     "WebhookSubscription",
+    "decode_invitee_event_received_trigger_configuration",
+    "define_invitee_event_received_trigger_binding",
+    "invitee_event_received_webhook_handler",
     "new_cancel_scheduled_event_step",
     "new_connection",
     "new_connection_with_operations",
     "new_create_scheduling_link_step",
     "new_create_webhook_subscription_step",
     "new_get_scheduled_event_step",
+    "new_invitee_event_received_trigger",
     "new_list_event_invitees_step",
     "new_list_scheduled_events_step",
     "new_project_connection",
+    "new_project_invitee_event_received_endpoint_runner",
+    "validate_invitee_event_received_trigger_configuration",
 ]
