@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { MaximumMaxSends, isValidMaxSends } from './operation.js';
 import { ConnectionRefSchema, OperationRefSchema, deriveCallID, type CallID, type ConnectionRef, type OperationRef } from './types.js';
 import type { AsyncContext, BufferedTextStreamOptions, Stream } from '@superdurable/dex';
 
@@ -26,6 +27,16 @@ export interface CallProgressOptions {
   /** Flush interval and soft UTF-8 batch limit for text. */ textOptions?: BufferedTextStreamOptions;
 }
 
+/** Optional Streams and Step configuration for one connector invocation. */
+export interface CallOptions extends CallProgressOptions {
+  /**
+   * Application send cap for one `limited` Mutation Step, an integer from 1 to 10. A Mutation Step
+   * factory sets it from its `maxSends` option; the single-dispatch Fence applies it only when the
+   * connector passes a cap of at least 2.
+   */
+  maxSendsOverride?: number;
+}
+
 /** Provider-safe call metadata with its live, non-serializable Dex Step context. */
 export interface Call {
   /** Active Dex Execute context; Step factories attach it as a non-enumerable field. */ context: AsyncContext;
@@ -33,6 +44,7 @@ export interface Call {
   /** Provider deduplication key, when available. */ idempotencyKey?: string;
   /** Logical named connection. */ connection: ConnectionRef;
   /** Manifest operation identity. */ operation: OperationRef;
+  /** Application send cap from the Step configuration, present only when the application set one. */ maxSendsOverride?: number;
   /** Append structured progress when a Stream is configured. */ reportProgress(progress: Progress): void;
   /** Append text in order when a buffered Stream is configured. */ writeText(value: string): void;
   /** Whether structured progress output is configured. */ hasProgressStream(): boolean;
@@ -40,12 +52,14 @@ export interface Call {
 }
 
 /** Bind a live Dex Execute context to a stable, provider-safe call identity. */
-export function createCall(context: AsyncContext, connection: ConnectionRef, operation: OperationRef, options: CallProgressOptions = {}): Call {
+export function createCall(context: AsyncContext, connection: ConnectionRef, operation: OperationRef, options: CallOptions = {}): Call {
   if (!context?.flowId) throw new TypeError('Dex Flow ID is required');
   if (!context.stepExecutionId) throw new TypeError('connector operations require a Dex Step execution; RPC invocation is not allowed');
   ConnectionRefSchema.parse(connection);
   OperationRefSchema.parse(operation);
+  if (options.maxSendsOverride !== undefined && !isValidMaxSends(options.maxSendsOverride)) throw new RangeError(`connector maxSends must be an integer from 1 to ${MaximumMaxSends}`);
   const call = { context, id: deriveCallID(context.flowId, context.stepExecutionId, operation), connection, operation } as Call;
+  if (options.maxSendsOverride !== undefined) call.maxSendsOverride = options.maxSendsOverride;
   const textWriter = options.textStream?.bufferedText(context, options.textOptions);
   let sequence = 0;
   Object.defineProperty(call, 'context', { value: context, enumerable: false });

@@ -46,7 +46,7 @@ describe('sdkgo conformance fixtures', () => {
       expect(JSON.parse(JSON.stringify(value))).toEqual(value);
     }
     expect(z.array(FailureSchema).parse(await fixture('failures'))).toHaveLength(13);
-    expect(z.array(z.record(z.string(), z.unknown())).parse(await fixture('single-dispatch-markers'))).toHaveLength(4);
+    expect(z.array(z.record(z.string(), z.unknown())).parse(await fixture('single-dispatch-markers'))).toHaveLength(8);
   });
 
   it('round-trips stable identity and derives the same UUID', async () => {

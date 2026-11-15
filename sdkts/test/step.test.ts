@@ -5,6 +5,7 @@ import { RetryAfterError, StepRef, type AsyncContext, type StepOptions } from '@
 import { describe, expect, it } from 'vitest';
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry } from '../src/types.js';
 import { RetryError } from '../src/errors.js';
+import { definitionMaxSends, validateMutationDefinition, type MutationDefinition } from '../src/operation.js';
 import * as connectorsSDK from '../src/index.js';
 import { goToBranch, newMutationStep, newQueryStep, throwDexRetry, type MutationStepConfig, type QueryStepConfig } from '../src/step.js';
 
@@ -77,5 +78,53 @@ describe('connector Step factories', () => {
     expect(() => newQueryStep({ ...queryConfig(() => newQueryBranch('found', { id: 'item-1' })), branches: [] })).toThrow('required');
     const options: StepOptions = { waitForMethodTimeoutMs: 1000 };
     expect(() => newQueryStep({ ...queryConfig(() => newQueryBranch('found', { id: 'item-1' })), stepOptionsOverride: options })).toThrow('WaitFor');
+  });
+
+  it('accepts an application send cap only for a limited Mutation and passes it to every call', async () => {
+    const limitedRetry = { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 4, totalDurationMs: 600000 };
+    const observedCaps: (number | undefined)[] = [];
+    function mutationConfig(definition: MutationDefinition, maxSends?: number, stepOptionsOverride?: StepOptions): MutationStepConfig<{ id: string }, { id: string }, { id: string }> {
+      return { stepType: 'CreateItem', annotations, connection, mapToOperationInput: input => input,
+        operation: { definition: () => definition, idempotencyKey: callId => callId, invoke: call => { observedCaps.push(call.maxSendsOverride); return newMutationBranch('created', { id: 'item-1' }); } },
+        branches: [goToBranch('created', new StepRef('Created'))],
+        ...(maxSends === undefined ? {} : { maxSends }), ...(stepOptionsOverride ? { stepOptionsOverride } : {}) };
+    }
+    const limited: MutationDefinition = { ...mutationDefinition, repeatOnUnknown: 'limited', maxSends: 3, stepDefaults: { executeRetry: limitedRetry } };
+
+    const widened = newMutationStep(mutationConfig(limited, 5));
+    expect(widened.getStepOptions().executeRetry?.maximumAttempts).toBe(6);
+    await widened.execute(context, { id: 'item-1' });
+    await widened.execute({ ...context, attempt: 2 } as AsyncContext, { id: 'item-1' });
+    expect(observedCaps).toEqual([5, 5]);
+    observedCaps.length = 0;
+    await newMutationStep(mutationConfig(limited)).execute(context, { id: 'item-1' });
+    expect(observedCaps).toEqual([undefined]);
+
+    expect(newMutationStep(mutationConfig(limited, 1)).getStepOptions().executeRetry?.maximumAttempts).toBe(4);
+    const defaultCap: MutationDefinition = { ...mutationDefinition, repeatOnUnknown: 'limited', stepDefaults: { executeRetry: limitedRetry } };
+    expect(newMutationStep(mutationConfig(defaultCap, 5)).getStepOptions().executeRetry?.maximumAttempts).toBe(6);
+    const explicitRetry = { ...limitedRetry, maximumAttempts: 2 };
+    expect(newMutationStep(mutationConfig(limited, 5, { executeRetry: explicitRetry })).getStepOptions().executeRetry?.maximumAttempts).toBe(2);
+    const unlimited: MutationDefinition = { ...mutationDefinition, repeatOnUnknown: 'limited' };
+    expect(newMutationStep(mutationConfig(unlimited, 10)).getStepOptions().executeRetry?.maximumAttempts).toBe(0);
+
+    for (const repeatOnUnknown of ['safe', 'unsafe', undefined] as const) {
+      const definition: MutationDefinition = repeatOnUnknown ? { ...mutationDefinition, repeatOnUnknown } : mutationDefinition;
+      expect(() => newMutationStep(mutationConfig(definition, 2))).toThrow('not limited');
+      expect(() => newMutationStep(mutationConfig(definition))).not.toThrow();
+    }
+    for (const maxSends of [0, 11, 2.5]) expect(() => newMutationStep(mutationConfig(limited, maxSends))).toThrow(RangeError);
+    expect(() => newQueryStep({ ...queryConfig(() => newQueryBranch('found', { id: 'item-1' })), maxSends: 2 } as QueryStepConfig<{ id: string }, { id: string }, { id: string }>)).toThrow('maxSends');
+  });
+
+  it('validates the unknown-outcome policy of a Mutation definition', () => {
+    expect(() => validateMutationDefinition({ ...mutationDefinition, repeatOnUnknown: 'limited', maxSends: 10 })).not.toThrow();
+    expect(() => validateMutationDefinition({ ...mutationDefinition, repeatOnUnknown: 'limited', maxSends: 1 })).toThrow('from 2 to 10');
+    expect(() => validateMutationDefinition({ ...mutationDefinition, repeatOnUnknown: 'limited', maxSends: 11 })).toThrow('from 2 to 10');
+    expect(() => validateMutationDefinition({ ...mutationDefinition, repeatOnUnknown: 'unsafe', maxSends: 3 })).toThrow('requires repeatOnUnknown limited');
+    expect(() => validateMutationDefinition({ ...mutationDefinition, maxSends: 3 })).toThrow('requires repeatOnUnknown limited');
+    expect(() => validateMutationDefinition({ ...mutationDefinition, repeatOnUnknown: 'sometimes' } as unknown as MutationDefinition)).toThrow('safe, limited, or unsafe');
+    expect(definitionMaxSends({ ...mutationDefinition, repeatOnUnknown: 'limited' })).toBe(3);
+    expect(definitionMaxSends({ ...mutationDefinition, repeatOnUnknown: 'unsafe' })).toBe(1);
   });
 });

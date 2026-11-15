@@ -25,3 +25,17 @@ const mutation = newMutationStep({
 const queried = await query.execute(context, { id: 'item-1' });
 const created = await mutation.execute(context, { id: 'item-1' });
 if (queried.kind !== 'next' || created.kind !== 'next' || query.getStepOptions().executeRetry.totalDurationMs !== 3600_000) throw new Error('Step factory example failed');
+
+// An application raises the send cap of one limited Mutation Step from the manifest's 3 to 5.
+const sendCaps = [];
+const notification = newMutationStep({
+  stepType: 'SendNotification', annotations, connection, mapToOperationInput: input => input, maxSends: 5,
+  operation: { definition: () => ({ operation: { connectorId: 'example', operationId: 'sendNotification' }, repeatOnUnknown: 'limited', maxSends: 3,
+    branches: [{ id: 'sent', description: 'Notification sent' }, { id: 'defect', description: 'Connector defect', optional: true }],
+    stepDefaults: { executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60_000, maximumAttempts: 4, totalDurationMs: 600_000 } } }),
+    idempotencyKey: callId => callId,
+    invoke: (call, input) => { sendCaps.push(call.maxSendsOverride); return newMutationBranch('sent', { id: input.id }); } },
+  branches: [goToBranch('sent', new StepRef('NotificationDone'))],
+});
+await notification.execute(context, { id: 'notification-1' });
+if (sendCaps[0] !== 5 || notification.getStepOptions().executeRetry.maximumAttempts !== 6) throw new Error('send cap example failed');
