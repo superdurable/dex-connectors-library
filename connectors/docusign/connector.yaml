@@ -16,11 +16,11 @@ spec:
       operations: [createEnvelopeFromTemplate, getEnvelope, listEnvelopeRecipients, voidEnvelope, downloadCombinedDocument]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-docusign'
 
       operations: [createEnvelopeFromTemplate, getEnvelope, listEnvelopeRecipients, voidEnvelope, downloadCombinedDocument]
-      triggers: []
+      triggers: [envelopeEventReceived]
   codegen:
     go:
       package: docusign

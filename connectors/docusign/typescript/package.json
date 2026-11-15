@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-docusign",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DocuSign eSignature operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -42,10 +42,11 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:envelope": "npm run build && tsx examples/envelope-status/main.ts",
-    "example:envelope:start": "npm run build && tsx examples/envelope-status/start.ts"
+    "example:envelope:start": "npm run build && tsx examples/envelope-status/start.ts",
+    "example:outcome": "npm run build && tsx examples/envelope-outcome/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.11.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },

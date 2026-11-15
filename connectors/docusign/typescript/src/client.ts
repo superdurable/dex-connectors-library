@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { CreateEnvelopeFromTemplateOperation, DownloadCombinedDocumentOperation, GetEnvelopeOperation, ListEnvelopeRecipientsOperation, VoidEnvelopeOperation } from './operations.js';
@@ -14,6 +14,7 @@ const productionHostPattern = /^(?!demo\.)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.
 const maximumErrorBodyBytes = 65_536;
 const defaultResponseBytes = 1_048_576;
 const defaultDocumentBytes = 67_108_864;
+const defaultConnectBodyBytes = 2_097_152;
 const rateLimitCodes = new Set([
   'HOURLY_APIINVOCATION_LIMIT_EXCEEDED', 'BURST_APIINVOCATION_LIMIT_EXCEEDED',
   'HOURLY_ENVELOPE_POLLING_LIMIT_EXCEEDED', 'BURST_ENVELOPE_POLLING_LIMIT_EXCEEDED',
@@ -39,6 +40,8 @@ export interface DocuSignClientOptions {
   now?: () => Date;
   /** Persist a combined PDF outside Dex payloads. */
   documentStore?: CombinedDocumentStore;
+  /** Receive the envelopeEventReceived Trigger's delivery records; omitted uses the SDK's console logger. */
+  logger?: TriggerLogger;
 }
 /** One provider answer; oversized applies only to successful JSON bodies. */
 export interface DocuSignResponse {
@@ -88,12 +91,17 @@ export class DocuSignClient {
   readonly maxResponseBytes: number;
   readonly maxDocumentBytes: number;
   readonly documentStore: CombinedDocumentStore | undefined;
+  /** Largest Connect request body the envelopeEventReceived endpoint accepts. */
+  readonly connectMaxBodyBytes: number;
+  /** Destination of the envelopeEventReceived Trigger's records. */
+  readonly triggerLogger: TriggerLogger;
   private readonly accountId: string;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly hasCustomSend: boolean;
   private readonly now: () => Date;
   private readonly accountCache = new Map<string, { accountId: string; baseUri: string; at: number }>();
-  private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'DocuSign', auth: Authorization, credentialFields: CredentialFields });
+  /** @internal Refreshes expiring OAuth credentials for operations and the Connect endpoint. */
+  readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'DocuSign', auth: Authorization, credentialFields: CredentialFields });
 
   /** Validate connection settings and bind host-owned renewable credentials. */
   constructor(config: Config, readonly credentials: CredentialSource, options: DocuSignClientOptions = {}) {
@@ -105,10 +113,12 @@ export class DocuSignClient {
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('maxResponseBytes must be positive');
     if (!Number.isSafeInteger(this.maxDocumentBytes) || this.maxDocumentBytes <= 0) throw new TypeError('maxDocumentBytes must be positive');
     if (config.connectMaxBodyBytes !== undefined && (!Number.isSafeInteger(config.connectMaxBodyBytes) || config.connectMaxBodyBytes < 0)) throw new TypeError('connectMaxBodyBytes must be non-negative');
+    this.connectMaxBodyBytes = config.connectMaxBodyBytes || defaultConnectBodyBytes;
     this.send = options.send ?? sendProviderRequest;
     this.hasCustomSend = options.send !== undefined;
     this.now = options.now ?? (() => new Date());
     this.documentStore = options.documentStore;
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
   }
 
   /** Bind the template creation Mutation. */

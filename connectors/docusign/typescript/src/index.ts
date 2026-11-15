@@ -8,3 +8,5 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newProjectConnection } from './project.js';
 export { DocuSignClient, type DocuSignClientOptions, type CombinedDocumentStore, type CombinedDocumentReference } from './client.js';
 export { CreateEnvelopeFromTemplateOperation, GetEnvelopeOperation, ListEnvelopeRecipientsOperation, VoidEnvelopeOperation, DownloadCombinedDocumentOperation } from './operations.js';
+export * from './connect_event.js';
+export * from './trigger.js';
