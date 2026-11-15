@@ -238,6 +238,7 @@ def new_post_channel_message_step(
     defect: dex.StepTarget[MutationResult[PostMessageOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[PostMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, PostChannelMessageInput, PostMessageOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Slack Step connection name must match its connection reference")
@@ -269,6 +270,7 @@ def new_post_channel_message_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -288,6 +290,7 @@ def new_post_thread_reply_step(
     defect: dex.StepTarget[MutationResult[PostMessageOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[PostMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, PostThreadReplyInput, PostMessageOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Slack Step connection name must match its connection reference")
@@ -319,6 +322,7 @@ def new_post_thread_reply_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

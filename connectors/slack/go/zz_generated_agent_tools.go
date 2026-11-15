@@ -176,6 +176,8 @@ func postChannelMessageAgentToolMetadata() sdkgo.AgentToolMetadata {
 		Description:           "Post one new top-level message to a Slack channel. Supply the channel ID and the message text. When the user names a channel, such as #general, first find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find. The app must be a member of the channel.",
 		IsApprovalRecommended: true,
 		IsRetrySafe:           false,
+		RepeatOnUnknown:       PostChannelMessageDefinition.RepeatOnUnknown,
+		MaxSends:              PostChannelMessageDefinition.MaxSends,
 		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
 			PostChannelMessageBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
 			PostChannelMessageBranchUncertain:        sdkgo.AgentBranchOutcomeUnknown,
@@ -196,6 +198,8 @@ func postThreadReplyAgentToolMetadata() sdkgo.AgentToolMetadata {
 		Description:           "Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text. When the user names a channel, such as #general, find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find.",
 		IsApprovalRecommended: true,
 		IsRetrySafe:           false,
+		RepeatOnUnknown:       PostThreadReplyDefinition.RepeatOnUnknown,
+		MaxSends:              PostThreadReplyDefinition.MaxSends,
 		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
 			PostThreadReplyBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
 			PostThreadReplyBranchUncertain:        sdkgo.AgentBranchOutcomeUnknown,

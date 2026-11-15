@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -104,8 +105,10 @@ POST_CHANNEL_MESSAGE_DEFINITION = MutationDefinition(
     StepDefaults(
         timedelta(seconds=30),
         1,
-        execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
+        execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 10, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 POST_THREAD_REPLY_DEFINITION = MutationDefinition(
@@ -119,6 +122,8 @@ POST_THREAD_REPLY_DEFINITION = MutationDefinition(
     StepDefaults(
         timedelta(seconds=30),
         1,
-        execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
+        execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 10, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )

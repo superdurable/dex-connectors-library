@@ -108,7 +108,23 @@ func TestSharedFenceRetries503ExactlyOnce(t *testing.T) {
 	require.Equal(t, messageIDs[0], messageIDs[1])
 }
 
-func TestSharedFenceBodyErrorsDoNotAuthorizeNon2xxResend(t *testing.T) {
+// runUntilTerminal runs attempts until a branch is selected and returns it with the Retry count.
+func runUntilTerminal(t *testing.T, ctx *singledispatchtest.Context, run func() (sdkgo.MutationResult[slack.PostMessageOutput], error)) (sdkgo.MutationResult[slack.PostMessageOutput], int) {
+	t.Helper()
+	for retries := 0; retries < 10; retries++ {
+		result, err := run()
+		var retryError *sdkgo.RetryError
+		if !errors.As(err, &retryError) {
+			require.NoError(t, err)
+			return result, retries
+		}
+		ctx.AdvanceAttempt()
+	}
+	t.Fatal("no terminal branch within ten attempts")
+	return sdkgo.MutationResult[slack.PostMessageOutput]{}, 0
+}
+
+func TestSharedFenceNon2xxBodyErrorsResendOnlyUnknownOutcomes(t *testing.T) {
 	for _, statusCode := range []int{http.StatusInternalServerError, http.StatusBadGateway, http.StatusGatewayTimeout, http.StatusBadRequest} {
 		for _, providerError := range []string{"service_unavailable", "ratelimited"} {
 			t.Run(strconv.Itoa(statusCode)+"-"+providerError, func(t *testing.T) {
@@ -119,25 +135,111 @@ func TestSharedFenceBodyErrorsDoNotAuthorizeNon2xxResend(t *testing.T) {
 				}))
 				ctx := singledispatchtest.NewContext("shared-fence-status", "post")
 				input := slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"}
-				result, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
-				require.NoError(t, err)
-				if statusCode >= 500 {
-					require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
-				} else {
-					require.Equal(t, slack.PostThreadReplyBranchProviderRejected, result.Branch)
-				}
-				require.Equal(t, 1, posts)
+				result, retries := runUntilTerminal(t, ctx, func() (sdkgo.MutationResult[slack.PostMessageOutput], error) {
+					return sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+				})
 				heartbeats := ctx.Heartbeats()
 				require.NotEmpty(t, heartbeats)
 				require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"claimed"`)
-				ctx.AdvanceAttempt()
-				result, err = sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
-				require.NoError(t, err)
-				require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
-				require.Equal(t, 1, posts)
+				if statusCode >= 500 {
+					// A 5xx outcome is unknown, so the post is resent until the send cap.
+					require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
+					require.Equal(t, 2, retries)
+					require.Equal(t, 3, posts)
+					require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"sendCount":3`)
+					return
+				}
+				require.Equal(t, slack.PostThreadReplyBranchProviderRejected, result.Branch)
+				require.Zero(t, retries)
+				require.Equal(t, 1, posts, "a definite refusal is never resent")
 			})
 		}
 	}
+}
+
+func TestSharedFenceDefiniteRefusalIsNeverResent(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		statusCode int
+		body       string
+	}{
+		{name: "channel_not_found", statusCode: http.StatusOK, body: `{"ok":false,"error":"channel_not_found"}`},
+		{name: "not_in_channel", statusCode: http.StatusOK, body: `{"ok":false,"error":"not_in_channel"}`},
+		{name: "bad_request", statusCode: http.StatusBadRequest, body: `{"ok":false,"error":"invalid_arguments"}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			posts := 0
+			client := newSlackClientWithTransport(t, roundTripFunc(func(*http.Request) (*http.Response, error) {
+				posts++
+				return slackTestResponse(testCase.statusCode, testCase.body), nil
+			}))
+			ctx := singledispatchtest.NewContext("shared-fence-definite-"+testCase.name, "post")
+			result, retries := runUntilTerminal(t, ctx, func() (sdkgo.MutationResult[slack.PostMessageOutput], error) {
+				return sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			})
+			require.Equal(t, slack.PostChannelMessageBranchProviderRejected, result.Branch)
+			require.Zero(t, retries)
+			require.Equal(t, 1, posts)
+		})
+	}
+}
+
+func TestSharedFenceDefiniteRefusalAfterPossibleSendIsUncertain(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		statusCode int
+		body       string
+	}{
+		{name: "forbidden", statusCode: http.StatusForbidden, body: `{"ok":false,"error":"restricted_action"}`},
+		{name: "channel_not_found", statusCode: http.StatusOK, body: `{"ok":false,"error":"channel_not_found"}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			posts := 0
+			client := newSlackClientWithTransport(t, roundTripFunc(func(*http.Request) (*http.Response, error) {
+				posts++
+				if posts == 1 {
+					return slackTestResponse(http.StatusInternalServerError, `{"ok":false,"error":"fatal_error"}`), nil
+				}
+				return slackTestResponse(testCase.statusCode, testCase.body), nil
+			}))
+			ctx := singledispatchtest.NewContext("shared-fence-refusal-after-send-"+testCase.name, "post")
+			result, retries := runUntilTerminal(t, ctx, func() (sdkgo.MutationResult[slack.PostMessageOutput], error) {
+				return sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			})
+			// The first post may exist, so the refusal cannot report that nothing changed.
+			require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+			require.NotNil(t, result.Failure)
+			require.Equal(t, 1, retries)
+			require.Equal(t, 2, posts)
+		})
+	}
+}
+
+func TestSharedFenceUnresolvedEarlierSendWithTerminalCredentialsIsUncertain(t *testing.T) {
+	provider := &sequencedSlackCredentials{resolutions: []slackCredentialResolution{
+		{credentials: slack.Credentials{BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token")}},
+		{err: sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked"))},
+	}}
+	posts := 0
+	client, err := slack.New(slack.Config{}, provider, slack.WithHTTPClient(&http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		posts++
+		return slackTestResponse(http.StatusInternalServerError, `{"ok":false,"error":"fatal_error"}`), nil
+	})}))
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("shared-fence-unresolved-terminal-credentials", "post")
+	input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
+	_, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+	var retryError *sdkgo.RetryError
+	require.ErrorAs(t, err, &retryError)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+	require.NoError(t, err)
+	// The first post may have landed, so terminal credentials cannot select defect.
+	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Equal(t, 1, posts)
+	heartbeats := ctx.Heartbeats()
+	require.NotContains(t, string(heartbeats[len(heartbeats)-1]), `"state":"notSent"`)
 }
 
 func TestSharedFenceCredentialBodyRequires2xxRefusal(t *testing.T) {
@@ -147,7 +249,7 @@ func TestSharedFenceCredentialBodyRequires2xxRefusal(t *testing.T) {
 		body       string
 		branch     sdkgo.BranchID
 	}{
-		{name: "server_error", statusCode: http.StatusInternalServerError, body: `{"ok":false,"error":"token_expired"}`, branch: slack.PostChannelMessageBranchUncertain},
+		{name: "server_error", statusCode: http.StatusInternalServerError, body: `{"ok":false,"error":"token_expired"}`},
 		{name: "client_error", statusCode: http.StatusBadRequest, body: `{"ok":false,"error":"token_expired"}`, branch: slack.PostChannelMessageBranchProviderRejected},
 		{name: "ok_true", statusCode: http.StatusOK, body: `{"ok":true,"error":"invalid_auth","channel":"C123","ts":"2.0"}`, branch: slack.PostChannelMessageBranchSent},
 	} {
@@ -161,15 +263,22 @@ func TestSharedFenceCredentialBodyRequires2xxRefusal(t *testing.T) {
 			require.NoError(t, err)
 			ctx := singledispatchtest.NewContext("shared-fence-credential-status", "post")
 			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
-			require.NoError(t, err)
-			require.Equal(t, testCase.branch, result.Branch)
+			if testCase.branch == "" {
+				// A 5xx outcome is unknown: no refresh, and a resend Retry under the send cap.
+				var retryError *sdkgo.RetryError
+				require.ErrorAs(t, err, &retryError)
+				require.Equal(t, sdkgo.FailureAvailability, retryError.Failure.Kind)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, testCase.branch, result.Branch)
+			}
 			require.Equal(t, 1, posts)
 			require.Zero(t, provider.forcedRefreshes)
 		})
 	}
 }
 
-func TestSharedFenceMalformed2xxCredentialResponseNeverResends(t *testing.T) {
+func TestSharedFenceMalformed2xxCredentialResponseResendsWithoutRefresh(t *testing.T) {
 	for _, testCase := range []struct {
 		name string
 		body string
@@ -187,25 +296,21 @@ func TestSharedFenceMalformed2xxCredentialResponseNeverResends(t *testing.T) {
 			require.NoError(t, err)
 			ctx := singledispatchtest.NewContext("shared-fence-malformed-credential-"+testCase.name, "post")
 			input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
-			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
-			require.NoError(t, err)
+			result, retries := runUntilTerminal(t, ctx, func() (sdkgo.MutationResult[slack.PostMessageOutput], error) {
+				return sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+			})
 			require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
-			require.Equal(t, 1, posts)
-			require.Zero(t, provider.forcedRefreshes)
+			require.Equal(t, 2, retries)
+			require.Equal(t, 3, posts)
+			require.Zero(t, provider.forcedRefreshes, "a malformed body is not a credential refusal")
 			heartbeats := ctx.Heartbeats()
 			require.NotEmpty(t, heartbeats)
 			require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"claimed"`)
-			ctx.AdvanceAttempt()
-			result, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
-			require.NoError(t, err)
-			require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
-			require.Equal(t, 1, posts)
-			require.Zero(t, provider.forcedRefreshes)
 		})
 	}
 }
 
-func TestSharedFenceCredentialRefreshCheckpointFailureNeverResends(t *testing.T) {
+func TestSharedFenceCredentialRefreshCheckpointFailureCountsAsPossibleSend(t *testing.T) {
 	posts := 0
 	provider := &rejectionRefreshingCredentialProvider{}
 	client, err := slack.New(slack.Config{}, provider, slack.WithHTTPClient(&http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
@@ -226,11 +331,16 @@ func TestSharedFenceCredentialRefreshCheckpointFailureNeverResends(t *testing.T)
 	require.NotEmpty(t, heartbeats)
 	require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"claimed"`)
 	ctx.AdvanceAttempt()
+	// The lost canResend leaves a claim, so the next attempt resends below the send cap.
 	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
 	require.NoError(t, err)
+	// The refresh after the second refusal returns no new credential, a definite rejection of
+	// the resend, but the first post may have landed, so the outcome is uncertain.
 	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
-	require.Equal(t, 1, posts)
-	require.Equal(t, 1, provider.forcedRefreshes)
+	require.Equal(t, 2, posts)
+	require.Equal(t, 2, provider.forcedRefreshes)
+	heartbeats = ctx.Heartbeats()
+	require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"sendCount":2`)
 }
 
 func TestSharedFenceCredentialFailureRecordsNotSent(t *testing.T) {
@@ -354,7 +464,7 @@ func TestSharedFenceReadBackCredentialClassificationNeverResends(t *testing.T) {
 	}
 }
 
-func TestSharedFenceLostClaimNeverResends(t *testing.T) {
+func TestSharedFenceLostClaimCountsTowardSendCap(t *testing.T) {
 	var posts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		posts.Add(1)
@@ -366,14 +476,12 @@ func TestSharedFenceLostClaimNeverResends(t *testing.T) {
 	ctx := singledispatchtest.NewContext("shared-fence-lost-claim", "post")
 	ctx.LoseNextHeartbeat()
 	input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
-	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
-	require.NoError(t, err)
+	result, retries := runUntilTerminal(t, ctx, func() (sdkgo.MutationResult[slack.PostMessageOutput], error) {
+		return sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+	})
 	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
-	ctx.AdvanceAttempt()
-	result, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
-	require.EqualValues(t, 1, posts.Load())
+	require.Equal(t, 2, retries)
+	require.EqualValues(t, 3, posts.Load(), "the attempt whose claim was lost still counts as one send")
 }
 
 func TestSharedFenceAcceptedPostReadsBackWithoutResend(t *testing.T) {

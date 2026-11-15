@@ -742,6 +742,25 @@ class PostThreadReplyOperation:
         )
 
 
+def _resend_or_select_uncertain(
+    can_resend_unknown_outcome: bool, failure: Failure, retry_after_seconds: float, receipt: Receipt
+) -> MutationAttempt[PostMessageOutput]:
+    """Retry a possibly sent post while the send cap allows another send, else select uncertain."""
+    if can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send and may resend.
+        return MutationAttempt.retry(failure, retry_after_seconds)
+    return MutationAttempt.uncertain(PostMessageOutput(), failure, receipt)
+
+
+def _reject_or_select_uncertain(
+    has_possible_earlier_send: bool, receipt: Receipt, rejection: Failure
+) -> MutationAttempt[PostMessageOutput]:
+    """Select providerRejected only when no earlier send of this call may have posted."""
+    if has_possible_earlier_send:
+        return MutationAttempt.uncertain(PostMessageOutput(), rejection, receipt)
+    return MutationAttempt.branch_result(PROVIDER_REJECTED, PostMessageOutput(), receipt, rejection)
+
+
 async def _read_back(
     client: Client, call: Call, operation: str, channel: str, thread: str, object_id: str
 ) -> MutationAttempt[PostMessageOutput]:
@@ -824,7 +843,7 @@ async def _post_message(
             _failure(operation, FailureKind.VALIDATION, "channel and bounded non-empty text are required"),
         )
     try:
-        fence = Fence(call, timedelta(seconds=30))
+        fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
         decision = await fence.decide()
     except ValueError:
         return MutationAttempt.branch_result(
@@ -845,7 +864,36 @@ async def _post_message(
         return await _read_back(
             client, call, operation, channel, thread, decision.marker.provider_id if decision.marker else ""
         )
+    is_earlier_send_unresolved = decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+    # Slack returns a timestamp only for a message it created, so a saved one is read back
+    # and never resent; a lost timestamp cannot be read back, so this attempt resends.
+    if is_earlier_send_unresolved and decision.marker and decision.marker.provider_id:
+        return await _read_back(client, call, operation, channel, thread, decision.marker.provider_id)
+    # This attempt's send would be the last one the cap allows when no further send remains.
+    can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+    # An earlier send may have posted, so a refusal of this resend cannot prove nothing changed.
+    has_possible_earlier_send = decision.prior_send_upper_bound > 0
     credentials, terminal = await client._resolve(call, "bot_token")
+    if credentials is None and is_earlier_send_unresolved:
+        # notSent would hide the earlier possible send, so nothing is recorded.
+        if terminal:
+            return MutationAttempt.uncertain(
+                PostMessageOutput(),
+                _failure(
+                    operation,
+                    FailureKind.AUTHENTICATION,
+                    "an earlier attempt may have posted the Slack message, and the connection "
+                    "credentials are unavailable to resend it; reconnect the connection",
+                ),
+                client._receipt(call, _Response()),
+            )
+        return MutationAttempt.retry(
+            _failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                "Slack credentials are temporarily unavailable; no message was sent in this attempt",
+            )
+        )
     if credentials is None:
         try:
             await fence.record_not_sent()
@@ -889,9 +937,10 @@ async def _post_message(
             _failure(operation, FailureKind.AVAILABILITY, "Slack dispatch claim could not be recorded")
         )
     except TimeoutError:
-        return MutationAttempt.uncertain(
-            PostMessageOutput(),
+        return _resend_or_select_uncertain(
+            can_resend_unknown_outcome,
             _failure(operation, FailureKind.TRANSPORT, "Slack message outcome is unknown"),
+            0,
             client._receipt(call, _Response()),
         )
     if response.status in (429, 503):
@@ -926,9 +975,8 @@ async def _post_message(
             or not replacement.bot_token.reveal()
             or (replacement.bot_token.reveal() == credentials.bot_token.reveal())
         ):
-            return MutationAttempt.branch_result(
-                PROVIDER_REJECTED,
-                PostMessageOutput(),
+            return _reject_or_select_uncertain(
+                has_possible_earlier_send,
                 client._receipt(call, response),
                 _failure(
                     operation,
@@ -962,9 +1010,10 @@ async def _post_message(
             return MutationAttempt.retry(
                 _failure(operation, FailureKind.TRANSPORT, "Slack message request did not reach the provider")
             )
-        return MutationAttempt.uncertain(
-            PostMessageOutput(),
+        return _resend_or_select_uncertain(
+            can_resend_unknown_outcome,
             _failure(operation, FailureKind.TRANSPORT, "Slack message outcome is unknown"),
+            0,
             client._receipt(call, response),
         )
     if response.status == 409:
@@ -1001,21 +1050,22 @@ async def _post_message(
                 except CheckpointError:
                     pass  # Read-back still uses the provider ID from this response.
                 return await _read_back(client, call, operation, channel, thread, object_id)
-            return MutationAttempt.uncertain(
-                PostMessageOutput(),
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome,
                 _failure(operation, FailureKind.AVAILABILITY, "Slack message outcome is unknown"),
+                _retry_after(response),
                 client._receipt(call, response),
             )
     if response.status >= 500:
-        return MutationAttempt.uncertain(
-            PostMessageOutput(),
+        return _resend_or_select_uncertain(
+            can_resend_unknown_outcome,
             _failure(operation, FailureKind.AVAILABILITY, "Slack message outcome is unknown"),
+            _retry_after(response),
             client._receipt(call, response),
         )
     if not 200 <= response.status < 300 or not response.decoded.get("ok", False):
-        return MutationAttempt.branch_result(
-            PROVIDER_REJECTED,
-            PostMessageOutput(),
+        return _reject_or_select_uncertain(
+            has_possible_earlier_send,
             client._receipt(call, response),
             _failure(operation, _rejection_kind(response), "Slack rejected the request"),
         )
@@ -1027,6 +1077,7 @@ async def _post_message(
             await fence.record_provider_id(object_id)
         except CheckpointError:
             pass  # The accepted response still identifies the message.
+    # Slack accepted this post, so a resend would duplicate it; an incomplete response stays unresent.
     if not object_id or not provider_channel:
         if object_id:
             return await _read_back(client, call, operation, channel, thread, object_id)

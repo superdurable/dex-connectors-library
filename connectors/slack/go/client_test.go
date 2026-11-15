@@ -322,16 +322,51 @@ func TestPostMessageRejectedCredentialWithoutRefreshSelectsProviderRejected(t *t
 	}
 }
 
-func TestPostMessageServerFailureIsUncertain(t *testing.T) {
+func TestPostMessageServerFailureResendsUntilSendCapThenIsUncertain(t *testing.T) {
+	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
 		response.WriteHeader(http.StatusInternalServerError)
 		_, _ = response.Write([]byte(`{"ok":false,"error":"fatal_error"}`))
 	}))
 	defer server.Close()
 	client := newSlackClient(t, server.URL)
-	result, err := sdkgo.RunMutation(newSlackDexContext("post-unknown"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+	ctx := newSlackDexContext("post-unknown")
+	input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
+	for attempt := int32(1); attempt < slack.PostChannelMessageDefinition.MaxSends; attempt++ {
+		ctx.attempt = attempt
+		_, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+		var retryError *sdkgo.RetryError
+		require.ErrorAs(t, err, &retryError)
+		require.Equal(t, sdkgo.FailureAvailability, retryError.Failure.Kind)
+		require.Equal(t, int(attempt), requests)
+		require.Contains(t, string(ctx.heartbeat), `"state":"claimed"`)
+	}
+	ctx.attempt = slack.PostChannelMessageDefinition.MaxSends
+	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+	require.Equal(t, 3, requests)
+	ctx.attempt++
+	result, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+	require.Equal(t, 3, requests, "the send cap forbids a fourth send")
+}
+
+func TestPostMessageStepSendCapOverrideOfOneNeverResends(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		response.WriteHeader(http.StatusInternalServerError)
+		_, _ = response.Write([]byte(`{"ok":false,"error":"fatal_error"}`))
+	}))
+	defer server.Close()
+	client := newSlackClient(t, server.URL)
+	result, err := sdkgo.RunMutation(newSlackDexContext("post-unknown-no-resend"), client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}, sdkgo.WithMaxSends(1))
+	require.NoError(t, err)
+	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+	require.Equal(t, 1, requests)
 }
 
 func TestPostMessageConflictIsUncertainWithoutVerifiedReplay(t *testing.T) {
@@ -410,18 +445,24 @@ func TestPostMessageRetriesServiceUnavailableWithSameCallID(t *testing.T) {
 	require.NotEmpty(t, messageIDs[0])
 }
 
-func TestPostMessageMissingOrStaleRetryCheckpointDoesNotResend(t *testing.T) {
+func TestPostMessageMissingCheckpointResendsBelowSendCapOnly(t *testing.T) {
 	for _, testCase := range []struct {
-		name      string
-		attempt   int32
-		heartbeat []byte
+		name         string
+		attempt      int32
+		heartbeat    []byte
+		wantsResend  bool
+		wantsMessage string
 	}{
-		{name: "missing", attempt: 2},
-		{name: "stale", attempt: 3, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`)},
+		{name: "missing_below_cap", attempt: 2, wantsResend: true},
+		{name: "missing_at_cap", attempt: 4, wantsMessage: "cannot be identified"},
+		{name: "foreign", attempt: 3, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsMessage: "may have posted"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			requests := 0
-			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { requests++ }))
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				requests++
+				_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+			}))
 			t.Cleanup(server.Close)
 			client := newSlackClient(t, server.URL)
 			ctx := newSlackDexContext("post-checkpoint-" + testCase.name)
@@ -429,7 +470,13 @@ func TestPostMessageMissingOrStaleRetryCheckpointDoesNotResend(t *testing.T) {
 			ctx.heartbeat = testCase.heartbeat
 			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
 			require.NoError(t, err)
+			if testCase.wantsResend {
+				require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)
+				require.Equal(t, 1, requests)
+				return
+			}
 			require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+			require.Contains(t, result.Failure.Message, testCase.wantsMessage)
 			require.Equal(t, 0, requests)
 		})
 	}
@@ -447,7 +494,7 @@ func TestPostMessageFailedCheckpointRetriesWithoutDispatch(t *testing.T) {
 	require.Equal(t, 0, requests)
 }
 
-func TestPostMessageFailedDispatchClaimFailsClosedWithoutCheckpoint(t *testing.T) {
+func TestPostMessageFailedDispatchClaimCountsAsPossibleSend(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		requests++
@@ -466,25 +513,26 @@ func TestPostMessageFailedDispatchClaimFailsClosedWithoutCheckpoint(t *testing.T
 	ctx.attempt = 2
 	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
-	require.Equal(t, 0, requests)
+	require.Equal(t, slack.PostChannelMessageBranchSent, result.Branch)
+	require.Equal(t, 1, requests)
+	require.Contains(t, string(ctx.heartbeat), `"sendCount":2`, "the unrecorded attempt counts as one possible send")
 }
 
-func TestPostMessageProvenUnsentRetriesButAmbiguousTransportIsUncertain(t *testing.T) {
+func TestPostMessageProvenUnsentRetriesAndAmbiguousTransportCountsAsSend(t *testing.T) {
 	for _, testCase := range []struct {
-		name       string
-		trace      func(*httptrace.ClientTrace)
-		wantsRetry bool
+		name             string
+		trace            func(*httptrace.ClientTrace)
+		isProvablyUnsent bool
 	}{
 		{name: "dns_failure", trace: func(trace *httptrace.ClientTrace) {
 			trace.DNSDone(httptrace.DNSDoneInfo{Err: errors.New("lookup failed")})
-		}, wantsRetry: true},
+		}, isProvablyUnsent: true},
 		{name: "connect_failure", trace: func(trace *httptrace.ClientTrace) {
 			trace.ConnectDone("tcp", "localhost:443", errors.New("connect failed"))
-		}, wantsRetry: true},
+		}, isProvablyUnsent: true},
 		{name: "tls_failure", trace: func(trace *httptrace.ClientTrace) {
 			trace.TLSHandshakeDone(tls.ConnectionState{}, errors.New("handshake failed"))
-		}, wantsRetry: true},
+		}, isProvablyUnsent: true},
 		{name: "unknown_transport", trace: func(*httptrace.ClientTrace) {}},
 		{name: "connection_obtained", trace: func(trace *httptrace.ClientTrace) {
 			trace.GotConn(httptrace.GotConnInfo{})
@@ -497,12 +545,15 @@ func TestPostMessageProvenUnsentRetriesButAmbiguousTransportIsUncertain(t *testi
 				return nil, errors.New("transport failed")
 			}))
 			ctx := newSlackDexContext("post-transport-" + testCase.name)
-			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
-			if testCase.wantsRetry {
-				require.Error(t, err)
+			_, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			var retryError *sdkgo.RetryError
+			require.ErrorAs(t, err, &retryError)
+			require.Equal(t, sdkgo.FailureTransport, retryError.Failure.Kind)
+			if testCase.isProvablyUnsent {
+				require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
 			} else {
-				require.NoError(t, err)
-				require.Equal(t, slack.PostChannelMessageBranchUncertain, result.Branch)
+				require.Contains(t, string(ctx.heartbeat), `"state":"claimed"`)
+				require.Contains(t, string(ctx.heartbeat), `"sendCount":1`)
 			}
 		})
 	}
@@ -519,10 +570,8 @@ func TestPostMessageAcceptedWithoutIdentityIsNotResent(t *testing.T) {
 	ctx := newSlackDexContext("post-accepted-invalid")
 	result, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
 	require.NoError(t, err)
+	// Slack accepted the post, so the terminal uncertain branch ends the Step instead of a resend Retry.
 	require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
-	ctx.attempt = 2
-	_, err = sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
-	require.NoError(t, err)
 	require.Equal(t, 1, requests)
 }
 
@@ -550,13 +599,13 @@ func TestPostMessageDeadlineCutsBeforeDispatch(t *testing.T) {
 	require.Equal(t, 1, requests)
 }
 
-func TestPostMessageBodyErrorsPreserveSafeRetryAndUnknownOutcome(t *testing.T) {
+func TestPostMessageBodyErrorsResendWithTheSameClientMessageID(t *testing.T) {
 	for _, testCase := range []struct {
-		name       string
-		wantsRetry bool
+		name             string
+		isProvablyUnsent bool
 	}{
-		{name: "service_unavailable", wantsRetry: true},
-		{name: "ratelimited", wantsRetry: true},
+		{name: "service_unavailable", isProvablyUnsent: true},
+		{name: "ratelimited", isProvablyUnsent: true},
 		{name: "internal_error"},
 		{name: "fatal_error"},
 	} {
@@ -579,26 +628,23 @@ func TestPostMessageBodyErrorsPreserveSafeRetryAndUnknownOutcome(t *testing.T) {
 			client := newSlackClient(t, server.URL)
 			ctx := newSlackDexContext("post-body-error-" + testCase.name)
 			input := slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"}
-			firstResult, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
-			if testCase.wantsRetry {
-				require.Error(t, err)
+			_, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
+			require.Error(t, err)
+			if testCase.isProvablyUnsent {
 				require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+				require.NotContains(t, string(ctx.heartbeat), `"sendCount"`, "an unprocessed send is not counted")
 			} else {
-				require.NoError(t, err)
-				require.Equal(t, slack.PostThreadReplyBranchUncertain, firstResult.Branch)
+				// The unconfirmed claim stays, so the next attempt resends under the send cap.
+				require.Contains(t, string(ctx.heartbeat), `"state":"claimed"`)
+				require.Contains(t, string(ctx.heartbeat), `"sendCount":1`)
 			}
 			ctx.attempt = 2
 			secondResult, err := sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, input)
 			require.NoError(t, err)
-			if testCase.wantsRetry {
-				require.Equal(t, slack.PostThreadReplyBranchSent, secondResult.Branch)
-				require.Equal(t, 2, requests)
-				require.Equal(t, messageIDs[0], messageIDs[1])
-				require.NotEmpty(t, messageIDs[0])
-			} else {
-				require.Equal(t, slack.PostThreadReplyBranchUncertain, secondResult.Branch)
-				require.Equal(t, 1, requests)
-			}
+			require.Equal(t, slack.PostThreadReplyBranchSent, secondResult.Branch)
+			require.Equal(t, 2, requests)
+			require.Equal(t, messageIDs[0], messageIDs[1])
+			require.NotEmpty(t, messageIDs[0])
 		})
 	}
 }
