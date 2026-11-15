@@ -16,10 +16,10 @@ spec:
       operations: [searchIssues, getIssue, createIssue, transitionIssue, addComment]
       triggers: [issueChanged]
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-atlassian-jira
       operations: [searchIssues, getIssue, createIssue, transitionIssue, addComment]
-      triggers: []
+      triggers: [issueChanged]
   codegen:
     go:
       package: jira

@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AccountReference, AddCommentInput, AddCommentOutput, CreateIssueInput, CreateIssueOutput, GetIssueInput, Issue, IssueSearchFilter, IssueStatus, IssueTypeReference, PriorityReference, ProjectReference, SearchIssuesInput, SearchIssuesOutput, TransitionIssueInput, TransitionIssueOutput, TransitionReference
+from ..models import AccountReference, AddCommentInput, AddCommentOutput, CreateIssueInput, CreateIssueOutput, GetIssueInput, Issue, IssueChangedEvent, IssueChangedTriggerConfiguration, IssueSearchFilter, IssueStatus, IssueTypeReference, PriorityReference, ProjectReference, SearchIssuesInput, SearchIssuesOutput, TransitionIssueInput, TransitionIssueOutput, TransitionReference
 from .definitions import CONNECTOR_ID, PROVIDER, ADDED, ADD_COMMENT_DEFINITION, CREATED, CREATE_ISSUE_DEFINITION, DEFECT, FOUND, GET_ISSUE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEARCHED, SEARCH_ISSUES_DEFINITION, TRANSITIONED, TRANSITION_ISSUE_DEFINITION, TRANSITION_UNAVAILABLE, UNCERTAIN
 
 def search_issues_searched(value: SearchIssuesOutput, failure: Failure | None = None) -> Case[SearchIssuesOutput]:

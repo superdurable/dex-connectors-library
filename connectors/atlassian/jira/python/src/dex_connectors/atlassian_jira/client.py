@@ -4,9 +4,10 @@
 
 import json
 import re
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 from urllib.parse import quote, quote_plus
 
 import httpx
@@ -43,6 +44,8 @@ if TYPE_CHECKING:
 
 _CLOUD_ID = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z")
 _FIELD_ID = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,63}\Z")
+# Keeps an issueChanged poll loop from spending the app's hourly rate-limit points.
+_MINIMUM_POLL_INTERVAL_SECONDS: Final = 5
 
 
 def path_escape(value: str) -> str:
@@ -110,7 +113,15 @@ class Client:
         config: Config,
         credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
+        *,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
+        """Validate config and bind the credential source.
+
+        clock returns the current UTC time for Retry-After and the issueChanged Trigger's clock estimate;
+        None uses the system clock. Raises ValueError for an invalid endpoint, cloudId, maxResponseBytes,
+        or a pollInterval under five seconds; a zero pollInterval keeps the 30s default.
+        """
         if config is None or credentials is None:
             raise ValueError("Jira configuration and credentials are required")
         self.endpoint = validate_base_url(config.endpoint or Config("").endpoint).rstrip("/")
@@ -119,11 +130,17 @@ class Client:
             raise ValueError("Jira cloudId must be a site UUID")
         if config.max_response_bytes <= 0:
             raise ValueError("Jira maxResponseBytes must be positive")
+        if config.poll_interval_seconds == 0:
+            # Zero keeps the displayed default, as the Go connector's configuration defaults do.
+            config = replace(config, poll_interval_seconds=Config("").poll_interval_seconds)
+        if config.poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError(f"Jira pollInterval must be at least {_MINIMUM_POLL_INTERVAL_SECONDS}s")
         self.config = config
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(20)
         self._owns_http_client = http_client is None
         self._resolved_cloud_id = ""
+        self.clock: Callable[[], datetime] = clock or (lambda: datetime.now(UTC))
 
     async def aclose(self) -> None:
         """Close a connector-owned HTTP client after Worker shutdown."""
@@ -162,6 +179,11 @@ class Client:
 
     async def session(self, call: Call, operation: str) -> tuple[Credentials, str]:
         """Resolve credentials at call time and find the connected Jira site."""
+        credentials = await self.resolve_credentials(call, operation)
+        return credentials, await self.resolve_site_cloud_id(call, credentials, operation)
+
+    async def resolve_credentials(self, call: Call, operation: str) -> Credentials:
+        """Resolve and refresh the connection's credentials; raises SessionError when unavailable."""
         try:
             credentials = await self.credentials.resolve(call)
         except ReauthorizationRequiredError:
@@ -187,8 +209,12 @@ class Client:
                     "Jira connection credentials are unavailable; reconnect the connection",
                 )
             )
+        return credentials
+
+    async def resolve_site_cloud_id(self, call: Call, credentials: Credentials, operation: str) -> str:
+        """Return the configured site, or find the only Jira site the grant covers; raises SessionError."""
         if self.cloud_id or self._resolved_cloud_id:
-            return credentials, self.cloud_id or self._resolved_cloud_id
+            return self.cloud_id or self._resolved_cloud_id
         exchange = await self.request(
             call, credentials, "GET", "/oauth/token/accessible-resources", gateway=True
         )
@@ -278,8 +304,9 @@ class Client:
                     "Jira site picker or set cloudId",
                 )
             )
-        self._resolved_cloud_id = sites[0]
-        return credentials, sites[0]
+        site: str = sites[0]
+        self._resolved_cloud_id = site
+        return site
 
     async def request(
         self,
@@ -358,7 +385,7 @@ class Client:
 
     def retry_after(self, response: Exchange) -> float:
         """Parse bounded Retry-After guidance."""
-        return parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
+        return parse_retry_after(response.headers.get("Retry-After", ""), self.clock())
 
     def receipt(self, call: Call, response: Exchange | None = None, object_id: str = "") -> Receipt:
         """Record safe request and object identifiers, excluding credential material."""
