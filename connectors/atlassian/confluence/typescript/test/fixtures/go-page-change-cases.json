@@ -1,0 +1,1665 @@
+{
+  "generatedBy": "connectors/atlassian/confluence/go pageChanged fetcher (Go reference)",
+  "scenarios": [
+    {
+      "name": "seedAndFetch",
+      "cloudId": "",
+      "spaceKey": "OPS",
+      "steps": [
+        {
+          "action": "seed",
+          "now": "2026-11-02T09:00:00.123Z",
+          "responses": [
+            {
+              "status": 200,
+              "body": "[{\"id\":\"11223344-a1b2-4b33-8c44-def123456789\",\"name\":\"Ops\",\"scopes\":[\"search:confluence\"],\"url\":\"https://ops.atlassian.net\"}]"
+            },
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\",\"next\":\"/rest/api/content/search?cql=x\\u0026cursor=s2\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/600001\"},\"id\":\"600001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Remote work policy\",\"type\":\"page\",\"version\":{\"number\":3,\"when\":\"2026-11-02T08:59:00.123Z\"}},{\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\"},\"id\":\"600002\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"On-call \\u003crota\\u003e \\u0026 \\u2028 notes\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T08:55:00.123Z\"}},{\"_links\":{\"webui\":\"/spaces/OPS/pages/600003\"},\"id\":\"600003\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Old page\",\"type\":\"page\",\"version\":{\"number\":2,\"when\":\"2026-11-02T08:40:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/oauth/token/accessible-resources",
+              "query": ""
+            },
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+space+%3D+%22OPS%22+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"OPS\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\"}",
+              "snapshot": [
+                {
+                  "key": "600001",
+                  "hash": "0799de1f9fc83ffa",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":3,\"lastModifiedAt\":\"2026-11-02T08:59:00.123Z\"}"
+                },
+                {
+                  "key": "600002",
+                  "hash": "efe16eea63acf702",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T08:55:00.123Z\"}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:01:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"OPS\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\"}",
+            "snapshot": [
+              {
+                "key": "600001",
+                "hash": "0799de1f9fc83ffa",
+                "seen": 0,
+                "value": "{\"versionNumber\":3,\"lastModifiedAt\":\"2026-11-02T08:59:00.123Z\"}"
+              },
+              {
+                "key": "600002",
+                "hash": "efe16eea63acf702",
+                "seen": 0,
+                "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T08:55:00.123Z\"}"
+              }
+            ]
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/600004\"},\"id\":\"600004\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Travel policy\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T09:00:30.123Z\"}},{\"_links\":{\"webui\":\"/spaces/OPS/pages/600001\"},\"id\":\"600001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Remote work policy\",\"type\":\"page\",\"version\":{\"number\":4,\"when\":\"2026-11-02T09:00:20.123Z\"}},{\"_links\":{\"webui\":\"/spaces/OPS/pages/600099\"},\"id\":\"600099\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"A comment\",\"type\":\"comment\",\"version\":{\"number\":1,\"when\":\"2026-11-02T09:00:00.123Z\"}},{\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\"},\"id\":\"600002\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"On-call \\u003crota\\u003e \\u0026 \\u2028 notes\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T08:55:00.123Z\"}},{\"_links\":{\"webui\":\"/spaces/OPS/pages/600005\"},\"id\":\"600005\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Older\",\"type\":\"page\",\"version\":{\"number\":7,\"when\":\"2026-11-02T08:45:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+space+%3D+%22OPS%22+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"OPS\",\"scannedThrough\":\"2026-11-02T09:01:00.123Z\"}",
+              "snapshot": [
+                {
+                  "key": "600001",
+                  "hash": "26c2f5f73f29f58d",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":4,\"lastModifiedAt\":\"2026-11-02T09:00:20.123Z\"}"
+                },
+                {
+                  "key": "600002",
+                  "hash": "efe16eea63acf702",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T08:55:00.123Z\"}"
+                },
+                {
+                  "key": "600004",
+                  "hash": "b89078948d36c061",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:30.123Z\"}"
+                }
+              ]
+            },
+            "events": [
+              {
+                "id": "confluence-page-3fa16961cb36b5a6ad8e987388c8ee40",
+                "occurredAt": "2026-11-02T09:00:20.123Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "updated",
+                  "page": {
+                    "id": "600001",
+                    "title": "Remote work policy",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "spaceKey": "OPS",
+                    "versionNumber": 4,
+                    "lastModifiedAt": "2026-11-02T09:00:20.123Z",
+                    "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600001"
+                  }
+                }
+              },
+              {
+                "id": "confluence-page-ef8eb7d00c4f13b861d70a6f980ed7ff",
+                "occurredAt": "2026-11-02T09:00:30.123Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "created",
+                  "page": {
+                    "id": "600004",
+                    "title": "Travel policy",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "spaceKey": "OPS",
+                    "versionNumber": 1,
+                    "lastModifiedAt": "2026-11-02T09:00:30.123Z",
+                    "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600004"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:12:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"OPS\",\"scannedThrough\":\"2026-11-02T09:01:00.123Z\"}",
+            "snapshot": [
+              {
+                "key": "600001",
+                "hash": "26c2f5f73f29f58d",
+                "seen": 0,
+                "value": "{\"versionNumber\":4,\"lastModifiedAt\":\"2026-11-02T09:00:20.123Z\"}"
+              },
+              {
+                "key": "600002",
+                "hash": "efe16eea63acf702",
+                "seen": 0,
+                "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T08:55:00.123Z\"}"
+              },
+              {
+                "key": "600004",
+                "hash": "b89078948d36c061",
+                "seen": 0,
+                "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:30.123Z\"}"
+              }
+            ]
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/600001\"},\"id\":\"600001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Remote work policy\",\"type\":\"page\",\"version\":{\"number\":3,\"when\":\"2026-11-02T08:59:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+space+%3D+%22OPS%22+AND+lastmodified+%3E%3D+%222026-11-01+20%3A51%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"OPS\",\"scannedThrough\":\"2026-11-02T09:12:00.123Z\"}",
+              "snapshot": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "multiPageScan",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "seed",
+          "now": "2026-11-02T09:00:00.123Z",
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\"}",
+              "snapshot": []
+            }
+          }
+        },
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:01:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\",\"next\":\"/rest/api/content/search?cql=x\\u0026cursor=c2\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/ENG/pages/700001\"},\"id\":\"700001\",\"space\":{\"id\":98306,\"key\":\"ENG\"},\"status\":\"current\",\"title\":\"A\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T09:00:50.123Z\"}},{\"_links\":{\"webui\":\"/spaces/~5b10ac8d82e05b22cc7d4ef5/pages/700002\"},\"id\":\"700002\",\"space\":{\"id\":98306,\"key\":\"~5b10ac8d82e05b22cc7d4ef5\"},\"status\":\"current\",\"title\":\"B\",\"type\":\"page\",\"version\":{\"number\":2,\"when\":\"2026-11-02T09:00:40.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\",\"scan\":{\"startedAt\":\"2026-11-02T09:01:00.123Z\",\"cql\":\"type = page AND lastmodified \\u003e= \\\"2026-11-01 20:50\\\" ORDER BY lastmodified DESC\",\"searchCursor\":\"c2\"}}",
+              "snapshot": [
+                {
+                  "key": "700001",
+                  "hash": "49cc74d7ee0240e2",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:50.123Z\"}"
+                },
+                {
+                  "key": "700002",
+                  "hash": "51c183a4e00c64ca",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T09:00:40.123Z\"}"
+                }
+              ]
+            },
+            "hasMore": true,
+            "events": [
+              {
+                "id": "confluence-page-a84e1bd7371c09a4f3c0719a1c1e818c",
+                "occurredAt": "2026-11-02T09:00:40.123Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "updated",
+                  "page": {
+                    "id": "700002",
+                    "title": "B",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "spaceKey": "~5b10ac8d82e05b22cc7d4ef5",
+                    "versionNumber": 2,
+                    "lastModifiedAt": "2026-11-02T09:00:40.123Z",
+                    "webUrl": "https://ops.atlassian.net/wiki/spaces/~5b10ac8d82e05b22cc7d4ef5/pages/700002"
+                  }
+                }
+              },
+              {
+                "id": "confluence-page-54ad5b940780bf8a8cb07f34ce6261bf",
+                "occurredAt": "2026-11-02T09:00:50.123Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "created",
+                  "page": {
+                    "id": "700001",
+                    "title": "A",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "spaceKey": "ENG",
+                    "versionNumber": 1,
+                    "lastModifiedAt": "2026-11-02T09:00:50.123Z",
+                    "webUrl": "https://ops.atlassian.net/wiki/spaces/ENG/pages/700001"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:01:01.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\",\"scan\":{\"startedAt\":\"2026-11-02T09:01:00.123Z\",\"cql\":\"type = page AND lastmodified \\u003e= \\\"2026-11-01 20:50\\\" ORDER BY lastmodified DESC\",\"searchCursor\":\"c2\"}}",
+            "snapshot": [
+              {
+                "key": "700001",
+                "hash": "49cc74d7ee0240e2",
+                "seen": 0,
+                "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:50.123Z\"}"
+              },
+              {
+                "key": "700002",
+                "hash": "51c183a4e00c64ca",
+                "seen": 0,
+                "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T09:00:40.123Z\"}"
+              }
+            ]
+          },
+          "responses": [
+            {
+              "status": 400,
+              "body": "{\"message\":\"Invalid cursor\"}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026cursor=c2\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\",\"scan\":{\"startedAt\":\"2026-11-02T09:01:00.123Z\",\"cql\":\"type = page AND lastmodified \\u003e= \\\"2026-11-01 20:50\\\" ORDER BY lastmodified DESC\"}}",
+              "snapshot": [
+                {
+                  "key": "700001",
+                  "hash": "49cc74d7ee0240e2",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:50.123Z\"}"
+                },
+                {
+                  "key": "700002",
+                  "hash": "51c183a4e00c64ca",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T09:00:40.123Z\"}"
+                }
+              ]
+            },
+            "hasMore": true
+          }
+        },
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:01:02.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\",\"scan\":{\"startedAt\":\"2026-11-02T09:01:00.123Z\",\"cql\":\"type = page AND lastmodified \\u003e= \\\"2026-11-01 20:50\\\" ORDER BY lastmodified DESC\"}}",
+            "snapshot": [
+              {
+                "key": "700001",
+                "hash": "49cc74d7ee0240e2",
+                "seen": 0,
+                "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:50.123Z\"}"
+              },
+              {
+                "key": "700002",
+                "hash": "51c183a4e00c64ca",
+                "seen": 0,
+                "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T09:00:40.123Z\"}"
+              }
+            ]
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\",\"next\":\"/rest/api/content/search?cql=x\\u0026cursor=c3\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/ENG/pages/700001\"},\"id\":\"700001\",\"space\":{\"id\":98306,\"key\":\"ENG\"},\"status\":\"current\",\"title\":\"A\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T09:00:50.123Z\"}},{\"_links\":{\"webui\":\"/spaces/~5b10ac8d82e05b22cc7d4ef5/pages/700002\"},\"id\":\"700002\",\"space\":{\"id\":98306,\"key\":\"~5b10ac8d82e05b22cc7d4ef5\"},\"status\":\"current\",\"title\":\"B\",\"type\":\"page\",\"version\":{\"number\":2,\"when\":\"2026-11-02T09:00:40.123Z\"}},{\"_links\":{\"webui\":\"/spaces/ENG/pages/700003\"},\"id\":\"700003\",\"space\":{\"id\":98306,\"key\":\"ENG\"},\"status\":\"current\",\"title\":\"C\",\"type\":\"page\",\"version\":{\"number\":5,\"when\":\"2026-11-02T10:00:30.5+01:00\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\",\"scan\":{\"startedAt\":\"2026-11-02T09:01:00.123Z\",\"cql\":\"type = page AND lastmodified \\u003e= \\\"2026-11-01 20:50\\\" ORDER BY lastmodified DESC\",\"searchCursor\":\"c3\"}}",
+              "snapshot": [
+                {
+                  "key": "700001",
+                  "hash": "49cc74d7ee0240e2",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:50.123Z\"}"
+                },
+                {
+                  "key": "700002",
+                  "hash": "51c183a4e00c64ca",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T09:00:40.123Z\"}"
+                },
+                {
+                  "key": "700003",
+                  "hash": "1099707c8e7b255d",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":5,\"lastModifiedAt\":\"2026-11-02T09:00:30.5Z\"}"
+                }
+              ]
+            },
+            "hasMore": true,
+            "events": [
+              {
+                "id": "confluence-page-83912f7e5260748467056235406ae084",
+                "occurredAt": "2026-11-02T09:00:30.5Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "updated",
+                  "page": {
+                    "id": "700003",
+                    "title": "C",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "spaceKey": "ENG",
+                    "versionNumber": 5,
+                    "lastModifiedAt": "2026-11-02T10:00:30.5+01:00",
+                    "webUrl": "https://ops.atlassian.net/wiki/spaces/ENG/pages/700003"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:01:03.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\",\"scan\":{\"startedAt\":\"2026-11-02T09:01:00.123Z\",\"cql\":\"type = page AND lastmodified \\u003e= \\\"2026-11-01 20:50\\\" ORDER BY lastmodified DESC\",\"searchCursor\":\"c3\"}}",
+            "snapshot": [
+              {
+                "key": "700001",
+                "hash": "49cc74d7ee0240e2",
+                "seen": 0,
+                "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:50.123Z\"}"
+              },
+              {
+                "key": "700002",
+                "hash": "51c183a4e00c64ca",
+                "seen": 0,
+                "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T09:00:40.123Z\"}"
+              },
+              {
+                "key": "700003",
+                "hash": "1099707c8e7b255d",
+                "seen": 0,
+                "value": "{\"versionNumber\":5,\"lastModifiedAt\":\"2026-11-02T09:00:30.5Z\"}"
+              }
+            ]
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\",\"next\":\"/rest/api/content/search?cql=x\\u0026cursor=c4\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/ENG/pages/700004\"},\"id\":\"700004\",\"space\":{\"id\":98306,\"key\":\"ENG\"},\"status\":\"current\",\"title\":\"D\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T08:51:00.123Z\"}},{\"_links\":{\"webui\":\"/spaces/ENG/pages/700005\"},\"id\":\"700005\",\"space\":{\"id\":98306,\"key\":\"ENG\"},\"status\":\"current\",\"title\":\"E\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T08:30:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026cursor=c3\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:01:00.123Z\"}",
+              "snapshot": [
+                {
+                  "key": "700001",
+                  "hash": "49cc74d7ee0240e2",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:50.123Z\"}"
+                },
+                {
+                  "key": "700002",
+                  "hash": "51c183a4e00c64ca",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T09:00:40.123Z\"}"
+                },
+                {
+                  "key": "700003",
+                  "hash": "1099707c8e7b255d",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":5,\"lastModifiedAt\":\"2026-11-02T09:00:30.5Z\"}"
+                },
+                {
+                  "key": "700004",
+                  "hash": "2fa434151d674c80",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T08:51:00.123Z\"}"
+                }
+              ]
+            },
+            "events": [
+              {
+                "id": "confluence-page-1c6ae3ec64f8110a83150f19c853cd88",
+                "occurredAt": "2026-11-02T08:51:00.123Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "created",
+                  "page": {
+                    "id": "700004",
+                    "title": "D",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "spaceKey": "ENG",
+                    "versionNumber": 1,
+                    "lastModifiedAt": "2026-11-02T08:51:00.123Z",
+                    "webUrl": "https://ops.atlassian.net/wiki/spaces/ENG/pages/700004"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "seedPagesAndLimits",
+      "cloudId": "",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "seed",
+          "now": "2026-11-02T09:00:00.123Z",
+          "responses": [
+            {
+              "status": 429,
+              "headers": {
+                "Retry-After": "9"
+              },
+              "body": "{}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/oauth/token/accessible-resources",
+              "query": ""
+            }
+          ],
+          "result": {
+            "error": "rateLimited",
+            "retryAfterMs": 9000
+          }
+        },
+        {
+          "action": "seed",
+          "now": "2026-11-02T09:00:00.123Z",
+          "responses": [
+            {
+              "status": 200,
+              "body": "[{\"id\":\"11223344-a1b2-4b33-8c44-def123456789\",\"name\":\"Ops\",\"scopes\":[\"search:confluence\"],\"url\":\"https://ops.atlassian.net\"}]"
+            },
+            {
+              "status": 429,
+              "headers": {
+                "Retry-After": "4"
+              },
+              "body": "{}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/oauth/token/accessible-resources",
+              "query": ""
+            },
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "rateLimited",
+            "retryAfterMs": 4000
+          }
+        },
+        {
+          "action": "seed",
+          "now": "2026-11-02T09:00:00.123Z",
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\",\"next\":\"/rest/api/content/search?cql=x\\u0026cursor=p2\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/800001\"},\"id\":\"800001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"One\",\"type\":\"page\",\"version\":{\"number\":2,\"when\":\"2026-11-02T08:59:59.123Z\"}}]}"
+            },
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\",\"next\":\"/rest/api/content/search?cql=x\\u0026cursor=p3\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/800002\"},\"id\":\"800002\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Two\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T08:59:58.123Z\"}}]}"
+            },
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/800003\"},\"id\":\"800003\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Three\",\"type\":\"page\",\"version\":{\"number\":4,\"when\":\"2026-11-02T08:59:57.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            },
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026cursor=p2\u0026expand=space%2Cversion\u0026limit=100"
+            },
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A50%22+ORDER+BY+lastmodified+DESC\u0026cursor=p3\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\"}",
+              "snapshot": [
+                {
+                  "key": "800001",
+                  "hash": "6e39500040ab61d3",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T08:59:59.123Z\"}"
+                },
+                {
+                  "key": "800002",
+                  "hash": "0e938260f7e8f382",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T08:59:58.123Z\"}"
+                },
+                {
+                  "key": "800003",
+                  "hash": "fa9f376da4415ba6",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":4,\"lastModifiedAt\":\"2026-11-02T08:59:57.123Z\"}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "rateLimitedRetryAfter",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 429,
+              "headers": {
+                "Retry-After": "7"
+              },
+              "body": "{}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "rateLimited",
+            "retryAfterMs": 7000
+          }
+        }
+      ]
+    },
+    {
+      "name": "rateLimitedWithoutRetryAfter",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 429,
+              "body": "{}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "rateLimited"
+          }
+        }
+      ]
+    },
+    {
+      "name": "unavailableRetryAfter",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 503,
+              "headers": {
+                "Retry-After": "3"
+              },
+              "body": "{}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "rateLimited",
+            "retryAfterMs": 3000
+          }
+        }
+      ]
+    },
+    {
+      "name": "unavailableWithoutRetryAfter",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 503,
+              "body": "{}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "serverError",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 500,
+              "body": "{}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "badRequestWithoutCursor",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 400,
+              "body": "{}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "forbidden",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 403,
+              "body": "{}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "invalidJSON",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"results\":"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "resultsNotList",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"results\":{}}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "pageWithoutVersion",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/900001\"},\"id\":\"900001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"X\",\"type\":\"page\"}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "pageWithZeroVersion",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/900001\"},\"id\":\"900001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"X\",\"type\":\"page\",\"version\":{\"number\":0,\"when\":\"2026-11-02T09:00:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "pageWithBadTime",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/900001\"},\"id\":\"900001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"X\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"yesterday\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "pageWithBadID",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/abc\"},\"id\":\"abc\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"X\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T09:00:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "pageWithoutTitle",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/900001\"},\"id\":\"900001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T09:00:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "invalidNextLink",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\",\"next\":\"/rest/api/content/search?cql=x\\u0026cursor=bad cursor\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/900001\"},\"id\":\"900001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"X\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T09:00:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "badSpaceKeyDropped",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/bad key/pages/900001\"},\"id\":\"900001\",\"space\":{\"id\":98306,\"key\":\"bad key\"},\"status\":\"current\",\"title\":\"X\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T09:00:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\"}",
+              "snapshot": [
+                {
+                  "key": "900001",
+                  "hash": "678af15ea31e6951",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:00.123Z\"}"
+                }
+              ]
+            },
+            "events": [
+              {
+                "id": "confluence-page-76b20c9fd6ea0f44433e0683ba1f0ed6",
+                "occurredAt": "2026-11-02T09:00:00.123Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "created",
+                  "page": {
+                    "id": "900001",
+                    "title": "X",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "versionNumber": 1,
+                    "lastModifiedAt": "2026-11-02T09:00:00.123Z"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "secretReflected",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00.123456789Z\"}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/900001\"},\"id\":\"900001\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"fixture-access\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T09:00:00.123Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "error": "failed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_notJSON",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "not json",
+            "snapshot": []
+          },
+          "responses": [],
+          "requests": [],
+          "result": {
+            "error": "cursorInvalid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_null",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "null",
+            "snapshot": []
+          },
+          "responses": [],
+          "requests": [],
+          "result": {
+            "error": "cursorInvalid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_empty",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{}",
+            "snapshot": []
+          },
+          "responses": [],
+          "requests": [],
+          "result": {
+            "error": "cursorInvalid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_zeroTime",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"0001-01-01T00:00:00Z\"}",
+            "snapshot": []
+          },
+          "responses": [],
+          "requests": [],
+          "result": {
+            "error": "cursorInvalid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_numberTime",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":5}",
+            "snapshot": []
+          },
+          "responses": [],
+          "requests": [],
+          "result": {
+            "error": "cursorInvalid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_badTime",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02 09:00:00\"}",
+            "snapshot": []
+          },
+          "responses": [],
+          "requests": [],
+          "result": {
+            "error": "cursorInvalid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_anotherSpace",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "OPS",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"HR\",\"scannedThrough\":\"2026-11-02T08:59:00Z\"}",
+            "snapshot": []
+          },
+          "responses": [],
+          "requests": [],
+          "result": {
+            "error": "cursorInvalid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_spaceRemoved",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"HR\",\"scannedThrough\":\"2026-11-02T08:59:00Z\"}",
+            "snapshot": []
+          },
+          "responses": [],
+          "requests": [],
+          "result": {
+            "error": "cursorInvalid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_anotherSite",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"aaaaaaaa-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T08:59:00Z\"}",
+            "snapshot": []
+          },
+          "responses": [],
+          "requests": [],
+          "result": {
+            "error": "cursorInvalid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_caseInsensitiveKeys",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"CLOUDID\":\"11223344-a1b2-4b33-8c44-def123456789\",\"ScannedThrough\":\"2026-11-02T08:59:00Z\",\"scan\":null,\"extra\":1}",
+            "snapshot": []
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"scannedThrough\":\"2026-11-02T09:00:00.123Z\"}",
+              "snapshot": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_pinnedScanContinues",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "OPS",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"OPS\",\"scannedThrough\":\"2026-11-02T09:59:00.123456789+01:00\",\"scan\":{\"startedAt\":\"2026-11-02T08:59:30.5Z\",\"cql\":\"type = page AND space = \\\"OPS\\\" AND lastmodified \u003e= \\\"2026-11-01 20:49\\\" ORDER BY lastmodified DESC\",\"searchCursor\":\"k1\"}}",
+            "snapshot": [
+              {
+                "key": "100",
+                "hash": "5878f0e1e357afeb",
+                "seen": 3,
+                "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T08:58:00Z\"}"
+              },
+              {
+                "key": "101",
+                "hash": "0123456789abcdef",
+                "seen": 1,
+                "value": "{\"versionNumber\":2.5,\"lastModifiedAt\":\"2026-11-02T08:58:00Z\"}"
+              },
+              {
+                "key": "102",
+                "hash": "0123456789abcdef",
+                "seen": 1,
+                "value": "{\"VERSIONNUMBER\":9,\"lastmodifiedat\":\"2026-11-02T09:58:00+01:00\"}"
+              },
+              {
+                "key": "103",
+                "hash": "0123456789abcdef",
+                "seen": 2,
+                "value": "{\"versionNumber\":1}"
+              },
+              {
+                "key": "104",
+                "hash": "41c5c5023e5bce76",
+                "seen": 3,
+                "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-01T08:00:00Z\"}"
+              }
+            ]
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\",\"next\":\"/rest/api/content/search?cql=x\\u0026cursor=k2\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/102\"},\"id\":\"102\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Seen upper\",\"type\":\"page\",\"version\":{\"number\":9,\"when\":\"2026-11-02T08:58:00Z\"}},{\"_links\":{\"webui\":\"/spaces/OPS/pages/101\"},\"id\":\"101\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Unreadable\",\"type\":\"page\",\"version\":{\"number\":2,\"when\":\"2026-11-02T08:58:00Z\"}},{\"_links\":{\"webui\":\"/spaces/OPS/pages/100\"},\"id\":\"100\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Newer\",\"type\":\"page\",\"version\":{\"number\":3,\"when\":\"2026-11-02T08:57:00.000001Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+space+%3D+%22OPS%22+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026cursor=k1\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"OPS\",\"scannedThrough\":\"2026-11-02T09:59:00.123456789+01:00\",\"scan\":{\"startedAt\":\"2026-11-02T08:59:30.5Z\",\"cql\":\"type = page AND space = \\\"OPS\\\" AND lastmodified \\u003e= \\\"2026-11-01 20:49\\\" ORDER BY lastmodified DESC\",\"searchCursor\":\"k2\"}}",
+              "snapshot": [
+                {
+                  "key": "100",
+                  "hash": "471231979c784e85",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":3,\"lastModifiedAt\":\"2026-11-02T08:57:00.000001Z\"}"
+                },
+                {
+                  "key": "101",
+                  "hash": "3357b4242aa9fc3c",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T08:58:00Z\"}"
+                },
+                {
+                  "key": "102",
+                  "hash": "0123456789abcdef",
+                  "seen": 1,
+                  "value": "{\"VERSIONNUMBER\":9,\"lastmodifiedat\":\"2026-11-02T09:58:00+01:00\"}"
+                },
+                {
+                  "key": "103",
+                  "hash": "0123456789abcdef",
+                  "seen": 2,
+                  "value": "{\"versionNumber\":1}"
+                },
+                {
+                  "key": "104",
+                  "hash": "41c5c5023e5bce76",
+                  "seen": 3,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-01T08:00:00Z\"}"
+                }
+              ]
+            },
+            "hasMore": true,
+            "events": [
+              {
+                "id": "confluence-page-8f8ffe2ff2894fff7e41be46e24f2359",
+                "occurredAt": "2026-11-02T08:57:00.000001Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "updated",
+                  "page": {
+                    "id": "100",
+                    "title": "Newer",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "spaceKey": "OPS",
+                    "versionNumber": 3,
+                    "lastModifiedAt": "2026-11-02T08:57:00.000001Z",
+                    "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/100"
+                  }
+                }
+              },
+              {
+                "id": "confluence-page-acefc2040ba7347802a33fed97606152",
+                "occurredAt": "2026-11-02T08:58:00Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "updated",
+                  "page": {
+                    "id": "101",
+                    "title": "Unreadable",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "spaceKey": "OPS",
+                    "versionNumber": 2,
+                    "lastModifiedAt": "2026-11-02T08:58:00Z",
+                    "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/101"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "cursor_pinnedScanCompletes",
+      "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+      "spaceKey": "OPS",
+      "steps": [
+        {
+          "action": "fetch",
+          "now": "2026-11-02T09:00:00.123Z",
+          "cursor": {
+            "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"OPS\",\"scannedThrough\":\"2026-11-02T09:59:00.123456789+01:00\",\"scan\":{\"startedAt\":\"2026-11-02T08:59:30.5Z\",\"cql\":\"type = page AND space = \\\"OPS\\\" AND lastmodified \u003e= \\\"2026-11-01 20:49\\\" ORDER BY lastmodified DESC\",\"searchCursor\":\"k1\"}}",
+            "snapshot": [
+              {
+                "key": "100",
+                "hash": "5878f0e1e357afeb",
+                "seen": 3,
+                "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T08:58:00Z\"}"
+              },
+              {
+                "key": "101",
+                "hash": "0123456789abcdef",
+                "seen": 1,
+                "value": "not json"
+              },
+              {
+                "key": "103",
+                "hash": "0123456789abcdef",
+                "seen": 2,
+                "value": "{\"versionNumber\":1}"
+              },
+              {
+                "key": "104",
+                "hash": "41c5c5023e5bce76",
+                "seen": 3,
+                "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-01T08:00:00Z\"}"
+              },
+              {
+                "key": "105",
+                "hash": "ac9bce53b0c3f7ea",
+                "seen": 3,
+                "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T08:50:00.123456Z\"}"
+              }
+            ]
+          },
+          "responses": [
+            {
+              "status": 200,
+              "body": "{\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"},\"results\":[{\"_links\":{\"webui\":\"/spaces/OPS/pages/106\"},\"id\":\"106\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Fresh\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T08:49:00.1234568Z\"}},{\"_links\":{\"webui\":\"/spaces/OPS/pages/107\"},\"id\":\"107\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"status\":\"current\",\"title\":\"Too old\",\"type\":\"page\",\"version\":{\"number\":1,\"when\":\"2026-11-02T08:49:00.123456788Z\"}}]}"
+            }
+          ],
+          "requests": [
+            {
+              "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+              "query": "cql=type+%3D+page+AND+space+%3D+%22OPS%22+AND+lastmodified+%3E%3D+%222026-11-01+20%3A49%22+ORDER+BY+lastmodified+DESC\u0026cursor=k1\u0026expand=space%2Cversion\u0026limit=100"
+            }
+          ],
+          "result": {
+            "cursor": {
+              "token": "{\"cloudId\":\"11223344-a1b2-4b33-8c44-def123456789\",\"spaceKey\":\"OPS\",\"scannedThrough\":\"2026-11-02T08:59:30.5Z\"}",
+              "snapshot": [
+                {
+                  "key": "100",
+                  "hash": "5878f0e1e357afeb",
+                  "seen": 3,
+                  "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T08:58:00Z\"}"
+                },
+                {
+                  "key": "105",
+                  "hash": "ac9bce53b0c3f7ea",
+                  "seen": 3,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T08:50:00.123456Z\"}"
+                },
+                {
+                  "key": "106",
+                  "hash": "c58d6dc7dc59800e",
+                  "seen": 0,
+                  "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T08:49:00.1234568Z\"}"
+                }
+              ]
+            },
+            "events": [
+              {
+                "id": "confluence-page-2865ce913d6eaeadb1523d0a8b5aae70",
+                "occurredAt": "2026-11-02T08:49:00.1234568Z",
+                "payload": {
+                  "cloudId": "11223344-a1b2-4b33-8c44-def123456789",
+                  "changeKind": "created",
+                  "page": {
+                    "id": "106",
+                    "title": "Fresh",
+                    "status": "current",
+                    "spaceId": "98306",
+                    "spaceKey": "OPS",
+                    "versionNumber": 1,
+                    "lastModifiedAt": "2026-11-02T08:49:00.1234568Z",
+                    "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/106"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "seenItems": [
+    {
+      "eventId": "confluence-page-27ed8b568de5f15c14c2aec491e47af9",
+      "hash": "2076e46b98f6367e",
+      "lastModifiedAt": "2026-11-02T09:00:00Z",
+      "pageId": "600001",
+      "value": "{\"versionNumber\":1,\"lastModifiedAt\":\"2026-11-02T09:00:00Z\"}",
+      "versionNumber": 1
+    },
+    {
+      "eventId": "confluence-page-63d36b5736b180e57c8e706b710ef277",
+      "hash": "aedb3b506b45fb5f",
+      "lastModifiedAt": "2026-11-02T09:00:00.123456789Z",
+      "pageId": "1",
+      "value": "{\"versionNumber\":123456,\"lastModifiedAt\":\"2026-11-02T09:00:00.123456789Z\"}",
+      "versionNumber": 123456
+    },
+    {
+      "eventId": "confluence-page-15ac40621afe1e2b1b17a0beeb70ab02",
+      "hash": "47d2ff6368002ad1",
+      "lastModifiedAt": "2026-11-02T11:00:00.5+02:00",
+      "pageId": "42",
+      "value": "{\"versionNumber\":2,\"lastModifiedAt\":\"2026-11-02T09:00:00.5Z\"}",
+      "versionNumber": 2
+    }
+  ]
+}

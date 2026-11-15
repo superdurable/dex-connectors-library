@@ -8,6 +8,7 @@ import { documentComparisonText, renderDocumentText } from './document.js';
 import { parseStorageDocument } from './storage.js';
 import { parseADFDocument } from './adf.js';
 import { parseGoRFC3339 } from './time.js';
+import { readNextCursor } from './go_url.js';
 import type { ConfluenceClient, ConfluenceSession, ConfluenceExchange, ConfluenceClassification } from './client.js';
 import { confluenceFailure, decodeObject, pathEscape } from './client.js';
 import { SearchPagesDefinition, GetPageDefinition, CreatePageDefinition, UpdatePageDefinition, AddCommentDefinition } from './generated/definitions.js';
@@ -47,9 +48,7 @@ export class SearchPagesOperation implements Query<SearchPagesInput, SearchPages
     const nextLink = stringField(links, 'next');
     if (nextLink) {
       try {
-        const nextCursor = new URL(nextLink, 'https://confluence.invalid').searchParams.get('cursor') || '';
-        if (!isCursor(nextCursor)) throw new TypeError();
-        output.nextCursor = nextCursor;
+        output.nextCursor = readNextCursor(nextLink);
       } catch { return newQueryBranch('invalidResponse', output, receipt, confluenceFailure(operation, 'PROTOCOL', 'Confluence returned an invalid search cursor')); }
     }
     const results = decoded.results;
@@ -324,7 +323,8 @@ function numberField(object: Record<string, unknown>, key: string): number { con
 function isCursor(value: string): boolean { return !!value && Buffer.byteLength(value) <= 4096 && /^[\x21-\x7e]+$/.test(value); }
 function validateId(value: string, field: string): string { const trimmed = value.trim(); if (!idPattern.test(trimmed)) throw new TypeError(`${field} must be a numeric Confluence content ID`); return trimmed; }
 function emptyPage(): Page { return { id: '', title: '', status: '', spaceId: '', createdAt: emptyTime, version: { number: 0, createdAt: emptyTime }, body: '', bodyFormat: '' }; }
-function webURL(base: string, path: string): string { if (!base.startsWith('https://') || !/^\/[\x21-\x7e]*$/.test(path)) return ''; try { const parsed = new URL(base); if (parsed.username || parsed.password || parsed.search || parsed.hash) return ''; } catch { return ''; } const url = base.replace(/\/+$/, '') + path; return Buffer.byteLength(url) <= 2048 ? url : ''; }
+/** Join the site base and a page's web UI path, or return an empty string when either is unsafe. */
+export function webURL(base: string, path: string): string { if (!base.startsWith('https://') || !/^\/[\x21-\x7e]*$/.test(path)) return ''; try { const parsed = new URL(base); if (parsed.username || parsed.password || parsed.search || parsed.hash) return ''; } catch { return ''; } const url = base.replace(/\/+$/, '') + path; return Buffer.byteLength(url) <= 2048 ? url : ''; }
 function decodePageSummary(value: unknown, base: string): PageSummary | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('page resource is invalid');
   const resource = value as Record<string, unknown>;
