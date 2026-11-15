@@ -25,8 +25,9 @@ const (
 )
 
 type Config struct {
-	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 }
 
 type Credentials struct {
@@ -231,6 +232,7 @@ func DefaultConfig() Config {
 	return Config{
 		Endpoint:         "https://www.googleapis.com/calendar/v3",
 		MaxResponseBytes: 4194304,
+		PollInterval:     time.Duration(30000000000),
 	}
 }
 
@@ -241,6 +243,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
 	}
 	return config
 }
@@ -254,6 +259,9 @@ func (config Config) Validate() error {
 	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
 	}
 	return nil
 }
@@ -307,6 +315,52 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
+}
+
+var EventChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "eventChanged"},
+	Description: "Receive each event created, updated, or cancelled on one calendar, read through Google Calendar incremental sync; the first run records a baseline and delivers no existing events.",
+}
+
+type EventChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=google-calendar"`
+	triggerName                             struct{}                       `connector:"triggerName=eventChanged"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineEventChangedTriggerBinding(config EventChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: EventChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type EventChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                               `connector:"connectorId=google-calendar"`
+	triggerName                      struct{}                               `connector:"triggerName=eventChanged"`
+	Connection                       Connection                             `connector:"connection"`
+	ConnectionName                   string                                 `connector:"connectionName"`
+	BindingName                      string                                 `connector:"bindingName"`
+	Configuration                    EventChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[EventChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewEventChangedTrigger(config EventChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-calendar connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: EventChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[EventChangedEvent]{
+		Definition: EventChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.eventChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const ListEventsBranchListed sdkgo.BranchID = "listed"
@@ -487,6 +541,7 @@ var CreateEventDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CreateEventResult = sdkgo.MutationResult[CreateEventOutput]
@@ -566,6 +621,7 @@ var UpdateEventDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateEventResult = sdkgo.MutationResult[UpdateEventOutput]

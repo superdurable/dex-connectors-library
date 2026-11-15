@@ -42,4 +42,12 @@ describe("Google Calendar provider responses", () => {
     expect(minimumAccessRole(pickerTarget("getEvent"))).toBe("reader");
     expect(minimumAccessRole(pickerTarget("queryFreeBusy"))).toBe("freeBusyReader");
   });
+
+  it("lists calendars whose events an eventChanged Trigger binding can read", () => {
+    const target: ConnectorStudioConfigurationUnitTarget = {
+      ...pickerTarget("listEvents"),
+      scope: {kind: "trigger", triggerName: "eventChanged", bindingName: "calendar-event-changes", flowType: "GoogleCalendarEventChange"},
+    };
+    expect(minimumAccessRole(target)).toBe("reader");
+  });
 });

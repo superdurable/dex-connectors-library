@@ -12,12 +12,15 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete Google Calendar API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;
+  /** Delay between eventChanged Trigger polls of Google Calendar incremental sync, as a Go duration of at least 5s such as 15s or 2m; shorter intervals deliver changes sooner and use more Calendar API quota. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

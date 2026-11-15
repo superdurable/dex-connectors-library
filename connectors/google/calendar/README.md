@@ -1,6 +1,6 @@
 # Google Calendar Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/calendar/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/calendar/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/calendar`.
 
@@ -21,7 +21,11 @@ operation-specific Dex Step factories:
 - `calendar.NewQueryFreeBusyStep` returns the busy intervals of 1 to 50
   calendars in a bounded window.
 
-This release has no Triggers.
+It also exposes one Trigger:
+
+- `eventChanged` delivers each event created, updated, or cancelled on one
+  calendar, read through Google Calendar incremental sync. See
+  [eventChanged Trigger](#eventchanged-trigger).
 
 ## TypeScript package
 
@@ -37,7 +41,7 @@ The OAuth grant requests exactly these scopes, each by its canonical URI:
 
 | Scope | Why |
 | --- | --- |
-| `https://www.googleapis.com/auth/calendar.events` | `listEvents`, `getEvent`, `createEvent`, and `updateEvent` on every calendar the account can read or edit. |
+| `https://www.googleapis.com/auth/calendar.events` | `listEvents`, `getEvent`, `createEvent`, `updateEvent`, and the `eventChanged` Trigger's `events.list` sync on every calendar the account can read or edit. |
 | `https://www.googleapis.com/auth/calendar.events.freebusy` | `queryFreeBusy` on the account's calendars and on colleagues' calendars that share availability. |
 | `https://www.googleapis.com/auth/calendar.calendarlist.readonly` | The Studio calendar picker lists the calendars the account subscribes to. |
 
@@ -164,7 +168,8 @@ The `calendarPicker` unit lists the calendars from the declared read-only
 connection's bearer access token injected by Dex Web. It saves the stable
 `calendarId` and the display `calendarName`. It lists only calendars the Step's
 operation can use: `writer` or `owner` for `createEvent` and `updateEvent`,
-`reader` or above for reads, and any calendar for `queryFreeBusy`. A manual
+`reader` or above for reads and for an `eventChanged` Trigger binding, and any
+calendar for `queryFreeBusy`. A manual
 calendar ID field remains, because `queryFreeBusy` and shared calendars can use
 IDs outside the account's calendar list.
 
@@ -172,6 +177,87 @@ The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the connector release. Dex Web renders every Studio
 unit, including a manifest-declared picker, through that bundle, and release
 metadata requires the artifact whenever `spec.studio` is declared.
+
+## eventChanged Trigger
+
+`eventChanged` polls one calendar with Google Calendar's
+[incremental sync](https://developers.google.com/workspace/calendar/api/guides/sync)
+and delivers one `calendar.EventChangedEvent` per changed event. It is built on
+the Connector SDK's durable poll Trigger kit
+([`sdkgo/pollingtrigger`](../../../sdkgo/README.md#polling-triggers), sdkgo v0.38.0).
+
+- **Baseline.** The first poll of a binding runs a full
+  [`events.list`](https://developers.google.com/workspace/calendar/api/v3/reference/events/list)
+  sync and keeps only the final `nextSyncToken`. Existing events are never
+  delivered.
+- **Changes.** Each later poll sends `events.list?syncToken=...` and pages with
+  `pageToken`, repeating the same query as Google requires. Every request of a
+  sync sends only `maxResults` (250) and the tokens. The filters Google forbids
+  with `syncToken` (`timeMin`, `timeMax`, `q`, `orderBy`, `updatedMin`,
+  `iCalUID`, extended properties) are never sent. Recurring events are not
+  expanded: a series change arrives once, and a changed or cancelled single
+  instance arrives as its own event with `recurringEventId` and
+  `originalStartTime`.
+- **Change kind.** Google reports no change type, so `ChangeKind` is derived.
+  `cancelled` is `status: cancelled`, which covers a deleted event and a
+  cancelled recurring instance. Google guarantees only `id` on a deleted event,
+  and also `recurringEventId` and `originalStartTime` on a cancelled instance.
+  `created` means Google's `updated` time is within one second of `created`.
+  Every other change is `updated`, including an event created and edited again
+  before the next poll read it.
+- **Expired token.** A `410 Gone` means Google invalidated the sync token. The
+  binding runs a new full sync, records a new baseline, and logs a WARN
+  `poll cursor invalid; reseeding` record. Changes between the last poll and
+  the new baseline are not delivered.
+- **Rate limits.** A 429, or a 403 with `rateLimitExceeded`,
+  `userRateLimitExceeded`, `quotaExceeded`, or `dailyLimitExceeded`, pauses
+  every binding of the connection for `Retry-After` (seconds or an HTTP date),
+  or backs off exponentially without it. Other failures back off
+  per binding. None of them moves the cursor.
+- **Delivery.** Delivery is at least once. The Trigger event ID is a hash of
+  the calendar, event ID, ETag, `updated`, and status, so a refetch yields the
+  same ID and a Flow target keyed by it starts one Flow per change.
+- **Poll interval.** The connection's `pollInterval` setting is the delay
+  between polls, at least 5 seconds. Every poll uses Calendar API quota.
+
+`calendar.NewProjectEventTriggerRunner` is the durable path. It loads each
+binding's saved calendar, records every change in the binding's project Trigger
+inbox, and commits the sync token in the binding's project poll cursor only
+after that, so a restarted or replaced replica neither misses nor repeats a
+change. From
+[`examples/event-changed/main.go`](go/examples/event-changed/main.go):
+
+```go
+triggerRunner, err := calendar.NewProjectEventTriggerRunner(project, eventchanged.ConnectionName, calendar.ProjectEventTriggerRunnerConfig{
+	EventChangedRoutes: []calendar.ProjectEventChangedTriggerRoute{{
+		BindingName: eventchanged.EventChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, eventchanged.AcceptEveryEventChange, eventchanged.ResolveFlowID,
+			eventchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, calendar.WithLogger(logger))
+```
+
+`calendar.NewEventTriggerRunner` takes the targets and cursor stores directly.
+A route without a cursor store keeps the sync token in memory. The generated
+`calendar.NewEventChangedTrigger` factory always does, because it receives no
+project storage. Such a binding records a new baseline on every process start,
+so changes made while the process is stopped are lost. Use them only for tests
+and demonstrations.
+
+Under `dexcli dev`, the Dex Web connections file keeps Trigger inboxes on disk,
+but the poll cursor stays in process memory. A restarted local Worker therefore
+records a new baseline. Hosted project storage keeps both.
+
+The binding configuration is `calendar.EventChangedTriggerConfiguration`: the
+`calendarPicker` unit saves `calendarId` and `calendarName`. A blank or unsaved
+binding watches the authorized account's `primary` calendar. Changing the
+calendar of a binding that already polled makes its next poll record a new
+baseline for the new calendar. Restart the Worker after saving.
+
+This release polls. Google Calendar
+[push notifications](https://developers.google.com/workspace/calendar/api/guides/push)
+(`events.watch`) need a public HTTPS endpoint and channel renewal, so they are
+not implemented yet.
 
 ## Project connection
 
@@ -233,6 +319,11 @@ meeting with `Respond` or `When`, as described in
 **Start Flow** example that uses all five operations: it checks free/busy,
 places an uninvited hold, reads it back, lists the window for a double booking,
 and only then invites the attendees.
+
+[`examples/event-changed`](go/examples/event-changed) is a runnable Trigger
+example: the `eventChanged` binding starts one `GoogleCalendarEventChange`
+Flow per change, which reads a created or updated event back with
+`calendar.NewGetEventStep` and records it.
 
 ## Verification
 
