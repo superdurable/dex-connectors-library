@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import CreateMeetingInput, GetMeetingInput, ListMeetingsInput, ListPastMeetingParticipantsInput, Meeting, MeetingPage, MeetingParticipant, MeetingSettings, MeetingSettingsInput, MeetingSummary, ParticipantPage, UpdateMeetingInput, UpdatedMeeting
+from ..models import CreateMeetingInput, GetMeetingInput, ListMeetingsInput, ListPastMeetingParticipantsInput, Meeting, MeetingChangedEvent, MeetingChangedTriggerConfiguration, MeetingPage, MeetingParticipant, MeetingSettings, MeetingSettingsInput, MeetingSummary, ParticipantPage, UpdateMeetingInput, UpdatedMeeting
 from .definitions import CONNECTOR_ID, CREATED, CREATE_MEETING_DEFINITION, DEFECT, FOUND, GET_MEETING_DEFINITION, INVALID_RESPONSE, LISTED, LIST_MEETINGS_DEFINITION, LIST_PAST_MEETING_PARTICIPANTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, UNCERTAIN, UPDATED, UPDATE_MEETING_DEFINITION
 
 def list_meetings_listed(value: MeetingPage, failure: Failure | None = None) -> Case[MeetingPage]:
