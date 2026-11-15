@@ -371,3 +371,35 @@ function recordPaymentPayload(input: RecordPaymentInput): Uint8Array {
   if (input.isReconciled) payload.IsReconciled = true;
   return jsonWithDecimals(payload);
 }
+
+/** One decoded invoiceChanged page: its invoices, Xero's DateTimeUTC in Unix milliseconds, and whether more follow. */
+export interface InvoiceChangePage { invoices: Invoice[]; serverTimeMs?: number; hasMorePages: boolean }
+
+/**
+ * Decode one GET /Invoices page for the invoiceChanged poll at parity with the Go connector; throws an Error naming
+ * the problem for an envelope without an Invoices list, more than maxInvoices invoices, an invalid DateTimeUTC, or
+ * an invalid invoice.
+ */
+export function decodeInvoiceChangePage(body: Uint8Array, page: number, pageSize: number, maxInvoices: number): InvoiceChangePage {
+  let list: unknown[]; let serverTime: string; let pageCount = 0;
+  try {
+    const envelope = object(parseBody(body));
+    if (!Array.isArray(envelope.Invoices)) throw new Error('no Invoices list');
+    list = envelope.Invoices;
+    serverTime = stringField(envelope, 'DateTimeUTC');
+    if (envelope.pagination != null) {
+      const pagination = object(envelope.pagination);
+      for (const key of ['page', 'pageSize', 'itemCount']) integerField(pagination, key);
+      pageCount = integerField(pagination, 'pageCount');
+    }
+  } catch { throw new Error('Xero invoice page is not a JSON object with an Invoices list'); }
+  if (list.length > maxInvoices) throw new Error(`Xero invoice page has ${list.length} invoices, more than ${maxInvoices}`);
+  let serverTimeMs: number | undefined;
+  if (serverTime) {
+    try { serverTimeMs = dotNetDate(serverTime).getTime(); } catch { throw new Error('Xero invoice page has an invalid DateTimeUTC'); }
+  }
+  const invoices = list.map(item => {
+    try { return decodeInvoice(object(item)); } catch (error) { throw new Error(`Xero invoice page has an invalid invoice: ${errorMessage(error)}`); }
+  });
+  return { invoices, ...(serverTimeMs !== undefined ? { serverTimeMs } : {}), hasMorePages: pageCount > 0 ? page < pageCount : invoices.length >= pageSize };
+}

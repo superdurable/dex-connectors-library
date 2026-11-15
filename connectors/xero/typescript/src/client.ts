@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { ReauthorizationRequiredError, RetryError, SecretString, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, SecretString, defaultTriggerLogger, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import type { Config, Credentials, CredentialSource } from './generated/models.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -11,6 +11,8 @@ import { ListContactsOperation, FindContactByEmailOperation, GetInvoiceOperation
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const accountingURL = 'https://api.xero.com/api.xro/2.0';
 const connectionsURL = 'https://api.xero.com/connections';
+// Keeps an invoiceChanged poll loop well inside Xero's minute and daily limits.
+const minimumPollIntervalMs = 30_000;
 
 /** One transport with the same request and response boundaries as the production SDK. */
 export type XeroRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -23,6 +25,12 @@ export interface XeroClientOptions {
   now?: () => Date;
   /** Loopback Xero stand-in, preserving the Accounting and connections paths. */
   localProviderURL?: string;
+  /**
+   * Receives the invoiceChanged runner's records: seeds, reseeds, failed polls, rate-limit pauses, and the durable
+   * inboxes newProjectInvoiceTriggerRunner opens. Records carry binding identity and never invoice payloads or
+   * credentials. Omitted uses defaultTriggerLogger. Operation Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
 
 /** One classified exchange before an operation selects its branch. */
@@ -44,8 +52,12 @@ export interface XeroRequest {
   isMutation?: boolean;
 }
 
-/** Authenticated Xero Accounting client; credentials remain outside Flow state. */
+/** Authenticated Xero Accounting client for operations and invoiceChanged polls; credentials stay outside Flow state. */
 export class XeroClient {
+  /** Delay between invoiceChanged polls in milliseconds, at least 30 seconds; five minutes by default. */
+  readonly pollIntervalMs: number;
+  /** Receives the invoiceChanged runner's and durable inboxes' records. */
+  readonly triggerLogger: TriggerLogger;
   private readonly credentials: CredentialSource;
   private readonly send: XeroRequestSender;
   private readonly now: () => Date;
@@ -61,6 +73,10 @@ export class XeroClient {
     if (!credentials) throw new TypeError('Xero credential provider is required');
     this.maxResponseBytes = config.maxResponseBytes ?? 4_194_304;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('Xero response limit must be positive');
+    // A zero interval keeps the default, as Go's withConfigDefaults does.
+    this.pollIntervalMs = config.pollIntervalMs || 300_000;
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Xero pollInterval must be at least 30s');
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
     this.organisation = (config.organisation ?? '').trim();
     if ([...this.organisation].length > 255 || [...this.organisation].some(character => character.codePointAt(0)! < 32 || character.codePointAt(0) === 127)) throw new TypeError('Xero organisation must be one line of at most 255 characters');
     const local = options.localProviderURL;
@@ -75,6 +91,9 @@ export class XeroClient {
     this.now = options.now ?? (() => new Date());
     this.refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Xero', auth: Authorization, credentialFields: CredentialFields });
   }
+
+  /** Return the client's clock, which the invoiceChanged baseline uses when Xero sends no DateTimeUTC. */
+  currentTime(): Date { return this.now(); }
 
   /** Bind the listContacts query. */ listContacts() { return new ListContactsOperation(this); }
   /** Bind the findContactByEmail query. */ findContactByEmail() { return new FindContactByEmailOperation(this); }
