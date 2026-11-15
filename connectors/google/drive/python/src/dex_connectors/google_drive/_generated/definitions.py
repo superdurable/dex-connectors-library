@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -95,4 +98,21 @@ UPLOAD_FILE_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
+)
+
+FILE_CREATED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="fileCreated"),
+    description="Receive a Drive file created after the Trigger first started, optionally only in one folder or of one MIME type.",
+)
+
+FILE_UPDATED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="fileUpdated"),
+    description="Receive an existing Drive file whose modified time advanced, optionally only in one folder or of one MIME type.",
+)
+
+FILE_TRASHED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="fileTrashed"),
+    description="Receive a Drive file moved to the trash, optionally only in one folder or of one MIME type.",
 )

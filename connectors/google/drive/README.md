@@ -373,12 +373,19 @@ file created in a configured folder through the durable `fileCreated` runner.
 
 ## Python package
 
-The [Python package](python/README.md) implements the same four operations at
-`v0.1.0` and includes a runnable Dex Worker and Client
-[text copy Flow](python/examples/text_copy). Its OAuth and Workspace token
-refresh behavior follows the generated manifest declaration. The provider
-conformance scenarios replay Go requests and outcomes; live Google account
-authorization remains unverified for the Python port.
+The [Python package](python/README.md) implements the same four operations
+and, from `v0.2.0`, the `fileCreated`, `fileUpdated`, and `fileTrashed`
+Triggers at behavior parity with Go. Its durable
+`new_project_file_trigger_runner` shares the Go connector's cursor document,
+`poll-feeds/google-drive/<connection>/fileChanges/head`, byte for byte, and
+the same Trigger inboxes, so Go and Python replicas can serve one connection.
+It includes a runnable Dex Worker and Client
+[text copy Flow](python/examples/text_copy) and the
+[file intake Flow](python/examples/file_intake), which starts one Flow per
+created file. Its OAuth and Workspace token refresh behavior follows the
+generated manifest declaration. The provider conformance scenarios replay Go
+requests and outcomes; live Google account authorization and live
+`changes.list` polling remain unverified for the Python port.
 
 ## Verification
 

@@ -4,11 +4,12 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk.pollingtrigger import MAXIMUM_CHANGES_PER_PAGE
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -93,10 +94,21 @@ class Client:
             raise ValueError("Google Drive upload limit must be from 1 to 5242880 bytes")
         if not 1 <= self.search_page_size <= 100:
             raise ValueError("Google Drive search page size must be from 1 to 100")
+        self.poll_interval = timedelta(seconds=config.poll_interval_seconds or Config().poll_interval_seconds)
+        self.poll_page_size = config.poll_page_size or Config().poll_page_size
+        if self.poll_interval < timedelta(seconds=1):
+            raise ValueError("Google Drive poll interval must be at least one second")
+        # The poll Trigger kit's per-page bound, below Drive's documented 1000.
+        if not 1 <= self.poll_page_size <= MAXIMUM_CHANGES_PER_PAGE:
+            raise ValueError(f"Google Drive poll page size must be from 1 to {MAXIMUM_CHANGES_PER_PAGE}")
         self._credentials = credentials
         self._http_client = http_client or new_provider_http_client(25)
         self._owns_http_client = http_client is None
         self._now = now or (lambda: datetime.now(UTC))
+
+    def now(self) -> datetime:
+        """Return the injected clock's current time."""
+        return self._now()
 
     async def aclose(self) -> None:
         """Close the connector-owned HTTP client."""
