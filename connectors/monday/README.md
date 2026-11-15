@@ -489,7 +489,10 @@ unverified:
 
 ## Python package
 
-`python/` provides `dex-connector-monday` v0.1.0 with all five Go operations and both manifest authentication methods. `new_project_connection` uses the generated Python OAuth refresh wiring and the static connection name shown in the [runnable work-request example](python/examples/work_request/README.md). The example reads a board page, creates an item, sets typed column values, adds an update, and reads the item back. Provider replay fixtures in `conformance/connectors/monday/scenarios.json` check exact Go request and outcome agreement; live monday.com authorization and API behavior are not verified by those fixtures.
+`python/` provides `dex-connector-monday` v0.2.0, on `dex-connectors-sdk>=0.12.0`, with all five Go operations, both manifest authentication methods, and the `itemChanged` Trigger. `new_project_connection` uses the generated Python OAuth refresh wiring and the static connection name shown in the [runnable work-request example](python/examples/work_request/README.md). The example reads a board page, creates an item, sets typed column values, adds an update, and reads the item back. Provider replay fixtures in `conformance/connectors/monday/scenarios.json` check exact Go request and outcome agreement; live monday.com authorization and API behavior are not verified by those fixtures.
+
+`new_project_item_trigger_runner` polls `itemChanged` with the Python Connector SDK's poll Trigger kit at behavior parity with Go: the same scan, lookback, batches, rate-limit pauses, and reset rules, and cursor documents and Trigger event IDs that match Go byte for byte, so Go and Python replicas share one binding's cursor and inbox. The [item-changed example](python/examples/item_changed/README.md) starts one `MondayItemChangePython` Flow per change.
+
 ## TypeScript package
 
 `@superdurable/connector-monday` v0.1.0 implements all five Go operations:
