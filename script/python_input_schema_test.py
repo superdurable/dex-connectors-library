@@ -79,8 +79,15 @@ def main() -> None:
     manifests = list((package_directory / "src" / "dex_connectors").glob("*/dex-connector.json"))
     if len(manifests) != 1:
         raise AssertionError(f"expected one Connector manifest in {package_directory}")
-    models = importlib.import_module(f"dex_connectors.{manifests[0].parent.name}.models")
+    package_name = manifests[0].parent.name
+    models = importlib.import_module(f"dex_connectors.{package_name}.models")
     for factory in json.loads(manifests[0].read_text())["factories"]:
+        # Dex analyzers find a Trigger binding factory by its package-root name; it has no operation input.
+        if factory["kind"] == "trigger":
+            package = importlib.import_module(f"dex_connectors.{package_name}")
+            if not callable(getattr(package, factory["name"], None)):
+                raise AssertionError(f"{factory['triggerName']}: {factory['name']} is not exported from the package root")
+            continue
         check_operation(models, factory)
 
 

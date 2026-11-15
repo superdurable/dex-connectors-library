@@ -36,17 +36,39 @@ It also carries each operation's input type, input JSON Schema, and model-facing
 description, plus any reviewed `agent` block; see
 [Agent tool metadata](#agent-tool-metadata).
 Only listed operation and Trigger factories are generated. Each listed Trigger
-maps to its static binding factory, such as TypeScript
-`defineThreadReplyCreatedTriggerBinding`, with the `connectionName`,
-`bindingName`, and `configurationUI` fields, as Go's `DefineXTriggerBinding`.
-A TypeScript package lists a Trigger only when it exports that binding factory;
-validation rejects nonempty Python Trigger lists until Python Trigger factories
-are supported.
+maps to its static binding factory, as Go's `DefineXTriggerBinding`. TypeScript
+names it `defineThreadReplyCreatedTriggerBinding`, with the `connectionName`,
+`bindingName`, and `configurationUI` fields. Python names it from the Trigger
+name, as `define_thread_reply_created_trigger_binding`, with the
+`connection_name`, `binding_name`, and `configuration_ui` keyword arguments.
+A Python Flow class returns its bindings from `get_connector_trigger_bindings`
+as one static list of factory calls, which the Dex analyzer reads. The method
+body must be that single `return [...]` statement: Dex CLI v1.47.3 counts a
+docstring as a second statement and rejects the Flow with
+`connector_trigger_bindings_dynamic`, so Dex Web shows no Trigger bindings.
+Document the method with a comment above it instead; this is the one exception
+to documenting public methods with docstrings. Binding names may be module
+constants, but the same Flow's `get_flow_type` must return a string literal
+(`dynamic_type_name` otherwise) and each `StepRef` must name its Step with a
+literal (`unknown_step_target` otherwise). Run `dexcli visualize` on the Flow
+to confirm the analyzer reads its bindings. A package
+lists a Trigger only when it exports that binding factory from its package root.
+A Python package that lists a Trigger requires `dex-connectors-sdk>=0.11.0,<1`.
 
 For a declared Python package, generation also writes its `_generated/` module:
 Go-derived operation dataclasses, Config and Credentials, operation definitions
 and branch constants, Step factories, connection bindings, and manifest mock
-outcomes. Run `connectorctl generate --lang python <connector.yaml>` to update
+outcomes. For each listed Python Trigger it adds the event and configuration
+dataclasses, a `<NAME>_TRIGGER_DEFINITION` constant, and, in
+`_generated/triggers.py`, the binding factory and a
+`decode_<name>_trigger_configuration` function that applies Go's strict
+JSON rules before the Dex codec: it rejects unknown fields at any depth and
+a value of the wrong JSON type, such as a string for a list field, and treats
+null as the field's default unless the field accepts None. Each failure,
+including a codec error, raises `ValueError` naming the Trigger.
+The package's hand-written `triggers.py` re-exports them beside the provider
+transport; a `# connectorctl: handwritten facade` marker in it suppresses the
+generated module, as for `steps.py`. Run `connectorctl generate --lang python <connector.yaml>` to update
 only these Python files; `--lang python --check` verifies them without writing.
 Python generation requires `python3` on `PATH`.
 The default `generate` and `generate --check` include them. The manifest selects
@@ -92,8 +114,8 @@ accept one config object with `stepType`, `annotations`, `connection`,
 mappers, and Step options are runtime inputs, so the static analyzer does not
 map them. The OpenAI Python factory also accepts its existing configuration UI
 and progress and text Stream options; static analyzer mappings for those options
-await matching schema support. Trigger factories are not emitted until the
-language package implements them. The vendored
+await matching schema support. Trigger binding factories are emitted only for
+the Triggers a language package lists. The vendored
 [`dex-connector.schema.json`](../schema/dex-connector.schema.json) is a copy of
 Dex `cli/internal/flowviz/dex-connector.schema.json` from `cli-v1.38.0`, plus
 `agent.branches`. Dex owns the file, and its analyzers reject unknown fields, so a

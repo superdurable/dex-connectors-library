@@ -169,6 +169,49 @@ func TestGeneratedTypeScriptManifestDescribesTriggerBindingFactories(t *testing.
 	require.ErrorContains(t, generate([]string{manifestPath}), "spec.languages.typescript.triggers names unknown rowRemoved")
 }
 
+func TestGeneratedPythonManifestDescribesTriggerBindingFactories(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	connectorDirectory := filepath.Join(repositoryRoot, "connectors", "google", "sheets")
+	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "python"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "go"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, "catalog.yaml"), []byte("connectors: []\n"), 0o600))
+	fixture, err := os.ReadFile(filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml"))
+	require.NoError(t, err)
+	manifestSource := strings.Replace(string(fixture), "spec:\n", "spec:\n  languages:\n    python: {version: v0.2.0, operations: [appendRows], triggers: [rowChanged]}\n", 1)
+	manifestSource = strings.Replace(manifestSource, "  operations:\n", "  triggers:\n    - {name: rowChanged, goName: RowChanged, eventType: RowChangedEvent, configurationType: RowChangedConfiguration, description: Receive a changed row.}\n  operations:\n", 1)
+	manifestPath := filepath.Join(connectorDirectory, "connector.yaml")
+	require.NoError(t, os.WriteFile(manifestPath, []byte(manifestSource), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "go", "go.mod"), []byte("module example.com/sheets\n\ngo 1.24\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "python", "pyproject.toml"), []byte("[project]\nname = \"dex-connector-google-sheets\"\nversion = \"0.2.0\"\n"), 0o600))
+	require.NoError(t, generate([]string{manifestPath}))
+	require.NoError(t, generate([]string{"--check", manifestPath}))
+	contents, err := os.ReadFile(filepath.Join(connectorDirectory, "python", "src", "dex_connectors", "google_sheets", "dex-connector.json"))
+	require.NoError(t, err)
+	var document map[string]any
+	require.NoError(t, json.Unmarshal(contents, &document))
+	require.NoError(t, compileJSONSchemaFile(t, filepath.Join("..", "..", "schema", "dex-connector.schema.json")).Validate(document))
+	factories := document["factories"].([]any)
+	require.Len(t, factories, 2)
+	require.Equal(t, "new_append_rows_step", factories[0].(map[string]any)["name"])
+	require.Equal(t, map[string]any{
+		"name": "define_row_changed_trigger_binding", "kind": "trigger", "triggerName": "rowChanged",
+		"fields": map[string]any{"connectionName": "connection_name", "bindingName": "binding_name", "configurationUI": "configuration_ui"},
+	}, factories[1])
+	unknownTrigger := strings.Replace(manifestSource, "triggers: [rowChanged]}", "triggers: [rowChanged, rowRemoved]}", 1)
+	require.NoError(t, os.WriteFile(manifestPath, []byte(unknownTrigger), 0o600))
+	require.ErrorContains(t, generate([]string{manifestPath}), "spec.languages.python.triggers names unknown rowRemoved")
+}
+
+func TestPythonTriggerBindingFactoryNameUsesOperationSnakeCase(t *testing.T) {
+	for triggerName, want := range map[string]string{
+		"envelopeEventReceived":  "define_envelope_event_received_trigger_binding",
+		"checkoutSessionUpdated": "define_checkout_session_updated_trigger_binding",
+		"issueURLChanged":        "define_issue_url_changed_trigger_binding",
+	} {
+		require.Equal(t, want, pythonTriggerBindingFactoryName(triggerName))
+	}
+}
+
 func TestGeneratedLanguageManifestCarriesInputSchemaAndAgentReview(t *testing.T) {
 	manifestPath, packageManifestPath := copyTypeScriptGoldenConnector(t)
 	require.NoError(t, generate([]string{manifestPath}))

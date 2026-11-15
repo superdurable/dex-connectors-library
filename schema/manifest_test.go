@@ -212,7 +212,8 @@ func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 		{name: "duplicate operation", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [appendRows, appendRows], triggers: []}\n", problem: "spec.languages.python.operations has duplicate name appendRows"},
 		{name: "unknown Trigger", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [], triggers: [missing]}\n", problem: "spec.languages.python.triggers names unknown missing"},
 		{name: "unknown TypeScript Trigger", languageBlock: "  languages:\n    typescript: {version: v0.2.0, operations: [], triggers: [missing]}\n", problem: "spec.languages.typescript.triggers names unknown missing"},
-		{name: "unsupported Python Trigger", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [], triggers: [messageReceived]}\n", problem: "spec.languages.python.triggers must be empty until Python Trigger factories are supported"},
+		{name: "valid Python Trigger", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [], triggers: [rowChanged]}\n    typescript: {version: v1.0.0, operations: [], triggers: [rowChanged]}\n  triggers:\n    - {name: rowChanged, goName: RowChanged, eventType: RowChangedEvent, configurationType: RowChangedConfiguration, description: Receive a changed row.}\n"},
+		{name: "duplicate Python Trigger", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [], triggers: [messageReceived, messageReceived]}\n", problem: "spec.languages.python.triggers has duplicate name messageReceived"},
 		{name: "duplicate TypeScript Trigger", languageBlock: "  languages:\n    typescript: {version: v0.2.0, operations: [], triggers: [messageReceived, messageReceived]}\n", problem: "spec.languages.typescript.triggers has duplicate name messageReceived"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -258,9 +259,11 @@ func TestLanguageCapabilityJSONSchemaRequiresListsWithoutDuplicates(t *testing.T
 	require.ErrorContains(t, validate(), "operations")
 	language.Operations = []string{"appendRows"}
 	language.Triggers = []string{"messageReceived"}
+	require.NoError(t, validate())
+	language.Triggers = []string{"messageReceived", "messageReceived"}
 	require.ErrorContains(t, validate(), "triggers")
 
-	// Editors validating with the JSON Schema alone also keep Python Trigger lists empty but accept TypeScript ones.
+	// Editors validating with the JSON Schema alone accept TypeScript Trigger lists too.
 	typeScriptDefinition := definition.(map[string]any)["$defs"].(map[string]any)["typescriptLanguage"]
 	require.NoError(t, compiler.AddResource("https://connectors.dex.dev/typescript-language.schema.json", typeScriptDefinition))
 	typeScriptLanguage, err := compiler.Compile("https://connectors.dex.dev/typescript-language.schema.json")

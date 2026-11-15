@@ -573,6 +573,41 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertEqual(release.validate_language_package(str(package), "python", lookup), "sdkpython/v0.7.0")
         lookup.is_language_sdk_published.assert_called_with("python", "0.7.0")
 
+    @mock.patch.object(release, "read_declared_language_capabilities", return_value=(set(), {"messageReceived"}))
+    def test_python_trigger_package_requires_trigger_sdk_floor(self, _capabilities: mock.Mock) -> None:
+        package = self.repository / "connectors/newsapi/python"
+        package.mkdir(parents=True)
+        (package.parent / "connector.yaml").write_text("metadata:\n  version: v0.23.0\n", encoding="utf-8")
+        connector_manifest = release.language_connector_manifest_path(package, "python")
+        connector_manifest.parent.mkdir(parents=True)
+        connector_manifest.write_text(json.dumps({
+            "releaseTag": "connectors/newsapi/go/v0.23.0",
+            "package": {"ecosystem": "pypi", "name": "dex-connector-newsapi", "version": "0.2.0"},
+            "factories": [{"name": "define_message_received_trigger_binding", "kind": "trigger", "triggerName": "messageReceived"}],
+        }), encoding="utf-8")
+        lookup = mock.Mock(spec=release.DependencyReleaseLookup)
+        lookup.has_tag.return_value = True
+        lookup.is_tag_reachable_from_main.return_value = True
+        lookup.release_asset_names.side_effect = lambda tag, allow_missing=False: (
+            frozenset({"language-release.json"}) if tag.startswith("sdkpython/") else
+            frozenset({"connector-release.complete"})
+        )
+        lookup.is_language_sdk_published.return_value = True
+
+        def write_requirement(requirement: str, locked: str) -> None:
+            (package / "pyproject.toml").write_text(
+                '[project]\nname = "dex-connector-newsapi"\nversion = "0.2.0"\n'
+                f'dependencies = ["{requirement}"]\n', encoding="utf-8")
+            (package / "uv.lock").write_text(
+                f'version = 1\n[[package]]\nname = "dex-connectors-sdk"\nversion = "{locked}"\n', encoding="utf-8")
+
+        for requirement, locked in (("dex-connectors-sdk==0.1.0", "0.1.0"), ("dex-connectors-sdk>=0.10.0,<1", "0.10.0")):
+            write_requirement(requirement, locked)
+            with self.assertRaisesRegex(ValueError, r"Python Trigger packages require dex-connectors-sdk>=0\.11\.0"):
+                release.validate_language_package(str(package), "python", lookup)
+        write_requirement("dex-connectors-sdk>=0.11.0,<1", "0.11.0")
+        self.assertEqual(release.validate_language_package(str(package), "python", lookup), "sdkpython/v0.11.0")
+
     @mock.patch.object(release, "read_declared_language_capabilities", return_value=(set(), set()))
     def test_language_connector_requires_completed_go_release(self, _capabilities: mock.Mock) -> None:
         package = self.repository / "connectors/newsapi/typescript"
@@ -715,6 +750,9 @@ class ComponentReleaseTest(unittest.TestCase):
         with_trigger = {**document, "factories": [*document["factories"], {"name": "defineMessageReceivedTriggerBinding", "kind": "trigger", "triggerName": "messageReceived"}]}
         with mock.patch.object(release, "read_declared_language_capabilities", return_value=({"getMessage"}, {"messageReceived"})):
             release.validate_language_capability_coverage(source_manifest, "typescript", with_trigger)
+        with_python_trigger = {**document, "factories": [*document["factories"], {"name": "define_message_received_trigger_binding", "kind": "trigger", "triggerName": "messageReceived"}]}
+        with mock.patch.object(release, "read_declared_language_capabilities", return_value=({"getMessage"}, {"messageReceived"})):
+            release.validate_language_capability_coverage(source_manifest, "python", with_python_trigger)
 
     def test_connectorctl_reads_language_capabilities(self) -> None:
         manifest = SCRIPT.parents[2] / "connectors/newsapi/connector.yaml"

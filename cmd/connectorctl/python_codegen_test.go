@@ -234,6 +234,155 @@ func TestPythonCodegenDocuSignOptionalSecretsGolden(t *testing.T) {
 	}
 }
 
+func TestPythonCodegenDocuSignTriggerGolden(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "docusign", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getEnvelope"}, Triggers: []string{"envelopeEventReceived"}}}
+	graph, err := newConnectorGoPackage(manifestPath).graph([]string{"GetEnvelopeInput", "Envelope", "EnvelopeEvent", "EnvelopeEventReceivedTriggerConfiguration"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := pythonCodegenInput{Manifest: manifest, Models: graph.Models, PackageName: "docusign_fixture", MockPackageName: "docusignmock"}
+	generated, err := renderPythonCodegen(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"definitions.py", "triggers.py", "models.py"} {
+		goldenPath := filepath.Join("testdata", "docusign-trigger-golden", name)
+		if os.Getenv("UPDATE_DOCUSIGN_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(goldenPath, []byte(generated[name]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated[name] != string(want) {
+			t.Errorf("%s differs from DocuSign Trigger golden output", name)
+		}
+	}
+	// A facade alias replaces the generated configuration model in the strict decoder.
+	input.ModelAliases = map[string]string{"EnvelopeEventReceivedTriggerConfiguration": "EnvelopeFilter"}
+	aliased, err := renderPythonCodegen(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, fragment := range []string{
+		"from ..models import EnvelopeFilter\n",
+		"def decode_envelope_event_received_trigger_configuration(value: dict[str, Any]) -> EnvelopeFilter:",
+		"CodecRegistry().resolve(EnvelopeFilter)",
+	} {
+		if !strings.Contains(aliased["triggers.py"], fragment) {
+			t.Errorf("aliased triggers.py lacks %q", fragment)
+		}
+	}
+	// Packages without Python Triggers keep definitions unchanged and get no triggers.py.
+	manifest.Spec.Languages.Python.Triggers = []string{}
+	withoutTriggers, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, Models: graph.Models, PackageName: "docusign_fixture", MockPackageName: "docusignmock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := withoutTriggers["triggers.py"]; exists {
+		t.Error("a package without Python Triggers must not generate triggers.py")
+	}
+	if strings.Contains(withoutTriggers["definitions.py"], "Trigger") {
+		t.Error("definitions.py must not mention Triggers when none are declared")
+	}
+}
+
+func TestPythonTriggerConfigurationDecoderIsStrict(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("testdata", "docusign-trigger-golden", "triggers.py"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("python3", "-c", triggerConfigurationRuntimeTest)
+	command.Stdin = bytes.NewReader(source)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated Trigger configuration decoder: %v\n%s", err, output)
+	}
+}
+
+// triggerConfigurationRuntimeTest runs the generated checker against shapes Go strictJSON rejects.
+const triggerConfigurationRuntimeTest = `
+import ast, json, sys, types
+from dataclasses import MISSING, dataclass, field, fields, is_dataclass
+from datetime import datetime
+from types import NoneType, UnionType
+from typing import Any, Union, get_args, get_origin, get_type_hints
+tree = ast.parse(sys.stdin.read())
+wanted = {'_allows_none', '_strict_configuration', 'decode_envelope_event_received_trigger_configuration'}
+functions = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in wanted]
+assert len(functions) == 3, [node.name for node in functions]
+@dataclass(frozen=True, slots=True)
+class Header:
+    name: str
+    value: str | None = None
+@dataclass(frozen=True, slots=True)
+class EnvelopeEventReceivedTriggerConfiguration:
+    events: tuple[str, ...] = ()
+    match_pointer: str = field(default='', metadata={'dex_json_name': 'matchPointer'})
+    limit: int = 0
+    ratio: float = 0.0
+    enabled: bool = False
+    since: datetime | None = None
+    headers: tuple[Header, ...] = ()
+    labels: dict[str, str] = field(default_factory=dict)
+    nested: 'Header | None' = None
+class Registry:
+    error = None
+    def resolve(self, model):
+        return self
+    def decode(self, value):
+        if Registry.error:
+            raise Registry.error
+        data = json.loads(value)
+        return EnvelopeEventReceivedTriggerConfiguration(events=tuple(data.get('events', ())))
+generated_models = types.ModuleType('generated_models')
+generated_models.Header = Header
+namespace = {
+    'Any': Any, 'MISSING': MISSING, 'fields': fields, 'is_dataclass': is_dataclass, 'datetime': datetime,
+    'NoneType': NoneType, 'UnionType': UnionType, 'Union': Union, 'get_args': get_args, 'get_origin': get_origin,
+    'get_type_hints': get_type_hints, 'json': json, '_generated_models': generated_models,
+    'CodecRegistry': Registry, 'Value': lambda kind, text: text, 'WireKind': types.SimpleNamespace(JSON='json'),
+    'EnvelopeEventReceivedTriggerConfiguration': EnvelopeEventReceivedTriggerConfiguration,
+}
+exec(compile(ast.Module(body=functions, type_ignores=[]), '<generated-triggers>', 'exec'), namespace)
+decode = namespace['decode_envelope_event_received_trigger_configuration']
+check = namespace['_strict_configuration']
+def rejects(value, message):
+    try:
+        decode(value)
+    except ValueError as error:
+        assert str(error) == message, (str(error), message)
+    else:
+        raise AssertionError(f'{value!r} decoded')
+assert decode({'events': ['envelope-completed']}).events == ('envelope-completed',)
+rejects({'events': 'opened'}, 'envelopeEventReceived configuration.events must be a list')
+rejects({'events': [1]}, 'envelopeEventReceived configuration.events[0] must be a string')
+rejects({'other': 1}, "envelopeEventReceived configuration has unknown field 'other'")
+rejects({'headers': [{'name': 'a', 'extra': 1}]}, "envelopeEventReceived configuration.headers[0] has unknown field 'extra'")
+rejects({'headers': [{'value': 'a'}], 'nested': {'name': None}}, 'envelopeEventReceived configuration.nested.name must not be null')
+rejects({'limit': True}, 'envelopeEventReceived configuration.limit must be an integer')
+rejects({'limit': 1.5}, 'envelopeEventReceived configuration.limit must be an integer')
+rejects({'ratio': 'x'}, 'envelopeEventReceived configuration.ratio must be a number')
+rejects({'enabled': 1}, 'envelopeEventReceived configuration.enabled must be a boolean')
+rejects({'labels': {'a': 1}}, 'envelopeEventReceived configuration.labels.a must be a string')
+rejects({'since': 5}, 'envelopeEventReceived configuration.since must be a string')
+rejects([], 'envelopeEventReceived configuration must be an object')
+# Null keeps a field's default, as Go leaves the zero value; Optional fields keep the null.
+assert check('t', {'events': None, 'matchPointer': None, 'since': None, 'ratio': 2}, EnvelopeEventReceivedTriggerConfiguration, 'configuration') == {'since': None, 'ratio': 2}
+assert check('t', {'nested': {'name': 'n', 'value': None}}, EnvelopeEventReceivedTriggerConfiguration, 'configuration') == {'nested': {'name': 'n', 'value': None}}
+Registry.error = TypeError("'NoneType' object is not iterable")
+rejects({}, 'envelopeEventReceived configuration did not decode')
+`
+
 func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 	manifestPath := filepath.Join("..", "..", "schema", "testdata", "multi-auth.yaml")
 	manifest, err := load(manifestPath)
@@ -747,6 +896,103 @@ func TestPythonGenerateCheckDetectsModelDrift(t *testing.T) {
 	}
 	if err := generate([]string{"--lang", "python", "--check", manifestPath}); err == nil || !strings.Contains(err.Error(), "stale") {
 		t.Fatalf("expected Python model drift, got %v", err)
+	}
+}
+
+func TestPythonGenerateWritesAndRemovesTriggerBindings(t *testing.T) {
+	manifestSource := filepath.Join("..", "..", "connectors", "atlassian", "bitbucket", "connector.yaml")
+	manifestContents, err := os.ReadFile(manifestSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifestDocument map[string]any
+	if err := yaml.Unmarshal(manifestContents, &manifestDocument); err != nil {
+		t.Fatal(err)
+	}
+	specification := manifestDocument["spec"].(map[string]any)
+	python := specification["languages"].(map[string]any)["python"].(map[string]any)
+	specification["languages"] = map[string]any{"python": python}
+	specification["triggers"] = []any{map[string]any{
+		"name": "repositoryPushed", "goName": "RepositoryPushed", "eventType": "RepositoryPushedEvent",
+		"configurationType": "RepositoryPushedConfiguration", "description": "Receive a repository push.",
+	}}
+	writeManifest := func(declared []any) string {
+		python["triggers"] = declared
+		contents, err := yaml.Marshal(manifestDocument)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(contents)
+	}
+	projectContents, err := os.ReadFile(filepath.Join(filepath.Dir(manifestSource), "python", "pyproject.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := t.TempDir()
+	connectorDirectory := filepath.Join(repository, "connectors", "atlassian", "bitbucket")
+	manifestPath := filepath.Join(connectorDirectory, "connector.yaml")
+	packageDirectory := filepath.Join(connectorDirectory, "python", "src", "dex_connectors", "atlassian_bitbucket")
+	goModels := "package bitbucket\ntype ListRepositoriesInput struct{}\ntype RepositoryPage struct{}\ntype ListPullRequestsInput struct{}\ntype PullRequestPage struct{}\n" +
+		"type RepositoryPushedEvent struct{ Ref string `json:\"ref\"` }\ntype RepositoryPushedConfiguration struct{ Branches []string `json:\"branches,omitempty\"` }\n"
+	write := func(path, contents string) {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(repository, "catalog.yaml"), "directories: []\n")
+	write(manifestPath, writeManifest([]any{"repositoryPushed"}))
+	write(filepath.Join(connectorDirectory, "go", "go.mod"), "module example.com/bitbucket\n\ngo 1.24\n")
+	write(filepath.Join(connectorDirectory, "go", "models.go"), goModels)
+	write(filepath.Join(packageDirectory, "__init__.py"), "")
+	write(filepath.Join(connectorDirectory, "python", "pyproject.toml"), string(projectContents))
+	generatedTriggers := filepath.Join(packageDirectory, "_generated", "triggers.py")
+	run := func() {
+		t.Helper()
+		if err := generate([]string{"--lang", "python", manifestPath}); err != nil {
+			t.Fatal(err)
+		}
+		if err := generate([]string{"--check", "--lang", "python", manifestPath}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run()
+	triggers, err := os.ReadFile(generatedTriggers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, fragment := range []string{"def define_repository_pushed_trigger_binding(", "def decode_repository_pushed_trigger_configuration(", `_strict_configuration("repositoryPushed", value, RepositoryPushedConfiguration, 'configuration')`} {
+		if !strings.Contains(string(triggers), fragment) {
+			t.Errorf("generated triggers.py lacks %q", fragment)
+		}
+	}
+	models, err := os.ReadFile(filepath.Join(packageDirectory, "_generated", "models.py"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(models), "class RepositoryPushedEvent:") || !strings.Contains(string(models), "class RepositoryPushedConfiguration:") {
+		t.Error("generated models.py lacks the Trigger event and configuration models")
+	}
+	// A handwritten facade opts out of the generated factories, as steps.py does.
+	write(filepath.Join(packageDirectory, "triggers.py"), "# connectorctl: handwritten facade\n")
+	run()
+	if _, err := os.Stat(generatedTriggers); !os.IsNotExist(err) {
+		t.Fatalf("handwritten triggers.py must suppress generated triggers.py, got %v", err)
+	}
+	if err := os.Remove(filepath.Join(packageDirectory, "triggers.py")); err != nil {
+		t.Fatal(err)
+	}
+	run()
+	if _, err := os.Stat(generatedTriggers); err != nil {
+		t.Fatal(err)
+	}
+	// Emptying the Trigger list removes the generated module.
+	write(manifestPath, writeManifest([]any{}))
+	run()
+	if _, err := os.Stat(generatedTriggers); !os.IsNotExist(err) {
+		t.Fatalf("generated triggers.py must be removed when no Python Trigger is declared, got %v", err)
 	}
 }
 
