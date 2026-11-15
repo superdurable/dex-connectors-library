@@ -44,6 +44,8 @@ type FakeProvider struct {
 	recordRequests    int
 	recordsByKey      map[string]string
 	appliedRecordKeys map[string]int
+	messageRequests   int
+	createdMessages   int
 	readRequests      int
 	totalRequests     int
 	scripts           map[string][]ScriptedResponse
@@ -76,7 +78,7 @@ func (provider *FakeProvider) Close() {
 }
 
 // Script queues responses for the next requests of one operation: getNote,
-// postNote, saveRecord, or readRecord.
+// postNote, saveRecord, readRecord, or sendMessage, which every mail tool uses.
 func (provider *FakeProvider) Script(operationID string, responses ...ScriptedResponse) {
 	provider.mu.Lock()
 	defer provider.mu.Unlock()
@@ -116,6 +118,20 @@ func (provider *FakeProvider) RecordRequests() int {
 	provider.mu.Lock()
 	defer provider.mu.Unlock()
 	return provider.recordRequests
+}
+
+// MessageRequests counts the mail send requests that reached the provider.
+func (provider *FakeProvider) MessageRequests() int {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	return provider.messageRequests
+}
+
+// CreatedMessages counts the messages the provider accepted; mail sends are not idempotent.
+func (provider *FakeProvider) CreatedMessages() int {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	return provider.createdMessages
 }
 
 // AppliedRecordWrites returns how often the record write of an idempotency
@@ -168,6 +184,8 @@ func (provider *FakeProvider) serveHTTP(response http.ResponseWriter, request *h
 		provider.serveReadRecord(response, request, strings.TrimPrefix(request.URL.Path, "/records/"))
 	case request.Method == http.MethodPut && request.URL.Path == "/records":
 		provider.serveSaveRecord(response, request)
+	case request.Method == http.MethodPost && request.URL.Path == "/messages":
+		provider.serveSendMessage(response, request)
 	default:
 		http.NotFound(response, request)
 	}
@@ -215,6 +233,23 @@ func (provider *FakeProvider) servePostNote(response http.ResponseWriter, reques
 		return
 	}
 	writeJSON(response, map[string]string{"id": noteID})
+}
+
+func (provider *FakeProvider) serveSendMessage(response http.ResponseWriter, request *http.Request) {
+	provider.mu.Lock()
+	provider.messageRequests++
+	provider.mu.Unlock()
+	if provider.answerScripted(response, request, "sendMessage") {
+		return
+	}
+	provider.mu.Lock()
+	provider.createdMessages++
+	messageID := "m-" + strconv.Itoa(provider.createdMessages)
+	provider.mu.Unlock()
+	if provider.answerAfterEffect(response, request, "sendMessage") {
+		return
+	}
+	writeJSON(response, map[string]string{"id": messageID})
 }
 
 func (provider *FakeProvider) serveReadRecord(response http.ResponseWriter, request *http.Request, idempotencyKey string) {
