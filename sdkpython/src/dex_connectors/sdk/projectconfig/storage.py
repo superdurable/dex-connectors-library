@@ -86,8 +86,9 @@ def validate_object_key(key: str) -> None:
 
 
 def _local_object_byte_limit(key: str) -> int:
-    """Allow Go's 8 MiB Trigger inbox outside S3; every other object keeps the 4 MiB bound."""
-    return _MAXIMUM_LOCAL_TRIGGER_INBOX_BYTES if "/trigger-inboxes/" in key else MAXIMUM_OBJECT_BYTES
+    """Allow Go's 8 MiB Trigger inbox and poll cursor outside S3; every other object keeps 4 MiB."""
+    is_trigger_state = any(part in key for part in ("/trigger-inboxes/", "/poll-cursors/", "/poll-feeds/"))
+    return _MAXIMUM_LOCAL_TRIGGER_INBOX_BYTES if is_trigger_state else MAXIMUM_OBJECT_BYTES
 
 
 class InMemoryObjectStore:

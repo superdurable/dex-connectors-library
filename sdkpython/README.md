@@ -360,6 +360,121 @@ Runners and durable targets add `connector`, `connection`, `trigger`, and
 - The ASGI lifespan restarts failed runners with backoff; Go and TypeScript
   return the failure to the host that called `run`.
 
+## Polling Triggers
+
+A connector whose provider exposes a change feed (a sync token, a history ID, a
+page token, or a sequence) builds its Trigger sources on
+`dex_connectors.sdk.pollingtrigger` instead of its own poll loop, at behavior
+parity with Go's `sdkgo/pollingtrigger`. The connector supplies a
+`ChangeFetcher`: `seed_cursor` returns the provider's current position without
+reporting existing items, and `fetch_changes` returns one `ChangePage` of at
+most `MAXIMUM_CHANGES_PER_PAGE` (500) changes after a `Cursor`. The kit owns the
+cursor, the schedule, and delivery.
+
+- **Durable cursor.** `new_binding_poller` keeps one cursor per binding in
+  `poll-cursors/` and `new_feed_poller` one cursor per shared feed in
+  `poll-feeds/`, beside the bindings' `trigger-inboxes/`
+  (`LoadedProject.poll_cursor_store` and `poll_feed_cursor_store`). The
+  document `connectors.dex.dev/project-poll-cursor/v1alpha1` holds an opaque
+  token of at most 64 KiB, an optional keyed snapshot, and commit and reset
+  counters, and is written only by compare-and-swap. Keys and document bytes
+  match Go's, so Go and Python replicas share one cursor; the unit tests check
+  them against Go-generated fixtures. A poll whose page is empty and leaves the
+  cursor where it was writes nothing. Dex Web projects keep cursors in process
+  memory, as Go does.
+- **Ordering rule.** The cursor commits past a change only after every member
+  target recorded it (a `TriggerDeliveryPreparer` such as
+  `new_durable_trigger_target`) or consumed it (any other target). Recorded
+  events are delivered after the commit, in page order; while one fails, the
+  poller retries it before fetching again. A commit conflict with a replica
+  still delivers what this replica recorded. A retry from the same cursor skips
+  the event IDs each member already recorded or consumed, even when the
+  provider now returns a different page, and still delivers recorded events the
+  retry no longer lists. Delivery is at least once: every event ID must be a
+  pure function of the provider change, so a refetch after a crash yields the
+  same IDs and `new_dex_flow_trigger_target` starts one Flow per event.
+- **Seed and reset.** The first poll seeds the cursor with no backlog. A fetch
+  error raised as `mark_cursor_invalid(error)` (for example 410 Gone for a sync
+  token) reseeds, increments `reset_count`, and logs the gap at WARN; changes in
+  the gap are not delivered.
+- **Schedule.** One `PollRunner` serves every poller of one connection from one
+  task, in configuration order. `PollSchedule` sets `interval` (at least 1s),
+  `jitter_fraction` (default 0.1), `maximum_backoff` (default 15 minutes), and
+  `maximum_pages_per_poll` (default 10). Failures back off per poller,
+  `interval * 2^(n-1)` up to `maximum_backoff`. An error raised as
+  `mark_rate_limited(error, retry_after)` pauses every poller of the runner for
+  `max(retry_after, interval)`, or backs off exponentially without a
+  Retry-After. A fetcher awaits `wait_for_poll_request(context)` before every
+  provider request, so an application `RequestLimiter` gates seeds and
+  multi-request fetches too. `wake_poller` makes a poller due now and may be
+  called from any thread.
+- **Keyed snapshots.** `KeyedSnapshotOptions` enables a bounded snapshot
+  (default 10,000 entries, at most 100,000) stored in the cursor document and
+  committed with it. A full-listing Trigger calls `diff_keyed_snapshot` inside
+  `fetch_changes` and emits events from `added`, `changed`, and `removed`; a
+  delta feed calls `apply_keyed_snapshot_changes`, optionally with
+  `evict_least_recently_seen`. A feed member's selector receives the committed
+  entry of a change that implements `KeyedItem`. Keys sort in UTF-8 byte order,
+  as Go sorts them.
+
+`run` checks every stored cursor, replays each durable target, and then polls
+until the context is cancelled, when it raises `TriggerDeliveryAbortedError`.
+It raises early only for a stored document that fails strict decoding
+(`PollCursorDocumentInvalidError`), which it never overwrites. A cursor state
+over a bound is a configuration fault retried every `maximum_backoff`. Provider
+calls are abandoned as soon as the context is cancelled.
+`new_trigger_credential_call` gives a poller the same stable credential-call ID
+as Go, which the Gmail Trigger uses, and `new_binding_trigger_source` adapts one
+binding poller to `TriggerSource` for `new_trigger`.
+
+The runnable [`examples/polling_trigger.py`](examples/polling_trigger.py) polls
+a change-log provider into a durable inbox:
+
+```python
+def new_item_runner(
+    client: httpx.AsyncClient, recorder: ItemSyncRecorder
+) -> tuple[PollRunner, TriggerInbox, PollCursorStore]:
+    """Wire one durable binding poller and the runner of its connection."""
+    objects, scope = InMemoryObjectStore(), Scope("example", "preview")
+    key = TriggerInboxKey("changelog", CONNECTION.name, DEFINITION.trigger.trigger_name, BINDING.name)
+    # An application uses project.trigger_inbox(key) and project.poll_cursor_store(...).
+    inbox = TriggerInbox(objects, scope, key)
+    cursor = PollCursorStore(objects, scope, PollCursorKey.from_trigger_inbox_key(key))
+    target = new_durable_trigger_target(inbox, recorder, decode_payload=decode_stored_change)
+    poller = new_binding_poller(
+        BindingPollerConfig(DEFINITION, BINDING, cursor, ChangeLogFetcher(client), target)
+    )
+    schedule = PollSchedule(timedelta(seconds=1), maximum_backoff=timedelta(minutes=1))
+    return PollRunner(PollRunnerConfig(CONNECTION, schedule, [poller])), inbox, cursor
+```
+
+Records carry `connector`, `connection`, and `trigger` plus `binding` (or
+`feed`), never payloads, cursor tokens, snapshot values, or error messages:
+
+| Level | Message | Attributes |
+|---|---|---|
+| INFO | `poll cursor seeded` | `reset` (false) on the first seed |
+| WARN | `poll cursor invalid; reseeding` | `reset_count`, error attributes |
+| WARN | `poll failed; retrying` | `attempt`, `delay_ms`, error attributes |
+| WARN | `poll rate limited; pausing connection` | `delay_ms`, `pollers`, error attributes |
+| WARN | `poll paused: trigger inbox full` | `attempt`, `delay_ms`, error attributes |
+| ERROR | `poll paused: cursor state exceeds bound` | `delay_ms`, error attributes |
+| ERROR | `poll cursor document invalid` | error attributes |
+| DEBUG | `poll cursor committed`, `poll cursor commit conflict` | `commit_count`, `events` |
+
+Delivery uses the `trigger delivery failed; retrying`, `trigger delivered after
+retry`, and `trigger event skipped: undeliverable` records of
+[Logging](#logging). The application's storage grant needs `GetObject` and
+`PutObject` on `poll-cursors/` and `poll-feeds/` as well.
+
+Differences from Go: durations are `timedelta` and records report `delay_ms`
+instead of Go's `delay` text, with error classes instead of Go's redacted
+`error`; Go's `Runner`, `RunnerConfig`, `MaxBackoff`, and `MaxPagesPerPoll` are
+`PollRunner`, `PollRunnerConfig`, `maximum_backoff`, and
+`maximum_pages_per_poll`; `ChangePage.Next` is `next_cursor`; and cancellation
+is the `TriggerContext` cancellation, so a cancelled run starts no further
+delivery attempt and abandons an in-flight provider call.
+
 ## OAuth token refresh
 
 `oauthtoken.TokenEndpoint` performs bounded, redirect-disabled refresh-token,
@@ -519,6 +634,7 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.12.0`: Add the durable poll Trigger kit `pollingtrigger` (binding and feed pollers, `PollRunner`, keyed snapshots, `new_binding_trigger_source`, `new_trigger_credential_call`) and `projectconfig.PollCursorStore` with `LoadedProject.poll_cursor_store` and `poll_feed_cursor_store`, byte-compatible with the Go kit. Local poll cursor objects may be 8 MiB. This addition is not breaking.
 - `0.11.0`: Add Trigger support: Trigger identities and runners, `deliver_trigger` with capped retries, Dex Flow and RPC Trigger targets, durable project Trigger inboxes byte-compatible with Go and TypeScript (file-backed for Dex Web projects), relay signatures and `LoadedProject.verify_relayed_request` and `register_relayed_trigger`, and `webhooktrigger.WebhookEndpoint` as an ASGI application with lifespan-run Trigger runners. Local Trigger inbox objects may be 8 MiB. This addition is not breaking.
 - `0.10.0`: The single-dispatch fence supports bounded resend on unknown outcomes. `Fence` and `decide_dispatch` accept `max_sends` (default 1, unchanged decisions and marker bytes); with a cap of 2 or more, markers carry an optional `sendCount` and decisions can return `DecisionKind.READ_BACK_THEN_RESEND_ALLOWED`. `RepeatOnUnknown`, `MutationDefinition.repeat_on_unknown` and `max_sends`, `Call.max_sends`, and `MutationStepConfig.max_sends_override` expose the send cap to Steps. Workers on `0.9.0` ignore `sendCount` and keep their conservative decisions. This addition is not breaking.
 - `0.9.0`: `raise_dex_retry` is exported. A Step that calls `run_query` or `run_mutation` directly catches `RetryError` and calls it to get the same Dex retry behavior as the Step factories. This addition is not breaking.
@@ -656,7 +772,10 @@ branch routing, retry and exhaustion, uncertainty, the lost-response fence,
 safe resend from a persisted checkpoint, heartbeat cadence, mock replay,
 result Attribute, and progress/text Streams. Its Trigger tests check Flow and
 RPC targets, handler markers, replay of a local inbox after a process restart,
-a relayed webhook served through ASGI, and replay of a Go-written inbox.
+a relayed webhook served through ASGI, and replay of a Go-written inbox. Its
+poll Trigger tests check seeding without backlog, restarts while the Worker is
+down, crashes before and after a commit, a reseed after 410, Retry-After, two
+replicas on one cursor, and a feed serving a durable and a non-durable binding.
 `integration/cross_language_marker.py` is a manual run against the same Dex: it
 needs `npm ci && npm run build` in `sdkts/` and checks that a TypeScript RPC
 Trigger target consumes a Python handler's `UndeliverableTriggerError`.
