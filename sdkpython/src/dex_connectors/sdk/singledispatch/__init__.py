@@ -3,9 +3,20 @@
 """Single-dispatch markers and Dex heartbeat fence."""
 
 from .fence import CheckpointError, DispatchNotAllowedError, Fence, InsufficientAttemptTimeError
-from .markers import Decision, DecisionKind, Marker, State, decide_dispatch
+from .markers import (
+    MAXIMUM_MAX_SENDS,
+    MINIMUM_MAX_SENDS,
+    Decision,
+    DecisionKind,
+    Marker,
+    State,
+    decide_dispatch,
+    validate_max_sends,
+)
 
 __all__ = [
+    "MAXIMUM_MAX_SENDS",
+    "MINIMUM_MAX_SENDS",
     "CheckpointError",
     "Decision",
     "DecisionKind",
@@ -15,4 +26,5 @@ __all__ = [
     "Marker",
     "State",
     "decide_dispatch",
+    "validate_max_sends",
 ]

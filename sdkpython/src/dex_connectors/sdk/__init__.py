@@ -49,6 +49,7 @@ from .types import (
     QueryDefinition,
     QueryResult,
     Receipt,
+    RepeatOnUnknown,
     StepDefaults,
     derive_call_id,
 )
@@ -86,6 +87,7 @@ __all__ = [
     "QueryStepConfig",
     "RFC3339NanoTimestamp",
     "Receipt",
+    "RepeatOnUnknown",
     "StepDefaults",
     "StepAnnotations",
     "ReauthorizationRequiredError",
