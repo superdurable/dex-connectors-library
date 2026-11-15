@@ -12,9 +12,9 @@ spec:
   languages:
     python:
       package: dex-connector-hiver
-      version: v0.1.0
+      version: v0.2.0
       operations: [listInboxes, listConversations, getConversation, updateConversation, addNote, createSharedDraft]
-      triggers: []
+      triggers: [conversationReceived]
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-hiver"
