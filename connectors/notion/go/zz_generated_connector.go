@@ -18,9 +18,17 @@ import (
 
 const ConnectorID = "notion"
 
+const (
+	UIUnitDataSourcePicker               = "dataSourcePicker"
+	UIDataSourcePickerPortDataSourceID   = "dataSourceId"
+	UIDataSourcePickerPortDataSourceName = "dataSourceName"
+)
+
 type Config struct {
-	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
+	PollPageSize     int64         `json:"pollPageSize,omitempty" yaml:"pollPageSize,omitempty"`
 }
 
 type Credentials struct {
@@ -160,6 +168,8 @@ func DefaultConfig() Config {
 	return Config{
 		Endpoint:         "https://api.notion.com",
 		MaxResponseBytes: 4194304,
+		PollInterval:     time.Duration(30000000000),
+		PollPageSize:     100,
 	}
 }
 
@@ -170,6 +180,12 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
+	}
+	if config.PollPageSize == 0 {
+		config.PollPageSize = defaults.PollPageSize
 	}
 	return config
 }
@@ -184,6 +200,12 @@ func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
+	}
+	if config.PollPageSize < 0 {
+		return fmt.Errorf("configuration pollPageSize cannot be negative")
+	}
 	return nil
 }
 
@@ -192,6 +214,52 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_token is required")
 	}
 	return nil
+}
+
+var DatabaseRowChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "databaseRowChanged"},
+	Description: "Receive each row created or edited in one Notion data source, read by polling the data source query sorted by last edited time; the first run records a baseline and delivers no existing rows, and trashed rows are not delivered.",
+}
+
+type DatabaseRowChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=notion"`
+	triggerName                             struct{}                       `connector:"triggerName=databaseRowChanged"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineDatabaseRowChangedTriggerBinding(config DatabaseRowChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: DatabaseRowChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type DatabaseRowChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                     `connector:"connectorId=notion"`
+	triggerName                      struct{}                                     `connector:"triggerName=databaseRowChanged"`
+	Connection                       Connection                                   `connector:"connection"`
+	ConnectionName                   string                                       `connector:"connectionName"`
+	BindingName                      string                                       `connector:"bindingName"`
+	Configuration                    DatabaseRowChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[DatabaseRowChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewDatabaseRowChangedTrigger(config DatabaseRowChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("notion connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: DatabaseRowChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[DatabaseRowChangedEvent]{
+		Definition: DatabaseRowChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.databaseRowChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const SearchBranchSearched sdkgo.BranchID = "searched"
@@ -224,6 +292,7 @@ type SearchStepConfig[IN any] struct {
 	operationID                    struct{}                                        `connector:"operationId=search"`
 	StepType                       string                                          `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                  `connector:"configurationUI"`
 	Connection                     Connection                                      `connector:"connection"`
 	ConnectionName                 string                                          `connector:"connectionName"`
 	MapToOperationInput            func(IN) SearchInput                            `connector:"mapToOperationInput"`
@@ -245,7 +314,8 @@ func NewSearchStep[IN any](config SearchStepConfig[IN]) sdkgo.QueryStep[IN, Sear
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchInput, SearchOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.Search(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.Search(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SearchResult] {
 			branches := make([]sdkgo.BranchTarget[SearchResult], 0, 5)
@@ -301,6 +371,7 @@ type QueryDatabaseStepConfig[IN any] struct {
 	operationID                    struct{}                                               `connector:"operationId=queryDatabase"`
 	StepType                       string                                                 `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
 	Connection                     Connection                                             `connector:"connection"`
 	ConnectionName                 string                                                 `connector:"connectionName"`
 	MapToOperationInput            func(IN) QueryDatabaseInput                            `connector:"mapToOperationInput"`
@@ -322,7 +393,8 @@ func NewQueryDatabaseStep[IN any](config QueryDatabaseStepConfig[IN]) sdkgo.Quer
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, QueryDatabaseInput, QueryDatabaseOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.QueryDatabase(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.QueryDatabase(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[QueryDatabaseResult] {
 			branches := make([]sdkgo.BranchTarget[QueryDatabaseResult], 0, 5)
@@ -378,6 +450,7 @@ type GetPageStepConfig[IN any] struct {
 	operationID                    struct{}                                         `connector:"operationId=getPage"`
 	StepType                       string                                           `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                   `connector:"configurationUI"`
 	Connection                     Connection                                       `connector:"connection"`
 	ConnectionName                 string                                           `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetPageInput                            `connector:"mapToOperationInput"`
@@ -399,7 +472,8 @@ func NewGetPageStep[IN any](config GetPageStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPageInput, GetPageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetPage(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetPage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetPageResult] {
 			branches := make([]sdkgo.BranchTarget[GetPageResult], 0, 5)
@@ -447,6 +521,8 @@ var CreatePageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreatePageResult = sdkgo.MutationResult[CreatePageOutput]
@@ -457,6 +533,7 @@ type CreatePageStepConfig[IN any] struct {
 	operationID                       struct{}                                               `connector:"operationId=createPage"`
 	StepType                          string                                                 `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
 	Connection                        Connection                                             `connector:"connection"`
 	ConnectionName                    string                                                 `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreatePageInput                               `connector:"mapToOperationInput"`
@@ -468,6 +545,8 @@ type CreatePageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreatePageResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatePageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreatePageStep[IN any](config CreatePageStepConfig[IN]) sdkgo.MutationStep[IN, CreatePageInput, CreatePageOutput] {
@@ -479,7 +558,8 @@ func NewCreatePageStep[IN any](config CreatePageStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePageInput, CreatePageOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.CreatePage(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreatePage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreatePageResult] {
 			branches := make([]sdkgo.BranchTarget[CreatePageResult], 0, 6)
@@ -505,6 +585,7 @@ func NewCreatePageStep[IN any](config CreatePageStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -528,6 +609,7 @@ var UpdatePagePropertiesDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdatePagePropertiesResult = sdkgo.MutationResult[UpdatePagePropertiesOutput]
@@ -538,6 +620,7 @@ type UpdatePagePropertiesStepConfig[IN any] struct {
 	operationID                       struct{}                                                         `connector:"operationId=updatePageProperties"`
 	StepType                          string                                                           `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                            `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                                   `connector:"configurationUI"`
 	Connection                        Connection                                                       `connector:"connection"`
 	ConnectionName                    string                                                           `connector:"connectionName"`
 	MapToOperationInput               func(IN) UpdatePagePropertiesInput                               `connector:"mapToOperationInput"`
@@ -559,7 +642,8 @@ func NewUpdatePagePropertiesStep[IN any](config UpdatePagePropertiesStepConfig[I
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdatePagePropertiesInput, UpdatePagePropertiesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.UpdatePageProperties(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpdatePageProperties(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdatePagePropertiesResult] {
 			branches := make([]sdkgo.BranchTarget[UpdatePagePropertiesResult], 0, 5)

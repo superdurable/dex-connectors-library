@@ -12,12 +12,18 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete Notion API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createPage selects uncertain. */
   maxResponseBytes?: number;
+  /** Wait between two Notion data source queries of the databaseRowChanged Trigger, as a Go duration of at least 5s such as 15s or 2m. Leave blank to keep the displayed interval; shorten it only when Flows must start sooner, because every poll spends the connection's Notion query rate limit of about three requests per second, shared with the Flows' own Steps. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
+  /** Rows one databaseRowChanged poll asks Notion for per query page, a whole number from 1 up to Notion's maximum query page size, which the displayed default already uses. Leave blank to keep the displayed size; lower it only when pages of wide rows exceed maxResponseBytes, because smaller pages need more requests to catch up after a burst of edits. */
+  pollPageSize?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
+  "pollPageSize": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

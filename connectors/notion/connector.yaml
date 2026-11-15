@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: notion
   displayName: Notion
-  description: Search Notion pages and data sources by title, query database rows with typed filters, read a page's properties and plain-text content, and create or update database rows without silent duplicates.
+  description: Search Notion pages and data sources by title, query database rows with typed filters, read a page's properties and plain-text content, create or update database rows without silent duplicates, and start Flows when database rows are created or edited.
   company: Notion
   categories: [productivity]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: notion
   codegen:
@@ -37,6 +37,18 @@ spec:
         description: "Maximum complete Notion API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createPage selects uncertain."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Wait between two Notion data source queries of the databaseRowChanged Trigger, as a Go duration of at least 5s such as 15s or 2m. Leave blank to keep the displayed interval; shorten it only when Flows must start sooner, because every poll spends the connection's Notion query rate limit of about three requests per second, shared with the Flows' own Steps."
+        required: false
+        default: 30s
+      - name: pollPageSize
+        goName: PollPageSize
+        type: integer
+        description: "Rows one databaseRowChanged poll asks Notion for per query page, a whole number from 1 up to Notion's maximum query page size, which the displayed default already uses. Leave blank to keep the displayed size; lower it only when pages of wide rows exceed maxResponseBytes, because smaller pages need more requests to catch up after a burst of edits."
+        required: false
+        default: 100
   auth:
     type: apiKey
     connectionKind: notion-internal-connection
@@ -53,6 +65,46 @@ spec:
         - On the connection's Configuration tab, enable the Read content, Update content, and Insert content capabilities; the connector needs no user information or comment capability.
         - Copy the API token from the Configuration tab into the secret field below; choose Refresh there to rotate it, then paste the replacement, because Notion rejects the old token.
         - Share every database and page the Flows use with the connection, either on the connection's Content access tab with Edit access, or in Notion from the page's ••• menu > Connections > + Add connection. Sharing a page also shares its child pages; an unshared page reads as not found.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, notion.data-sources-read]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      - id: getDatabase
+        capability: notion.data-sources-read
+        request:
+          method: GET
+          url: https://api.notion.com/v1/databases/{databaseId}
+          credential: {field: api_token, scheme: bearer}
+          fixedHeaders: {Notion-Version: "2026-03-11"}
+          parameters:
+            - {name: databaseId, location: path, target: databaseId}
+      - id: getDataSource
+        capability: notion.data-sources-read
+        request:
+          method: GET
+          url: https://api.notion.com/v1/data_sources/{dataSourceId}
+          credential: {field: api_token, scheme: bearer}
+          fixedHeaders: {Notion-Version: "2026-03-11"}
+          parameters:
+            - {name: dataSourceId, location: path, target: dataSourceId}
+    units:
+      - id: dataSourcePicker
+        goName: DataSourcePicker
+        description: "Paste the link or ID of a Notion database shared with the connection, from the database's ••• menu > Copy link at https://app.notion.com, and pick one of its data sources, which Notion lists live; or paste a data source ID copied from the database's settings > Manage data sources > Copy data source ID. The unit stores the data source ID and its name as plain, non-secret binding configuration, and blank saves nothing."
+        backendCapabilities: [notion.data-sources-read]
+        outputs:
+          - {name: dataSourceId, goName: DataSourceID, type: string}
+          - {name: dataSourceName, goName: DataSourceName, type: string}
+  triggers:
+    - name: databaseRowChanged
+      goName: DatabaseRowChanged
+      eventType: DatabaseRowChangedEvent
+      configurationType: DatabaseRowChangedTriggerConfiguration
+      description: "Receive each row created or edited in one Notion data source, read by polling the data source query sorted by last edited time; the first run records a baseline and delivers no existing rows, and trashed rows are not delivered."
   operations:
     - name: search
       goName: Search
@@ -280,6 +332,8 @@ spec:
         executeMethodTimeout: 90s
         heartbeatTimeout: 90s
         durability: async
+        # Absolute property values make a repeated update leave the page in the same state.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedSubmission
           branch: updated
