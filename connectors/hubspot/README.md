@@ -13,12 +13,12 @@ companies, and deals through HubSpot's 2026-09 CRM object API. It is the
 system-of-record write path for a Flow: identify a person by email, find the
 deal that belongs to them, and move that deal forward.
 
-| Operation | Kind | HubSpot endpoint | Happy branch |
-| --- | --- | --- | --- |
-| `searchObjects` | Query | `POST /crm/objects/2026-09/{objectType}/search` | `searched` |
-| `getObject` | Query | `GET /crm/objects/2026-09/{objectType}/{recordId}` | `found` |
-| `upsertObject` | Mutation | `POST /crm/objects/2026-09/{objectType}/batch/upsert` with one input | `upserted` |
-| `updateObject` | Mutation | `PATCH /crm/objects/2026-09/{objectType}/{recordId}` | `updated` |
+| Operation | Kind | HubSpot endpoint | Happy branch | Languages |
+| --- | --- | --- | --- | --- |
+| `searchObjects` | Query | `POST /crm/objects/2026-09/{objectType}/search` | `searched` | Go, Python, TypeScript |
+| `getObject` | Query | `GET /crm/objects/2026-09/{objectType}/{recordId}` | `found` | Go, Python, TypeScript |
+| `upsertObject` | Mutation | `POST /crm/objects/2026-09/{objectType}/batch/upsert` with one input | `upserted` | Go, Python, TypeScript |
+| `updateObject` | Mutation | `PATCH /crm/objects/2026-09/{objectType}/{recordId}` | `updated` | Go, Python, TypeScript |
 
 It also exposes one Trigger:
 
@@ -344,7 +344,12 @@ HubSpot API; no live HubSpot account is required.
 
 ## Python package
 
-The [Python package](python/README.md) implements the four CRM operations in this manifest at `v0.1.0`. Its generated connection supports private app tokens and manifest-driven HubSpot OAuth refresh; the [read contact example](python/examples/read_contact/README.md) binds the static `hubspot-crm` connection and includes a real Dex Worker and Client integration test. Go-recorded [conformance scenarios](../../conformance/connectors/hubspot/scenarios.json) cover provider requests, branches, and retries. Live HubSpot authorization and CRM calls remain unverified until a user configures a provider account in Dex Web.
+The [Python package](python/README.md) implements the four CRM operations in this manifest and, from `v0.2.0`, the `crmObjectChanged` Trigger at parity with Go, on the Python poll Trigger kit. Its cursor documents and event IDs match the Go connector's byte for byte, so Go and Python replicas can share one binding's cursor and inbox. Its generated connection supports private app tokens and manifest-driven HubSpot OAuth refresh; the [read contact example](python/examples/read_contact/README.md) binds the static `hubspot-crm` connection and includes a real Dex Worker and Client integration test, and the [crm_object_changed example](python/examples/crm_object_changed/README.md) starts one Flow per changed record through a real Dex Worker and Client. Go-recorded [conformance scenarios](../../conformance/connectors/hubspot/scenarios.json) cover provider requests, branches, and retries. Live HubSpot authorization and CRM calls remain unverified until a user configures a provider account in Dex Web.
+
+| Capability | Kind | Languages |
+| --- | --- | --- |
+| `searchObjects`, `getObject`, `upsertObject`, `updateObject` | Operations | Go, Python, TypeScript |
+| `crmObjectChanged` | Trigger | Go, Python |
 
 ## TypeScript package
 

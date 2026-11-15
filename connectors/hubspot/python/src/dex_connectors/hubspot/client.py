@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt, TriggerLogger
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
@@ -34,6 +34,8 @@ if TYPE_CHECKING:
         UpsertObjectOperation,
     )
 
+_MINIMUM_POLL_INTERVAL_SECONDS = 5
+"""Keeps a crmObjectChanged poll loop well inside HubSpot's search rate limit."""
 _CORRELATION_ID = re.compile(r"[A-Za-z0-9-]{1,64}\Z")
 _ERROR_CODE = re.compile(r"[A-Z][A-Z0-9_]{1,63}\Z")
 _KNOWN_CATEGORIES = frozenset(
@@ -73,6 +75,11 @@ class Client:
 
     A caller-supplied transport remains caller owned. The project connection
     supplies the same transport to generated token refresh and provider calls.
+    A blank endpoint uses HubSpot's public API, a zero ``max_response_bytes`` one
+    MiB, and a zero ``poll_interval_seconds`` 30 seconds; the poll interval must be
+    at least 5 seconds. ``logger`` receives the crmObjectChanged Trigger runner's
+    records, which never carry record properties or credentials; None uses the
+    standard logging adapter. Operation Steps do not log.
     """
 
     def __init__(
@@ -81,13 +88,20 @@ class Client:
         credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
         now: Any = None,
+        logger: TriggerLogger | None = None,
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("HubSpot configuration and credential provider are required")
         endpoint = validate_base_url(config.endpoint or Config().endpoint)
         if config.max_response_bytes < 0:
             raise ValueError("HubSpot maxResponseBytes must be positive")
-        self.config = Config(endpoint, config.max_response_bytes or Config().max_response_bytes)
+        poll_interval_seconds = config.poll_interval_seconds or Config().poll_interval_seconds
+        if poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError("HubSpot pollInterval must be at least 5s")
+        self.config = Config(
+            endpoint, config.max_response_bytes or Config().max_response_bytes, poll_interval_seconds
+        )
+        self.trigger_logger = logger
         self.endpoint = endpoint.rstrip("/")
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(25)
