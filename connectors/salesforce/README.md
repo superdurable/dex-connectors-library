@@ -340,6 +340,9 @@ triggerRunner, err := salesforce.NewProjectRecordTriggerRunner(project, recordch
 and the generated `NewRecordModifiedPolledTrigger` keeps its cursor in memory,
 so it records a new baseline on every start.
 
+The TypeScript package implements the same Trigger from `0.2.0` as
+`newProjectRecordTriggerRunner`; see the [TypeScript README](typescript/README.md).
+
 ## Studio units
 
 The manifest declares three configuration units and no Studio command:
@@ -380,9 +383,15 @@ org API access have not been verified for the Python port.
 
 ### TypeScript port
 
-The first TypeScript package release is `@superdurable/connector-salesforce@0.1.0`.
-It implements all four operations through the Connector SDK 0.7.0 and uses
-generated Salesforce OAuth and JWT bearer refresh declarations. The runnable
+The TypeScript package `@superdurable/connector-salesforce@0.2.0` implements
+all four operations and the `recordModifiedPolled` Trigger through the
+Connector SDK 0.12.0 and uses generated Salesforce OAuth and JWT bearer refresh
+declarations. Its Trigger cursor documents and event IDs match Go's byte for
+byte, and the [`examples/record-changes`](typescript/examples/record-changes)
+example starts one Flow per changed record; its real Dex integration tests
+cover the baseline, `Id` paging of a bulk load, a `REQUEST_LIMIT_EXCEEDED`
+pause, a record deleted before the read-back, restart recovery, and a changed
+object. Live Salesforce polling remains unverified. The runnable
 [`examples/record-lookup`](typescript/examples/record-lookup) Flow reads a
 Contact using the static `salesforce-crm` connection. Its integration test
 starts `dexcli dev`, runs a real Dex Worker and Client, and uses an inert local
