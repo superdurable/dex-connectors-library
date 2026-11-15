@@ -2,10 +2,14 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/reamaze/go@v0.24.0`.
 
-The Python package is `dex-connector-reamaze==0.1.0` (`dex_connectors.reamaze`).
-It implements all six operations and no Triggers. Its
-[runnable contact lookup](python/examples/find_contact/README.md) exercises a
-real Dex Worker and Client against a local provider stand-in. The
+The Python package is `dex-connector-reamaze==0.2.0` (`dex_connectors.reamaze`)
+on `dex-connectors-sdk>=0.12.0`. It implements all six operations and, from
+0.2.0, the `conversationCreated` poll Trigger at parity with Go: the same
+requests, event IDs, floor, seen-set, backlog, reset, and rate-limit rules, and
+poll cursor documents that Go and Python replicas read and write byte for byte.
+Its [runnable contact lookup](python/examples/find_contact/README.md) and
+[new-conversation example](python/examples/new_conversation/README.md) exercise
+a real Dex Worker and Client against a local provider stand-in. The
 [Python package guide](python/README.md) covers connection setup and retry
 behavior. Live Re:amaze authorization and API behavior remain unverified for
 the Python port.
@@ -48,7 +52,7 @@ release has no Studio pickers; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-The independent `@superdurable/connector-reamaze` package starts at `v0.1.0` and implements all six operations. Its [TypeScript README](typescript/README.md) documents installation, connection setup, the [runnable search Flow](typescript/examples/search-conversations/), and Go-recorded conformance coverage. The Go connector is at `v0.24.0`. The Python and TypeScript packages do not implement the `conversationCreated` Trigger.
+The independent `@superdurable/connector-reamaze` package starts at `v0.1.0` and implements all six operations. Its [TypeScript README](typescript/README.md) documents installation, connection setup, the [runnable search Flow](typescript/examples/search-conversations/), and Go-recorded conformance coverage. The Go connector is at `v0.24.0`. The Python package implements the `conversationCreated` Trigger from `v0.2.0`; the TypeScript package does not.
 
 ## Re:amaze setup
 
@@ -401,7 +405,9 @@ or creates one, reopens and tags it, and adds one internal triage note.
 [`examples/new-conversation`](go/examples/new-conversation) is started by the
 `conversationCreated` Trigger: each new conversation that is not spam starts
 one Flow, which reads it back with `getConversation` and records an intake
-summary.
+summary. The Python
+[`new_conversation` example](python/examples/new_conversation/README.md) is its
+port, the `ReamazeNewConversationPython` Flow.
 
 ## Verification
 

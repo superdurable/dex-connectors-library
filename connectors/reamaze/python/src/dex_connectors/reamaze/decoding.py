@@ -147,11 +147,17 @@ def validate_page(document: object, collection: str) -> tuple[list[Any], int, in
     return items, count, total
 
 
-def decode_conversation_page(body: bytes, page: int) -> SearchConversationsOutput:
-    """Decode one page in provider order and calculate its next page."""
+def decode_conversation_page(
+    body: bytes, page: int, *, is_first_message_included: bool = False
+) -> SearchConversationsOutput:
+    """Decode one page in provider order and calculate its next page.
+
+    The conversationCreated Trigger keeps each first message, which searchConversations omits to keep
+    pages small.
+    """
     items, count, total = validate_page(parse_document(body), "conversations")
     return SearchConversationsOutput(
-        tuple(decode_conversation(item, first_message=False) for item in items),
+        tuple(decode_conversation(item, first_message=is_first_message_included) for item in items),
         total,
         count,
         page + 1 if page < count and page < 10000 else 0,

@@ -46,6 +46,8 @@ if TYPE_CHECKING:
 
 _BRAND = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+# Keeps a conversationCreated poll loop from spending the per-token request limit.
+_MINIMUM_POLL_INTERVAL_SECONDS = 10
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,8 +93,14 @@ class Client:
             )
         if config.max_response_bytes < 1:
             raise ValueError("Re:amaze response limit must be positive")
+        # A zero pollInterval uses the manifest's one minute, as Go's withConfigDefaults does.
+        poll_interval_seconds = config.poll_interval_seconds or Config(brand="").poll_interval_seconds
+        if poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError("Re:amaze pollInterval must be at least 10s")
         base_url = api_base_url or f"https://{config.brand}.reamaze.io/api/v1"
         self.api_base_url = validate_base_url(base_url).rstrip("/")
+        self.brand = config.brand
+        self.poll_interval_seconds = poll_interval_seconds
         self.max_response_bytes = config.max_response_bytes
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(12)
