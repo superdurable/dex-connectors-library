@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  newQueryBranch, newQueryRetry, zeroReceipt,
+  defaultTriggerLogger, newQueryBranch, newQueryRetry, zeroReceipt,
   type Call, type CredentialRefreshDriver, type Failure,
-  type Query, type QueryAttempt, type ReceiptDraft,
+  type Query, type QueryAttempt, type ReceiptDraft, type TriggerLogger,
 } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { GetMessageDefinition, GetMessageBranch } from './definitions.js';
@@ -24,6 +24,13 @@ export interface GmailClientOptions {
   transport?: GmailTransport;
   /** Observation clock for receipts. */
   now?: () => Date;
+  /**
+   * Receives the Trigger pollers' records: failed polls, ignored and skipped messages, delivery retries,
+   * and the durable inboxes that newProjectMessageTriggerRunner creates. Omitted uses
+   * defaultTriggerLogger. Records carry message and thread IDs, never senders, subjects, snippets,
+   * bodies, or tokens.
+   */
+  logger?: TriggerLogger;
 }
 
 /** Gmail connection with operation-specific provider interfaces. */
@@ -32,6 +39,7 @@ export class GmailClient implements GmailOperations {
   readonly #provider: GmailProvider;
   readonly #sender: GmailSender;
   readonly #now: () => Date;
+  /** Trigger record destination. */ readonly triggerLogger: TriggerLogger;
 
   /** Validate settings and inject a host-owned credential source. */
   constructor(config: Config, credentials: CredentialSource, options: GmailClientOptions = {}) {
@@ -39,7 +47,11 @@ export class GmailClient implements GmailOperations {
     this.#provider = new GmailProvider(this.#http);
     this.#now = options.now ?? (() => new Date());
     this.#sender = new GmailSender(this.#http, this.#provider, this.#now);
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
   }
+
+  /** @internal The authenticated transport and provider methods that the Trigger pollers share. */
+  triggerTransport(): { http: GmailHTTPClient; provider: GmailProvider } { return { http: this.#http, provider: this.#provider }; }
 
   /** Return the getMessage Query bound to this connection. */
   getMessage(): GetMessageOperation { return new GetMessageOperation(this.#http, this.#provider, this.#now); }

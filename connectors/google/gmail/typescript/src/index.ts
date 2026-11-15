@@ -12,3 +12,4 @@ export * from './client.js';
 export * from './connection.js';
 export * from './project.js';
 export * from './steps.js';
+export * from './trigger.js';

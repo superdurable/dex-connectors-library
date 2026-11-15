@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-gmail",
-    "version": "0.2.2"
+    "version": "0.3.0"
   },
   "factories": [
     {
@@ -82,7 +82,9 @@
         "branches": {
           "defect": "unknown",
           "providerRejected": "rejected"
-        }
+        },
+        "repeatOnUnknown": "limited",
+        "maxSends": 3
       },
       "fields": {
         "stepType": "stepType",
@@ -155,7 +157,9 @@
           "defect": "unknown",
           "invalidResponse": "rejected",
           "providerRejected": "rejected"
-        }
+        },
+        "repeatOnUnknown": "limited",
+        "maxSends": 3
       },
       "fields": {
         "stepType": "stepType",
@@ -207,6 +211,26 @@
           "textBody"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineMessageReceivedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "messageReceived",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
+      }
+    },
+    {
+      "name": "defineReplyReceivedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "replyReceived",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

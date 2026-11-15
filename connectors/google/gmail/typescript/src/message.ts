@@ -53,7 +53,8 @@ export function decodeGmailMessage(resource: GmailMessageResource): Message {
     ...(textBodies.length ? { textBody: textBodies.join('\n') } : {}),
     ...(htmlBodies.length ? { htmlBody: htmlBodies.join('\n') } : {}),
     ...(resource.snippet ? { snippet: resource.snippet } : {}),
-    receivedAt: receivedAt.toISOString().replace('.000Z', 'Z'),
+    // Go's time.Time JSON (RFC 3339 with trailing fractional zeros removed), such as .12Z for 120 ms.
+    receivedAt: receivedAt.toISOString().replace(/\.(\d*?)0*Z$/, (_match, digits: string) => (digits ? `.${digits}Z` : 'Z')),
     ...(resource.labelIds?.length ? { labelIds: resource.labelIds } : {}),
   };
 }

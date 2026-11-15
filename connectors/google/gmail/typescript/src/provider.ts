@@ -10,6 +10,13 @@ import { GmailMessageResourceSchema, type GmailMessageResource } from './message
 
 const SentMessageSchema = z.object({ id: z.string().optional(), threadId: z.string().optional() });
 const SentSearchSchema = z.object({ messages: z.array(SentMessageSchema).nullish() });
+const MessageListSchema = z.object({ messages: z.array(z.object({ id: z.string().nullish(), threadId: z.string().nullish() })).nullish() });
+
+/** One message reference in an inbox listing, newest first as Gmail lists it. */
+export interface GmailMessageReference {
+  /** Gmail message ID; empty when Gmail omitted it. */ id: string;
+  /** Gmail thread ID; empty when Gmail omitted it. */ threadId: string;
+}
 
 /** Provider identity returned by a Gmail send or Sent Mail lookup. */
 export interface SentMessageIdentity {
@@ -48,6 +55,22 @@ export class GmailProvider {
       const document: unknown = JSON.parse(Buffer.from(response.body).toString('utf8'));
       return { ...result, resource: GmailMessageResourceSchema.parse(document) };
     } catch { return result; }
+  }
+
+  /**
+   * List the newest inbox page that matches searchQuery, as the Go Trigger poller does. It rejects with
+   * an error that names no query value when Gmail does not answer 2xx with a usable listing.
+   */
+  async listInboxMessages(call: Call, credentials: Credentials, searchQuery: string, pageSize: number, signal?: AbortSignal): Promise<{ messages: GmailMessageReference[]; credentials: Credentials }> {
+    // Keys in Go's url.Values.Encode order.
+    const query = new URLSearchParams({ labelIds: 'INBOX', maxResults: String(pageSize) });
+    if (searchQuery.trim()) query.set('q', searchQuery);
+    const result = await this.#http.request(call, credentials, 'GET', `/users/me/messages?${query.toString()}`, undefined, signal);
+    if (result.response.status < 200 || result.response.status >= 300) throw new Error('Gmail message list is unavailable');
+    let parsed: z.infer<typeof MessageListSchema>;
+    try { parsed = MessageListSchema.parse(JSON.parse(Buffer.from(result.response.body).toString('utf8'))); }
+    catch { throw new Error('Gmail message list is invalid'); }
+    return { messages: (parsed.messages ?? []).map(message => ({ id: message.id ?? '', threadId: message.threadId ?? '' })), credentials: result.credentials };
   }
 
   /** Search Sent Mail once for the run-specific RFC Message-ID. */

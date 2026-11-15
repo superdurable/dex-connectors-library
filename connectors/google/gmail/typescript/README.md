@@ -6,12 +6,12 @@ Install the connector in a Dex application:
 npm install @superdurable/connector-google-gmail @superdurable/dex
 ```
 
-This package provides typed `getMessage`, `sendMessage`, and `replyToMessage` operations. Its operation identities, branches, retry policy, authorization fields, and mock cases mirror [the manifest](https://github.com/superdurable/dex-connectors-library/blob/main/connectors/google/gmail/connector.yaml). Gmail Triggers and the thread-reply Trigger runner currently belong to the Go connector.
+This package provides typed `getMessage`, `sendMessage`, and `replyToMessage` operations. Its operation identities, branches, retry policy, authorization fields, and mock cases mirror [the manifest](https://github.com/superdurable/dex-connectors-library/blob/main/connectors/google/gmail/connector.yaml). From 0.3.0 it also provides the `messageReceived` and `replyReceived` Triggers and their shared, ordered runner, at parity with the Go connector.
 
 The checked-in `src/generated/` contracts come from `connector.yaml` and the
 Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/google/gmail/connector.yaml` from the repository root after either source changes. `src/models.ts` keeps credential requirements specific to Google OAuth and Workspace delegation, plus the public non-null send recipient arrays. `src/steps.ts` delegates to generated factories while requiring `GmailConnection` at compile time; `src/mock/index.ts` re-exports matching generated scenarios and validates send scenarios against the public result type. `src/project.ts` keeps the refresh codec and public connection constructor.
 
-Version 0.2.2 requires Connector SDK 0.9.0. Generated private and shared
+Version 0.3.0 requires Connector SDK 0.11.0. Generated private and shared
 credential decoders validate project material, and the refresh driver reads
 generated manifest grants with Gmail-specific delegation checks. Each token
 exchange honors the declared `tokenExchangeTimeout`, as the Go driver does.
@@ -28,6 +28,18 @@ For personal Gmail or ordinary Workspace accounts, select **Google OAuth**. In [
 For administrator-managed Workspace delegation, use [Google Cloud service accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) to create a service account and download its JSON key. In [Workspace domain-wide delegation](https://admin.google.com/ac/owl/domainwidedelegation), authorize that account's OAuth client ID for the Gmail readonly and send scopes. Put the JSON key and one managed mailbox in the connection form. The connector mints short-lived delegated tokens and uses that mailbox as the sender.
 
 `sendMessage` and `replyToMessage` use synchronous Execute and claim a Dex heartbeat checkpoint before POST. They search Sent Mail under a run-specific RFC `Message-ID` after an ambiguous send. A confirmed match returns `sent`; a miss retries read-back within the manifest budget without another POST. A conclusive 429 or a failure proven to precede dispatch can permit another POST. A 503 may have been processed, so like any 5xx it keeps the claim and later attempts only read back. An accepted 2xx never resends merely because its response body is unusable.
+
+## Triggers
+
+`messageReceived` receives a matching message that begins a Gmail thread and `replyReceived` a matching reply in an existing thread. Both poll the newest inbox page (`pollPageSize` messages, `labelIds=INBOX`, plus the binding's optional Gmail `searchQuery`) every `pollInterval`, read each new message's metadata, and emit a metadata-only `MessageEvent` (`primaryEmail`, `messageId`, `threadId`, `from`, `subject`, `snippet`, `receivedAt`, `isReply`) whose event ID is the Gmail message ID. The binding's `messageMatcher` or `replyMatcher` requires a case-insensitive `messageContains` substring of the subject or snippet and an optional `senderEmails` allowlist.
+
+- `newProjectMessageTriggerRunner(project, connectionName, { messageReceivedRoutes, replyReceivedRoutes }, options)` loads each binding's saved configuration and wraps its target in the binding's durable project inbox, so a restarted or replaced replica replays acknowledged events first. Wire targets with `newDexFlowTriggerTarget` and `newDexRPCTriggerTarget` from `@superdurable/connectors-sdk`. `newMessageTriggerRunner` takes configurations directly.
+- Each poll lists every reply route before any root route, then delivers every root before any reply, so a root starts its Flow before its replies reach it. Delivery stops at the first failure; every later poll retries that event first, even after newer mail pushes it off the page. An undeliverable event is consumed.
+- The delivered set covers the last listed page in memory, as in Go. A restart rescans the current page; the Flow start request ID and the RPC target's stable request ID absorb the duplicates.
+- Records go to the client options' `logger` (default `defaultTriggerLogger`): WARN `gmail poll failed; retrying` with `attempt` and `delay_ms`, WARN `trigger delivery failed; retrying`, INFO `trigger delivered after retry`, WARN `trigger event skipped: undeliverable`, and DEBUG `trigger event ignored` with `reason` `not_a_reply`, `not_a_root`, or `matcher_mismatch`. Records carry message and thread IDs and error types, never senders, subjects, snippets, search queries, bodies, or tokens.
+- `defineMessageReceivedTriggerBinding` and `defineReplyReceivedTriggerBinding` declare static bindings and their configuration units (`searchQueryInput`, `textInput`, `emailListInput`) for Dex Web. `newMessageReceivedTrigger` and `newReplyReceivedTrigger` poll one binding on their own and do not order roots before replies.
+
+The [thread reply example](examples/thread-reply/README.md) starts a Flow from a root message, receives its reply through a typed RPC, and replies in the thread. The pollers and the example are tested against a local stand-in for the Gmail API and a real Dex server. Live Gmail polling has not been verified for this package.
 
 ## Run the example
 
