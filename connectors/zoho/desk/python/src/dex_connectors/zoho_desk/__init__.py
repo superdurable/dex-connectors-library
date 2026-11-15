@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Zoho Desk connector for Dex Python Flows."""
+"""Zoho Desk ticket operations and the ticketChanged poll Trigger for Dex Python Flows."""
 
 from .client import Client as Client
 from .client import Config as Config
@@ -17,6 +17,8 @@ from .models import (
     SearchTicketsInput,
     SearchTicketsOutput,
     Ticket,
+    TicketChangedEvent,
+    TicketChangedTriggerConfiguration,
     TicketComment,
     TicketContact,
     TicketContactInput,
@@ -31,6 +33,29 @@ from .steps import (
     new_get_ticket_step,
     new_search_tickets_step,
     new_update_ticket_step,
+)
+from .ticket_change_fetcher import (
+    TICKET_POLL_PAGE_LIMIT,
+    TicketChangeCursorInvalidError,
+    ticket_change_event_id,
+)
+from .triggers import (
+    TICKET_CHANGE_CREATED,
+    TICKET_CHANGE_UPDATED,
+    TICKET_CHANGED_TRIGGER_DEFINITION,
+    TICKET_SEARCH_INDEX_LOOKBACK,
+    ProjectTicketChangedTriggerRoute,
+    ProjectTicketTriggerRunnerConfig,
+    TicketChangedTriggerRoute,
+    TicketChangeFetcher,
+    TicketTriggerRunnerConfig,
+    decode_ticket_changed_event_payload,
+    decode_ticket_changed_trigger_configuration,
+    define_ticket_changed_trigger_binding,
+    new_project_ticket_trigger_runner,
+    new_ticket_changed_trigger,
+    new_ticket_trigger_runner,
+    validate_ticket_changed_trigger_configuration,
 )
 
 __all__ = [
@@ -60,4 +85,25 @@ __all__ = [
     "new_create_ticket_step",
     "new_update_ticket_step",
     "new_add_comment_step",
+    "TicketChangedEvent",
+    "TicketChangedTriggerConfiguration",
+    "TICKET_CHANGE_CREATED",
+    "TICKET_CHANGE_UPDATED",
+    "TICKET_CHANGED_TRIGGER_DEFINITION",
+    "TICKET_POLL_PAGE_LIMIT",
+    "TICKET_SEARCH_INDEX_LOOKBACK",
+    "ProjectTicketChangedTriggerRoute",
+    "ProjectTicketTriggerRunnerConfig",
+    "TicketChangeCursorInvalidError",
+    "TicketChangeFetcher",
+    "TicketChangedTriggerRoute",
+    "TicketTriggerRunnerConfig",
+    "decode_ticket_changed_event_payload",
+    "decode_ticket_changed_trigger_configuration",
+    "define_ticket_changed_trigger_binding",
+    "new_project_ticket_trigger_runner",
+    "new_ticket_changed_trigger",
+    "new_ticket_trigger_runner",
+    "ticket_change_event_id",
+    "validate_ticket_changed_trigger_configuration",
 ]
