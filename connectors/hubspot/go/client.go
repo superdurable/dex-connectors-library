@@ -20,10 +20,12 @@ package hubspot
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -70,7 +72,11 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	now        func() time.Time
+	logger     *slog.Logger
 }
+
+// minimumPollInterval keeps a crmObjectChanged poll loop well inside HubSpot's search rate limit.
+const minimumPollInterval = 5 * time.Second
 
 // WithHTTPClient replaces the HTTP client used for HubSpot API and token calls.
 // The Client uses a copy that never follows redirects and, when the supplied
@@ -78,6 +84,14 @@ type clientOptions struct {
 // ownership of the client and its transport.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithLogger sends the crmObjectChanged Trigger runner's records to logger: seeds, reseeds after an
+// unusable cursor, failed polls, rate-limit pauses, and the durable inboxes NewProjectCRMObjectTriggerRunner
+// opens. Records carry binding identity and never record properties or credentials. Without this option,
+// or with a nil logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
 }
 
 // WithClock replaces the clock used for provider receipts and OAuth expiry.
@@ -93,6 +107,8 @@ type Client struct {
 	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -149,7 +165,7 @@ type hubspotErrorBody struct {
 
 // New validates configuration and constructs an authenticated HubSpot client.
 // A blank Endpoint uses https://api.hubapi.com, and a zero MaxResponseBytes uses
-// one MiB. The credential provider is consulted before every provider call, so
+// one MiB, and a zero PollInterval uses 30 seconds; PollInterval must be at least 5 seconds. The credential provider is consulted before every provider call, so
 // token rotation and OAuth refresh take effect without a restart.
 func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
@@ -162,6 +178,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	}
 	if config.MaxResponseBytes <= 0 {
 		return nil, errors.New("HubSpot maxResponseBytes must be positive")
+	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("HubSpot pollInterval must be at least %s", minimumPollInterval)
 	}
 	if credentials == nil {
 		return nil, errors.New("HubSpot credential provider is required")
@@ -181,7 +200,8 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	refreshDriver.now = dependencies.now
 	return &Client{
 		baseURL: baseURL, httpClient: httpClient, credentials: credentials, refreshDriver: refreshDriver,
-		maxResponseBytes: int64(config.MaxResponseBytes), now: dependencies.now,
+		maxResponseBytes: int64(config.MaxResponseBytes), pollInterval: config.PollInterval, logger: dependencies.logger,
+		now: dependencies.now,
 	}, nil
 }
 
@@ -205,17 +225,23 @@ func (client *Client) UpdateObject() UpdateObjectOperation {
 	return UpdateObjectOperation{client: client}
 }
 
-// exchange sends one request, refreshing and resending once after HubSpot rejects an OAuth token.
+// exchange sends one request under the Step context of call.
 func (client *Client) exchange(call sdkgo.Call, operation string, request providerRequest, objectID string) (providerResponse, *providerOutcome) {
-	credentials, outcome := client.resolveCredentials(call, operation)
+	return client.exchangeWithContext(call.Context, call, operation, request, objectID)
+}
+
+// exchangeWithContext sends one request, refreshing and resending once after HubSpot rejects an OAuth
+// token. Trigger pollers pass their own ctx because their calls have no Dex Step context.
+func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, operation string, request providerRequest, objectID string) (providerResponse, *providerOutcome) {
+	credentials, outcome := client.resolveCredentials(ctx, call, operation)
 	if outcome != nil {
 		return providerResponse{}, outcome
 	}
-	response, err := client.send(call, credentials, request)
+	response, err := client.send(ctx, credentials, request)
 	if err == nil && response.statusCode == http.StatusUnauthorized && client.canRefreshAfterRejection(credentials) {
-		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
 		if refreshErr == nil && validateResolvedCredentials(replacement) == nil {
-			response, err = client.send(call, replacement, request)
+			response, err = client.send(ctx, replacement, request)
 		}
 	}
 	receipt := client.receipt(call, response, objectID)
@@ -234,7 +260,7 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 	return response, &classified
 }
 
-func (client *Client) send(call sdkgo.Call, credentials Credentials, request providerRequest) (providerResponse, error) {
+func (client *Client) send(ctx context.Context, credentials Credentials, request providerRequest) (providerResponse, error) {
 	target := client.baseURL + "/" + request.path
 	if len(request.query) > 0 {
 		target += "?" + request.query.Encode()
@@ -243,7 +269,7 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, request pro
 	if request.body != nil {
 		body = bytes.NewReader(request.body)
 	}
-	httpRequest, err := http.NewRequestWithContext(call.Context, request.method, target, body)
+	httpRequest, err := http.NewRequestWithContext(ctx, request.method, target, body)
 	if err != nil {
 		return providerResponse{}, errRequestNotBuilt
 	}
@@ -266,8 +292,8 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, request pro
 }
 
 // resolveCredentials separates a revoked grant from a transient refresh failure and a broken connection.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *providerOutcome) {
-	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, *providerOutcome) {
+	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	switch {
 	case sdkgo.IsReauthorizationRequired(err):
 		return Credentials{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "HubSpot authorization must be renewed", sdkgo.Receipt{})
