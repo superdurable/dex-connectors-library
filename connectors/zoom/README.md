@@ -2,7 +2,7 @@
 
 ## TypeScript package
 
-Install `@superdurable/connector-zoom@0.1.0` with Connector SDK 0.6.0 to use all five meeting operations from TypeScript. The [package README](typescript/README.md) documents the generated OAuth connection binding, operation-specific Step factories, and the runnable meeting-list Flow. The TypeScript conformance suite replays Go-recorded provider requests and decisions; its Dex integration check runs the example with a generated stand-in. Live Zoom OAuth authorization and provider behavior remain unverified.
+Install `@superdurable/connector-zoom@0.2.0` with Connector SDK 0.12.0 to use all five meeting operations and, from 0.2.0, the `meetingChanged` poll Trigger from TypeScript, at parity with Go and with poll cursor documents that Go and TypeScript replicas read and write byte for byte. The [package README](typescript/README.md) documents the generated OAuth connection binding, operation-specific Step factories, the Trigger runners, the runnable meeting-list Flow, and the [meeting-changed example](typescript/examples/meeting-changed/README.md), which starts one Flow per change. The TypeScript conformance suite replays Go-recorded provider requests and decisions; its Dex integration checks run both examples with provider stand-ins. Live Zoom OAuth authorization and provider behavior remain unverified.
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoom/go@v0.25.0`. It requires Connector SDK `sdkgo` v0.38.0, which adds the poll Trigger kit.
 

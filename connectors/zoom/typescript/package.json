@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-zoom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Zoom meeting operations for Dex",
   "repository": {
     "type": "git",
@@ -43,11 +43,12 @@
     "check": "npm test && npm run typecheck && npm run lint",
     "example:meeting-list": "npm run build && tsx examples/meeting-list/main.ts",
     "example:meeting-list:integration": "npm run build && tsx examples/meeting-list/integration.ts",
-    "example:meeting-list:start": "npm run build && tsx examples/meeting-list/start.ts"
+    "example:meeting-list:start": "npm run build && tsx examples/meeting-list/start.ts",
+    "example:meeting-changed": "npm run build && tsx examples/meeting-changed/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

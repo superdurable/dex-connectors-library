@@ -17,10 +17,10 @@ spec:
       operations: [listMeetings, getMeeting, createMeeting, updateMeeting, listPastMeetingParticipants]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-zoom'
       operations: [listMeetings, getMeeting, createMeeting, updateMeeting, listPastMeetingParticipants]
-      triggers: []
+      triggers: [meetingChanged]
   codegen:
     go:
       package: zoom
