@@ -4,7 +4,7 @@
 
 Install `@superdurable/connector-zoom@0.1.0` with Connector SDK 0.6.0 to use all five meeting operations from TypeScript. The [package README](typescript/README.md) documents the generated OAuth connection binding, operation-specific Step factories, and the runnable meeting-list Flow. The TypeScript conformance suite replays Go-recorded provider requests and decisions; its Dex integration check runs the example with a generated stand-in. Live Zoom OAuth authorization and provider behavior remain unverified.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoom/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoom/go@v0.25.0`. It requires Connector SDK `sdkgo` v0.38.0, which adds the poll Trigger kit.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoom`.
 
@@ -22,6 +22,10 @@ the Zoom Meetings API with user-level OAuth:
 | `createMeeting` | Mutation, sync | `created` | `providerRejected`, `uncertain`, `defect` |
 | `updateMeeting` | Mutation | `updated` | `notFound`, `providerRejected`, `defect` |
 | `listPastMeetingParticipants` | Query | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+
+The Go `meetingChanged` Trigger polls the same meeting list and starts a Flow
+for each meeting scheduled, updated, or removed; see
+[meetingChanged Trigger](#meetingchanged-trigger).
 
 Every operation acts for the user who authorized the connection: Zoom requires
 the `me` user for user-level OAuth apps. Only a safe meeting view crosses the
@@ -250,6 +254,79 @@ one participant. A meeting without an ended instance selects `notFound`. A free
 account (code `200`) and a meeting older than Zoom keeps (code `12702`) select
 `providerRejected`. The endpoint needs a Pro plan or higher.
 
+## meetingChanged Trigger
+
+`meetingChanged` delivers each meeting the authorized user schedules, changes,
+or that leaves Zoom's scheduled list. Zoom's List meetings API has no change
+feed, sync token, or modification time, so each poll reads every page of
+`GET /users/me/meetings?type=scheduled` (all unexpired previous, live, and
+upcoming meetings, 300 per page) and compares it with the snapshot committed by
+the last poll. The snapshot is the durable cursor: it keeps each meeting's ID,
+host, topic, type, start, duration, time zone, listed agenda, and creation time,
+never its UUID or join URL, and commits only after every change in it has been
+recorded.
+
+| `changeKind` | Meaning | `meeting` | `previousMeeting` |
+| --- | --- | --- | --- |
+| `scheduled` | The previous poll did not list the meeting. | As listed now. | Not set. |
+| `updated` | The topic, type, start, duration, time zone, or listed agenda changed. | As listed now. | As listed by the previous poll. |
+| `removed` | The meeting was deleted, or it expired and Zoom stopped listing it. | As listed by the previous poll. | Not set. |
+
+- **Baseline.** The first poll stores the current list and delivers nothing.
+- **Event IDs.** Each ID hashes the kind, meeting ID, both listed states, and
+  the commit that recorded the previous state, so a refetch after a crash keeps
+  the ID, and a meeting renamed back and forth gets a new ID each time. A
+  `scheduled` ID also hashes the cursor's count of commits with changes, so a
+  meeting recovered from Zoom's Recently Deleted list arrives again as
+  `scheduled` with a new ID.
+  `occurredAt` is the meeting's creation time for `scheduled` and the poll time
+  otherwise, since Zoom reports no modification time.
+- **Recurring meetings.** A recurring meeting is one entry. When Zoom lists a
+  meeting ID more than once, such as one entry per occurrence, the entry with
+  the earliest start counts, so the tracked start is the next listed
+  occurrence, and its move to the following occurrence arrives as `updated`.
+- **Pagination.** A poll stops after 35 pages, enough for the 10,000-meeting
+  snapshot bound. Zoom expires `next_page_token` after 15 minutes, so a `400` on
+  a later page restarts the listing once. A meeting listed twice counts once.
+  A poll with more than 100 changes commits them 100 at a time.
+- **Reset.** A stored cursor that is undecodable, or a listing whose meetings
+  all belong to another Zoom user than the snapshot (the connection was
+  reauthorized as someone else), records a new baseline, increments the
+  cursor's `resetCount`, and logs `poll cursor invalid; reseeding` at WARN.
+  Differences in that gap are not delivered.
+- **Rate limits.** List meetings is a Medium API: 2/second and 2,000/day on
+  Free accounts, 20/second on Pro, and 60/second on Business and above
+  ([rate limits](https://developers.zoom.us/docs/api/rate-limits/)). Every 429,
+  including the daily-limit 429 that a Step treats as `providerRejected`,
+  pauses every binding of the connection for `Retry-After`, or backs off
+  exponentially up to 15 minutes without it. Other failures back off per
+  binding. The connection's `pollInterval` setting is at least 30 seconds.
+- **Scopes.** The Trigger uses `meeting:read:list_meetings`, which the
+  connection already requests. No new scope or reauthorization is needed.
+
+`zoom.NewProjectMeetingTriggerRunner` loads saved bindings and records each
+change in the binding's project Trigger inbox before the snapshot commits in
+its project poll cursor, as
+[`examples/meeting-changed/main.go`](go/examples/meeting-changed/main.go) does:
+
+```go
+triggerRunner, err := zoom.NewProjectMeetingTriggerRunner(project, meetingchanged.ConnectionName, zoom.ProjectMeetingTriggerRunnerConfig{
+	MeetingChangedRoutes: []zoom.ProjectMeetingChangedTriggerRoute{{
+		BindingName: meetingchanged.MeetingChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, meetingchanged.AcceptEveryMeetingChange, meetingchanged.ResolveFlowID,
+			meetingchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, zoom.WithLogger(logger))
+```
+
+`zoom.NewMeetingTriggerRunner` takes targets and cursor stores directly, and
+the generated `zoom.NewMeetingChangedTrigger` keeps the snapshot in memory, so
+it records a new baseline on every start. `MeetingChangedTriggerConfiguration`
+has no Dex Web field, because the binding always watches the authorized user;
+an application may set `ChangeKinds` in code to skip kinds, which still advance
+the snapshot. The [meeting-changed example](go/examples/meeting-changed/README.md)
+reads each scheduled or updated meeting back with `getMeeting`.
+
 ## Mocks
 
 The generated `zoommock` package provides one consistent consultation:
@@ -283,9 +360,11 @@ request was performed for this port.
 
 ## Not in this release
 
-- **Triggers.** Zoom event subscriptions require a URL validation handshake
-  before Zoom delivers events, which `sdkgo/webhooktrigger` does not support
-  yet. Until then, the example ends its wait with a Timer or an Action.
+- **Webhook Triggers.** Zoom event subscriptions, such as `meeting.ended`,
+  require a URL validation handshake before Zoom delivers events, which
+  `sdkgo/webhooktrigger` does not support yet. Until then, the booked-meeting
+  example ends its wait with a Timer or an Action, and `meetingChanged` polls.
+- **Python and TypeScript Triggers.** `meetingChanged` is Go only.
 - **Pickers.** No operation or example field takes a provider resource the user
   would pick: the host is always the authorizing user, and meeting IDs come
   from Flow data. The manifest declares no Studio bundle.
@@ -305,6 +384,10 @@ recovery behavior:
 ```bash
 GOWORK=off go test -tags=integration ./... -count=1 -v
 ```
+
+The meeting-changed integration tests run a real Dex Worker and Client against
+a local List meetings stand-in: baseline, one Flow per change across a Trigger
+process restart, and a reseed when the listing belongs to another Zoom user.
 
 From the repository root, check the manifest and generated code:
 
@@ -333,6 +416,9 @@ No live Zoom account was used. The following behavior is unverified:
   and the exact granular scope string Zoom returns;
 - Zoom's refresh error codes and whether a used refresh token stops working;
 - whether Zoom sends `Retry-After` on per-second and daily 429 responses;
+- the status and body Zoom returns for an expired `next_page_token`, which
+  `meetingChanged` assumes is a `400`, and whether List meetings returns a
+  recurring meeting once or once per occurrence, and with which `start_time`;
 - whether Zoom consistently leaves a meeting uncreated after a 503 response,
   and whether its create endpoint offers any undocumented provider-side
   deduplication or lookup by a client-supplied value;

@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -80,7 +81,8 @@ func TestConfigurationSurfaceGuidesEveryVisibleField(t *testing.T) {
 	manifest := loadZoomManifest(t)
 	require.Nil(t, manifest.Spec.Studio, "no field needs a picker, so the connector ships no Studio bundle")
 	defaults := DefaultConfig()
-	defaultByField := map[string]any{"endpoint": defaults.Endpoint, "maxResponseBytes": int(defaults.MaxResponseBytes)}
+	require.Equal(t, 2*time.Minute, defaults.PollInterval)
+	defaultByField := map[string]any{"endpoint": defaults.Endpoint, "maxResponseBytes": int(defaults.MaxResponseBytes), "pollInterval": "2m"}
 	require.Len(t, manifest.Spec.Configuration.Fields, len(defaultByField))
 	for _, field := range manifest.Spec.Configuration.Fields {
 		require.Equal(t, defaultByField[field.Name], field.Default, field.Name)

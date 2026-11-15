@@ -3,7 +3,8 @@
 
 // Package zoom implements the authorized user's Zoom Meetings operations as Dex
 // connector Steps: list, read, schedule, and reschedule meetings, and list who
-// joined a past meeting.
+// joined a past meeting. The meetingChanged Trigger polls the meeting list and
+// delivers each meeting scheduled, changed, or removed since the last poll.
 //
 // Every time the package accepts is explicit: a start is an RFC 3339 instant
 // with a Z or ±hh:mm offset plus an IANA time zone, and the connector sends the
@@ -19,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -39,6 +41,8 @@ const (
 	// errorCodeMetadataKey names the Receipt metadata entry holding Zoom's numeric error code.
 	errorCodeMetadataKey = "zoomErrorCode"
 	currentUserPath      = "/users/me"
+	// minimumPollInterval keeps one meetingChanged binding under Zoom's Free-plan Medium daily limit.
+	minimumPollInterval = 30 * time.Second
 )
 
 var (
@@ -52,6 +56,7 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 }
 
 // WithHTTPClient replaces the HTTP client used for Zoom API calls and token
@@ -62,6 +67,14 @@ func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
+// WithLogger sends the meetingChanged Trigger runner's records to logger: seeds, reseeds, failed polls,
+// rate-limit pauses, and the durable inboxes NewProjectMeetingTriggerRunner opens. Records carry binding
+// identity and never meeting payloads or credentials. Without this option, or with a nil logger, records
+// go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Zoom API calls for the authorized user. It is
 // safe for concurrent use by several Steps.
 type Client struct {
@@ -70,6 +83,8 @@ type Client struct {
 	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -130,6 +145,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.MaxResponseBytes < 1 {
 		return nil, fmt.Errorf("Zoom maxResponseBytes must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Zoom pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
@@ -144,7 +162,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	return &Client{
 		baseURL: baseURL, httpClient: httpClient, credentials: credentials,
 		refreshDriver:    NewCredentialRefreshDriver(httpClient),
-		maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
@@ -186,7 +204,8 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	}
 }
 
-// exchange sends one request, and once more after a refresh when an unfenced call receives 401.
+// exchange sends one request under the Step context, and once more after a refresh when an unfenced call
+// receives 401. Trigger pollers call exchangeWithContext with their own context, since they have no Step.
 // It returns isDispatched false only when Zoom provably received nothing.
 func (client *Client) exchange(
 	call sdkgo.Call,
@@ -222,7 +241,7 @@ func (client *Client) exchangeWithContext(
 		if _, isRejectionRefreshing := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !isRejectionRefreshing {
 			return response, isDispatched, nil
 		}
-		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(requestContext, client.credentials, call, client.refreshDriver)
 		if refreshErr != nil || validateResolvedCredentials(replacement) != nil {
 			return response, isDispatched, nil
 		}

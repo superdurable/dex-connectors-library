@@ -12,6 +12,7 @@ class Config:
 
     endpoint: str = "https://api.zoom.us/v2"
     max_response_bytes: int = 2097152
+    poll_interval_seconds: float = 120
 
 setattr(Config, '__module__', 'dex_connectors.zoom.client')
 

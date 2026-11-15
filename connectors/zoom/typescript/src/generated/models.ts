@@ -46,12 +46,15 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete Zoom API response in bytes; enter a positive integer only to change the safety limit. A larger meeting or listing selects invalidResponse. */
   maxResponseBytes?: number;
+  /** Delay between meetingChanged Trigger polls of the authorized user's Zoom meeting list, as a Go duration of at least 30s such as 1m or 10m; change it only to see meeting changes sooner or to spend fewer requests. Each poll reads every page of up to 300 meetings from List meetings, a Medium API that Zoom limits to 2,000 requests per day on Free accounts, so keep at least 1m there; blank uses the displayed default. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */
