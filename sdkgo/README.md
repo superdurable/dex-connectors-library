@@ -273,6 +273,123 @@ mounts one handler and runs one value. The Stripe connector's
 the package contains no provider host, signature format, event type, or
 credential.
 
+## Polling Triggers
+
+A connector whose provider exposes a change feed (a sync token, a history ID, a
+page token, or a sequence) builds its Trigger sources on the `pollingtrigger`
+subpackage instead of its own poll loop. The connector supplies a
+`ChangeFetcher`: `SeedCursor` returns the provider's current position without
+reporting existing items, and `FetchChanges` returns one `ChangePage` of at
+most `MaxChangesPerPage` (500) changes after a `Cursor`. The kit owns the
+cursor, the schedule, and delivery.
+
+- **Durable cursor.** `NewBindingPoller` keeps one cursor per binding in
+  `poll-cursors/` and `NewFeedPoller` one cursor per shared feed in
+  `poll-feeds/`, beside the bindings' `trigger-inboxes/`
+  (`LoadedProject.PollCursorStore` and `PollFeedCursorStore`). The document
+  `connectors.dex.dev/project-poll-cursor/v1alpha1` holds an opaque token of at
+  most 64 KiB, an optional keyed snapshot, and commit and reset counters, and
+  is written only by compare-and-swap. A poll whose page is empty and leaves
+  the cursor where it was writes nothing.
+- **Ordering rule.** The cursor commits past a change only after every member
+  target recorded it (a target that implements `TriggerDeliveryPreparer`, such
+  as `provider.NewDurableTriggerTarget`) or consumed it (any other target).
+  Recorded events are delivered after the commit, in page order; while one
+  fails, the poller retries it before fetching again. A commit conflict with a
+  replica still delivers what this replica recorded. A retry from the same
+  cursor skips the event IDs each member already recorded or consumed, even
+  when the provider now returns a different page, and still delivers recorded
+  events the retry no longer lists. Delivery is at least once:
+  every event ID must be a pure function of the provider change, so a refetch
+  after a crash yields the same IDs and `NewDexFlowTriggerTarget` starts one
+  Flow per event.
+- **Seed and reset.** The first poll seeds the cursor with no backlog. A fetch
+  error marked with `MarkCursorInvalid` (for example 410 Gone for a sync token)
+  reseeds, increments `resetCount`, and logs the gap at WARN; changes in the gap
+  are not delivered.
+- **Schedule.** One `Runner` serves every poller of one connection from one
+  goroutine, in configuration order. `PollSchedule` sets `Interval` (at least
+  1s), `JitterFraction` (default 0.1), `MaxBackoff` (default 15m), and
+  `MaxPagesPerPoll` (default 10). Failures back off per poller,
+  `Interval * 2^(n-1)` up to `MaxBackoff`. An error marked with
+  `MarkRateLimited` pauses every poller of the runner for
+  `max(RetryAfter, Interval)`, or backs off exponentially without a
+  Retry-After. A fetcher calls `WaitForPollRequest` before every provider
+  request, so an application `RequestLimiter` gates seeds and multi-request
+  fetches too. `WakePoller` makes a poller due now.
+- **Keyed snapshots.** `KeyedSnapshotOptions` enables a bounded snapshot
+  (default 10,000 entries, at most 100,000) stored in the cursor document and
+  committed with it. A full-listing Trigger calls `DiffKeyedSnapshot` inside
+  `FetchChanges` and emits events from `Added`, `Changed`, and `Removed`; a delta
+  feed calls `ApplyKeyedSnapshotChanges`, optionally with
+  `EvictLeastRecentlySeen`. A feed member's selector receives the committed
+  entry of a change that implements `KeyedItem`.
+
+`Run` checks every stored cursor, replays each durable target, and then polls.
+It returns early only for a stored document that fails strict decoding, which
+it never overwrites. A cursor state over a bound is a configuration fault
+retried every `MaxBackoff`. `NewTriggerCredentialCall` gives a poller the same
+stable credential-call identity the Gmail Trigger uses, and
+`NewBindingTriggerSource` adapts one binding poller to `TriggerSource` for
+`NewTrigger`.
+
+The runnable [`examples/polling-trigger`](examples/polling-trigger) wires a
+fake change-log provider to a Dex Flow:
+
+```go
+cursor := pollingtrigger.NewMemoryCursorStore()
+if project != nil {
+	// Durable inbox: events are recorded here before the cursor moves past them.
+	inbox, err := project.TriggerInbox(key)
+	if err != nil {
+		return err
+	}
+	if target, err = provider.NewDurableTriggerTarget(inbox, key, target, provider.WithTriggerLogger(logger)); err != nil {
+		return err
+	}
+	if cursor, err = project.PollCursorStore(projectconfig.PollCursorKey(key)); err != nil {
+		return err
+	}
+}
+poller, err := pollingtrigger.NewBindingPoller(pollingtrigger.BindingPollerConfig[ItemChanged]{
+	Definition: definition, Binding: binding, Cursor: cursor,
+	Fetcher: &changeLogFetcher{api: api}, Target: target,
+})
+if err != nil {
+	return err
+}
+runner, err := pollingtrigger.NewRunner(pollingtrigger.RunnerConfig{
+	Connection: connection,
+	Schedule:   pollingtrigger.PollSchedule{Interval: 2 * time.Second, MaxBackoff: time.Minute},
+	Pollers:    []pollingtrigger.Poller{poller},
+	Logger:     logger,
+})
+if err != nil {
+	return err
+}
+// Replays the inbox, seeds on first start, then polls until ctx ends.
+return runner.Run(ctx)
+```
+
+Records carry `connector`, `connection`, and `trigger` plus `binding` (or
+`feed`), never payloads, cursor tokens, or snapshot values:
+
+| Level | Message | When |
+|---|---|---|
+| INFO | `poll cursor seeded` | First seed of a binding or feed (`reset=false`). |
+| WARN | `poll cursor invalid; reseeding` | `MarkCursorInvalid`; `reset_count`, `error`. |
+| WARN | `poll failed; retrying` | Fetch, seed, or store failure; `attempt`, `delay`, `error`. |
+| WARN | `poll rate limited; pausing connection` | `RateLimitedError`; `delay`, `pollers`. |
+| WARN | `poll paused: trigger inbox full` | The durable inbox holds 1000 pending events. |
+| ERROR | `poll paused: cursor state exceeds bound` | Oversize token, snapshot, page, or document. |
+| ERROR | `poll cursor document invalid` | A stored document fails strict decoding. |
+| DEBUG | `poll cursor committed`, `poll cursor commit conflict` | Each commit; `commit_count`, `events`. |
+
+Delivery uses the `trigger delivery failed; retrying`, `trigger delivered after
+retry`, and `trigger event skipped: undeliverable` records of
+[Trigger logging](#trigger-logging). The application's storage grant needs
+`GetObject` and `PutObject` on `poll-cursors/` and `poll-feeds/` as well.
+
 ## Renewable credentials
 
 Connectors that use renewable access credentials implement
