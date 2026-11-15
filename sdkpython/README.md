@@ -2,9 +2,11 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.10.0` supplies the models, provider operation contracts, credential
+Version `0.11.0` supplies the models, provider operation contracts, credential
 helpers, OAuth token exchanges, portable text generation, and single-dispatch
-checkpoint values below, plus opt-in provider address policies. Query and
+checkpoint values below, plus opt-in provider address policies, Trigger
+delivery, durable project inboxes, relayed Trigger verification, and a webhook
+endpoint. Query and
 Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
 Dex Web FDG 2.0 connector metadata for Python requires upstream R4.
 
@@ -131,6 +133,232 @@ dex.Registry([
     CreateItemFlow(create, created, result_attribute, progress_stream, text_stream)
 ], allow_async_handlers=True)
 ```
+
+## Triggers
+
+A Trigger turns provider events, such as webhooks, into Dex Flow starts or RPCs.
+`dex_connectors.sdk` holds the identities (`TriggerRef`, `TriggerDefinition`,
+`TriggerBindingRef`, `TriggerBindingDefinition`), the runner (`new_trigger`), the
+delivery loop (`deliver_trigger`), and the Dex targets.
+`dex_connectors.sdk.projectconfig` holds durable inboxes,
+`dex_connectors.sdk.webhooktrigger` the webhook endpoint, and
+`dex_connectors.sdk.relaysignature` the Dex relay signature. The behavior and
+the stored bytes match the Go and TypeScript SDKs except where
+[Differences](#differences-from-go-and-typescript) says otherwise.
+
+### Outcomes
+
+A target's `handle_trigger` has three outcomes:
+
+- It returns: the event is delivered.
+- It raises `UndeliverableTriggerError`: no retry can deliver the event, so it
+  is consumed and logged. `mark_trigger_undeliverable(error)` wraps an error;
+  `is_trigger_undeliverable` searches `__cause__` up to 32 links.
+- It raises any other `Exception`: the event stays pending. `deliver_trigger`
+  retries after 250 milliseconds, doubling to 30 seconds.
+
+`TriggerContext` carries a `TriggerCancellation`. Cancelling it stops retry
+waits and new inbox writes, and raises `TriggerDeliveryAbortedError`.
+`asyncio.CancelledError` always passes through unchanged.
+
+### Dex Flow and RPC targets
+
+`new_dex_flow_trigger_target(client, flow, accepts_event=..., resolve_flow_id=...,
+map_to_flow_input=...)` starts one Flow per event. The event ID is the start's
+request ID and Flow ID reuse is disallowed, so a redelivered event is a
+duplicate, not a second run. `new_dex_rpc_trigger_target(client, flow.method,
+...)` invokes an RPC on the resolved Flow; a handler declared with an input
+needs `map_to_rpc_input`. Both take `dex.AsyncClient`. A blank Flow or event
+ID, a Flow that never started or has closed, an input that cannot be encoded,
+and an RPC handler's own `UndeliverableTriggerError` are undeliverable;
+`classify_dex_trigger_error` applies these rules. Raise
+`UndeliverableTriggerError` itself in a handler, never a subclass.
+
+### Durable inboxes and restart replay
+
+`new_durable_trigger_target(project.trigger_inbox(key), target)` records each
+event in the project inbox before the provider is answered and removes it once
+`target` consumes it. A runner replays pending events before its source starts,
+so a restarted process delivers what an earlier one acknowledged. Inboxes hold
+1000 events and 8 MiB (4 MiB on S3) and use the Go document format byte for
+byte, except for the key order noted in
+[Differences](#differences-from-go-and-typescript). Dex Web projects keep them
+as private files in `trigger-inboxes/` beside `connections.json`. A payload
+must encode as Go JSON: dicts, lists, strings, numbers, booleans, None, aware
+datetimes, objects with `to_wire()`, or dataclasses such as generated connector
+models, which encode through the Dex codec. `encode_payload` maps a payload to
+the JSON value to store instead. `decode_payload` turns a replayed payload back
+into a value; the default `parse_trigger_payload_json` keeps integers exact and
+yields a `TriggerJSONPayload`, so the type checker requires `decode_payload` for
+a target of any other payload type:
+
+```python
+def decode_stored_item(payload_json: str, payload_bytes: bytes) -> ItemPayload:
+    """Decode a replayed item payload; anything but a string item ID is refused."""
+    payload = parse_trigger_payload_json(payload_bytes)
+    if not isinstance(payload, dict) or not isinstance(payload.get("item_id"), str):
+        raise ValueError("stored item payload is invalid")
+    return {"item_id": payload["item_id"]}
+```
+
+`decode_trigger_configuration(project.configuration, key, decode)` reads a
+binding's configuration; `decode` must reject unknown fields.
+
+### Webhook endpoint
+
+`WebhookEndpoint` verifies each request, decodes one event, and records it in
+arrival order before answering 200. Each binding runs one source from
+`endpoint.new_source(accepts_event)`. The answers are 405 for a method other
+than POST, 413 above `maximum_body_bytes`, 400 for a refused signature, an
+undecodable event, or an incomplete body, and 503 when credentials, verification,
+or recording are temporarily unavailable. A verified request waits at most
+`arrival_timeout` (10 seconds) for its turn and recording. A write already in
+flight at that point still completes, so delivery is at least once.
+`decode_event` may be synchronous or async. Until every source created with
+`new_source` is running, verified events answer 503, so a binding still
+replaying its inbox never misses an event another binding acknowledged.
+
+```python
+def new_item_runner(recorder: ItemRecorder) -> tuple[WebhookEndpointRunner, TriggerInbox]:
+    """Wire one endpoint, one durable binding, and the runner that serves them."""
+    endpoint: WebhookEndpoint[dict[str, str], ItemPayload] = WebhookEndpoint(
+        WebhookEndpointConfig(
+            connector_id="sample",
+            trigger_name="itemCreated",
+            connection=CONNECTION,
+            credentials=StaticCredentialProvider({CONNECTION: {}}),
+            verify_request=verify_relayed_item,
+            decode_event=decode_item_created,
+            maximum_body_bytes=1 << 20,
+        )
+    )
+    # An application uses project.trigger_inbox(key), which persists across restarts.
+    key = TriggerInboxKey("sample", "workspace", "itemCreated", "start")
+    inbox = TriggerInbox(InMemoryObjectStore(), Scope("example", "preview"), key)
+    target = new_durable_trigger_target(inbox, recorder, decode_payload=decode_stored_item)
+    binding = TriggerBindingRef(CONNECTION, DEFINITION.trigger, "start")
+    runner = new_trigger(TriggerConfig(DEFINITION, binding, endpoint.new_source(), target))
+    return WebhookEndpointRunner(endpoint, [runner]), inbox
+```
+
+### Relayed Triggers
+
+A Dex host that relays provider callbacks signs them with the scope token in
+`Dex-Relay-Timestamp` and `Dex-Relay-Signature`.
+`new_relayed_request_verification(project)` checks them with
+`LoadedProject.verify_relayed_request`, which rereads a rotated token at most
+every 30 seconds and answers 503 inside that window.
+`project.register_relayed_trigger(key, path)` asks the credential broker to
+relay a shared connection's events. `relaysignature.verify_relay_signature`
+checks a signature against a known token.
+
+### Running with an ASGI server
+
+`WebhookEndpointRunner` is an ASGI 3 application. Its lifespan startup runs the
+Trigger runners on the server's own event loop, which sources and inbox locks
+require; shutdown cancels them. When the runners fail or stop before shutdown,
+such as on a transient inbox read error during replay, the runner logs
+`webhook endpoint runner failed`, answers 503, and restarts them after 250
+milliseconds, doubling to 30 seconds; `run_failure` reports the latest failure
+for a readiness probe. A host that owns the loop runs both itself with
+`lifespan="off"`, handles `run` failures itself, and stops the runners with
+`cancellation.cancel()`:
+
+```python
+def serve_with_lifespan(application: WebhookEndpointRunner) -> None:
+    """Serve with uvicorn; lifespan startup runs the Triggers on the server's event loop."""
+    uvicorn: Any = importlib.import_module("uvicorn")
+    uvicorn.run(application, host="127.0.0.1", port=8080)
+
+
+async def serve_on_owned_loop(application: WebhookEndpointRunner) -> None:
+    """Serve next to the runner on a loop the host owns, stopping the runner when the server returns."""
+    uvicorn: Any = importlib.import_module("uvicorn")
+    config = uvicorn.Config(application, host="127.0.0.1", port=8080, lifespan="off")
+    cancellation = TriggerCancellation()
+
+    async def run_triggers() -> None:
+        try:
+            await application.run(TriggerContext(cancellation))
+        except TriggerDeliveryAbortedError:
+            return
+
+    async with asyncio.TaskGroup() as group:
+        group.create_task(run_triggers())
+        await uvicorn.Server(config).serve()
+        cancellation.cancel()
+```
+
+Running the runners under a separate `asyncio.run` or thread is not supported.
+The SDK does not depend on an ASGI server. `examples/triggers.py` runs the whole
+path offline.
+
+### Logging
+
+Records go to a `TriggerLogger`; the default writes to the standard
+`logging` logger `dex_connectors.sdk.trigger`, whose INFO and DEBUG records stay
+hidden until the host enables them:
+
+```python
+logging.basicConfig()
+logging.getLogger("dex_connectors.sdk.trigger").setLevel(logging.INFO)
+```
+
+Records carry IDs, counts, and error classes, never messages or payloads. Error
+attributes are `error_type`, `error_cause_type`, and `error_code` (a gRPC code).
+
+| Level | Message | Attributes |
+|---|---|---|
+| WARN | `trigger delivery failed; retrying` | `event_id`, `attempt`, `delay_ms`, error attributes |
+| INFO | `trigger delivered after retry` | `event_id`, `attempts` |
+| WARN | `trigger event skipped: undeliverable` | `event_id`, error attributes |
+| INFO | `trigger event skipped: filtered` | `event_id` |
+| DEBUG | `trigger event delivered` | `event_id`, `flow_id`, `duplicate` (Flow target) |
+| WARN | `trigger event delivered; rpc response undecodable` | `event_id`, `flow_id`, error attributes |
+| ERROR | `trigger inbox write failed`, `trigger inbox read failed`, `trigger inbox remove failed` | `event_id`, error attributes |
+| INFO | `replaying pending trigger events` | `count` |
+| ERROR | `trigger inbox event decode failed` | `event_id`, error attributes |
+| INFO | `finished replaying pending trigger events` | `delivered`, `skipped`, `remaining` |
+
+Runners and durable targets add `connector`, `connection`, `trigger`, and
+`binding`; the Flow and RPC targets add `target`.
+
+### Differences from Go and TypeScript
+
+- RPC targets send a new Dex request ID on every attempt, as Go does. The
+  TypeScript target's stable request ID (sdkts 0.10.1) needs a request ID option
+  in dex-python-sdk, which does not exist yet; RPC handlers deduplicate by event
+  ID. There is no `TriggerRPCRequestConflictError`.
+- A Python handler's `UndeliverableTriggerError` is reported as
+  `ConnectorsSDK.UndeliverableTriggerError`, so Python and TypeScript RPC targets
+  consume it. Go RPC targets do not, and Python and TypeScript targets do not
+  recognize Go handler markers. In a polyglot application, a handler returns a
+  normal success for an event it rejects.
+- Instances of `UndeliverableTriggerError` pickle with their cause as text; the
+  class cannot be pickled by reference, so connector packages never re-export it.
+- Error records use the TypeScript attributes, not Go's redacted `error`.
+- The default logger is the standard `logging` module, with INFO hidden by
+  default; Go uses `slog.Default` and TypeScript writes INFO JSON to stderr.
+- The default payload decoder keeps integer literals as exact `int`; Go and
+  TypeScript decode every number as a double.
+- `occurred_at` keeps microseconds; Go's nanoseconds survive in the stored
+  bytes but not in the decoded `datetime`.
+- A relay signature mismatch inside the 30 second reread window answers 503, as
+  TypeScript does; Go answers 400.
+- Inbox name limits count UTF-8 bytes and trim Go's whitespace set, as Go does.
+- `new_durable_trigger_target` reads the binding identity from `inbox.identity`
+  instead of taking the key a second time.
+- Stored payloads sort every object's keys by UTF-8 bytes, as TypeScript does
+  and as Go does for maps. Go writes a struct payload in field order and a
+  `json.RawMessage` with its original key order and number text, so a Python
+  replica's bytes for such payloads differ from Go's; each replica still decodes
+  the other's events.
+- A webhook endpoint answers 503 to verified events until every source created
+  with `new_source` runs; Go and TypeScript record into the running sources only,
+  so a binding still replaying its inbox there misses events acknowledged
+  meanwhile.
+- The ASGI lifespan restarts failed runners with backoff; Go and TypeScript
+  return the failure to the host that called `run`.
 
 ## OAuth token refresh
 
@@ -291,6 +519,7 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.11.0`: Add Trigger support: Trigger identities and runners, `deliver_trigger` with capped retries, Dex Flow and RPC Trigger targets, durable project Trigger inboxes byte-compatible with Go and TypeScript (file-backed for Dex Web projects), relay signatures and `LoadedProject.verify_relayed_request` and `register_relayed_trigger`, and `webhooktrigger.WebhookEndpoint` as an ASGI application with lifespan-run Trigger runners. Local Trigger inbox objects may be 8 MiB. This addition is not breaking.
 - `0.10.0`: The single-dispatch fence supports bounded resend on unknown outcomes. `Fence` and `decide_dispatch` accept `max_sends` (default 1, unchanged decisions and marker bytes); with a cap of 2 or more, markers carry an optional `sendCount` and decisions can return `DecisionKind.READ_BACK_THEN_RESEND_ALLOWED`. `RepeatOnUnknown`, `MutationDefinition.repeat_on_unknown` and `max_sends`, `Call.max_sends`, and `MutationStepConfig.max_sends_override` expose the send cap to Steps. Workers on `0.9.0` ignore `sendCount` and keep their conservative decisions. This addition is not breaking.
 - `0.9.0`: `raise_dex_retry` is exported. A Step that calls `run_query` or `run_mutation` directly catches `RetryError` and calls it to get the same Dex retry behavior as the Step factories. This addition is not breaking.
 - `0.8.0`: Manifest OAuth refresh and client-credentials minting honor `tokenExchangeTimeout` independently of the caller's deadline; timeout is retryable. The declaration accepts a fixed Go duration of at most one hour or `{fromSetting: "requestTimeout"}`; pass the pinned setting as a Go duration string or integer nanoseconds within the same bound. The private network token client uses the same configured timeout. Interrupted body reads preserve response status and headers, and `encode_query_values` provides Go-compatible query serialization for connector ports. These additions are not breaking; existing ports keep their current encoding until migrated.
@@ -425,7 +654,12 @@ for Python SDK changes against the Dex CLI selected once for the workflow run.
 The integration suite checks
 branch routing, retry and exhaustion, uncertainty, the lost-response fence,
 safe resend from a persisted checkpoint, heartbeat cadence, mock replay,
-result Attribute, and progress/text Streams.
+result Attribute, and progress/text Streams. Its Trigger tests check Flow and
+RPC targets, handler markers, replay of a local inbox after a process restart,
+a relayed webhook served through ASGI, and replay of a Go-written inbox.
+`integration/cross_language_marker.py` is a manual run against the same Dex: it
+needs `npm ci && npm run build` in `sdkts/` and checks that a TypeScript RPC
+Trigger target consumes a Python handler's `UndeliverableTriggerError`.
 
 ## Portable text generation
 
