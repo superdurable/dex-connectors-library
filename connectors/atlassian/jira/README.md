@@ -13,10 +13,12 @@ issues through Atlassian's OAuth 2.0 (3LO) gateway,
 `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3`:
 
 The [Python package](python/README.md) implements the same five operations at
-`v0.1.0`, with generated OAuth refresh, Go-recorded conformance, and a
-[runnable Dex Flow](python/examples/issue_lookup/README.md). Its local
-integration test uses a Jira stand-in; live Atlassian authorization and API
-behavior remain unverified.
+`v0.2.0`, with generated OAuth refresh, Go-recorded conformance, and a
+[runnable Dex Flow](python/examples/issue_lookup/README.md), and from `v0.2.0`
+the `issueChanged` Trigger, with a
+[runnable issue-changed Flow](python/examples/issue_changed/README.md). Its
+local integration tests use a Jira stand-in; live Atlassian authorization and
+API behavior remain unverified.
 
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
@@ -42,13 +44,13 @@ It also exposes one Go Trigger:
 - `issueChanged` delivers each issue created or updated in one project, or in
   every project the account can browse, read by polling enhanced JQL search on
   the `updated` time. See [issueChanged Trigger](#issuechanged-trigger). The
-  TypeScript package implements it from 0.2.0, sharing the Go cursor documents
-  byte for byte; the Python package does not implement it.
+  Python and TypeScript packages implement it from 0.2.0, sharing the Go cursor
+  documents byte for byte.
 
 | Capability | Go | Python | TypeScript |
 | --- | --- | --- | --- |
 | `searchIssues`, `getIssue`, `createIssue`, `transitionIssue`, `addComment` | yes | yes | yes |
-| `issueChanged` Trigger | yes | no | yes, from 0.2.0 |
+| `issueChanged` Trigger | yes | yes, from 0.2.0 | yes, from 0.2.0 |
 
 ## TypeScript package
 
