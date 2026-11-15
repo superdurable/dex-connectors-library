@@ -30,6 +30,9 @@ _REASONS = frozenset(
     "cannotChangeOrganizer eventTypeRestriction authError".split()
 )
 
+MINIMUM_POLL_INTERVAL_SECONDS = 5
+"""Keeps an eventChanged poll loop from spending the Calendar API quota."""
+
 
 @dataclass(frozen=True, slots=True)
 class ProviderResponse:
@@ -77,20 +80,24 @@ def event_path(calendar_id: str, event_id: str) -> str:
     return calendar_path(calendar_id) + "/events/" + path_escape(event_id)
 
 
-def classify_status(response: ProviderResponse) -> tuple[bool, FailureKind, str, float]:
-    """Classify a non-success response using Go's Calendar status policy."""
-    reason = ""
+def google_error_reason(body: bytes) -> str:
+    """Return the first reportable Google error reason in a response body, or an empty string."""
     try:
-        envelope = json.loads(response.body)
+        envelope = json.loads(body)
         if isinstance(envelope, dict) and isinstance(envelope.get("error"), dict):
             details = envelope["error"].get("errors", [])
             if isinstance(details, list):
                 for detail in details:
                     if isinstance(detail, dict) and detail.get("reason") in _REASONS:
-                        reason = detail["reason"]
-                        break
+                        return str(detail["reason"])
     except (ValueError, UnicodeDecodeError, TypeError):
         pass
+    return ""
+
+
+def classify_status(response: ProviderResponse) -> tuple[bool, FailureKind, str, float]:
+    """Classify a non-success response using Go's Calendar status policy."""
+    reason = google_error_reason(response.body)
     suffix = f" ({reason})" if reason else ""
     status = response.status
     if status == 429 or status == 403 and reason in ("rateLimitExceeded", "userRateLimitExceeded"):
@@ -142,8 +149,11 @@ class Client:
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("Google Calendar configuration and credentials are required")
+        defaults = Config()
         self.config = Config(
-            config.endpoint or Config().endpoint, config.max_response_bytes or Config().max_response_bytes
+            config.endpoint or defaults.endpoint,
+            config.max_response_bytes or defaults.max_response_bytes,
+            config.poll_interval_seconds or defaults.poll_interval_seconds,
         )
         parsed = urlsplit(self.config.endpoint)
         if not parsed.scheme or not parsed.hostname:
@@ -152,6 +162,8 @@ class Client:
             raise ValueError("Google Calendar endpoint must use HTTPS")
         if self.config.max_response_bytes < 1:
             raise ValueError("Google Calendar response limit must be positive")
+        if self.config.poll_interval_seconds < MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError("Google Calendar pollInterval must be at least 5s")
         self.endpoint = self.config.endpoint.rstrip("/")
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(25)

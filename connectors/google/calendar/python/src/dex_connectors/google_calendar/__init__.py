@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Dex-native Google Calendar operations and project connections."""
+"""Dex-native Google Calendar operations, project connections, and the eventChanged poll Trigger."""
 
 from .client import Client as Client
 from .client import Config as Config
@@ -31,6 +31,22 @@ from .steps import new_get_event_step as new_get_event_step
 from .steps import new_list_events_step as new_list_events_step
 from .steps import new_query_free_busy_step as new_query_free_busy_step
 from .steps import new_update_event_step as new_update_event_step
+from .triggers import DEFAULT_TRIGGER_CALENDAR_ID as DEFAULT_TRIGGER_CALENDAR_ID
+from .triggers import EVENT_CHANGED_TRIGGER_DEFINITION as EVENT_CHANGED_TRIGGER_DEFINITION
+from .triggers import EventChangedEvent as EventChangedEvent
+from .triggers import EventChangedTriggerConfiguration as EventChangedTriggerConfiguration
+from .triggers import EventChangedTriggerRoute as EventChangedTriggerRoute
+from .triggers import EventChangeKind as EventChangeKind
+from .triggers import ProjectEventChangedTriggerRoute as ProjectEventChangedTriggerRoute
+from .triggers import decode_event_changed_trigger_configuration as decode_event_changed_trigger_configuration
+from .triggers import define_event_changed_trigger_binding as define_event_changed_trigger_binding
+from .triggers import new_event_changed_trigger as new_event_changed_trigger
+from .triggers import new_event_trigger_runner as new_event_trigger_runner
+from .triggers import new_project_event_trigger_runner as new_project_event_trigger_runner
+from .triggers import (
+    validate_event_changed_trigger_configuration as validate_event_changed_trigger_configuration,
+)
+from .triggers import watched_calendar_id as watched_calendar_id
 
 __all__ = [
     "Client",
@@ -62,4 +78,18 @@ __all__ = [
     "new_list_events_step",
     "new_query_free_busy_step",
     "new_update_event_step",
+    "DEFAULT_TRIGGER_CALENDAR_ID",
+    "EVENT_CHANGED_TRIGGER_DEFINITION",
+    "EventChangeKind",
+    "EventChangedEvent",
+    "EventChangedTriggerConfiguration",
+    "EventChangedTriggerRoute",
+    "ProjectEventChangedTriggerRoute",
+    "decode_event_changed_trigger_configuration",
+    "define_event_changed_trigger_binding",
+    "new_event_changed_trigger",
+    "new_event_trigger_runner",
+    "new_project_event_trigger_runner",
+    "validate_event_changed_trigger_configuration",
+    "watched_calendar_id",
 ]
