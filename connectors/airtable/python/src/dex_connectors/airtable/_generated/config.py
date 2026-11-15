@@ -12,6 +12,8 @@ class Config:
 
     endpoint: str = "https://api.airtable.com"
     max_response_bytes: int = 4194304
+    poll_interval_seconds: float = 30
+    poll_page_size: int = 100
 
 setattr(Config, '__module__', 'dex_connectors.airtable.client')
 

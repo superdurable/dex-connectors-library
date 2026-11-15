@@ -97,6 +97,8 @@ def test_manifest_operations_branches_defaults_and_units() -> None:
     assert [unit["id"] for unit in manifest["spec"]["studio"]["units"]] == [
         UI_UNIT_BASE_PICKER,
         UI_UNIT_TABLE_PICKER,
+        # The Go recordChanged Trigger's unit; this package implements no Trigger.
+        "lastModifiedTimeFieldPicker",
     ]
 
 
