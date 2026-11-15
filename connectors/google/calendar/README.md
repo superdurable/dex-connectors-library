@@ -33,7 +33,12 @@ It also exposes one Trigger:
 
 ## Python package
 
-The Python package `dex-connector-google-calendar==0.1.0` implements the same five operations with generated connection and OAuth refresh wiring. Its [runnable event listing example](python/examples/calendar_events/README.md) uses the static `google-calendar-events-reader` connection name and a real Dex Worker. Go-recorded provider scenarios cover the Python request and branch behavior. Google consent, Workspace delegated minting against Google, and live Calendar API calls remain unverified for Python.
+The Python package `dex-connector-google-calendar==0.2.0` implements the same five operations with generated connection and OAuth refresh wiring, and the `eventChanged` Trigger on the Python poll Trigger kit (`dex-connectors-sdk>=0.12.0`). Its sync cursor documents match Go's byte for byte, so Go and Python replicas share a binding's cursor and inbox. Its [runnable event listing example](python/examples/calendar_events/README.md) uses the static `google-calendar-events-reader` connection name and a real Dex Worker, and its [event change example](python/examples/event_changed/README.md) starts one Flow per change from the `calendar-event-changes` binding. Go-recorded provider scenarios cover the Python request and branch behavior. Google consent, Workspace delegated minting against Google, and live Calendar API calls remain unverified for Python.
+
+| Capability | Kind | Languages |
+| --- | --- | --- |
+| `listEvents`, `getEvent`, `createEvent`, `updateEvent`, `queryFreeBusy` | Operations | Go, TypeScript, Python |
+| `eventChanged` | Trigger | Go, Python |
 
 ## Scopes
 
