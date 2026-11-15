@@ -210,8 +210,8 @@ An operation declares:
 - exported local Go `inputType` and `outputType`;
 - Query or Mutation kind and idempotency requirement;
 - every stable branch, including defect and Mutation uncertainty only when the
-  request may have reached the provider, a repeat is unsafe, and read-back
-  cannot confirm the outcome;
+  request may have reached the provider, its `repeatOnUnknown` tier forbids
+  another send, and read-back cannot confirm the outcome;
 - `optional: true` on every branch that is not a happy path; `defect` is always
   optional, and `connectorctl validate` rejects a required one;
 - progress capabilities used to generate typed Stream fields;
@@ -238,12 +238,46 @@ Declare a branch for each definite business outcome the application may need
 to handle, such as `notFound` or `providerRejected`. Return Retry for transient
 failures that are safe to repeat; the Step retries until its budget runs out,
 then the Flow fails unless `ExecuteFailure` routes to a recovery Step.
-`uncertain` is limited to a write
-that may have reached the provider, has no safe repeat mechanism (a provider
-idempotency key, stable deduplication ID, absolute replacement, upsert, or
-delete), and cannot be confirmed by read-back. A transport failure before the
-request left the process, a 429, and a 503 return Retry. Exhausted retries
-never become uncertainty.
+A definite error, such as a bad request or a provider refusal, selects its
+branch and never repeats. An unknown outcome, such as a timeout, a connection
+lost after dispatch, or a 5xx, repeats as `execution.repeatOnUnknown` allows:
+
+```yaml
+execution:
+  executeMethodTimeout: 30s
+  durability: sync
+  dispatchFence: true
+  repeatOnUnknown: limited
+  maxSends: 3
+```
+
+| Field | Values | Default |
+| --- | --- | --- |
+| `repeatOnUnknown` | `safe`: reads, an idempotency key, an absolute replacement, upsert, or delete, or a harmless repeat; retry within the Step retry policy. `limited`: a duplicate is acceptable, such as an email, a chat message, a ticket, an SMS, or a billed LLM call; read back when possible, then resend while possible sends stay below `maxSends`. `unsafe`: a duplicate does real, hard-to-undo harm; read back only and never resend. | `safe` for a Query and for a Mutation with `agent.retry: safe`; otherwise `limited`. |
+| `maxSends` | 2 to 10, only for `limited`. It caps the possible sends of one Call ID, not attempts; the retry policy still bounds attempts. | 3 |
+
+A Query may only be `safe`. Choose `unsafe` almost never: adding one requires a
+GitHub issue that mentions the repository owner and explains why the duplicate
+harm outweighs never repeating. When repeat safety depends on content the
+application supplies, such as SQL `execute` or a generic HTTP `sendRequest`, keep
+the generic operation `safe` and add a separate `unsafe` `*NonIdempotent`
+operation, such as `executeNonIdempotent` or `postNonIdempotent`.
+
+`uncertain` is limited to a write that may have reached the provider and cannot
+be confirmed by read-back once its tier forbids another send: always for
+`unsafe`, and when `maxSends` is reached for `limited`. A transport failure
+before the request left the process, a 429, and a 503 return Retry. Exhausted
+retries never become uncertainty.
+
+For a module whose `go/go.mod` requires `sdkgo` v0.37.0 or later, `connectorctl
+generate` writes the resolved tier and cap into each Mutation definition
+(`RepeatOnUnknown` and `MaxSends`) and adds a `MaxSends` field to the Step
+factory config of a `limited` operation. An application sets that field, from 1
+(no resend) to 10, to change one Step's cap; a raised cap also widens a manifest
+retry policy that limits attempts by the difference. A `limited` operation's code
+passes `call.MaxSends()` to `singledispatch.WithMaxSends`, so the manifest stays
+the only source of the number. A module requiring an earlier `sdkgo` gets none
+of these fields; its generated code is unchanged.
 
 `auth.oauth2.protocol` distinguishes plain OAuth 2.0 from OpenID Connect. It
 defaults to `oauth2` for existing manifests. An `oidc` manifest must also
@@ -602,7 +636,7 @@ operations:
 | --- | --- | --- |
 | `exposed` | Yes | `true` offers the operation to agents. `false` records a review that declined it, which has the same effect as no block. |
 | `approval` | No | `recommended` asks the agent host to stop for a person before the call runs. Leave it out to keep the host's default. Requires `exposed: true`. |
-| `retry` | No | `safe` claims that repeating the call with the same Call ID, inside the operation's own Execute retry policy, cannot make a second effect. Absence means a repeat may not be safe. Mutations only. Requires `exposed: true`. |
+| `retry` | No | `safe` claims that repeating the call with the same Call ID, inside the operation's own Execute retry policy, cannot make a second effect. Absence means a repeat may not be safe. Mutations only. Requires `exposed: true`. It must agree with `execution.repeatOnUnknown`: an explicit `limited` or `unsafe` tier fails validation, and an omitted tier resolves to `safe`. |
 | `branches` | No | Map from optional branch ID to `rejected` or `unknown`; see [Branch classification](#branch-classification). Requires `exposed: true`. |
 | `description` | No | Text for a model choosing a tool. Requires `exposed: true`. Without it, the operation's `description` is used. |
 
@@ -618,6 +652,16 @@ not imply it, because every Mutation declares that. Do not set it because an
 operation has `dispatchFence`, unless the fence holds on the host that runs it.
 Retry and approval are independent: Stripe `createRefund` is safe to repeat and
 still recommends approval.
+
+The generated `dex-connector.json` derives the published agent block's `retry`
+from the resolved tier: `safe` exactly when an exposed Mutation's
+`repeatOnUnknown` is `safe`, absent otherwise. Released Dex agent hosts reject
+any other `retry` value, so the tier itself travels in two further keys,
+`repeatOnUnknown` and, for `limited`, `maxSends`. `connectorctl` writes them only
+when the connector's Go module requires `sdkgo` v0.37.0 or later, so a connector
+is advertised as resending only after it adopts the bounded-resend Fence. Older
+hosts ignore the new keys and treat a call without `retry: safe` as unsafe to
+repeat.
 
 The claim covers one Call ID within the operation's own policy, and no more:
 
@@ -709,8 +753,13 @@ Each metadata value is generated from the manifest:
   `hacker-news-daily_list_story_ids` for `listStoryIDs`.
 - `Description`, `InputType`, and `InputSchema` are the same as in
   `dex-connector.json`.
-- `IsApprovalRecommended`, `IsRetrySafe`, and `BranchOutcomes` come from the
-  `agent` block.
+- `IsApprovalRecommended` and `BranchOutcomes` come from the `agent` block, and
+  `IsRetrySafe` from a Mutation's resolved `repeatOnUnknown` tier.
+- From `sdkgo` v0.37.0, a Mutation's `RepeatOnUnknown` and `MaxSends` are its
+  definition's own; a Query leaves them empty. A Go host sets one tool's send
+  cap per call with `AgentTool.RunAttemptWithOptions(ctx, arguments,
+  sdkgo.WithMaxSends(n))`, from 1 to 10, only for `limited`; it rejects any
+  other value or tier before it runs the operation.
 - `Branches` and `StepDefaults` are the operation definition's own.
 
 The `sdkgo` constructors check the metadata against the operation definition

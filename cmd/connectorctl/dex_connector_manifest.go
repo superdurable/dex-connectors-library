@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
@@ -46,6 +47,10 @@ type dexConnectorAgent struct {
 	Approval string            `json:"approval,omitempty"`
 	Retry    string            `json:"retry,omitempty"`
 	Branches map[string]string `json:"branches,omitempty"`
+	// RepeatOnUnknown is an exposed Mutation's tier once its Go module requires sdkgo v0.37.0 or later.
+	RepeatOnUnknown string `json:"repeatOnUnknown,omitempty"`
+	// MaxSends is a limited Mutation's send cap, published with RepeatOnUnknown.
+	MaxSends int32 `json:"maxSends,omitempty"`
 }
 
 type dexConnectorFields struct {
@@ -73,6 +78,10 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 		return nil, err
 	}
 	inputModels, err := languageOperationInputModels(manifest, goPackage)
+	if err != nil {
+		return nil, err
+	}
+	hasSendCaps, err := hasRepeatOnUnknownSendCaps(manifestPath)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +132,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 					return nil, fmt.Errorf("%s %s input schema: %w", language.name, operation.Name, err)
 				}
 				factory.InputType = operation.InputType
-				factory.Agent = dexConnectorOperationAgent(operation)
+				factory.Agent = dexConnectorOperationAgent(operation, hasSendCaps)
 			}
 			if language.name == "python" {
 				factory.Name = pythonStepFactoryName(operation.Name)
@@ -211,11 +220,24 @@ func modelFacingOperationDescription(operation schema.Operation) string {
 	return strings.TrimSpace(operation.Description)
 }
 
-func dexConnectorOperationAgent(operation schema.Operation) *dexConnectorAgent {
+// dexConnectorOperationAgent keeps retry to safe or absent, the only values Dex agent hosts accept;
+// the tier travels in repeatOnUnknown and maxSends, which earlier hosts ignore.
+func dexConnectorOperationAgent(operation schema.Operation, hasRepeatOnUnknownSendCaps bool) *dexConnectorAgent {
 	if operation.Agent == nil {
 		return nil
 	}
-	return &dexConnectorAgent{Exposed: *operation.Agent.Exposed, Approval: operation.Agent.Approval, Retry: operation.Agent.Retry, Branches: operation.Agent.Branches}
+	agent := &dexConnectorAgent{Exposed: *operation.Agent.Exposed, Approval: operation.Agent.Approval, Branches: operation.Agent.Branches}
+	if !agent.Exposed || operation.Kind != "mutation" {
+		return agent
+	}
+	if codegen.IsAgentRetrySafe(operation) {
+		agent.Retry = schema.OperationAgentRetrySafe
+	}
+	if hasRepeatOnUnknownSendCaps {
+		agent.RepeatOnUnknown = operation.ResolvedRepeatOnUnknown()
+		agent.MaxSends = operation.ResolvedMaxSends()
+	}
+	return agent
 }
 
 // Descriptions are prose for a model, so keep comparison operators readable in the file.

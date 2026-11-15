@@ -3,8 +3,9 @@
 
 import type { AsyncContext } from '@superdurable/dex';
 import type { Call } from '../credentials.js';
+import { MaximumMaxSends, isValidMaxSends } from '../operation.js';
 import { CallIDSchema } from '../types.js';
-import { decideDispatch, type Decision, type Marker } from './index.js';
+import { decideDispatch, type Decision, type Marker, type MarkerState } from './index.js';
 
 /** The current attempt has no permission to send another provider write. */
 export class DispatchNotAllowedError extends Error { constructor() { super('single dispatch is not allowed for this attempt'); this.name = 'DispatchNotAllowedError'; } }
@@ -13,9 +14,16 @@ export class InsufficientTimeError extends Error { constructor() { super('insuff
 /** A claim heartbeat failed before any provider request was sent. */
 export class CheckpointError extends Error { constructor() { super('single-dispatch checkpoint could not be recorded'); this.name = 'CheckpointError'; } }
 
-/** Sets the fraction of the initial attempt budget available to Dispatch. */
+/** Sets the write window and send cap of one Fence. */
 export interface FenceOptions {
   /** Positive fraction up to 5/6; default is 7/12. */ writeWindowFraction?: number;
+  /**
+   * The operation's send cap, an integer from 1 to 10: the most possibly effective sends this call
+   * ID may make across all attempts. Pass the manifest `execution.maxSends` of a `limited`
+   * operation. The default 1 disables bounded resend, as for `unsafe`. From 2, the application
+   * override carried on `Call.maxSendsOverride` replaces it.
+   */
+  maxSends?: number;
 }
 
 /** One-attempt fence for a non-idempotent provider write. Construct once per Step attempt. */
@@ -24,6 +32,7 @@ export class Fence {
   readonly #call: Call;
   readonly #writeDeadline: number;
   readonly #minimumRequestTime: number;
+  readonly #maxSends: number;
   #decision: Decision | undefined;
   #hasDispatched = false;
   #hasSendFinished = false;
@@ -36,6 +45,10 @@ export class Fence {
     if (!call?.context || !CallIDSchema.safeParse(call.id).success || !Number.isSafeInteger(call.context.attempt) || call.context.attempt < 1 || !Number.isFinite(executeTimeoutMs) || executeTimeoutMs <= 0) throw new TypeError('single dispatch requires a call, positive attempt, and Execute timeout');
     const fraction = options.writeWindowFraction ?? 7 / 12;
     if (!Number.isFinite(fraction) || fraction <= 0 || fraction > 5 / 6) throw new RangeError('single-dispatch write window must be within (0, 5/6]');
+    const operationMaxSends = options.maxSends ?? 1;
+    if (!isValidMaxSends(operationMaxSends) || (call.maxSendsOverride !== undefined && !isValidMaxSends(call.maxSendsOverride))) throw new RangeError(`single-dispatch maxSends must be an integer from 1 to ${MaximumMaxSends}`);
+    // A cap of 1 marks an operation that never resends, so an application cannot enable resend.
+    this.#maxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
     this.#call = call;
     this.#context = call.context;
     const now = Date.now();
@@ -58,28 +71,41 @@ export class Fence {
         }
       }
     } catch (error) {
-      this.#decision = decideDispatch(this.#call.id, this.#context.attempt, undefined, error instanceof Error ? error : new Error('heartbeat checkpoint is unreadable'));
+      this.#decision = decideDispatch(this.#call.id, this.#context.attempt, undefined, error instanceof Error ? error : new Error('heartbeat checkpoint is unreadable'), this.#maxSends);
       return this.#decision;
     }
-    this.#decision = decideDispatch(this.#call.id, this.#context.attempt, last);
+    this.#decision = decideDispatch(this.#call.id, this.#context.attempt, last, undefined, this.#maxSends);
     return this.#decision;
   }
 
-  /** Record the claim before sending once; repeat it during a long request. */
+  /**
+   * Record the claim before sending once; repeat it during a long request.
+   *
+   * Allowed once after a `sendAllowed` or `readBackThenResendAllowed` decision. Under the latter,
+   * call it only after read-back did not confirm success. With a cap of at least 2, the claim
+   * records the decision's `priorSendUpperBound` plus one as `sendCount`. A short write window
+   * records `notSent` only after `sendAllowed`.
+   */
   async dispatch<Result>(send: (signal: AbortSignal) => Promise<Result> | Result): Promise<Result> {
-    if (this.#decision?.kind !== 'sendAllowed' || this.#hasDispatched || this.#hasPreSendRetry || typeof send !== 'function') throw new DispatchNotAllowedError();
+    if (!this.#isSendDecision() || this.#hasDispatched || this.#hasPreSendRetry || typeof send !== 'function') throw new DispatchNotAllowedError();
     if (this.#minimumRequestTime <= 0 || this.#writeDeadline - Date.now() < this.#minimumRequestTime) {
+      if (this.#decision?.kind !== 'sendAllowed') {
+        this.#hasPreSendRetry = true;
+        throw new InsufficientTimeError();
+      }
       try { await this.recordNotSent(); }
       catch (error) { throw new AggregateError([new InsufficientTimeError(), error], 'single dispatch has insufficient time and checkpoint failed'); }
       throw new InsufficientTimeError();
     }
     this.#hasDispatched = true;
-    const claim: Marker = { callId: this.#call.id, attempt: this.#context.attempt, state: 'claimed' };
+    const claim = this.#checkpoint('claimed', this.#priorSendUpperBound() + 1);
     try { await this.#record(claim); }
     catch {
       this.#hasPreSendRetry = true;
-      try { await this.#context.recordHeartbeat({ callId: this.#call.id, attempt: this.#context.attempt, state: 'notSent' }); }
-      catch { /* A failed best-effort proof never grants a send in this attempt. */ }
+      if (this.#decision?.kind === 'sendAllowed') {
+        try { await this.#context.recordHeartbeat(this.#checkpoint('notSent', this.#priorSendUpperBound())); }
+        catch { /* A failed best-effort proof never grants a send in this attempt. */ }
+      }
       throw new CheckpointError();
     }
     const requestController = new AbortController();
@@ -108,27 +134,45 @@ export class Fence {
     }
   }
 
-  /** Checkpoint a pre-send Retry, permanently forbidding Dispatch in this attempt. */
+  /**
+   * Checkpoint a pre-send Retry with the sends made before this attempt, forbidding Dispatch in this attempt.
+   *
+   * Allowed only after `sendAllowed`. After `readBackThenResendAllowed` an earlier send is
+   * unresolved, and `notSent` would let the next attempt send without read-back, so return Retry
+   * without it.
+   */
   async recordNotSent(): Promise<void> {
     if (this.#decision?.kind !== 'sendAllowed' || this.#hasDispatched || this.#hasPreSendRetry) throw new DispatchNotAllowedError();
     this.#hasPreSendRetry = true;
-    await this.#record({ callId: this.#call.id, attempt: this.#context.attempt, state: 'notSent' });
+    await this.#record(this.#checkpoint('notSent', this.#priorSendUpperBound()));
   }
 
-  /** Checkpoint positive evidence that the prior request was not processed. */
+  /** Checkpoint positive evidence that this attempt's request was not processed, so it is not counted. */
   async recordCanResend(): Promise<void> {
     if (!this.#hasSendFinished || this.#hasTerminalRecordPending || this.#marker?.state !== 'claimed' || this.#marker.providerId) throw new DispatchNotAllowedError();
     this.#hasTerminalRecordPending = true;
-    try { await this.#record({ callId: this.#call.id, attempt: this.#context.attempt, state: 'canResend' }); }
+    try { await this.#record(this.#checkpoint('canResend', this.#priorSendUpperBound())); }
     finally { this.#hasTerminalRecordPending = false; }
   }
 
-  /** Checkpoint an accepted provider resource for read-back after a lost response. */
+  /** Checkpoint an accepted provider resource, with its claim's send count, for read-back after a lost response. */
   async recordProviderId(providerId: string): Promise<void> {
     if (!this.#hasSendFinished || this.#hasTerminalRecordPending || this.#marker?.state !== 'claimed' || !providerId) throw new DispatchNotAllowedError();
     this.#hasTerminalRecordPending = true;
-    try { await this.#record({ callId: this.#call.id, attempt: this.#context.attempt, state: 'claimed', providerId }); }
+    try { await this.#record(this.#checkpoint('claimed', this.#priorSendUpperBound() + 1, providerId)); }
     finally { this.#hasTerminalRecordPending = false; }
+  }
+
+  #isSendDecision(): boolean {
+    return this.#decision?.kind === 'sendAllowed' || this.#decision?.kind === 'readBackThenResendAllowed';
+  }
+
+  #priorSendUpperBound(): number { return this.#decision?.priorSendUpperBound ?? 0; }
+
+  /** A cap of 1 writes the earlier marker bytes so existing recordings and payloads stay valid. */
+  #checkpoint(state: MarkerState, sendCount: number, providerId?: string): Marker {
+    const isSendCountRecorded = this.#maxSends >= 2 && sendCount > 0;
+    return { callId: this.#call.id, attempt: this.#context.attempt, state, ...(providerId ? { providerId } : {}), ...(isSendCountRecorded ? { sendCount } : {}) };
   }
 
   async #record(marker: Marker): Promise<void> {

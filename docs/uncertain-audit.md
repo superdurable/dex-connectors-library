@@ -1,5 +1,15 @@
 # Mutation uncertainty audit
 
+> **Superseded rule.** The `execution.repeatOnUnknown` tiers in
+> [Repeat on an unknown outcome](connector-contract.md#repeat-on-an-unknown-outcome)
+> replace this audit's "never resend" premise. A Mutation now defaults to
+> `limited`: it reads back, then resends an unknown outcome until `maxSends`
+> (default 3) possible sends, and selects `uncertain` only at that cap. Only an
+> owner-approved `unsafe` operation keeps never-resend behavior. Each operation
+> below will be reclassified, and its connector migrated to the bounded-resend
+> Fence, in that connector's own pull request; until then the rows describe the
+> code as it is.
+
 This audit covers the 67 operations that declare `uncertain` among 142 Mutations on `origin/main` at `1f1c111` (2026-10-25). Source links identify the original uncertainty sites or their later retry replacements; shared helpers are cited for every operation that uses them. Line numbers may drift. Each later connector fix PR should update its own rows. The table describes current code, not a claim about provider behavior beyond the code. A verdict of **Fix** calls for a connector PR; **Fixed** records a completed change.
 
 **Reach column:** “error maybe sent” includes both pre-send and post-send transport errors when the code does not distinguish them. “Earlier marker maybe sent” means the current attempt is read-only, but a prior attempt may have dispatched. An HTTP response or accepted answer proves the request left the process. A provider-visible marker can be an external ID, custom field, label, or property found by read-back. A stable ID carried in a request is listed separately from a provider-enforced idempotency guarantee; a MIME `Message-ID` alone does not make an SMTP or Gmail submission safe to repeat.

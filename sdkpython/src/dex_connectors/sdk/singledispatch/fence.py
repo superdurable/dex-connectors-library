@@ -11,9 +11,20 @@ from typing import TypeVar
 import dex
 
 from ..types import Call
-from .markers import Decision, DecisionKind, Marker, State, decide_dispatch
+from .markers import (
+    MINIMUM_MAX_SENDS,
+    Decision,
+    DecisionKind,
+    Marker,
+    State,
+    decide_dispatch,
+    validate_max_sends,
+)
 
 Result = TypeVar("Result")
+_DISPATCH_PERMITTING_KINDS = (
+    DecisionKind.SEND_ALLOWED, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED,
+)
 
 
 class DispatchNotAllowedError(RuntimeError):
@@ -34,15 +45,26 @@ class Fence:
     Construct one Fence per logical Call and attempt. Decide before resolving
     credentials. Dispatch records the claim before calling `send`, repeats it
     every five seconds while the request runs, and never calls `send` twice.
+
+    `max_sends` caps the possibly effective sends of one Call ID across all
+    attempts. The default 1 never resends after a possible send. A value from
+    2 to 10 enables bounded resend: a decision of
+    `READ_BACK_THEN_RESEND_ALLOWED` permits Dispatch after the connector's
+    read-back is not found or inconclusive, or directly when the connector
+    cannot read back. Pass the same cap on every attempt of a Step execution.
+    With a cap of 2 or more, every marker records `send_count`; with the
+    default 1, markers omit it and match 0.9.0 bytes. A marker without the
+    count still yields a safe upper bound under any later cap.
     """
 
     def __init__(
         self, call: Call, execute_timeout: timedelta,
-        *, write_window_fraction: float = 7 / 12,
+        *, write_window_fraction: float = 7 / 12, max_sends: int = MINIMUM_MAX_SENDS,
     ) -> None:
         context = call.context
         if context is None or not call.id or context.attempt < 1 or execute_timeout <= timedelta(0):
             raise ValueError("single dispatch requires a call, positive attempt, and Execute timeout")
+        validate_max_sends(max_sends)
         if (
             not math.isfinite(write_window_fraction)
             or write_window_fraction <= 0
@@ -55,6 +77,7 @@ class Fence:
             budget = min(budget, context.deadline - started_at)
         budget = max(budget, timedelta(0))
         self._call = call
+        self._max_sends = max_sends
         self._context: dex.AsyncContext = context
         self.write_deadline = started_at + budget * write_window_fraction
         self._minimum_request_time = budget / 10
@@ -77,7 +100,9 @@ class Fence:
                     previous = self._context.get_last_heartbeat_value(Marker)
                     if previous is None:
                         raise ValueError("present heartbeat has no checkpoint")
-                self._decision = decide_dispatch(self._call.id, self._context.attempt, previous)
+                self._decision = decide_dispatch(
+                    self._call.id, self._context.attempt, previous, max_sends=self._max_sends
+                )
             except Exception:
                 self._decision = Decision(
                     DecisionKind.FAIL_CLOSED, error="single-dispatch checkpoint could not be read"
@@ -85,30 +110,40 @@ class Fence:
             return self._decision
 
     async def dispatch(self, send: Callable[[datetime], Awaitable[Result]]) -> Result:
-        """Checkpoint a claim, call `send` once within the write window, and repeat heartbeats."""
+        """Checkpoint a claim, call `send` once within the write window, and repeat heartbeats.
+
+        Allowed once after `SEND_ALLOWED`, or after `READ_BACK_THEN_RESEND_ALLOWED`
+        when read-back did not confirm the write. The claim records one more
+        send than the decision's prior send upper bound. A too-short write
+        window or failed claim records `notSent` only after `SEND_ALLOWED`.
+        """
         async with self._lock:
             if (
-                self._decision is None or self._decision.kind != DecisionKind.SEND_ALLOWED
+                self._decision is None or self._decision.kind not in _DISPATCH_PERMITTING_KINDS
                 or self._has_dispatched or self._has_pre_send_retry or send is None
             ):
                 raise DispatchNotAllowedError("single dispatch is not allowed for this attempt")
+            # notSent after an unresolved earlier send would let the next attempt skip read-back.
+            should_record_not_sent = self._decision.kind == DecisionKind.SEND_ALLOWED
             if (
                 self._minimum_request_time <= timedelta(0)
                 or self.write_deadline - datetime.now(UTC) < self._minimum_request_time
             ):
                 self._has_pre_send_retry = True
-                await self._record(Marker(self._call.id, self._context.attempt, State.NOT_SENT))
+                if should_record_not_sent:
+                    await self._record(self._not_sent_marker())
                 raise InsufficientAttemptTimeError("insufficient attempt time for single dispatch")
             self._has_dispatched = True
-            claim = Marker(self._call.id, self._context.attempt, State.CLAIMED)
+            claim = self._attempt_marker(State.CLAIMED, send_count=self._prior_send_count() + 1)
             try:
                 await self._record(claim)
             except Exception as error:
                 self._has_pre_send_retry = True
-                try:
-                    await self._record(Marker(self._call.id, self._context.attempt, State.NOT_SENT))
-                except Exception:
-                    pass
+                if should_record_not_sent:
+                    try:
+                        await self._record(self._not_sent_marker())
+                    except Exception:
+                        pass
                 raise CheckpointError("single-dispatch checkpoint could not be recorded") from error
         stop = asyncio.Event()
         repeater = asyncio.create_task(self._repeat_claim(claim, stop))
@@ -122,7 +157,13 @@ class Fence:
             await repeater
 
     async def record_not_sent(self) -> None:
-        """Checkpoint a pre-send Retry and forbid Dispatch for this attempt."""
+        """Checkpoint a pre-send Retry and forbid Dispatch for this attempt.
+
+        Allowed only after `SEND_ALLOWED`. After `READ_BACK_THEN_RESEND_ALLOWED`
+        a possible earlier send is unresolved; a `notSent` would let the next
+        attempt send without reading back, so return Retry without it.
+        The marker carries the prior send upper bound.
+        """
         async with self._lock:
             if (
                 self._decision is None or self._decision.kind != DecisionKind.SEND_ALLOWED
@@ -130,20 +171,28 @@ class Fence:
             ):
                 raise DispatchNotAllowedError("single dispatch is not allowed for this attempt")
             self._has_pre_send_retry = True
-            await self._record(Marker(self._call.id, self._context.attempt, State.NOT_SENT))
+            await self._record(self._not_sent_marker())
 
     async def record_can_resend(self) -> None:
-        """Checkpoint positive proof that the provider did not process the request."""
+        """Checkpoint positive proof that the provider did not process the request.
+
+        The marker carries the send count from before this attempt's claim.
+        """
         async with self._lock:
             if (
                 not self._has_send_finished or self._marker is None
                 or self._marker.state != State.CLAIMED or self._marker.provider_id
             ):
                 raise DispatchNotAllowedError("single dispatch is not allowed for this attempt")
-            await self._record(Marker(self._call.id, self._context.attempt, State.CAN_RESEND))
+            await self._record(
+                self._attempt_marker(State.CAN_RESEND, send_count=self._prior_send_count())
+            )
 
     async def record_provider_id(self, provider_id: str) -> None:
-        """Checkpoint an accepted resource identity for later read-back."""
+        """Checkpoint an accepted resource identity for later read-back.
+
+        The marker carries the same send count as this attempt's claim.
+        """
         async with self._lock:
             if (
                 not self._has_send_finished or self._marker is None
@@ -151,8 +200,23 @@ class Fence:
             ):
                 raise DispatchNotAllowedError("single dispatch is not allowed for this attempt")
             await self._record(
-                Marker(self._call.id, self._context.attempt, State.CLAIMED, provider_id)
+                self._attempt_marker(
+                    State.CLAIMED, provider_id, send_count=self._prior_send_count() + 1
+                )
             )
+
+    def _not_sent_marker(self) -> Marker:
+        return self._attempt_marker(State.NOT_SENT, send_count=self._prior_send_count())
+
+    def _prior_send_count(self) -> int:
+        return self._decision.prior_send_upper_bound if self._decision is not None else 0
+
+    def _attempt_marker(self, state: State, provider_id: str = "", *, send_count: int) -> Marker:
+        # A cap of 1 omits the count so markers stay byte-identical to 0.9.0.
+        recorded_send_count = send_count if self._max_sends > MINIMUM_MAX_SENDS else 0
+        return Marker(
+            self._call.id, self._context.attempt, state, provider_id, recorded_send_count
+        )
 
     async def _record(self, marker: Marker) -> None:
         await self._context.heartbeat(marker)

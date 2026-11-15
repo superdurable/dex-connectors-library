@@ -14,7 +14,7 @@ Run `cd sdkgo && UPDATE_CONFORMANCE_FIXTURES=1 GOWORK=off go test ./... -run '^T
 | `failures.json` | `sdkgo/errors.go:14` (every `FailureKind`), `sdkgo/errors.go:53` (`Failure` fields) |
 | `identity.json` | `sdkgo/types.go:25` (`CallID` validation), `sdkgo/types.go:151` (`Call`), `sdkgo/types.go:492` (length-prefixed SHA-1 UUID derivation), `sdkgo/types.go:353` (key fallback) |
 | `retry-policy.json` | `sdkgo/retry_policy.go:20` (default Dex retry policy) |
-| `single-dispatch-markers.json` | `sdkgo/singledispatch/fence.go:20` (states), `sdkgo/singledispatch/fence.go:30` (`Marker`) |
+| `single-dispatch-markers.json` | `sdkgo/singledispatch/fence.go:24` (states), `sdkgo/singledispatch/fence.go:36` (`Marker`, including the optional `sendCount`) |
 | `connections.json` | `sdkgo/projectconfig/dexweb.go:20` (schema), `sdkgo/projectconfig/dexweb.go:38` (local connection), `sdkgo/projectconfig/dexweb.go:50` (file) |
 | `project-environment.json` | `sdkgo/projectconfig/environment.go:44` (Dex Web selector), `sdkgo/projectconfig/environment.go:66` (`DEX_PROJECT_*` loader) |
 | `project-storage.json` | `sdkgo/projectconfig/storage.go:25` (object version and ETag), `sdkgo/projectconfig/storage.go:77` (scope prefix), `sdkgo/projectconfig/connections.go:326` (connection key), `sdkgo/projectconfig/configuration.go:101` (snapshot), `sdkgo/projectconfig/trigger_inbox.go:85` (inbox key) |

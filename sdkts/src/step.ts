@@ -4,7 +4,7 @@
 import { StepRef, forceFail, goTo, retryAfter, type AsyncContext, type Attribute, type BufferedTextStreamOptions, type Codec, type Step, type StepDecision, type StepOptions, type StepTarget, type Stream } from '@superdurable/dex';
 import { createCall, type ProgressUpdate } from './credentials.js';
 import { RetryError, type Failure } from './errors.js';
-import { validateMutationDefinition, validateQueryDefinition, type Mutation, type Query, type StepDefaults } from './operation.js';
+import { MaximumMaxSends, definitionMaxSends, isValidMaxSends, validateMutationDefinition, validateQueryDefinition, type Mutation, type MutationDefinition, type Query, type StepDefaults } from './operation.js';
 import { runMutation, runQuery } from './run_operation.js';
 import { ConnectionRefSchema, ConnectorConfigurationUISchema, defaultConnectorStepExecuteRetryPolicy, type BranchDefinition, type ConnectionRef, type ConnectorConfigurationUI, type MutationResult, type QueryResult } from './types.js';
 
@@ -49,6 +49,15 @@ export interface MutationStepConfig<StepInput, OperationInput, Output> extends O
   /** Provider write operation. */ operation: Mutation<OperationInput, Output>;
   /** Routes for every required branch and selected optional branches. */ branches: readonly BranchTarget<MutationResult<Output>>[];
   /** Optional terminal result Attribute registered in the Flow schema. */ resultAttribute?: Attribute<MutationResult<Output>>;
+  /**
+   * Application send cap for this Step, an integer from 1 to 10 replacing the operation's manifest
+   * `execution.maxSends`; 1 disables resend. Only an operation whose definition declares
+   * `repeatOnUnknown: 'limited'` accepts it; construction throws otherwise. When the manifest
+   * retry policy limits attempts and no `stepOptionsOverride.executeRetry` is set, a larger cap
+   * adds the difference to the maximum attempts so the cap is reachable. Every attempt of the Step
+   * receives the cap on `Call.maxSendsOverride`.
+   */
+  maxSends?: number;
 }
 
 interface StepIdentity { operation: { connectorId: string; operationId: string }; connection: ConnectionRef }
@@ -69,6 +78,7 @@ export class QueryStep<StepInput, OperationInput, Output> implements Step<StepIn
     const definition = configuration.operation.definition();
     validateQueryDefinition(definition);
     validateFactoryConfiguration(configuration);
+    if ((configuration as { maxSends?: unknown }).maxSends !== undefined) throw new TypeError('query Step rejects maxSends because a Query is safe to repeat');
     const routes = validateBranchTargets(definition.branches, configuration.branches);
     this.#configuration = configuration;
     this.#options = mergeStepOptions(definition.stepDefaults, configuration.stepOptionsOverride);
@@ -109,6 +119,7 @@ export class MutationStep<StepInput, OperationInput, Output> implements Step<Ste
   readonly #targets: ReadonlyMap<string, StepTarget<MutationResult<Output>>>;
   readonly #optional: ReadonlySet<string>;
   readonly #identity: StepIdentity;
+  readonly #maxSendsOverride: number | undefined;
 
   /** Validate static wiring before registering the Step in a Flow. */
   constructor(configuration: MutationStepConfig<StepInput, OperationInput, Output>) {
@@ -116,9 +127,11 @@ export class MutationStep<StepInput, OperationInput, Output> implements Step<Ste
     const definition = configuration.operation.definition();
     validateMutationDefinition(definition);
     validateFactoryConfiguration(configuration);
+    validateMaxSendsOverride(definition, configuration.maxSends);
     const routes = validateBranchTargets(definition.branches, configuration.branches);
     this.#configuration = configuration;
-    this.#options = mergeStepOptions(definition.stepDefaults, configuration.stepOptionsOverride);
+    this.#maxSendsOverride = configuration.maxSends;
+    this.#options = widenAttemptsForMaxSends(mergeStepOptions(definition.stepDefaults, configuration.stepOptionsOverride), definition, configuration.maxSends, configuration.stepOptionsOverride);
     this.#ui = ConnectorConfigurationUISchema.parse(configuration.configurationUI ?? { units: [] });
     this.#targets = routes.targets;
     this.#optional = routes.optional;
@@ -138,6 +151,7 @@ export class MutationStep<StepInput, OperationInput, Output> implements Step<Ste
       ...(this.#configuration.progressStream ? { progressStream: this.#configuration.progressStream } : {}),
       ...(this.#configuration.textStream ? { textStream: this.#configuration.textStream } : {}),
       ...(this.#configuration.textOptions ? { textOptions: this.#configuration.textOptions } : {}),
+      ...(this.#maxSendsOverride !== undefined ? { maxSendsOverride: this.#maxSendsOverride } : {}),
     });
     let result: MutationResult<Output>;
     try { result = await runMutation(this.#configuration.operation, call, operationInput); }
@@ -157,6 +171,21 @@ function validateFactoryConfiguration(configuration: Pick<QueryStepConfig<unknow
   if (!/^[a-z][a-z0-9-]*$/.test(configuration.annotations?.groupId ?? '') || !configuration.annotations.groupLabel?.trim() || !configuration.annotations.explanation?.trim()) throw new TypeError('Step group, group label, and explanation are required');
   ConnectionRefSchema.parse(configuration.connection);
   if (typeof configuration.mapToOperationInput !== 'function') throw new TypeError('mapToOperationInput is required');
+}
+
+function validateMaxSendsOverride(definition: MutationDefinition, maxSends: number | undefined): void {
+  if (maxSends === undefined) return;
+  if (definition.repeatOnUnknown !== 'limited') throw new TypeError(`${definition.operation.connectorId} ${definition.operation.operationId} rejects maxSends because its repeatOnUnknown is ${definition.repeatOnUnknown ?? 'undeclared'}, not limited`);
+  if (!isValidMaxSends(maxSends)) throw new RangeError(`connector Step maxSends must be an integer from 1 to ${MaximumMaxSends}`);
+}
+
+/** Extra sends need extra attempts only when the manifest policy limits attempts. */
+function widenAttemptsForMaxSends(options: StepOptions, definition: MutationDefinition, maxSends: number | undefined, override: StepOptions | undefined): StepOptions {
+  const maximumAttempts = options.executeRetry?.maximumAttempts ?? 0;
+  if (maxSends === undefined || override?.executeRetry || !options.executeRetry || maximumAttempts <= 0) return options;
+  const additionalSends = maxSends - definitionMaxSends(definition);
+  if (additionalSends <= 0) return options;
+  return { ...options, executeRetry: { ...options.executeRetry, maximumAttempts: maximumAttempts + additionalSends } };
 }
 
 function validateBranchTargets<Result>(definitions: readonly BranchDefinition[], routes: readonly BranchTarget<Result>[]): { targets: ReadonlyMap<string, StepTarget<Result>>; optional: ReadonlySet<string> } {

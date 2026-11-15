@@ -78,8 +78,18 @@ type AgentToolMetadata struct {
 	// IsApprovalRecommended reports agent.approval: recommended, which asks
 	// the host to stop for a person before the call runs.
 	IsApprovalRecommended bool
-	// IsRetrySafe reports agent.retry: safe. Only a Mutation may set it.
+	// IsRetrySafe reports agent.retry: safe, which a Mutation whose RepeatOnUnknown is safe
+	// also implies. Only a Mutation may set it.
 	IsRetrySafe bool
+	// RepeatOnUnknown is a Mutation's execution.repeatOnUnknown tier and must equal the
+	// operation definition's. It is empty for a Query, whose repeats are always safe, and
+	// in metadata generated for an sdkgo release before v0.37.0, which a host treats by
+	// IsRetrySafe alone.
+	RepeatOnUnknown RepeatOnUnknown
+	// MaxSends is the send cap of a limited Mutation, equal to the operation definition's;
+	// zero otherwise. A host's per-tool override of the cap must stay within 1 through
+	// MaxSendsCeiling.
+	MaxSends int32
 	// BranchOutcomes is the manifest's agent.branches map. Keys are optional
 	// branch IDs of the operation; a missing key fails closed, see RunAttempt.
 	BranchOutcomes map[BranchID]AgentBranchOutcome
@@ -148,7 +158,8 @@ type AgentTool interface {
 	//     even if RecordCanResend followed, or Decide withheld a send because
 	//     the prior checkpoint was missing after attempt one, unreadable,
 	//     foreign, invalid, claimed, carried a provider ID, or came from an
-	//     attempt other than the previous one;
+	//     attempt other than the previous one, including when a send cap let
+	//     it return ReadBackThenResendAllowed;
 	//  5. a listed branch takes its listed outcome;
 	//  6. an unlisted Mutation branch is unknown;
 	//  7. an unlisted Query branch, including defect, is failed.
@@ -173,6 +184,17 @@ type AgentTool interface {
 	// Error text names only an error category or type, never argument or
 	// result content.
 	RunAttempt(ctx dex.Context, arguments json.RawMessage) (AgentToolAttempt, error)
+	// RunAttemptWithOptions is RunAttempt with RunOption values passed to
+	// RunQuery or RunMutation.
+	//
+	// A host sets a per-tool send cap with WithMaxSends, from 1 to
+	// MaxSendsCeiling, only on a Mutation whose RepeatOnUnknown is limited;
+	// every attempt of one call must pass the same value. A raised cap needs
+	// as many attempts as sends, so a host that limits attempts adds the
+	// difference to its limit. A nil, out-of-range, or misplaced option
+	// returns an error wrapping ErrAgentToolRunOptionInvalid, and nothing is
+	// invoked. Every other result is as RunAttempt describes.
+	RunAttemptWithOptions(ctx dex.Context, arguments json.RawMessage, options ...RunOption) (AgentToolAttempt, error)
 	isAgentTool()
 }
 
@@ -223,6 +245,11 @@ type AgentToolAttempt struct {
 // decode into the operation input. Nothing was invoked.
 var ErrAgentToolArgumentsInvalid = errors.New("agent tool arguments do not decode into the operation input")
 
+// ErrAgentToolRunOptionInvalid is wrapped by RunAttempt when a RunOption is
+// nil or invalid, such as WithMaxSends outside 1 through MaxSendsCeiling or on
+// a tool whose RepeatOnUnknown is not limited. Nothing was invoked.
+var ErrAgentToolRunOptionInvalid = errors.New("agent tool run option is invalid")
+
 // ErrAgentToolResultUnencodable is wrapped by RunAttempt when the operation's
 // result value does not encode as JSON. The operation was invoked.
 var ErrAgentToolResultUnencodable = errors.New("agent tool result value does not encode as JSON")
@@ -246,7 +273,8 @@ type mutationAgentTool[IN, OUT any] struct {
 // NewQueryAgentTool binds a Query operation to a connection as an AgentTool.
 // It returns an error when operation is nil, the connection or the operation
 // definition is invalid, or metadata does not match the definition: another
-// OperationRef, a Kind other than query, IsRetrySafe set, a BranchOutcomes key
+// OperationRef, a Kind other than query, IsRetrySafe, RepeatOnUnknown, or
+// MaxSends set, a BranchOutcomes key
 // that is not an optional branch or a value other than rejected, Branches or
 // StepDefaults that differ from the definition, a ToolName other than the
 // connector ID, an underscore, and the snake case operation ID, a blank
@@ -260,7 +288,7 @@ func NewQueryAgentTool[IN, OUT any](operation Query[IN, OUT], connection Connect
 	if err := definition.Validate(); err != nil {
 		return nil, fmt.Errorf("agent tool Query definition: %w", err)
 	}
-	if err := validateAgentToolMetadata(metadata, AgentOperationKindQuery, definition.Operation, definition.Branches, definition.StepDefaults, connection); err != nil {
+	if err := validateAgentToolMetadata(metadata, AgentOperationKindQuery, definition.Operation, definition.Branches, definition.StepDefaults, "", 0, connection); err != nil {
 		return nil, err
 	}
 	return queryAgentTool[IN, OUT]{operation: operation, connection: connection, metadata: cloneAgentToolMetadata(metadata)}, nil
@@ -271,10 +299,12 @@ func NewQueryAgentTool[IN, OUT any](operation Query[IN, OUT], connection Connect
 // operation definition is invalid, or metadata does not match the definition:
 // another OperationRef, a Kind other than mutation, a BranchOutcomes key that
 // is not an optional branch, a value other than rejected or unknown, the
-// uncertain branch mapped to rejected, Branches or StepDefaults that differ
-// from the definition, a ToolName other than the connector ID, an underscore,
-// and the snake case operation ID, a blank Description, or an InputSchema that
-// is not a JSON object. The tool keeps its own copy of metadata.
+// uncertain branch mapped to rejected, Branches, StepDefaults, RepeatOnUnknown,
+// or MaxSends that differ from the definition, IsRetrySafe that disagrees with
+// a non-empty RepeatOnUnknown, a ToolName other than the connector ID, an
+// underscore, and the snake case operation ID, a blank Description, or an
+// InputSchema that is not a JSON object. The tool keeps its own copy of
+// metadata.
 func NewMutationAgentTool[IN, OUT any](operation Mutation[IN, OUT], connection ConnectionRef, metadata AgentToolMetadata) (AgentTool, error) {
 	if isNilValue(operation) {
 		return nil, errors.New("agent tool Mutation operation is required")
@@ -283,7 +313,7 @@ func NewMutationAgentTool[IN, OUT any](operation Mutation[IN, OUT], connection C
 	if err := definition.Validate(); err != nil {
 		return nil, fmt.Errorf("agent tool Mutation definition: %w", err)
 	}
-	if err := validateAgentToolMetadata(metadata, AgentOperationKindMutation, definition.Operation, definition.Branches, definition.StepDefaults, connection); err != nil {
+	if err := validateAgentToolMetadata(metadata, AgentOperationKindMutation, definition.Operation, definition.Branches, definition.StepDefaults, definition.RepeatOnUnknown, definition.MaxSends, connection); err != nil {
 		return nil, err
 	}
 	return mutationAgentTool[IN, OUT]{operation: operation, connection: connection, metadata: cloneAgentToolMetadata(metadata)}, nil
@@ -298,14 +328,23 @@ func (tool queryAgentTool[IN, OUT]) Metadata() AgentToolMetadata {
 func (tool queryAgentTool[IN, OUT]) Connection() ConnectionRef { return tool.connection }
 
 // RunAttempt runs and classifies one attempt; see AgentTool.RunAttempt.
-func (tool queryAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments json.RawMessage) (attempt AgentToolAttempt, err error) {
+func (tool queryAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments json.RawMessage) (AgentToolAttempt, error) {
+	return tool.RunAttemptWithOptions(ctx, arguments)
+}
+
+// RunAttemptWithOptions runs and classifies one attempt with run options; see
+// AgentTool.RunAttemptWithOptions.
+func (tool queryAgentTool[IN, OUT]) RunAttemptWithOptions(ctx dex.Context, arguments json.RawMessage, options ...RunOption) (attempt AgentToolAttempt, err error) {
+	if err := validateAgentToolRunOptions(tool.metadata.ToolName, options, noResendPolicy); err != nil {
+		return AgentToolAttempt{}, err
+	}
 	input, err := decodeAgentToolArguments[IN](tool.metadata.ToolName, arguments)
 	if err != nil {
 		return AgentToolAttempt{}, err
 	}
 	trace := &operationRunTrace{}
 	defer recoverAgentToolPanic(tool.metadata.Operation, trace, &attempt, &err)
-	result, runErr := runQueryWithTrace(ctx, tool.operation, tool.connection, input, trace)
+	result, runErr := runQueryWithTrace(ctx, tool.operation, tool.connection, input, trace, options...)
 	if runErr != nil {
 		return agentToolRetryAttempt(tool.metadata.Operation, trace, runErr)
 	}
@@ -323,7 +362,16 @@ func (tool mutationAgentTool[IN, OUT]) Metadata() AgentToolMetadata {
 func (tool mutationAgentTool[IN, OUT]) Connection() ConnectionRef { return tool.connection }
 
 // RunAttempt runs and classifies one attempt; see AgentTool.RunAttempt.
-func (tool mutationAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments json.RawMessage) (attempt AgentToolAttempt, err error) {
+func (tool mutationAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments json.RawMessage) (AgentToolAttempt, error) {
+	return tool.RunAttemptWithOptions(ctx, arguments)
+}
+
+// RunAttemptWithOptions runs and classifies one attempt with run options; see
+// AgentTool.RunAttemptWithOptions.
+func (tool mutationAgentTool[IN, OUT]) RunAttemptWithOptions(ctx dex.Context, arguments json.RawMessage, options ...RunOption) (attempt AgentToolAttempt, err error) {
+	if err := validateAgentToolRunOptions(tool.metadata.ToolName, options, tool.operation.Definition().sendCapPolicy()); err != nil {
+		return AgentToolAttempt{}, err
+	}
 	input, err := decodeAgentToolArguments[IN](tool.metadata.ToolName, arguments)
 	if err != nil {
 		return AgentToolAttempt{}, err
@@ -337,7 +385,7 @@ func (tool mutationAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments jso
 		observation, endObservation = fenceobservation.Begin(fenceobservation.AttemptIdentity{CallID: string(callID), Attempt: ctx.Attempt()})
 		defer endObservation()
 	}
-	result, runErr := runMutationWithTrace(ctx, tool.operation, tool.connection, input, trace)
+	result, runErr := runMutationWithTrace(ctx, tool.operation, tool.connection, input, trace, options...)
 	if runErr != nil {
 		return agentToolRetryAttempt(tool.metadata.Operation, trace, runErr)
 	}
@@ -423,6 +471,24 @@ func isRequiredBranch(branches []BranchDefinition, branch BranchID) bool {
 	return false
 }
 
+// validateAgentToolRunOptions applies configureCall's checks before invoking, so a host
+// mistake errors instead of becoming an unknown defect.
+func validateAgentToolRunOptions(toolName string, options []RunOption, sendCaps sendCapPolicy) error {
+	config := runConfig{}
+	for _, option := range options {
+		if option == nil {
+			return fmt.Errorf("%w: %s: RunOption is nil", ErrAgentToolRunOptionInvalid, toolName)
+		}
+		if err := option.apply(&config); err != nil {
+			return fmt.Errorf("%w: %s: %s", ErrAgentToolRunOptionInvalid, toolName, err.Error())
+		}
+	}
+	if config.maxSendsOverride != 0 && !sendCaps.isOverridable {
+		return fmt.Errorf("%w: %s: WithMaxSends requires a Mutation whose RepeatOnUnknown is limited", ErrAgentToolRunOptionInvalid, toolName)
+	}
+	return nil
+}
+
 func decodeAgentToolArguments[IN any](toolName string, arguments json.RawMessage) (IN, error) {
 	var input IN
 	trimmed := bytes.TrimSpace(arguments)
@@ -459,7 +525,10 @@ func describeArgumentDecodingError(err error) string {
 	}
 }
 
-func validateAgentToolMetadata(metadata AgentToolMetadata, kind AgentOperationKind, operation OperationRef, branches []BranchDefinition, defaults StepDefaults, connection ConnectionRef) error {
+func validateAgentToolMetadata(
+	metadata AgentToolMetadata, kind AgentOperationKind, operation OperationRef, branches []BranchDefinition, defaults StepDefaults,
+	repeatOnUnknown RepeatOnUnknown, maxSends int32, connection ConnectionRef,
+) error {
 	if err := connection.Validate(); err != nil {
 		return fmt.Errorf("agent tool connection: %w", err)
 	}
@@ -478,6 +547,12 @@ func validateAgentToolMetadata(metadata AgentToolMetadata, kind AgentOperationKi
 	}
 	if metadata.IsRetrySafe && kind != AgentOperationKindMutation {
 		return fmt.Errorf("agent tool %s: only a Mutation may be retry safe", metadata.ToolName)
+	}
+	if metadata.RepeatOnUnknown != repeatOnUnknown || metadata.MaxSends != maxSends {
+		return fmt.Errorf("agent tool %s RepeatOnUnknown and MaxSends do not match the operation definition", metadata.ToolName)
+	}
+	if repeatOnUnknown != "" && metadata.IsRetrySafe != (repeatOnUnknown == RepeatOnUnknownSafe) {
+		return fmt.Errorf("agent tool %s IsRetrySafe must be true exactly when RepeatOnUnknown is safe", metadata.ToolName)
 	}
 	if !reflect.DeepEqual(metadata.Branches, branches) {
 		return fmt.Errorf("agent tool %s branches do not match the operation definition", metadata.ToolName)

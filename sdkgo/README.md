@@ -427,11 +427,11 @@ nobody has saved the Step's configuration yet, the error is
 a default; every other error means the saved value is invalid.
 
 Every operation declares the standard `defect` branch. A Mutation declares the
-standard `uncertain` branch only when all three conditions hold: the request
-may have reached the provider; no idempotency key, stable deduplication ID,
-absolute replacement, upsert, or delete makes a repeat safe; and a read-back
-cannot confirm the outcome. A Mutation that cannot produce uncertainty omits
-that branch and target. See
+standard `uncertain` branch only when the request may have reached the
+provider, a read-back cannot confirm the outcome, and its `repeatOnUnknown`
+tier forbids another send: always for `unsafe`, and once `maxSends` is reached
+for `limited`. A `safe` Mutation retries an unknown outcome instead. A
+Mutation that cannot produce uncertainty omits that branch and target. See
 [Branch-only Result and strict Attempt](../docs/connector-contract.md#branch-only-result-and-strict-attempt).
 
 ### Step Execute retries
@@ -495,6 +495,37 @@ An HTTP request used by the fence is single-use.
 
 Legacy per-connector markers fail closed on first deploy of the shared fence.
 Plan reconciliation for in-flight calls before replacing their markers.
+
+### Bounded resend for `repeatOnUnknown: limited`
+
+From v0.37.0, a Mutation definition carries `RepeatOnUnknown` and `MaxSends`
+from the manifest's `execution.repeatOnUnknown` and `execution.maxSends`. A
+`limited` operation passes the call's cap to its Fence:
+`singledispatch.NewFence(call, timeout, singledispatch.WithMaxSends(call.MaxSends()))`.
+`Call.MaxSends` returns the application's per-Step override or the
+definition's cap, and 1 for every other tier; never hard-code the number.
+Without `WithMaxSends`, or with 1, the Fence decides exactly as before.
+
+With a cap of 2 or more, a later attempt that today gets `ReadBackRequired`
+gets `ReadBackThenResendAllowed` while the upper bound of earlier possibly
+effective sends, `Decision.MaximumPriorSends`, is below the cap. Read back
+first when the provider allows it: a confirmed write selects the happy path,
+and a definite absence or an inconclusive read-back permits `Dispatch`. A
+saved `Marker.ProviderID` is read back before any resend. A connector without
+read-back may call `Dispatch` directly. A pre-send Retry under this decision
+records nothing, because `notSent` would let the next attempt skip read-back.
+At the cap, the decision is `ReadBackRequired` and an unconfirmed write selects
+`uncertain`. A capped Fence's markers record `sendCount`; an uncapped Fence's
+markers are unchanged, and a marker without the count is counted
+conservatively.
+
+An application raises or lowers the cap of one Step with
+`MutationStepConfig.MaxSends`, or the generated factory's `MaxSends` field, from
+1 to `sdkgo.MaxSendsCeiling`. The factory rejects it for a `safe` or `unsafe`
+operation. A raised cap adds the difference to a definition retry policy that
+limits attempts; an explicit `StepOptionsOverride.ExecuteRetry` is used as
+given. Direct `RunMutation` callers pass `sdkgo.WithMaxSends`, and agent hosts
+pass it to `AgentTool.RunAttemptWithOptions`.
 
 The complete runnable connector example is
 [`examples/single-dispatch/main.go`](examples/single-dispatch/main.go). It uses a
@@ -1053,7 +1084,15 @@ select after the request may have been sent as `unknown`.
 A connector Retry returns the outcome `retry` with the Failure and any
 `RetryAfter`, and the host decides whether to repeat. `HasInvokedOperation`
 is false when the attempt ended before `Invoke`, so the provider was not
-called. RunAttempt returns an error instead of an attempt when arguments do
+called. From v0.37.0, `RunAttemptWithOptions(ctx, arguments, options...)`
+passes `RunOption` values to `RunQuery` or `RunMutation`, so a host sets one tool's
+send cap with `sdkgo.WithMaxSends`, from 1 to `sdkgo.MaxSendsCeiling`, on a
+Mutation whose `RepeatOnUnknown` is `limited`; every attempt of one call passes
+the same value. A raised cap needs one attempt per send, so a host that limits
+attempts adds the difference to its limit. `RunAttempt` is the same call
+without options. Either returns an error instead
+of an attempt when a `RunOption` is nil, out of range, or set on a tool that is
+not `limited` (`ErrAgentToolRunOptionInvalid`), arguments do
 not decode (`ErrAgentToolArgumentsInvalid`), the operation panics
 (`ErrAgentToolPanicked`), or the result value does not encode as JSON
 (`ErrAgentToolResultUnencodable`); only `HasInvokedOperation` is meaningful

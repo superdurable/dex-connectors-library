@@ -13,6 +13,21 @@ export interface StepDefaults {
   /** Absence inherits the Flow durability. */ executeDurability?: 'default' | 'sync' | 'async';
 }
 
+/**
+ * Manifest `execution.repeatOnUnknown`: what an operation may do when a request's outcome is unknown.
+ *
+ * - `safe`: repeating is harmless, so the Step retry policy retries it.
+ * - `limited`: a duplicate is acceptable, so the connector reads back when it can and resends while
+ *   the possible sends stay below the operation's send cap.
+ * - `unsafe`: a duplicate does real harm, so the connector reads back only and never resends.
+ */
+export type RepeatOnUnknown = 'safe' | 'limited' | 'unsafe';
+
+/** Send cap of a `limited` operation whose manifest omits `execution.maxSends`. */
+export const DefaultLimitedMaxSends = 3;
+/** Largest send cap a manifest or an application override may set. */
+export const MaximumMaxSends = 10;
+
 /** Stable query routes and Execute defaults. */
 export interface QueryDefinition {
   /** Manifest operation identity. */ operation: OperationRef;
@@ -20,8 +35,29 @@ export interface QueryDefinition {
   /** Execute options for the generated Step. */ stepDefaults: StepDefaults;
 }
 
-/** Stable mutation routes and Execute defaults. */
-export type MutationDefinition = QueryDefinition;
+/** Stable mutation routes, Execute defaults, and unknown-outcome policy. A Query is always `safe`. */
+export interface MutationDefinition extends QueryDefinition {
+  /**
+   * Manifest `execution.repeatOnUnknown`. Absence means the definition predates the field, and a
+   * Step factory then rejects an application send cap.
+   */
+  repeatOnUnknown?: RepeatOnUnknown;
+  /**
+   * Manifest `execution.maxSends`, an integer from 2 to 10, allowed only with `limited`. Absence
+   * means {@link DefaultLimitedMaxSends}. It caps possibly effective sends, not Execute attempts.
+   */
+  maxSends?: number;
+}
+
+/** Whether a value is an integer send cap from 1 to {@link MaximumMaxSends}. */
+export function isValidMaxSends(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MaximumMaxSends;
+}
+
+/** Send cap that a definition declares: its `maxSends` or the default when `limited`, otherwise 1. */
+export function definitionMaxSends(definition: MutationDefinition): number {
+  return definition.repeatOnUnknown === 'limited' ? definition.maxSends ?? DefaultLimitedMaxSends : 1;
+}
 
 /** Read-only provider operation invoked once per Dex Execute attempt. */
 export interface Query<Input, Output> {
@@ -43,7 +79,13 @@ export function validateQueryDefinition(definition: QueryDefinition): void {
 }
 
 /** Validate a mutation definition before any provider call or Step registration. */
-export function validateMutationDefinition(definition: MutationDefinition): void { validateDefinition(definition); }
+export function validateMutationDefinition(definition: MutationDefinition): void {
+  validateDefinition(definition);
+  if (definition.repeatOnUnknown !== undefined && !['safe', 'limited', 'unsafe'].includes(definition.repeatOnUnknown)) throw new TypeError('mutation repeatOnUnknown must be safe, limited, or unsafe');
+  if (definition.maxSends === undefined) return;
+  if (definition.repeatOnUnknown !== 'limited') throw new TypeError('mutation maxSends requires repeatOnUnknown limited');
+  if (!isValidMaxSends(definition.maxSends) || definition.maxSends < 2) throw new TypeError(`mutation maxSends must be an integer from 2 to ${MaximumMaxSends}`);
+}
 
 function validateDefinition(definition: QueryDefinition): void {
   OperationRefSchema.parse(definition.operation);

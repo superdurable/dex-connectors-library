@@ -8,6 +8,7 @@ import re
 import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from typing import Generic, Literal, Self, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -166,6 +167,14 @@ class Call:
     context: AsyncContext | None = field(default=None, repr=False, compare=False)
     _progress_reporter: _ProgressReporter | None = field(default=None, repr=False, compare=False)
     _text_writer: AsyncBufferedTextStream | None = field(default=None, repr=False, compare=False)
+    max_sends: int = field(default=1, compare=False)
+    """Single-dispatch send cap for this Step execution, within 1..10.
+
+    A Mutation Step sets the manifest `maxSends` of a `limited` operation, or
+    the application's `max_sends_override`; otherwise it is 1. Pass it to
+    `singledispatch.Fence(max_sends=...)`. It is not part of the persisted
+    call identity.
+    """
 
     def report_progress(self, progress: Progress) -> None:
         """Append structured progress when the consuming Flow registered a Stream."""
@@ -340,13 +349,46 @@ class QueryDefinition:
         return result
 
 
+class RepeatOnUnknown(StrEnum):
+    """Manifest `execution.repeatOnUnknown` tier for an unknown provider outcome."""
+
+    SAFE = "safe"
+    """Repeating is harmless; retry within the Step retry policy."""
+    LIMITED = "limited"
+    """A duplicate is acceptable; resend while possible sends stay below `maxSends`."""
+    UNSAFE = "unsafe"
+    """A duplicate does real harm; read back only and never resend."""
+
+
 @dataclass(frozen=True, slots=True)
 class MutationDefinition(QueryDefinition):
-    """Mutation identity, stable routes, and Execute defaults including uncertainty."""
+    """Mutation identity, stable routes, and Execute defaults including uncertainty.
+
+    `repeat_on_unknown` and `max_sends` carry the manifest
+    `execution.repeatOnUnknown` and `execution.maxSends`. `None` means the
+    definition predates these fields; a Step then rejects a max sends override
+    and passes a send cap of 1. `max_sends` is 2..10 for `LIMITED` and 0
+    otherwise. Neither field is part of the definition's wire encoding.
+    """
+
+    repeat_on_unknown: RepeatOnUnknown | None = None
+    max_sends: int = 0
 
     def validate(self) -> None:
-        """Require distinct routes and a defect branch; uncertainty is optional."""
+        """Require distinct routes, a defect branch, and a consistent resend tier."""
         self.operation.validate()
+        if self.repeat_on_unknown is not None and not isinstance(
+            self.repeat_on_unknown, RepeatOnUnknown
+        ):
+            raise ValueError("Mutation repeatOnUnknown is invalid")
+        if self.repeat_on_unknown == RepeatOnUnknown.LIMITED:
+            if (
+                not isinstance(self.max_sends, int) or isinstance(self.max_sends, bool)
+                or not 2 <= self.max_sends <= 10
+            ):
+                raise ValueError("limited Mutation maxSends must be an integer within 2..10")
+        elif self.max_sends != 0:
+            raise ValueError("Mutation maxSends requires repeatOnUnknown limited")
         if self.branches is None or not self.branches:
             self.step_defaults.validate()
             return

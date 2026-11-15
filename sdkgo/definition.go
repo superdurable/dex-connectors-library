@@ -43,6 +43,9 @@ func (definition MutationDefinition) Validate() error {
 	if !branches[DefectBranchID] {
 		return fmt.Errorf("defect branch is not declared")
 	}
+	if err := validateRepeatOnUnknown(definition.RepeatOnUnknown, definition.MaxSends); err != nil {
+		return err
+	}
 	return validateDefinitionOptions(definition.StepDefaults)
 }
 

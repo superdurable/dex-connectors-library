@@ -14,12 +14,15 @@ from .configuration_ui import ConnectorConfigurationUI
 from .errors import Failure, RetryError
 from .operations import Mutation, Query, run_mutation, run_query
 from .retry_policy import default_connector_step_execute_retry_policy
+from .singledispatch.markers import MINIMUM_MAX_SENDS, validate_max_sends
 from .types import (
     Call,
     ConnectionRef,
+    MutationDefinition,
     MutationResult,
     ProgressUpdate,
     QueryResult,
+    RepeatOnUnknown,
     StepDefaults,
     _ProgressReporter,
     derive_call_id,
@@ -83,6 +86,12 @@ class MutationStepConfig(Generic[StepInput, OperationInput, Output]):
     Register the constructed Step instance in a Flow. The operation supplies
     a stable idempotency key for retries, and only declared terminal branches
     may route to another Step.
+
+    `max_sends_override` replaces the send cap of a `limited` operation for
+    this Step, within 1..10; 1 disables resend. Operations that are `safe`,
+    `unsafe`, or undeclared reject it. When the operation's retry policy
+    limits attempts, the Step adds attempts for a raised cap so it stays
+    reachable; an explicit `step_options_override.execute_retry` still wins.
     """
 
     step_type: str
@@ -101,6 +110,7 @@ class MutationStepConfig(Generic[StepInput, OperationInput, Output]):
     text_flush_interval: timedelta = timedelta(seconds=1)
     text_max_buffered_bytes: int = 16 * 1024
     step_options_override: dex.StepOptions | None = None
+    max_sends_override: int | None = None
 
 
 class QueryStep(dex.Step[StepInput], Generic[StepInput, OperationInput, Output]):
@@ -182,7 +192,12 @@ class MutationStep(dex.Step[StepInput], Generic[StepInput, OperationInput, Outpu
         )
         self._config = config
         self._operation_ref = definition.operation
-        self._options = _step_options(definition.step_defaults, config.step_options_override)
+        self._max_sends, additional_execute_attempts = _mutation_send_cap(
+            definition, config.max_sends_override
+        )
+        self._options = _step_options(
+            definition.step_defaults, config.step_options_override, additional_execute_attempts
+        )
 
     def get_step_type(self) -> str:
         """Return the stable instance identity registered with Dex."""
@@ -195,6 +210,11 @@ class MutationStep(dex.Step[StepInput], Generic[StepInput, OperationInput, Outpu
     def get_step_options(self) -> dex.StepOptions:
         """Return the Execute defaults merged with application overrides."""
         return self._options
+
+    @property
+    def max_sends(self) -> int:
+        """Return the single-dispatch send cap every attempt of this Step receives."""
+        return self._max_sends
 
     @property
     def annotations(self) -> StepAnnotations:
@@ -214,6 +234,7 @@ class MutationStep(dex.Step[StepInput], Generic[StepInput, OperationInput, Outpu
             context, self._operation_ref, self._config.connection,
             self._config.progress_stream, self._config.text_stream,
             self._config.text_flush_interval, self._config.text_max_buffered_bytes,
+            max_sends=self._max_sends,
         )
         try:
             result = await run_mutation(
@@ -260,7 +281,23 @@ def _validate_branches(
     return dict(targets), {branch_id for branch_id, branch in declared.items() if branch.optional}
 
 
-def _step_options(defaults: StepDefaults, override: dex.StepOptions | None) -> dex.StepOptions:
+def _mutation_send_cap(
+    definition: MutationDefinition, max_sends_override: int | None
+) -> tuple[int, int]:
+    """Return the Step's send cap and the Execute attempts a raised cap adds."""
+    is_limited = definition.repeat_on_unknown == RepeatOnUnknown.LIMITED
+    if max_sends_override is None:
+        return (definition.max_sends if is_limited else MINIMUM_MAX_SENDS), 0
+    validate_max_sends(max_sends_override)
+    if not is_limited:
+        raise ValueError("max_sends_override requires a repeatOnUnknown limited operation")
+    return max_sends_override, max(0, max_sends_override - definition.max_sends)
+
+
+def _step_options(
+    defaults: StepDefaults, override: dex.StepOptions | None,
+    additional_execute_attempts: int = 0,
+) -> dex.StepOptions:
     if override is not None and (
         override.wait_for_method_timeout is not None
         or override.wait_for_retry is not None
@@ -275,11 +312,15 @@ def _step_options(defaults: StepDefaults, override: dex.StepOptions | None) -> d
     ):
         raise ValueError("execute-only connector Step rejects wait_for options")
     policy = defaults.execute_retry or default_connector_step_execute_retry_policy()
+    maximum_attempts = policy.maximum_attempts
+    if maximum_attempts > 0:
+        # Zero means unlimited attempts, which already reach any send cap.
+        maximum_attempts += additional_execute_attempts
     retry = dex.RetryPolicy(
         initial_interval=policy.initial_interval,
         backoff_coefficient=policy.backoff_coefficient,
         maximum_interval=policy.maximum_interval,
-        maximum_attempts=policy.maximum_attempts,
+        maximum_attempts=maximum_attempts,
         total_duration=policy.total_duration,
     )
     base = dex.StepOptions(
@@ -311,7 +352,7 @@ def _call(
     context: dex.AsyncContext, operation: object, connection: ConnectionRef,
     progress_stream: dex.Stream[ProgressUpdate] | None,
     text_stream: dex.Stream[str] | None, text_flush_interval: timedelta,
-    text_max_buffered_bytes: int,
+    text_max_buffered_bytes: int, *, max_sends: int = MINIMUM_MAX_SENDS,
 ) -> Call:
     from .types import OperationRef
 
@@ -332,7 +373,7 @@ def _call(
     )
     return Call(
         call_id, connection, operation_ref, context=context,
-        _progress_reporter=progress_reporter, _text_writer=text_writer,
+        _progress_reporter=progress_reporter, _text_writer=text_writer, max_sends=max_sends,
     )
 
 

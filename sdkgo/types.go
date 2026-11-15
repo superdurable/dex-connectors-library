@@ -81,7 +81,7 @@ const (
 	// DefectBranchID is the standard route for local Connector defects.
 	DefectBranchID BranchID = "defect"
 	// UncertainBranchID is the optional route for a Mutation write that may have reached the
-	// provider, cannot be repeated safely, and cannot be confirmed by read-back.
+	// provider, that its RepeatOnUnknown tier forbids sending again, and that read-back cannot confirm.
 	UncertainBranchID BranchID = "uncertain"
 )
 
@@ -127,6 +127,14 @@ type MutationDefinition struct {
 	Branches []BranchDefinition `json:"branches" yaml:"branches"`
 	// StepDefaults provides the operation-owned Dex Execute defaults.
 	StepDefaults StepDefaults `json:"stepDefaults" yaml:"stepDefaults"`
+	// RepeatOnUnknown is the manifest's execution.repeatOnUnknown tier. Empty means a
+	// definition generated for an sdkgo release before v0.37.0: Call.MaxSends is 1 and an
+	// application cannot override the send cap.
+	RepeatOnUnknown RepeatOnUnknown `json:"repeatOnUnknown,omitempty" yaml:"repeatOnUnknown,omitempty"`
+	// MaxSends caps the possibly effective sends of one Call ID of a limited Mutation, from 2
+	// to MaxSendsCeiling. It is zero for every other tier. It caps sends, not attempts: the
+	// Execute retry policy still bounds attempts.
+	MaxSends int32 `json:"maxSends,omitempty" yaml:"maxSends,omitempty"`
 }
 
 // Query defines a read-only provider operation invoked by RunQuery.
@@ -161,6 +169,16 @@ type Call struct {
 	Operation OperationRef `json:"operation"`
 	progress  *progressReporter
 	text      *dex.BufferedTextStream
+	maxSends  int32
+}
+
+// MaxSends returns the cap on possibly effective sends of this call's Call ID across all
+// attempts. For a limited Mutation it is the WithMaxSends override, such as a Connector
+// Step's MutationStepConfig.MaxSends, or else MutationDefinition.MaxSends. It is 1, which
+// permits no resend, for a Query, a Mutation of another tier, and a zero Call. Pass it to
+// singledispatch.WithMaxSends; never hard-code the cap in connector code.
+func (call Call) MaxSends() int32 {
+	return max(call.maxSends, 1)
 }
 
 // QueryResult is the validated terminal result returned by RunQuery.
@@ -280,9 +298,10 @@ type operationRunTrace struct {
 }
 
 type runConfig struct {
-	progressStream *dex.Stream[ProgressUpdate]
-	textStream     *dex.Stream[string]
-	textOptions    []dex.BufferedTextStreamOption
+	progressStream   *dex.Stream[ProgressUpdate]
+	textStream       *dex.Stream[string]
+	textOptions      []dex.BufferedTextStreamOption
+	maxSendsOverride int32
 }
 
 // RunOption configures optional best-effort progress for one operation invocation.
@@ -341,7 +360,7 @@ func runQueryWithTrace[IN, OUT any](ctx dex.Context, operation Query[IN, OUT], c
 	if err != nil {
 		return failedQuery[OUT](definition, err.Error()), nil
 	}
-	if err := configureCall(&call, options); err != nil {
+	if err := configureCall(&call, options, noResendPolicy); err != nil {
 		return failedQueryForCall[OUT](definition, call, err.Error()), nil
 	}
 	trace.hasInvokedOperation = true
@@ -373,7 +392,7 @@ func runMutationWithTrace[IN, OUT any](ctx dex.Context, operation Mutation[IN, O
 		call.IdempotencyKey = ""
 		return failedMutationForCall[OUT](definition, call, "mutation returned an invalid idempotency key"), nil
 	}
-	if err := configureCall(&call, options); err != nil {
+	if err := configureCall(&call, options, definition.sendCapPolicy()); err != nil {
 		return failedMutationForCall[OUT](definition, call, err.Error()), nil
 	}
 	trace.hasInvokedOperation = true
@@ -482,7 +501,7 @@ func newCall(ctx dex.Context, operation OperationRef, connection ConnectionRef) 
 	}, nil
 }
 
-func configureCall(call *Call, options []RunOption) error {
+func configureCall(call *Call, options []RunOption, sendCaps sendCapPolicy) error {
 	config := runConfig{}
 	for _, option := range options {
 		if option == nil {
@@ -491,6 +510,13 @@ func configureCall(call *Call, options []RunOption) error {
 		if err := option.apply(&config); err != nil {
 			return err
 		}
+	}
+	call.maxSends = sendCaps.maxSends
+	if config.maxSendsOverride != 0 {
+		if !sendCaps.isOverridable {
+			return fmt.Errorf("WithMaxSends requires a Mutation whose RepeatOnUnknown is limited")
+		}
+		call.maxSends = config.maxSendsOverride
 	}
 	if config.progressStream != nil {
 		call.progress = &progressReporter{stream: *config.progressStream}

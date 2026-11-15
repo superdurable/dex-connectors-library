@@ -17,5 +17,9 @@ func TestConformanceMarkers(t *testing.T) {
 		{CallID: callID, Attempt: 2, State: StateClaimed},
 		{CallID: callID, Attempt: 3, State: StateCanResend},
 		{CallID: callID, Attempt: 4, State: StateClaimed, ProviderID: "object-42"},
+		{CallID: callID, Attempt: 5, State: StateClaimed, SendCount: 2},
+		{CallID: callID, Attempt: 6, State: StateNotSent, SendCount: 2},
+		{CallID: callID, Attempt: 7, State: StateCanResend, SendCount: 2},
+		{CallID: callID, Attempt: 8, State: StateClaimed, ProviderID: "object-43", SendCount: 3},
 	})
 }
