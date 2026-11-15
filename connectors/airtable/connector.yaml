@@ -15,9 +15,9 @@ spec:
       operations: [listRecords, getRecord, upsertRecords, updateRecords]
       triggers: [recordChanged]
     typescript:
-      version: v0.1.2
+      version: v0.2.0
       operations: [listRecords, getRecord, upsertRecords, updateRecords]
-      triggers: []
+      triggers: [recordChanged]
   codegen:
     go:
       package: airtable

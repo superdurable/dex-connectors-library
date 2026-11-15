@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
 import { GetRecordOperation, ListRecordsOperation, UpdateRecordsOperation, UpsertRecordsOperation } from './operations.js';
 
@@ -10,6 +10,8 @@ const defaultEndpoint = 'https://api.airtable.com';
 const defaultMaxResponseBytes = 4_194_304;
 const requestTimeoutMs = 25_000;
 const rateLimitCooldownMs = 30_000;
+const defaultPollIntervalMs = 30_000;
+const defaultPollPageSize = 100;
 
 /** HTTP sender used by Airtable requests, injectable for deterministic provider tests. */
 export type AirtableRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -20,6 +22,13 @@ export interface AirtableClientOptions {
   send?: AirtableRequestSender;
   /** Clock used for receipts, pacing, and Retry-After dates. */
   now?: () => Date;
+  /**
+   * Receives the recordChanged Trigger runners' records: seeded and committed cursors, failed polls, cursor
+   * resets, delivery outcomes, and the durable inboxes newProjectRecordChangedTriggerRunner opens. Records
+   * carry the connector, connection, Trigger, and binding, never record fields, field names, or the token.
+   * Omitted uses the SDK's default Trigger logger; operation Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
 
 /** One unsuccessful provider exchange. */
@@ -37,8 +46,15 @@ export interface ExchangeFailure {
 /** Successful bounded response or classified failure. */
 export type ExchangeResult = { response: ProviderResponse } | { outcome: ExchangeFailure };
 
-/** Validated Airtable API client with per-base pacing and live credential resolution. */
+/**
+ * Validated Airtable API client with per-base pacing and live credential resolution, shared by the operation
+ * Steps and the recordChanged Trigger. The constructor throws TypeError for an invalid endpoint, a
+ * non-positive maxResponseBytes, a pollIntervalMs under 1000, or a pollPageSize outside 1 to 100.
+ */
 export class AirtableClient {
+  /** Delay between recordChanged polls of one binding, in milliseconds; at least 1000, 30000 by default. */ readonly pollIntervalMs: number;
+  /** Records one recordChanged poll request reads, 1 to 100, 100 by default. */ readonly pollPageSize: number;
+  /** The recordChanged Trigger logger from AirtableClientOptions, or undefined for the SDK default. */ readonly triggerLogger: TriggerLogger | undefined;
   private readonly endpoint: string;
   private readonly maxResponseBytes: number;
   private readonly credentials: CredentialProvider<Credentials>;
@@ -52,6 +68,11 @@ export class AirtableClient {
     this.endpoint = validateBaseURL(config.endpoint || defaultEndpoint);
     this.maxResponseBytes = config.maxResponseBytes || defaultMaxResponseBytes;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('Airtable maxResponseBytes must be positive');
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < 1_000) throw new TypeError('Airtable pollInterval must be at least one second');
+    this.pollPageSize = config.pollPageSize || defaultPollPageSize;
+    if (!Number.isSafeInteger(this.pollPageSize) || this.pollPageSize < 1 || this.pollPageSize > 100) throw new TypeError('Airtable pollPageSize must be from 1 to 100');
+    this.triggerLogger = options.logger;
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());

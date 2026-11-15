@@ -3,11 +3,12 @@
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/airtable/go@v0.24.0`.
 
 The [TypeScript package](typescript/) is `@superdurable/connector-airtable`
-v0.1.0. It implements the four record operations and provides generated
-operation-specific Step factories and mocks. Its
-[runnable list example](typescript/examples/list-records/) uses a static
-`airtable-policies` Dex connection; the TypeScript package does not implement
-any Triggers. Shared Go-recorded provider scenarios and a real Dex integration
+v0.2.0. It implements the four record operations and the `recordChanged`
+Trigger, and provides generated operation-specific Step factories and mocks.
+Its [runnable list example](typescript/examples/list-records/) uses a static
+`airtable-policies` Dex connection, and its
+[record-changed example](typescript/examples/record-changed-intake/) uses
+`airtable-intake`. Shared Go-recorded provider scenarios and a real Dex integration
 test cover the package. Live Airtable authorization, picker behavior, and
 provider requests remain unverified.
 
@@ -30,13 +31,12 @@ exposes four operation-specific Dex Step factories:
 
 The Go module also ships the `recordChanged` poll Trigger, which starts a Flow
 for each record created or changed in one picked table; see
-[Triggers](#triggers). The Python package implements it too; the TypeScript
-package does not.
+[Triggers](#triggers). The Python and TypeScript packages implement it too.
 
 | Capability | Go | Python | TypeScript |
 | --- | --- | --- | --- |
 | `listRecords`, `getRecord`, `upsertRecords`, `updateRecords` | yes | yes | yes |
-| `recordChanged` Trigger | yes | yes | no |
+| `recordChanged` Trigger | yes | yes | yes |
 
 Airtable is a typed table store: fields have types, and linked record fields
 hold the IDs of records in another table of the same base. The connector keeps
@@ -327,6 +327,13 @@ Trigger kit: its cursor documents and event IDs match Go's byte for byte, so Go
 and Python replicas can share one binding's cursor and inbox. See the
 [Python README](python/README.md#recordchanged-trigger) and its
 [`record_changed_intake`](python/examples/record_changed_intake/README.md)
+example.
+
+The TypeScript package implements `recordChanged` at parity on the TypeScript
+poll Trigger kit: its cursor documents and event IDs match Go's byte for byte,
+so Go and TypeScript replicas can share one binding's cursor and inbox. See the
+[TypeScript README](typescript/README.md#recordchanged-trigger) and its
+[`record-changed-intake`](typescript/examples/record-changed-intake/README.md)
 example.
 
 A push Trigger built on Airtable webhooks is not shipped. A webhook sends only
