@@ -15,14 +15,14 @@ It is built for the durable envelope pattern: create from a template, wait for
 people outside the company for days, resume on Connect, keep the signed
 artifact, and void as compensation.
 
-| Kind | Name | What it does |
-| --- | --- | --- |
-| Mutation | `createEnvelopeFromTemplate` | Creates one envelope from a server template, fills its roles in routing order, and sends it or keeps a draft. |
-| Query | `getEnvelope` | Reads an envelope's status, timestamps, void reason, and text custom fields. |
-| Query | `listEnvelopeRecipients` | Lists every recipient in routing order with status and sent, delivered, signed, and declined times. |
-| Mutation | `voidEnvelope` | Voids a sent or delivered envelope with a reason; an already voided envelope is `voided` again. |
-| Query | `downloadCombinedDocument` | Streams the combined PDF through SHA-256 into an application `CombinedDocumentStore`; the Result holds only size, digest, and location. |
-| Trigger | `envelopeEventReceived` | Receives HMAC-verified Connect `envelope-completed`, `envelope-declined`, and `envelope-voided` events in the JSON SIM format. |
+| Kind | Name | What it does | Languages |
+| --- | --- | --- | --- |
+| Mutation | `createEnvelopeFromTemplate` | Creates one envelope from a server template, fills its roles in routing order, and sends it or keeps a draft. | Go, Python, TypeScript |
+| Query | `getEnvelope` | Reads an envelope's status, timestamps, void reason, and text custom fields. | Go, Python, TypeScript |
+| Query | `listEnvelopeRecipients` | Lists every recipient in routing order with status and sent, delivered, signed, and declined times. | Go, Python, TypeScript |
+| Mutation | `voidEnvelope` | Voids a sent or delivered envelope with a reason; an already voided envelope is `voided` again. | Go, Python, TypeScript |
+| Query | `downloadCombinedDocument` | Streams the combined PDF through SHA-256 into an application `CombinedDocumentStore`; the Result holds only size, digest, and location. | Go, Python, TypeScript |
+| Trigger | `envelopeEventReceived` | Receives HMAC-verified Connect `envelope-completed`, `envelope-declined`, and `envelope-voided` events in the JSON SIM format. | Go, TypeScript |
 
 The runnable [`examples/envelope-signing`](go/examples/envelope-signing/README.md)
 application sends an envelope, waits for Connect or a slow status poll, voids
@@ -308,7 +308,7 @@ uses the defaults:
 
 The [Python package](python/README.md) at `v0.1.0` implements all five
 operations with generated OAuth refresh and credential decoding. The Connect
-Trigger remains Go-only. The runnable
+Trigger is in the Go and TypeScript packages only. The runnable
 [envelope status Flow](python/examples/envelope_status/flow.py) uses the
 static `docusign-esignature` connection and has a real Dex Worker and Client
 integration test. Go-recorded provider conformance covers its operation
@@ -331,6 +331,6 @@ the fallback status poll, and void at the signing deadline.
 
 ## TypeScript package
 
-The `typescript/` package publishes `@superdurable/connector-docusign` v0.1.0 with the five eSignature operations: create from template, read an envelope, list recipients, void an envelope, and digest a combined PDF. It uses the manifest's production and developer OAuth methods with generated refresh wiring. The Connect trigger is Go-only. See the [TypeScript package guide](typescript/README.md) and its [runnable envelope status Flow](typescript/examples/envelope-status/README.md).
+The `typescript/` package publishes `@superdurable/connector-docusign` v0.2.0 with the five eSignature operations: create from template, read an envelope, list recipients, void an envelope, and digest a combined PDF. It uses the manifest's production and developer OAuth methods with generated refresh wiring. From 0.2.0 it also implements the `envelopeEventReceived` Trigger at parity with Go: the same HMAC verification, JSON SIM decoding, event ID, binding filter, and durable project inbox, served by `newProjectEnvelopeEventReceivedEndpointRunner`. See the [TypeScript package guide](typescript/README.md), its [runnable envelope status Flow](typescript/examples/envelope-status/README.md), and the [runnable envelope outcome Flow](typescript/examples/envelope-outcome/README.md), which a Connect event resumes.
 
 Python and TypeScript create retries use the checkpoint dispatch time for a one-hour read-back lookback. A cleared or explicitly undispatched checkpoint permits a resend after the retry-before-send lookup; a dispatched checkpoint only permits read-back and preserves uncertainty when the listing cannot identify exactly one envelope.
