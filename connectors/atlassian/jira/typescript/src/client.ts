@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { ReauthorizationRequiredError, SecretString, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
@@ -13,9 +13,16 @@ const defaultMaxResponseBytes = 4_194_304;
 const requestTimeoutMs = 20_000;
 const cloudIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const safeRequestIdPattern = /^[!-~]{1,128}$/;
+const defaultPollIntervalMs = 30_000;
+/** Keeps an issueChanged poll loop from spending the app's hourly rate-limit points. */
+const minimumPollIntervalMs = 5_000;
 
-/** Replace Jira network requests in provider tests. */
-export interface JiraClientOptions { send?: (request: ProviderRequest) => Promise<ProviderResponse>; now?: () => Date; }
+/** Replace Jira network requests and the clock in provider tests, and route Trigger records. */
+export interface JiraClientOptions {
+  /** Sends one provider request; omitted uses the SDK's bounded provider HTTP client. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>;
+  /** Current time for receipts, Retry-After, and the issueChanged Trigger's Jira clock estimate; omitted uses the system clock. */ now?: () => Date;
+  /** Receives the issueChanged runner's seed, reseed, failed-poll, and rate-limit records and its durable inbox records; never payloads or credentials. Omitted uses the SDK default logger. */ triggerLogger?: TriggerLogger;
+}
 /** One response or sanitized request error. */
 export type JiraExchange = { response: ProviderResponse; isTooLarge?: boolean; reflectsSecret?: boolean } | { error: Error; isProvablyNotSent: boolean };
 /** Resolved credential and Jira Cloud site for one operation. */
@@ -30,10 +37,12 @@ export class JiraSessionFailure extends Error {
 export class JiraClient {
   readonly endpoint: string;
   readonly maxResponseBytes: number;
+  /** Delay between issueChanged polls, in milliseconds. */ readonly pollIntervalMs: number;
+  /** Receives issueChanged Trigger records; undefined uses the SDK default logger. */ readonly triggerLogger: TriggerLogger | undefined;
+  /** The client's clock. */ readonly now: () => Date;
   private readonly configuredCloudId: string;
   private resolvedCloudId = '';
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
-  private readonly now: () => Date;
   private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Jira', auth: Authorization, credentialFields: CredentialFields });
 
   /** Validate connection configuration and bind host-owned credentials. */
@@ -44,6 +53,10 @@ export class JiraClient {
     if (this.configuredCloudId && !cloudIdPattern.test(this.configuredCloudId)) throw new TypeError('Jira cloudId must be a site UUID');
     this.maxResponseBytes = config.maxResponseBytes || defaultMaxResponseBytes;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('Jira maxResponseBytes must be positive');
+    // Zero keeps the displayed default, as the Go connector's configuration defaults do.
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Jira pollInterval must be at least 5s');
+    this.triggerLogger = options.triggerLogger;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
   }
@@ -60,6 +73,11 @@ export class JiraClient {
     const availableMs = Math.min(25_000, remainingMs);
     if (availableMs <= 0) throw new JiraSessionFailure(jiraFailure(operation, 'AVAILABILITY', 'Jira Execute deadline is too near for a request'), true);
     const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(availableMs)]);
+    return this.resolveSite(await this.resolveSessionCredentials(call, operation, signal), operation);
+  }
+
+  /** Resolve and refresh the connection's access token; throws JiraSessionFailure when it is unavailable. */
+  async resolveSessionCredentials(call: Call, operation: string, signal: AbortSignal): Promise<JiraSession> {
     let credentials: Credentials;
     try {
       credentials = await resolveCredential(this.credentials, call, this.refreshDriver, signal);
@@ -70,7 +88,12 @@ export class JiraClient {
     }
     const token = credentials.accessToken instanceof SecretString ? credentials.accessToken.reveal() : '';
     if (!isHeaderSafeCredential(token)) throw new JiraSessionFailure(jiraFailure(operation, 'AUTHENTICATION', 'Jira connection credentials are unavailable; reconnect the connection'), false);
-    const session = { token, cloudId: this.configuredCloudId || this.resolvedCloudId, call, signal };
+    return { token, cloudId: '', call, signal };
+  }
+
+  /** Set the session's site to the configured one, or find the only Jira site the grant covers; throws JiraSessionFailure. */
+  async resolveSite(credentialSession: JiraSession, operation: string): Promise<JiraSession> {
+    const session = { ...credentialSession, cloudId: this.configuredCloudId || this.resolvedCloudId };
     if (session.cloudId) return session;
     const exchange = await this.exchangeOnce(session, 'GET', '/oauth/token/accessible-resources', undefined, undefined, true);
     if ('error' in exchange) throw new JiraSessionFailure(jiraFailure(operation, 'TRANSPORT', 'Atlassian accessible resources are temporarily unavailable'), true);
@@ -162,5 +185,6 @@ export function jiraFailure(operation: string, kind: Failure['kind'], message: s
 export function statusFailureKind(status: number): Failure['kind'] { return status === 400 ? 'VALIDATION' : status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 404 ? 'NOT_FOUND' : status === 409 ? 'CONFLICT' : status === 429 ? 'RATE_LIMIT' : 'PROVIDER_REJECTION'; }
 /** Parse Retry-After without exposing response data. */
 export function retryAfter(response: ProviderResponse): number { return parseRetryAfter(firstHeader(response.headers, 'retry-after')); }
-function firstHeader(headers: ProviderResponse['headers'] | undefined, name: string): string { const key = Object.keys(headers ?? {}).find(candidate => candidate.toLowerCase() === name); const value = key ? headers?.[key] : undefined; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
+/** Return the first value of a response header, matched case-insensitively, or an empty string. */
+export function firstHeader(headers: ProviderResponse['headers'] | undefined, name: string): string { const key = Object.keys(headers ?? {}).find(candidate => candidate.toLowerCase() === name); const value = key ? headers?.[key] : undefined; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
 function isObject(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }

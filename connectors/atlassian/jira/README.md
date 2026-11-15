@@ -42,12 +42,20 @@ It also exposes one Go Trigger:
 - `issueChanged` delivers each issue created or updated in one project, or in
   every project the account can browse, read by polling enhanced JQL search on
   the `updated` time. See [issueChanged Trigger](#issuechanged-trigger). The
-  Python and TypeScript packages do not implement it.
+  TypeScript package implements it from 0.2.0, sharing the Go cursor documents
+  byte for byte; the Python package does not implement it.
+
+| Capability | Go | Python | TypeScript |
+| --- | --- | --- | --- |
+| `searchIssues`, `getIssue`, `createIssue`, `transitionIssue`, `addComment` | yes | yes | yes |
+| `issueChanged` Trigger | yes | no | yes, from 0.2.0 |
 
 ## TypeScript package
 
 The `@superdurable/connector-atlassian-jira` package at `typescript/` is version
-`0.1.0` and implements all five operations in this manifest. Its generated
+`0.2.0` and implements all five operations in this manifest and the
+`issueChanged` Trigger, with a
+[runnable issue-changed example](typescript/examples/issue-changed/README.md). Its generated
 OAuth driver and project credential source refresh rotating Atlassian tokens;
 `createIssue` and `addComment` retain Dex single-dispatch and Jira property
 read-back behavior. See the [package README](typescript/README.md) and
