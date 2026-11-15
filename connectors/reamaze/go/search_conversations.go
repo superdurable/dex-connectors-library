@@ -125,7 +125,7 @@ func (operation SearchConversationsOperation) Invoke(call sdkgo.Call, input Sear
 	default:
 		return sdkgo.NewQueryBranch(SearchConversationsBranchProviderRejected, SearchConversationsOutput{}, &result.failure, receipt)
 	}
-	output, err := decodeConversationPage(result.response.body, searchPage(input))
+	output, err := decodeConversationPage(result.response.body, searchPage(input), false)
 	if err != nil {
 		return sdkgo.NewQueryBranch(SearchConversationsBranchInvalidResponse, SearchConversationsOutput{}, reamazeFailurePointer(sdkgo.FailureProtocol, searchConversationsOperation, "Re:amaze returned an invalid conversation page: "+err.Error()), receipt)
 	}
@@ -192,8 +192,9 @@ func searchPage(input SearchConversationsInput) int {
 	return input.Page
 }
 
-// decodeConversationPage decodes one GET /conversations page in Re:amaze's order.
-func decodeConversationPage(body []byte, page int) (SearchConversationsOutput, error) {
+// decodeConversationPage decodes one GET /conversations page in Re:amaze's order; the conversationCreated
+// Trigger keeps each first message, which searchConversations omits to keep pages small.
+func decodeConversationPage(body []byte, page int, isFirstMessageIncluded bool) (SearchConversationsOutput, error) {
 	var document struct {
 		pageWire
 		Conversations *[]conversationWire `json:"conversations"`
@@ -209,7 +210,7 @@ func decodeConversationPage(body []byte, page int) (SearchConversationsOutput, e
 		TotalCount:    *document.TotalCount, PageCount: *document.PageCount,
 	}
 	for index, wire := range *document.Conversations {
-		conversation, err := decodeConversationWire(wire, false)
+		conversation, err := decodeConversationWire(wire, isFirstMessageIncluded)
 		if err != nil {
 			return SearchConversationsOutput{}, fmt.Errorf("conversation %d: %w", index, err)
 		}

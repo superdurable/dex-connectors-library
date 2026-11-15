@@ -30,8 +30,21 @@ type guidanceManifest struct {
 			} `yaml:"guide"`
 			OAuth2 any `yaml:"oauth2"`
 		} `yaml:"auth"`
-		Studio   any   `yaml:"studio"`
-		Triggers []any `yaml:"triggers"`
+		Studio struct {
+			Setup struct {
+				BackendCapabilities []string `yaml:"backendCapabilities"`
+			} `yaml:"setup"`
+			Commands []any `yaml:"commands"`
+			Units    []struct {
+				ID                  string   `yaml:"id"`
+				Description         string   `yaml:"description"`
+				BackendCapabilities []string `yaml:"backendCapabilities"`
+			} `yaml:"units"`
+		} `yaml:"studio"`
+		Triggers []struct {
+			Name        string `yaml:"name"`
+			Description string `yaml:"description"`
+		} `yaml:"triggers"`
 	} `yaml:"spec"`
 }
 
@@ -59,7 +72,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"brand", "maxResponseBytes", "email", "api_token"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"brand", "maxResponseBytes", "pollInterval", "email", "api_token"}, names, "a new visible field needs its own guidance review")
 
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
@@ -102,13 +115,38 @@ func TestAPITokenGuideCoversWhereTheTokenIsAndHowToRevokeIt(t *testing.T) {
 	}
 }
 
-// Studio commands support neither per-brand hosts nor HTTP Basic, and Re:amaze documents no event webhook.
-func TestManifestDeclaresNoStudioBundleOrTrigger(t *testing.T) {
+// Studio commands support neither per-brand hosts nor HTTP Basic, so the channel is a guided entry, not a picker.
+func TestManifestDeclaresTheChannelEntryWithoutProviderCommands(t *testing.T) {
 	manifest := readGuidanceManifest(t)
-	require.Nil(t, manifest.Spec.Studio)
-	require.Empty(t, manifest.Spec.Triggers)
-	_, err := os.Stat("../ui")
-	require.True(t, os.IsNotExist(err))
+	require.Empty(t, manifest.Spec.Studio.Commands)
+	require.Equal(t, []string{"use.configuration.write"}, manifest.Spec.Studio.Setup.BackendCapabilities)
+	require.Len(t, manifest.Spec.Studio.Units, 1)
+	unit := manifest.Spec.Studio.Units[0]
+	require.Equal(t, "channelSlugEntry", unit.ID)
+	require.Empty(t, unit.BackendCapabilities)
+	require.Regexp(t, reamazeURLPattern, unit.Description)
+	for _, guidance := range []string{"slug", "such as support", "Settings > Channels", "blank", "every channel"} {
+		require.Contains(t, unit.Description, guidance)
+	}
+	require.Len(t, manifest.Spec.Triggers, 1)
+	require.Equal(t, "conversationCreated", manifest.Spec.Triggers[0].Name)
+	require.Contains(t, manifest.Spec.Triggers[0].Description, "baseline")
+	_, err := os.Stat("../ui/package-lock.json")
+	require.NoError(t, err)
+}
+
+func TestPollIntervalGuidanceNamesTheSharedRateLimit(t *testing.T) {
+	for _, field := range readGuidanceManifest(t).Spec.Configuration.Fields {
+		if field.Name != "pollInterval" {
+			continue
+		}
+		require.Equal(t, "duration", field.Type)
+		for _, guidance := range []string{"Non-secret", "at least 10s", "per-minute", "operation Steps"} {
+			require.Contains(t, field.Description, guidance)
+		}
+		return
+	}
+	t.Fatal("pollInterval is not declared")
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {

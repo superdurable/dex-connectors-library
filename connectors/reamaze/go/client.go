@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/mail"
@@ -47,6 +48,9 @@ const (
 
 	// rateLimitWindow is Re:amaze's documented per-minute limit; a 429 without Retry-After waits one window.
 	rateLimitWindow = time.Minute
+
+	// minimumPollInterval keeps a conversationCreated poll loop from spending the per-token request limit.
+	minimumPollInterval = 10 * time.Second
 )
 
 var (
@@ -65,6 +69,7 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	apiBaseURL string
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 12 seconds per request.
@@ -81,13 +86,25 @@ func WithAPIBaseURL(baseURL string) Option {
 	return func(options *clientOptions) { options.apiBaseURL = baseURL }
 }
 
+// WithLogger sends the conversationCreated Trigger runner's records to logger: seeds, failed polls,
+// rate-limit pauses, skipped backlogs, and the durable inboxes NewProjectConversationTriggerRunner opens.
+// Records carry the connection, Trigger, and binding, never conversation content or credentials. Without
+// this option, or with a nil logger, records go to slog.Default() as of each record. Operation Steps do
+// not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Re:amaze API v1 requests for connector operations.
 // A Client is safe for concurrent use by several Steps.
 type Client struct {
 	apiBaseURL       string
+	brand            string
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -151,6 +168,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes < 1 {
 		return nil, errors.New("Re:amaze response limit must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Re:amaze pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, errors.New("Re:amaze credential provider is required")
 	}
@@ -170,9 +190,10 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		apiBaseURL = validated
 	}
 	return &Client{
-		apiBaseURL:  apiBaseURL,
+		apiBaseURL: apiBaseURL, brand: config.Brand,
 		httpClient:  providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
-		credentials: credentials, maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		credentials: credentials, maxResponseBytes: config.MaxResponseBytes,
+		pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 

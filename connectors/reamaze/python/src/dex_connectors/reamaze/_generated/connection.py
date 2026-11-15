@@ -153,7 +153,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.reamaze.connection
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"brand", "maxResponseBytes"}:
+    if set(value) - {"brand", "maxResponseBytes", "pollInterval"}:
         raise ValueError("Re:amaze configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "brand" in value:
@@ -168,4 +168,9 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(max_response_bytes) is int):
             raise ValueError("Re:amaze configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
+    if "pollInterval" in value:
+        poll_interval = value["pollInterval"]
+        if not (type(poll_interval) is int):
+            raise ValueError("Re:amaze configuration pollInterval has an invalid type")
+        config_arguments['poll_interval_seconds'] = poll_interval / 1_000_000_000
     return Config(**config_arguments)
