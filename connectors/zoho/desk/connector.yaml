@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: zoho-desk
   displayName: Zoho Desk
-  description: Search, read, create, and update Zoho Desk tickets and add public or private comments in the connection's Zoho data center, keeping Zoho Desk's own status and priority names.
+  description: Search, read, create, and update Zoho Desk tickets, add public or private comments, and start Flows when tickets are created or changed in the connection's Zoho data center, keeping Zoho Desk's own status and priority names.
   company: Zoho
   categories: [customer-support]
-  version: v0.24.1
+  version: v0.25.0
 spec:
   provider: zoho
   codegen:
@@ -37,6 +37,12 @@ spec:
         description: "Maximum complete Zoho Desk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or comments are unusually large. An oversized read selects invalidResponse, and an oversized response to createTicket or addComment selects uncertain."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Non-secret delay between two ticketChanged Trigger polls of Zoho Desk ticket search, as a Go duration of at least 15s such as 30s or 5m; leave it blank to keep the displayed interval. Every poll spends Zoho Desk API credits from the organization's daily allowance, which depends on the Zoho Desk edition and user licences (Setup > Developer Space > API shows the usage), so lengthen it for a small allowance or many bindings, and shorten it only when Flows must start sooner. The value is read when the application starts."
+        required: false
+        default: 1m
   auth:
     refreshable: true
     methodLabel: Data center
@@ -76,7 +82,7 @@ spec:
             - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs this data center turned on in its Settings tab.
             - Open the Client Secret tab and copy the Client ID and the Client Secret into the fields below.
             - Choose Connect and sign in at https://accounts.zoho.com as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
-            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets and the ticketChanged Trigger, and Desk.basic.READ for the organization and department pickers; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
             - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
         oauth2:
           authorizationEndpoint: https://accounts.zoho.com/oauth/v2/auth
@@ -109,7 +115,7 @@ spec:
             - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the European Union data center turned on in its Settings tab.
             - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
             - Choose Connect and sign in at https://accounts.zoho.eu as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
-            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets and the ticketChanged Trigger, and Desk.basic.READ for the organization and department pickers; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
             - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
         oauth2:
           authorizationEndpoint: https://accounts.zoho.eu/oauth/v2/auth
@@ -140,7 +146,7 @@ spec:
             - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the India data center turned on in its Settings tab.
             - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
             - Choose Connect and sign in at https://accounts.zoho.in as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
-            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets and the ticketChanged Trigger, and Desk.basic.READ for the organization and department pickers; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
             - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
         oauth2:
           authorizationEndpoint: https://accounts.zoho.in/oauth/v2/auth
@@ -171,7 +177,7 @@ spec:
             - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Australia data center turned on in its Settings tab.
             - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
             - Choose Connect and sign in at https://accounts.zoho.com.au as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
-            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets and the ticketChanged Trigger, and Desk.basic.READ for the organization and department pickers; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
             - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
         oauth2:
           authorizationEndpoint: https://accounts.zoho.com.au/oauth/v2/auth
@@ -202,7 +208,7 @@ spec:
             - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Japan data center turned on in its Settings tab.
             - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
             - Choose Connect and sign in at https://accounts.zoho.jp as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
-            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets and the ticketChanged Trigger, and Desk.basic.READ for the organization and department pickers; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
             - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
         oauth2:
           authorizationEndpoint: https://accounts.zoho.jp/oauth/v2/auth
@@ -233,7 +239,7 @@ spec:
             - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Canada data center turned on in its Settings tab.
             - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
             - Choose Connect and sign in at https://accounts.zohocloud.ca as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
-            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets and the ticketChanged Trigger, and Desk.basic.READ for the organization and department pickers; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
             - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
         oauth2:
           authorizationEndpoint: https://accounts.zohocloud.ca/oauth/v2/auth
@@ -264,7 +270,7 @@ spec:
             - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Saudi Arabia data center turned on in its Settings tab.
             - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
             - Choose Connect and sign in at https://accounts.zoho.sa as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
-            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets and the ticketChanged Trigger, and Desk.basic.READ for the organization and department pickers; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
             - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
         oauth2:
           authorizationEndpoint: https://accounts.zoho.sa/oauth/v2/auth
@@ -295,7 +301,7 @@ spec:
             - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the Singapore data center turned on in its Settings tab.
             - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
             - Choose Connect and sign in at https://accounts.zoho.sg as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
-            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets and the ticketChanged Trigger, and Desk.basic.READ for the organization and department pickers; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
             - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
         oauth2:
           authorizationEndpoint: https://accounts.zoho.sg/oauth/v2/auth
@@ -326,7 +332,7 @@ spec:
             - Add the exact Redirect URI shown by Dex Web under Authorized Redirect URIs, then choose CREATE; a client registered in another data center instead needs the United Arab Emirates data center turned on in its Settings tab.
             - Open the Client Secret tab and copy the Client ID and the Client Secret for this data center into the fields below.
             - Choose Connect and sign in at https://accounts.zoho.ae as the Zoho Desk agent the connector acts as; tickets and comments it writes are authored by that agent, and the agent's profile limits what it can read and change.
-            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets, and Desk.basic.READ for the organization picker; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
+            - On the Zoho consent screen, accept the scopes Desk.tickets.READ, Desk.tickets.CREATE, and Desk.tickets.UPDATE for tickets and comments, Desk.search.READ for searchTickets and the ticketChanged Trigger, and Desk.basic.READ for the organization and department pickers; if the account belongs to several Zoho Desk organizations, pick the one this connection uses, because Zoho binds the token to it.
             - When the connection is Ready, choose the same organization in orgId; to revoke access, remove the connected app under Zoho Accounts > Sessions > Connected Apps or delete the client in the API console.
         oauth2:
           authorizationEndpoint: https://accounts.zoho.ae/oauth/v2/auth
@@ -348,7 +354,7 @@ spec:
     setup:
       entrypoint: index.html
       hostApiRange: ">=0.2.0 <0.3.0"
-      backendCapabilities: [oauth.connection.manage, use.configuration.write, zohodesk.organizations-list]
+      backendCapabilities: [oauth.connection.manage, use.configuration.write, zohodesk.organizations-list, zohodesk.departments-list]
       mockScenarios: [not-configured, authorization-pending, connected, insufficient-scope, revoked, broker-unavailable, ready]
       icon: icon.svg
     commands:
@@ -379,6 +385,96 @@ spec:
       - id: listOrganizationsAE
         capability: zohodesk.organizations-list
         request: {method: GET, url: "https://desk.zoho.ae/api/v1/organizations", credential: {field: access_token, scheme: bearer}}
+      - id: listDepartmentsUS
+        capability: zohodesk.departments-list
+        request:
+          method: GET
+          url: "https://desk.zoho.com/api/v1/departments"
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {isEnabled: "true", limit: "200"}
+          parameters:
+            - {name: orgId, location: query, target: orgId}
+            - {name: from, location: query, target: from}
+      - id: listDepartmentsEU
+        capability: zohodesk.departments-list
+        request:
+          method: GET
+          url: "https://desk.zoho.eu/api/v1/departments"
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {isEnabled: "true", limit: "200"}
+          parameters:
+            - {name: orgId, location: query, target: orgId}
+            - {name: from, location: query, target: from}
+      - id: listDepartmentsIN
+        capability: zohodesk.departments-list
+        request:
+          method: GET
+          url: "https://desk.zoho.in/api/v1/departments"
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {isEnabled: "true", limit: "200"}
+          parameters:
+            - {name: orgId, location: query, target: orgId}
+            - {name: from, location: query, target: from}
+      - id: listDepartmentsAU
+        capability: zohodesk.departments-list
+        request:
+          method: GET
+          url: "https://desk.zoho.com.au/api/v1/departments"
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {isEnabled: "true", limit: "200"}
+          parameters:
+            - {name: orgId, location: query, target: orgId}
+            - {name: from, location: query, target: from}
+      - id: listDepartmentsJP
+        capability: zohodesk.departments-list
+        request:
+          method: GET
+          url: "https://desk.zoho.jp/api/v1/departments"
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {isEnabled: "true", limit: "200"}
+          parameters:
+            - {name: orgId, location: query, target: orgId}
+            - {name: from, location: query, target: from}
+      - id: listDepartmentsCA
+        capability: zohodesk.departments-list
+        request:
+          method: GET
+          url: "https://desk.zohocloud.ca/api/v1/departments"
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {isEnabled: "true", limit: "200"}
+          parameters:
+            - {name: orgId, location: query, target: orgId}
+            - {name: from, location: query, target: from}
+      - id: listDepartmentsSA
+        capability: zohodesk.departments-list
+        request:
+          method: GET
+          url: "https://desk.zoho.sa/api/v1/departments"
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {isEnabled: "true", limit: "200"}
+          parameters:
+            - {name: orgId, location: query, target: orgId}
+            - {name: from, location: query, target: from}
+      - id: listDepartmentsSG
+        capability: zohodesk.departments-list
+        request:
+          method: GET
+          url: "https://desk.zoho.sg/api/v1/departments"
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {isEnabled: "true", limit: "200"}
+          parameters:
+            - {name: orgId, location: query, target: orgId}
+            - {name: from, location: query, target: from}
+      - id: listDepartmentsAE
+        capability: zohodesk.departments-list
+        request:
+          method: GET
+          url: "https://desk.zoho.ae/api/v1/departments"
+          credential: {field: access_token, scheme: bearer}
+          fixedQuery: {isEnabled: "true", limit: "200"}
+          parameters:
+            - {name: orgId, location: query, target: orgId}
+            - {name: from, location: query, target: from}
     units:
       - id: organizationPicker
         goName: OrganizationPicker
@@ -386,6 +482,19 @@ spec:
         backendCapabilities: [zohodesk.organizations-list]
         outputs:
           - {name: orgId, goName: OrgID, type: string}
+      - id: departmentPicker
+        goName: DepartmentPicker
+        description: "Choose one Zoho Desk department from the enabled departments of the connection's organization, listed from the connection's own data center, or enter a department ID; the unit stores the numeric departmentId and, for a listed department, its name for display. Blank means every department the connection's agent can see. When the list cannot load, open the department in Zoho Desk under Setup > General > Departments and copy the long numeric ID shown in the browser address bar."
+        backendCapabilities: [zohodesk.departments-list]
+        outputs:
+          - {name: departmentId, goName: DepartmentID, type: string}
+          - {name: departmentName, goName: DepartmentName, type: string}
+  triggers:
+    - name: ticketChanged
+      goName: TicketChanged
+      eventType: TicketChangedEvent
+      configurationType: TicketChangedTriggerConfiguration
+      description: Receive each Zoho Desk ticket created or changed in the organization, optionally in one department, read by polling ticket search in modified-time order; the first run records a baseline and delivers no existing tickets.
   operations:
     - name: searchTickets
       goName: SearchTickets

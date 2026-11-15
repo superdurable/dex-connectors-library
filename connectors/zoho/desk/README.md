@@ -1,6 +1,6 @@
 # Zoho Desk Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go@v0.24.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoho/desk`.
 
@@ -19,6 +19,10 @@ It exposes these operation-specific Dex Step factories:
 | `desk.NewCreateTicketStep` | Mutation | sync | `created` | `providerRejected`, `uncertain`, `defect` |
 | `desk.NewUpdateTicketStep` | Mutation | async | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `desk.NewAddCommentStep` | Mutation | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
+
+It also exposes the [`ticketChanged` poll Trigger](#ticketchanged-trigger),
+which starts a Flow for each ticket created or changed in the organization,
+optionally in one department.
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
@@ -263,6 +267,80 @@ shown to the customer in the help center; a private one only to agents. Zoho
 Desk fixes visibility when the comment is added, and a response with another
 visibility selects `uncertain`. Content is at most 32,000 characters.
 
+## ticketChanged Trigger
+
+`ticketChanged` delivers one `desk.TicketChangedEvent` for every ticket
+created or changed in the connection's organization, read by polling
+[`GET /api/v1/tickets/search`](https://desk.zoho.com/DeskAPIDocument#Search_TicketsSearchAPI)
+with `modifiedTimeRange` and `sortBy=modifiedTime`. It uses the scopes the
+connection already has: `Desk.tickets.READ` and `Desk.search.READ`. The
+binding's `desk.TicketChangedTriggerConfiguration` holds an optional
+`departmentId`, picked with the `departmentPicker` unit; blank watches every
+department the connection's agent can see.
+
+```go
+triggerRunner, err := desk.NewProjectTicketTriggerRunner(project, ticketchanged.ConnectionName, desk.ProjectTicketTriggerRunnerConfig{
+	TicketChangedRoutes: []desk.ProjectTicketChangedTriggerRoute{{
+		BindingName: ticketchanged.TicketChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, ticketchanged.AcceptEveryTicketChange, ticketchanged.ResolveFlowID,
+			ticketchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, options...)
+```
+
+The snippet comes from [`examples/ticket-changed/main.go`](go/examples/ticket-changed/main.go).
+`NewProjectTicketTriggerRunner` records each change in the binding's project
+Trigger inbox before the cursor commits past it, so a restarted replica
+neither misses nor repeats a change. `NewTicketTriggerRunner` takes explicit
+routes and cursor stores; the generated `NewTicketChangedTrigger` keeps its
+cursor in memory.
+
+- **Baseline.** The first poll records the tickets modified in the last
+  `desk.TicketSearchIndexLookback` (five minutes) and starts no Flow.
+- **Cursor.** The poll cursor holds the modified-time position and a snapshot
+  of up to 10,000 recent ticket versions (ID and modified time). A version the
+  snapshot already holds is never delivered twice; the least recently seen
+  versions are dropped first.
+- **Search index delay.** Zoho Desk indexes changed tickets for search with a
+  delay, so every sweep starts again five minutes before the newest modified
+  time it read. A ticket indexed later than that is missed. A ticket listed
+  twice on one page is delivered once, at its newest modified time.
+- **Clock skew.** Sweeps start from modified times Zoho Desk returned, never
+  from the local clock. The baseline takes its position from the first
+  response's `Date` header when the local clock differs by more than a second,
+  so a fast local clock loses no change; such a baseline can also deliver
+  changes made up to the skew before it. A slow local clock only delays
+  changes newer than the local time, because the search's upper bound is the
+  local time.
+- **Paging.** Each request reads at most 100 tickets in ascending
+  modified-time order and the next page starts at the last ticket's modified
+  time, so a ticket changed during a sweep only moves later and is never
+  skipped. More than 100 tickets in one millisecond page by `from`, up to
+  Zoho Desk's 1,000 search results; beyond that the rest of that millisecond
+  is skipped. One poll makes at most 10 requests and continues on the next.
+- **Change kind.** `created` is a ticket the cursor had not seen whose
+  created time is inside the sweep's window; anything else is `updated`.
+  Several changes between two polls arrive as one delivery of the latest
+  version. Tickets moved to the trash, deleted, archived, or merged away leave
+  the search and are not delivered.
+- **Event ID.** `zdesk-` plus a hash of the organization, ticket ID, and
+  modified time, so a refetch after a crash yields the same ID and
+  `sdkgo.NewDexFlowTriggerTarget` starts one Flow per ticket version.
+- **Rate limits.** Zoho Desk meters API credits per organization per day by
+  edition and user licences, and limits concurrent calls; it answers both with
+  429. A 429 pauses every binding of the connection for `Retry-After`, or backs
+  off exponentially without it, up to 15 minutes. `pollInterval` (at least 15
+  seconds) sets the spend: one request per binding per poll when fewer than 100
+  tickets changed in the last five minutes.
+- **Reset.** A cursor for another organization or department, or a 400 or 422
+  that names `modifiedTimeRange` or `from`, records a new baseline, increments
+  the cursor's reset count, and logs `poll cursor invalid; reseeding` at WARN.
+  Changes in the gap are not delivered. Other failures back off per binding.
+
+The runner logs through `desk.WithLogger` with the kit's records (see the
+[SDK README](../../../sdkgo/README.md#polling-triggers)); records never carry
+ticket payloads or credentials.
+
 ## Mocks
 
 `deskmock.New(t, ConnectionName)` supplies one consistent world: three search
@@ -358,9 +436,9 @@ ticket or comment ID, and Zoho Desk's `X-Rate-Limit-Request-Weight-v3` and
 
 ## Not in this release
 
-### Triggers
+### Webhooks
 
-Zoho Desk webhooks are not Triggers yet:
+`ticketChanged` polls; Zoho Desk webhooks are not Triggers yet:
 
 - A subscription is created through `POST /api/v1/webhooks`, which first sends
   a validation `GET` to the URL and then a validation `POST`, and fails unless
@@ -373,9 +451,6 @@ Zoho Desk webhooks are not Triggers yet:
   payload. Verifying it needs a JWKS fetch for each data center, and
   `webhooktrigger` verifiers have no key source.
 - Free and Standard editions have no webhooks.
-
-Until a Trigger can complete the handshake and bind the payload, poll with
-`searchTickets` and `modifiedSince`.
 
 ### Other limits
 
@@ -392,12 +467,16 @@ Until a Trigger can complete the handshake and bind the payload, poll with
 - **Full thread content** needs `GET /api/v1/tickets/{id}/threads/{threadId}`,
   which no operation reads yet.
 
-## Example
+## Examples
 
 [`examples/triage-issue`](go/examples/triage-issue) is a runnable Dex Web
 **Start Flow** example that uses all five operations: it finds the contact's
 open or on-hold ticket in a department or creates one, sets its priority, and
 adds one private triage comment.
+
+[`examples/ticket-changed`](go/examples/ticket-changed) is started by the
+`ticketChanged` Trigger: each created or changed ticket in the picked
+department starts one Flow that reads the ticket back with `getTicket`.
 
 ## Verification
 
@@ -449,7 +528,12 @@ file sets as its maximum, is accepted; whether empty thread and comment lists
 answer 204; whether the comments list returns `plainText`; whether an
 unchanged `PATCH` triggers workflows; whether every 429 is returned before a
 write is applied; the credit headers; and the **Setup > Developer Space > API**
-path to the organization ID.
+path to the organization ID. For `ticketChanged`: how long Zoho Desk's search
+index lags behind a change; whether `sortBy=modifiedTime` orders ties stably;
+whether the department picker's `GET /api/v1/departments` accepts `orgId` as a
+query parameter, as Zoho Desk's OpenAPI file declares, and is served with
+`Desk.basic.READ`; and the **Setup > General > Departments** path to a
+department ID.
 
 ## Python
 

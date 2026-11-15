@@ -7,10 +7,11 @@ import {
   StudioHeader,
   StudioNotice,
   StudioSurface,
+  type ConnectorStudioConfigurationUnitTarget,
   type ConnectorStudioConnectionTarget,
 } from "@superdurable/dex-connectors-react";
 import { useState } from "react";
-import { describeOrganization, isOrganizationID, type ZohoDeskOrganization } from "./provider.js";
+import { describeOrganization, isDepartmentID, isOrganizationID, type ZohoDeskDepartment, type ZohoDeskOrganization } from "./provider.js";
 
 const manualOrganizationHint = "Sign in to Zoho Desk in the connection's data center, open Setup > Developer Space > API, and copy the organization ID: digits such as 2389290.";
 
@@ -50,6 +51,48 @@ export function OrganizationPickerUnit({target, canListOrganizations, organizati
   </StudioSurface>;
 }
 
+const manualDepartmentHint = "Sign in to Zoho Desk in the connection's data center, open Setup > General > Departments, open the department, and copy the long numeric ID shown in the browser address bar, such as 1892000000006907. Leave it blank to watch every department the connection's agent can see.";
+
+export interface DepartmentPickerUnitProps {
+  target: ConnectorStudioConfigurationUnitTarget;
+  /** canListDepartments is false when the host reports no data center or the connection has no saved orgId. */
+  canListDepartments: boolean;
+  departments?: ZohoDeskDepartment[];
+  isDepartmentListTruncated?: boolean;
+  busy?: boolean;
+  loadError?: string;
+  onChooseDepartment(): void;
+  onSave(value: Record<string, unknown>): Promise<unknown> | void;
+}
+
+/** DepartmentPickerUnit saves the departmentId, plus a listed department's name, for one Trigger binding or Step. */
+export function DepartmentPickerUnit({target, canListDepartments, departments = [], isDepartmentListTruncated, busy, loadError, onChooseDepartment, onSave}: DepartmentPickerUnitProps) {
+  const [departmentId, setDepartmentId] = useState(stringValue(target.value.departmentId));
+  const trimmedDepartmentId = departmentId.trim();
+  const isValid = trimmedDepartmentId === "" ? !target.required : isDepartmentID(trimmedDepartmentId);
+  const listed = departments.find((department) => department.departmentId === trimmedDepartmentId);
+  const savedName = trimmedDepartmentId === stringValue(target.value.departmentId) ? stringValue(target.value.departmentName) : "";
+  return <StudioSurface label={target.label}>
+    <StudioHeader description={target.description} title={target.label}/>
+    {loadError && <StudioNotice tone="error">{loadError}</StudioNotice>}
+    {canListDepartments
+      ? <div className="studio-actions"><StudioButton disabled={busy} onClick={onChooseDepartment}>Choose Zoho Desk department</StudioButton></div>
+      : <StudioNotice tone="attention">Departments can be listed only after the connection is Ready and its organization is saved. Enter the department ID below, or leave it blank.</StudioNotice>}
+    {departments.length > 0 && <StudioField label="Department">
+      <select onChange={(event) => setDepartmentId(event.target.value)} value={listed ? trimmedDepartmentId : ""}>
+        <option value="">{target.required ? "Select a department" : "Every department"}</option>
+        {departments.map((department) => <option key={department.departmentId} value={department.departmentId}>{department.name} ({department.departmentId})</option>)}
+      </select>
+    </StudioField>}
+    {isDepartmentListTruncated && <StudioNotice tone="attention">Only the first departments are listed. Enter the department ID below when yours is missing.</StudioNotice>}
+    <StudioField hint={manualDepartmentHint} label="departmentId">
+      <input onChange={(event) => setDepartmentId(event.target.value)} placeholder="1892000000006907" type="text" value={departmentId}/>
+    </StudioField>
+    {trimmedDepartmentId !== "" && !isDepartmentID(trimmedDepartmentId) && <StudioNotice tone="error">The department ID must be Zoho Desk's numeric ID; a department name is not accepted.</StudioNotice>}
+    <SaveAction disabled={busy || !isValid} onSave={() => onSave({departmentId: trimmedDepartmentId, departmentName: listed?.name ?? savedName})}/>
+  </StudioSurface>;
+}
+
 function SaveAction({disabled, onSave}: {disabled?: boolean; onSave(): Promise<unknown> | void}) {
   const [saveState, setSaveState] = useState<{status: "idle" | "saved"} | {status: "failed"; message: string}>({status: "idle"});
   const save = () => {
@@ -61,7 +104,7 @@ function SaveAction({disabled, onSave}: {disabled?: boolean; onSave(): Promise<u
   return <>
     <div className="studio-actions"><StudioButton disabled={disabled} onClick={save} variant="primary">Save</StudioButton></div>
     {saveState.status === "saved" && <StudioNotice tone="success">Saved. Restart the application to use it.</StudioNotice>}
-    {saveState.status === "failed" && <StudioNotice tone="error">The organization could not be saved: {saveState.message}</StudioNotice>}
+    {saveState.status === "failed" && <StudioNotice tone="error">The value could not be saved: {saveState.message}</StudioNotice>}
   </>;
 }
 

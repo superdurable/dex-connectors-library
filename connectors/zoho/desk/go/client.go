@@ -5,7 +5,8 @@
 // getTicket read tickets, updateTicket changes a ticket's status, priority, assignee, or department
 // so that a repeated attempt writes nothing twice, and createTicket and addComment create a ticket
 // or add one comment, sending each request at most once per Step execution because Zoho Desk
-// documents no idempotency key.
+// documents no idempotency key. The ticketChanged poll Trigger starts a Flow for each ticket created or
+// changed in the organization; see NewProjectTicketTriggerRunner.
 //
 // A connection authorizes with Zoho OAuth in one Zoho data center, chosen by its authorization
 // method, such as zoho-eu-oauth. Tokens come from that data center's Zoho Accounts server, and
@@ -22,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -52,6 +54,9 @@ const (
 	remainingCreditsHeader = "X-Rate-Limit-Remaining-v3"
 
 	maximumReportedErrorDetails = 5
+
+	// minimumPollInterval keeps ticketChanged polls from spending the organization's daily API credits.
+	minimumPollInterval = 15 * time.Second
 )
 
 // Zoho Desk errorCode values the connector explains in a Failure.
@@ -75,6 +80,7 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	apiBaseURL string
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 10 seconds per Zoho Desk
@@ -93,6 +99,14 @@ func WithAPIBaseURL(baseURL string) Option {
 	return func(options *clientOptions) { options.apiBaseURL = baseURL }
 }
 
+// WithLogger sends the ticketChanged Trigger runner's records to logger: baselines, reseeds after an
+// invalid cursor, failed polls, rate-limit pauses, and the durable inboxes NewProjectTicketTriggerRunner
+// opens. Records carry binding identity and never ticket payloads or credentials. Without this option, or
+// with a nil logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Zoho Desk API requests for connector operations. A Client is
 // safe for concurrent use by several Steps.
 type Client struct {
@@ -102,6 +116,8 @@ type Client struct {
 	credentials        CredentialSource
 	refreshDriver      sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes   int64
+	pollInterval       time.Duration
+	logger             *slog.Logger
 	now                func() time.Time
 }
 
@@ -143,6 +159,8 @@ type deskExchange struct {
 	response   deskResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+	// errorSummary is Zoho Desk's machine-readable error code and field errors of a non-2xx response.
+	errorSummary deskErrorSummary
 }
 
 // operationSession is one Invoke's resolved credential, Zoho Desk host, and deadline.
@@ -202,6 +220,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.MaxResponseBytes < 1 {
 		return nil, errors.New("Zoho Desk response limit must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Zoho Desk pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, errors.New("Zoho Desk credential provider is required")
 	}
@@ -216,7 +237,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		organizationID: organizationID,
 		httpClient:     providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
 		credentials:    credentials, refreshDriver: NewCredentialRefreshDriver(dependencies.httpClient),
-		maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}
 	if dependencies.apiBaseURL != "" {
 		validated, err := providerhttp.ValidateBaseURL(dependencies.apiBaseURL)
@@ -252,7 +273,13 @@ func (client *Client) AddComment() AddCommentOperation { return AddCommentOperat
 // startSession starts the operation deadline, then resolves, and refreshes when due, the credential
 // and its data center's host. The caller must call cancel when the session is returned.
 func (client *Client) startSession(call sdkgo.Call, operation string) (*operationSession, context.CancelFunc, *sessionFailure) {
-	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
+	return client.startSessionWithContext(call.Context, call, operation)
+}
+
+// startSessionWithContext starts a session under parent; Trigger pollers pass their own context because
+// their calls have no Dex Step context.
+func (client *Client) startSessionWithContext(parent context.Context, call sdkgo.Call, operation string) (*operationSession, context.CancelFunc, *sessionFailure) {
+	operationContext, cancel := context.WithTimeout(parent, operationDeadline)
 	credentials, err := sdkgo.ResolveCredential(operationContext, client.credentials, call, client.refreshDriver)
 	var failure *sessionFailure
 	switch {
@@ -388,6 +415,12 @@ func (client *Client) exchangeOnce(session *operationSession, operation string, 
 func (client *Client) classifyFailureStatus(response deskResponse, operation string) deskExchange {
 	summary := describeDeskError(response.body)
 	response.body = nil
+	result := client.classifyFailureSummary(response, operation, summary)
+	result.errorSummary = summary
+	return result
+}
+
+func (client *Client) classifyFailureSummary(response deskResponse, operation string, summary deskErrorSummary) deskExchange {
 	retryAfter := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 	switch status := response.statusCode; {
 	case status == http.StatusTooManyRequests:

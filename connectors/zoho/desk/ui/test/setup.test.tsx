@@ -3,9 +3,16 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { ConnectorStudioConnectionTarget } from "@superdurable/dex-connectors-react";
+import type { ConnectorStudioConfigurationUnitTarget, ConnectorStudioConnectionTarget } from "@superdurable/dex-connectors-react";
 import { ZohoDeskSetupView } from "../src/setup.js";
-import { OrganizationPickerUnit } from "../src/units.js";
+import { DepartmentPickerUnit, OrganizationPickerUnit } from "../src/units.js";
+
+const departmentTarget: ConnectorStudioConfigurationUnitTarget = {
+  kind: "configurationUnit", scope: {kind: "trigger", triggerName: "ticketChanged", bindingName: "ticket-changes", flowType: "ZohoDeskTicketChange"},
+  instanceId: "watchedDepartment", unitId: "departmentPicker", label: "Watched department",
+  description: "Choose the department whose created and changed tickets start this Flow.", required: false,
+  bindings: [{port: "departmentId", jsonPointer: "/departmentId"}, {port: "departmentName", jsonPointer: "/departmentName"}], value: {},
+};
 
 const pickerTarget: ConnectorStudioConnectionTarget = {kind: "connection", unitId: "organizationPicker", bindings: [{port: "orgId", jsonPointer: "/orgId"}]};
 
@@ -59,6 +66,29 @@ describe("Zoho Desk setup", () => {
       onChooseOrganization={() => undefined} onSave={() => undefined} target={{...pickerTarget, value: {}}}/>);
     expect(markup).toContain("Zoho Desk returned no organization list.");
     expect(markup).not.toContain("numeric ID; a portal name");
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button" disabled="">Save');
+  });
+
+  it("renders listed departments, manual department guidance, and blank as every department", () => {
+    const markup = renderToStaticMarkup(<DepartmentPickerUnit canListDepartments onChooseDepartment={() => undefined} onSave={() => undefined}
+      departments={[{departmentId: "1892000000006907", name: "Billing"}]} target={departmentTarget}/>);
+    expect(markup).toContain("Watched department");
+    expect(markup).toContain("created and changed tickets start this Flow");
+    expect(markup).toContain("Choose Zoho Desk department");
+    expect(markup).toContain("Billing (1892000000006907)");
+    expect(markup).toContain("Every department");
+    expect(markup).toContain("Setup &gt; General &gt; Departments");
+    expect(markup).toContain("Leave it blank to watch every department");
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button">Save');
+    expect(markup).not.toContain("access_token");
+  });
+
+  it("rejects a department name and offers manual entry without a saved organization", () => {
+    const markup = renderToStaticMarkup(<DepartmentPickerUnit canListDepartments={false} onChooseDepartment={() => undefined} onSave={() => undefined}
+      target={{...departmentTarget, value: {departmentId: "Billing"}}}/>);
+    expect(markup).toContain("its organization is saved");
+    expect(markup).not.toContain("Choose Zoho Desk department");
+    expect(markup).toContain('role="alert">The department ID must be Zoho Desk&#x27;s numeric ID');
     expect(markup).toContain('class="studio-button studio-button-primary" type="button" disabled="">Save');
   });
 });

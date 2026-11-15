@@ -60,6 +60,10 @@ type guidanceManifest struct {
 						Field  string `yaml:"field"`
 						Scheme string `yaml:"scheme"`
 					} `yaml:"credential"`
+					FixedQuery map[string]string `yaml:"fixedQuery"`
+					Parameters []struct {
+						Name string `yaml:"name"`
+					} `yaml:"parameters"`
 				} `yaml:"request"`
 			} `yaml:"commands"`
 			Units []struct {
@@ -90,10 +94,10 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 		visibleFields = append(visibleFields, method.Fields...)
 	}
 	var names []string
-	for _, field := range visibleFields[:6] {
+	for _, field := range visibleFields[:7] {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"orgId", "maxResponseBytes", "oauth_client_id", "oauth_client_secret", "access_token", "refresh_token"}, names,
+	require.Equal(t, []string{"orgId", "maxResponseBytes", "pollInterval", "oauth_client_id", "oauth_client_secret", "access_token", "refresh_token"}, names,
 		"a new visible field needs its own guidance review")
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
@@ -116,7 +120,12 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, text := range []string{"orgId header", "organization picker", "consent screen", "OAUTH_ORG_MISMATCH", "Setup > Developer Space > API", "refuses to start", "2389290"} {
 		require.Contains(t, orgID.Description, text)
 	}
-	for _, field := range visibleFields[2:6] {
+	pollInterval := manifest.Spec.Configuration.Fields[2]
+	require.Equal(t, "duration", pollInterval.Type)
+	for _, text := range []string{"ticketChanged", "at least 15s", "API credits", "Setup > Developer Space > API"} {
+		require.Contains(t, pollInterval.Description, text)
+	}
+	for _, field := range visibleFields[3:7] {
 		if field.Name == "access_token" || field.Name == "refresh_token" {
 			require.Contains(t, field.Description, "never enter it manually", "OAuth outputs are not manual inputs")
 		}
@@ -158,16 +167,24 @@ func TestEveryDataCenterMethodAuthorizesAtItsOwnZohoAccountsServer(t *testing.T)
 	}
 }
 
-func TestStudioCommandsListOrganizationsOnlyOnEachDataCentersOwnHost(t *testing.T) {
+func TestStudioCommandsListOrganizationsAndDepartmentsOnlyOnEachDataCentersOwnHost(t *testing.T) {
 	studio := readGuidanceManifest(t).Spec.Studio
 	dataCenters := desk.DataCenters()
-	require.Len(t, studio.Commands, len(dataCenters))
+	require.Len(t, studio.Commands, 2*len(dataCenters))
 	for index, command := range studio.Commands {
-		dataCenter := dataCenters[index]
-		require.Equal(t, dataCenter.StudioOrganizationsCommandID, command.ID)
-		require.Equal(t, "zohodesk.organizations-list", command.Capability)
+		dataCenter := dataCenters[index%len(dataCenters)]
+		if index < len(dataCenters) {
+			require.Equal(t, dataCenter.StudioOrganizationsCommandID, command.ID)
+			require.Equal(t, "zohodesk.organizations-list", command.Capability)
+			require.Equal(t, dataCenter.DeskURL+"/api/v1/organizations", command.Request.URL, command.ID)
+		} else {
+			require.Equal(t, dataCenter.StudioDepartmentsCommandID, command.ID)
+			require.Equal(t, "zohodesk.departments-list", command.Capability)
+			require.Equal(t, dataCenter.DeskURL+"/api/v1/departments", command.Request.URL, command.ID)
+			require.Equal(t, map[string]string{"isEnabled": "true", "limit": "200"}, command.Request.FixedQuery, command.ID)
+			require.Equal(t, []string{"orgId", "from"}, commandParameterNames(command.Request.Parameters), command.ID)
+		}
 		require.Equal(t, "GET", command.Request.Method, command.ID)
-		require.Equal(t, dataCenter.DeskURL+"/api/v1/organizations", command.Request.URL, command.ID)
 		require.Equal(t, "access_token", command.Request.Credential.Field, command.ID)
 		require.Equal(t, "bearer", command.Request.Credential.Scheme, command.ID)
 		parsed, err := url.Parse(command.Request.URL)
@@ -175,16 +192,61 @@ func TestStudioCommandsListOrganizationsOnlyOnEachDataCentersOwnHost(t *testing.
 		require.True(t, strings.HasPrefix(parsed.Host, "desk."), command.ID)
 	}
 	require.Contains(t, studio.Setup.BackendCapabilities, "zohodesk.organizations-list")
-	require.Len(t, studio.Units, 1)
-	require.GreaterOrEqual(t, len(studio.Units[0].Description), 120)
-	require.Contains(t, studio.Units[0].Description, "own data center")
+	require.Contains(t, studio.Setup.BackendCapabilities, "zohodesk.departments-list")
+	require.Len(t, studio.Units, 2)
+	for _, unit := range studio.Units {
+		require.GreaterOrEqual(t, len(unit.Description), 120, unit.ID)
+		require.Contains(t, unit.Description, "own data center", unit.ID)
+	}
+	department := studio.Units[1]
+	require.Equal(t, "departmentPicker", department.ID)
+	for _, text := range []string{"departmentId", "Blank means every department", "Setup > General > Departments"} {
+		require.Contains(t, department.Description, text)
+	}
 
 	bundleProvider, err := os.ReadFile("../ui/src/provider.ts")
 	require.NoError(t, err)
 	for _, dataCenter := range dataCenters {
 		require.Contains(t, string(bundleProvider), fmt.Sprintf(`%q: %q`, dataCenter.AuthMethodID, dataCenter.StudioOrganizationsCommandID),
 			"the bundle runs only the command of the connection's data center")
+		require.Contains(t, string(bundleProvider), fmt.Sprintf(`%q: %q`, dataCenter.AuthMethodID, dataCenter.StudioDepartmentsCommandID))
 	}
+}
+
+func TestTicketChangedTriggerIsDeclaredForGoOnly(t *testing.T) {
+	contents, err := os.ReadFile("../connector.yaml")
+	require.NoError(t, err)
+	var manifest struct {
+		Spec struct {
+			Languages map[string]struct {
+				Triggers []string `yaml:"triggers"`
+			} `yaml:"languages"`
+			Triggers []struct {
+				Name              string `yaml:"name"`
+				EventType         string `yaml:"eventType"`
+				ConfigurationType string `yaml:"configurationType"`
+			} `yaml:"triggers"`
+		} `yaml:"spec"`
+	}
+	require.NoError(t, yaml.Unmarshal(contents, &manifest))
+	require.Len(t, manifest.Spec.Triggers, 1)
+	require.Equal(t, "ticketChanged", manifest.Spec.Triggers[0].Name)
+	require.Equal(t, "TicketChangedEvent", manifest.Spec.Triggers[0].EventType)
+	require.Equal(t, "TicketChangedTriggerConfiguration", manifest.Spec.Triggers[0].ConfigurationType)
+	for language, declaration := range manifest.Spec.Languages {
+		require.Empty(t, declaration.Triggers, language)
+	}
+	require.Equal(t, "ticketChanged", desk.TicketChangedTriggerDefinition.Trigger.TriggerName)
+}
+
+func commandParameterNames(parameters []struct {
+	Name string `yaml:"name"`
+}) []string {
+	names := make([]string, 0, len(parameters))
+	for _, parameter := range parameters {
+		names = append(names, parameter.Name)
+	}
+	return names
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {

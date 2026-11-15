@@ -3,10 +3,13 @@
 
 import { describe, expect, it } from "vitest";
 import type { ConnectorStudioConnection } from "@superdurable/dex-connectors-react";
-import { describeOrganization, isOrganizationID, organizationCommandForConnection, organizationCommandIDs, parseOrganizations } from "./provider.js";
+import {
+  departmentCommandForConnection, departmentCommandIDs, describeOrganization, isDepartmentID, isOrganizationID, organizationCommandForConnection,
+  organizationCommandIDs, parseDepartmentPage, parseOrganizations,
+} from "./provider.js";
 
-function connection(authMethodIds: string[]): ConnectorStudioConnection {
-  return {state: "connected", grantedScopes: [], authMethodIds, configuration: {}, isConfigurationReported: true};
+function connection(authMethodIds: string[], configuration: Record<string, unknown> = {}): ConnectorStudioConnection {
+  return {state: "connected", grantedScopes: [], authMethodIds, configuration, isConfigurationReported: true, storedCredentialFields: []};
 }
 
 describe("Zoho Desk provider responses", () => {
@@ -44,5 +47,35 @@ describe("Zoho Desk provider responses", () => {
     expect(isOrganizationID(" 2389290 ")).toBe(true);
     expect(isOrganizationID("zylker")).toBe(false);
     expect(isOrganizationID("https://desk.zoho.com/support/zylker")).toBe(false);
+  });
+
+  it("lists departments only on the connection's own data center for its saved organization", () => {
+    expect(departmentCommandForConnection(connection(["zoho-eu-oauth"], {orgId: " 2389290 "}))).toEqual({commandId: "listDepartmentsEU", orgId: "2389290"});
+    expect(departmentCommandForConnection(connection(["zoho-ae-oauth"], {orgId: "2389290"}))?.commandId).toBe("listDepartmentsAE");
+    expect(departmentCommandForConnection(connection(["zoho-us-oauth"]))).toBeUndefined();
+    expect(departmentCommandForConnection(connection(["zoho-us-oauth"], {orgId: "zylker"}))).toBeUndefined();
+    expect(departmentCommandForConnection(connection([], {orgId: "2389290"}))).toBeUndefined();
+    expect(new Set(Object.values(departmentCommandIDs)).size).toBe(9);
+    expect(Object.keys(departmentCommandIDs)).toEqual(Object.keys(organizationCommandIDs));
+  });
+
+  it("keeps departments with numeric IDs and pages by from", () => {
+    expect(parseDepartmentPage({data: [
+      {id: "1892000000006907", name: "Billing", isEnabled: true},
+      {id: 1892000000082069, name: "Shipping"},
+      {id: "billing", name: "Not an ID"},
+      "not a department",
+    ]}, 0)).toEqual({departments: [
+      {departmentId: "1892000000006907", name: "Billing"},
+      {departmentId: "1892000000082069", name: "Shipping"},
+    ], nextFrom: ""});
+    const fullPage = parseDepartmentPage({data: Array.from({length: 200}, (_, index) => ({id: String(1000 + index), name: `D${index}`}))}, 200);
+    expect(fullPage.nextFrom).toBe("400");
+    expect(() => parseDepartmentPage({errorCode: "SCOPE_MISMATCH"}, 0)).toThrow("Zoho Desk returned no department list.");
+  });
+
+  it("accepts only numeric department IDs", () => {
+    expect(isDepartmentID(" 1892000000006907 ")).toBe(true);
+    expect(isDepartmentID("Billing")).toBe(false);
   });
 });
