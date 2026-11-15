@@ -777,14 +777,22 @@ async def test_second_reply_attempt_readback_match_skips_source_and_post() -> No
 
 
 @pytest.mark.asyncio
-async def test_malformed_credential_fields_are_invalid_material() -> None:
-    """A missing primary email is invalid material, not a transient credential failure."""
+@pytest.mark.parametrize(
+    "malformed_fields",
+    [
+        {"primary_email": None},
+        {"access_token": None},
+        {"access_token": SecretString(None)},  # type: ignore[arg-type]
+    ],
+)
+async def test_malformed_credential_fields_are_invalid_material(malformed_fields: dict[str, object]) -> None:
+    """Malformed credential fields are invalid material, not a transient credential failure."""
     call = Call(
         CallID(str(uuid4())), ConnectionRef("google", "support"), OperationRef("gmail", "sendMessage")
     )
     credential = replace(
         Credentials(SecretString("access-token"), "owner@example.org"),
-        primary_email=None,  # type: ignore[arg-type]  # a malformed credential source
+        **malformed_fields,  # type: ignore[arg-type]
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(200))) as client:
         provider = GmailProvider(
