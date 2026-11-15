@@ -11,10 +11,10 @@ spec:
   provider: xero
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-xero
       operations: [listContacts, findContactByEmail, getInvoice, listInvoices, createInvoice, recordPayment]
-      triggers: []
+      triggers: [invoiceChanged]
     typescript:
       version: v0.2.0
       package: "@superdurable/connector-xero"
