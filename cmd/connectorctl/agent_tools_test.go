@@ -216,8 +216,6 @@ func TestGoOnlyAgentToolKeepsLanguageInputSchemas(t *testing.T) {
 // requireAgentToolsMatchLanguageManifest compares every listed exposed operation and returns how many it compared.
 func requireAgentToolsMatchLanguageManifest(t *testing.T, manifestPath, path string, contents []byte, manifest schema.Manifest, operations []codegen.AgentToolOperation) int {
 	t.Helper()
-	hasSendCaps, err := hasRepeatOnUnknownSendCaps(manifestPath)
-	require.NoError(t, err)
 	var document struct {
 		ConnectorID string `json:"connectorId"`
 		Factories   []struct {
@@ -232,6 +230,12 @@ func requireAgentToolsMatchLanguageManifest(t *testing.T, manifestPath, path str
 	require.NoError(t, json.Unmarshal(contents, &document), path)
 	require.Equal(t, manifest.Metadata.Name, document.ConnectorID, path)
 	isPython := strings.Contains(filepath.ToSlash(path), "/python/")
+	// Each package's own SDK floor decides its tiers, as generation does; the Go module's floor may differ.
+	hasSendCaps, err := hasTypeScriptRepeatOnUnknownSendCaps(manifestPath)
+	if isPython {
+		hasSendCaps, err = hasPythonRepeatOnUnknownSendCaps(manifestPath)
+	}
+	require.NoError(t, err, path)
 	compared := 0
 	for _, operation := range operations {
 		for _, factory := range document.Factories {
