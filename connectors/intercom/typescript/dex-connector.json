@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-intercom",
-    "version": "0.1.1"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -356,6 +356,16 @@
           "email"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineConversationEventTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "conversationEvent",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

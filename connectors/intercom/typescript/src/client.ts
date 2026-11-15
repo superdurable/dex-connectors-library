@@ -14,10 +14,12 @@ import {
 } from "@superdurable/connectors-sdk/providerhttp";
 import {
   SecretString,
+  defaultTriggerLogger,
   type Call,
   type CredentialProvider,
   type Failure,
   type ReceiptDraft,
+  type TriggerLogger,
 } from "@superdurable/connectors-sdk";
 import type { Config, Credentials } from "./generated/models.js";
 import {
@@ -46,8 +48,10 @@ export interface IntercomClientOptions {
   endpoint?: string;
   /** Override the SDK transport. */
   send?: IntercomRequestSender;
-  /** Override receipt and rate limit clock. */
+  /** Override receipt, rate limit, and webhook receipt clock. */
   now?: () => Date;
+  /** Receives conversationEvent Trigger and durable inbox records; omitted uses defaultTriggerLogger. */
+  logger?: TriggerLogger;
 }
 
 /** One classified provider exchange. */
@@ -74,6 +78,10 @@ export class IntercomClient {
   private readonly credentialProvider: CredentialProvider<Credentials>;
   private readonly sender: IntercomRequestSender;
   readonly now: () => Date;
+  /** Largest webhook notification body, in bytes, that the conversationEvent endpoint accepts. */
+  readonly webhookMaxBodyBytes: number;
+  /** Destination of conversationEvent Trigger records. */
+  readonly triggerLogger: TriggerLogger;
 
   /** Construct one validated client without contacting Intercom. */
   constructor(
@@ -90,12 +98,13 @@ export class IntercomClient {
       options.endpoint ?? regionalEndpoints[region]!,
     );
     this.maxResponseBytes = config.maxResponseBytes || 4_194_304;
+    // Zero, like an omitted value, takes the manifest default, as the Go connector's ApplyDefaults does.
+    this.webhookMaxBodyBytes = config.webhookMaxBodyBytes || 2_097_152;
     if (
       !Number.isSafeInteger(this.maxResponseBytes) ||
       this.maxResponseBytes <= 0 ||
-      (config.webhookMaxBodyBytes !== undefined &&
-        (!Number.isSafeInteger(config.webhookMaxBodyBytes) ||
-          config.webhookMaxBodyBytes <= 0))
+      !Number.isSafeInteger(this.webhookMaxBodyBytes) ||
+      this.webhookMaxBodyBytes <= 0
     )
       throw new TypeError(
         "Intercom response and webhook body limits must be positive",
@@ -103,6 +112,12 @@ export class IntercomClient {
     this.credentialProvider = credentialProvider;
     this.sender = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
+  }
+
+  /** @internal The credential source the conversationEvent webhook endpoint verifies signatures with. */
+  webhookCredentialProvider(): CredentialProvider<Credentials> {
+    return this.credentialProvider;
   }
 
   /** Bind the conversation search query. */

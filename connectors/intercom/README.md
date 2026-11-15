@@ -372,16 +372,24 @@ duplicates the customer's earlier open conversation.
 
 ## TypeScript package
 
-`@superdurable/connector-intercom@0.1.1` implements the five conversation
-and contact operations with operation-specific TypeScript Step factories. The
+`@superdurable/connector-intercom@0.2.0` implements the five conversation
+and contact operations with operation-specific TypeScript Step factories and,
+from 0.2.0, the `conversationEvent` webhook Trigger at parity with Go. The
 [`read-conversation` example](typescript/examples/read-conversation) is a
-runnable Dex application using a static `intercom` connection. The
-`conversationEvent` Trigger remains Go-only. Run the TypeScript package's
+runnable Dex application using a static `intercom` connection, and the
+[`inbound-conversation` example](typescript/examples/inbound-conversation)
+starts one Flow per new conversation from signed webhooks through
+`newProjectConversationEventEndpointRunner`. Run the TypeScript package's
 `npm run check` and its real Dex integration script as described in the
 [package README](typescript/README.md). Go-recorded provider scenarios in
 `conformance/connectors/intercom/scenarios.json` verify cross-language
-request and outcome parity; live Intercom behavior is unverified for the
-TypeScript package.
+request and outcome parity; live Intercom behavior, including live webhooks,
+is unverified for the TypeScript package.
+
+| Capability | Go | Python | TypeScript |
+| --- | --- | --- | --- |
+| Five conversation and contact operations | v0.23.0 | 0.1.0 | 0.1.0 |
+| `conversationEvent` Trigger | v0.23.0 | — | 0.2.0 |
 
 ## Python package
 
