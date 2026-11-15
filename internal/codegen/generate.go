@@ -33,6 +33,15 @@ func (generation *generator) mustWrite(format string, values ...any) {
 // RepeatOnUnknown and MaxSends.
 const RepeatOnUnknownMinimumSDKVersion = "v0.37.0"
 
+// PythonRepeatOnUnknownMinimumSDKVersion is the first dex-connectors-sdk release whose
+// MutationDefinition carries repeat_on_unknown and max_sends and whose MutationStepConfig
+// accepts max_sends_override.
+const PythonRepeatOnUnknownMinimumSDKVersion = "v0.10.0"
+
+// TypeScriptRepeatOnUnknownMinimumSDKVersion is the first @superdurable/connectors-sdk
+// release whose MutationDefinition carries repeatOnUnknown and maxSends.
+const TypeScriptRepeatOnUnknownMinimumSDKVersion = "v0.11.0"
+
 // GenerateOption selects generated Go surfaces that need a newer sdkgo release
 // than the one a connector module may require.
 type GenerateOption interface{ applyGenerate(*generateConfig) }

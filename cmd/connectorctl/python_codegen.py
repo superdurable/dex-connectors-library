@@ -46,6 +46,14 @@ connection_definitions = "CONNECTOR_ID, PROVIDER" if connection_provider == "PRO
 package_name = payload["packageName"]
 mock_package_name = payload["mockPackageName"]
 model_aliases = payload.get("modelAliases") or {}
+# Resolved Mutation tiers, present only when the package's SDK floor carries them.
+repeat_on_unknown_tiers = payload.get("repeatOnUnknownTiers") or {}
+
+
+def repeat_on_unknown_tier(operation):
+    if operation["kind"] != "mutation":
+        return None
+    return repeat_on_unknown_tiers.get(operation["name"])
 
 
 models = [
@@ -395,6 +403,10 @@ def render_definitions():
         "    MutationDefinition,",
         "    OperationRef,",
         "    QueryDefinition,",
+    ]
+    if any(repeat_on_unknown_tier(operation) for operation in operations):
+        lines.append("    RepeatOnUnknown,")
+    lines += [
         "    RetryPolicy,",
         "    StepDefaults,",
         "    default_connector_step_execute_retry_policy,",
@@ -455,7 +467,13 @@ def render_definitions():
                 f"        heartbeat_timeout={duration(execution['heartbeatTimeout'])},"
             )
         lines.append(f"        execute_retry={retry_expr},")
-        lines += ["    ),", ")", ""]
+        lines.append("    ),")
+        tier = repeat_on_unknown_tier(operation)
+        if tier:
+            lines.append(f"    repeat_on_unknown=RepeatOnUnknown.{tier['repeatOnUnknown'].upper()},")
+            if tier["maxSends"] > 0:
+                lines.append(f"    max_sends={tier['maxSends']},")
+        lines += [")", ""]
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -619,10 +637,13 @@ def render_steps():
         lines.append(
             f"    result_attribute: dex.Attribute[{result}[{output_type}]] | None = None,"
         )
-        lines += [
-            "    step_options_override: dex.StepOptions | None = None,",
-            f") -> {kind}Step[StepInput, {input_type}, {output_type}]:",
-        ]
+        lines.append("    step_options_override: dex.StepOptions | None = None,")
+        tier = repeat_on_unknown_tier(operation)
+        # Only a limited Mutation accepts a send cap, so other factories reject the keyword.
+        has_max_sends_override = bool(tier) and tier["repeatOnUnknown"] == "limited"
+        if has_max_sends_override:
+            lines.append("    max_sends_override: int | None = None,")
+        lines.append(f") -> {kind}Step[StepInput, {input_type}, {output_type}]:")
         lines += [
             "    if connection is None or connection.reference.name != connection_name:",
             f"        raise ValueError({quoted(metadata['displayName'] + ' Step connection name must match its connection reference')})",
@@ -662,8 +683,10 @@ def render_steps():
             "            branches=branches,",
         ]
         lines.append("            result_attribute=result_attribute,")
+        lines.append("            step_options_override=step_options_override,")
+        if has_max_sends_override:
+            lines.append("            max_sends_override=max_sends_override,")
         lines += [
-            "            step_options_override=step_options_override,",
             "        )",
             "    )",
             "",

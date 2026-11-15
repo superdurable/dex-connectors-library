@@ -111,7 +111,7 @@ func generateAllOperationsTypeScript(connectorDirectory string) (map[string][]by
 		selected.Operations = append(selected.Operations, operation.Name)
 	}
 	manifest.Spec.Languages.TypeScript = selected
-	return GenerateTypeScript(manifest, filepath.Join(connectorDirectory, "go"))
+	return GenerateTypeScript(manifest, filepath.Join(connectorDirectory, "go"), nil)
 }
 
 func TestCatalogGeneratedTypeScriptCompiles(t *testing.T) {

@@ -872,16 +872,16 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
    }
   }
   if prior, ok := fields["priorHeartbeat"]; ok {
-   priorFields, err := conformanceObject(prior, []string{"attempt"}, []string{"value", "callId", "state", "providerId"})
+   priorFields, err := conformanceObject(prior, []string{"attempt"}, []string{"value", "callId", "state", "providerId"{{PRIOR_HEARTBEAT_SEND_COUNT_KEY}}})
    if err != nil { return nil, err }
    if rawValue, wrapped := priorFields["value"]; wrapped {
     if len(priorFields) != 2 || bytes.Equal(bytes.TrimSpace(rawValue), []byte("null")) || !json.Valid(rawValue) { return nil, errors.New("invalid prior heartbeat value") }
    } else {
-    if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId"}); err != nil { return nil, err }
+    if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId"{{PRIOR_HEARTBEAT_SEND_COUNT_KEY}}}); err != nil { return nil, err }
     var marker struct { CallID string `json:"callId"`; State string `json:"state"` }
     if err := json.Unmarshal(prior, &marker); err != nil { return nil, err }
     if marker.CallID != scenario.CallID { return nil, errors.New("prior heartbeat Call ID differs") }
-    if marker.State != "notSent" && marker.State != "claimed" && marker.State != "canResend" { return nil, errors.New("invalid prior heartbeat") }
+    if marker.State != "notSent" && marker.State != "claimed" && marker.State != "canResend" { return nil, errors.New("invalid prior heartbeat") }{{PRIOR_HEARTBEAT_SEND_COUNT_CHECK}}
    }
    var attempt struct { Attempt int `json:"attempt"` }
    if err := json.Unmarshal(prior, &attempt); err != nil || attempt.Attempt < 1 { return nil, errors.New("invalid prior heartbeat attempt") }

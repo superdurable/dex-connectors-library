@@ -67,6 +67,18 @@ func generatedConformanceTestFiles(manifestPath string) (map[string][]byte, erro
 	source := strings.ReplaceAll(conformanceGeneratedTemplate, "{{PACKAGE}}", syntax.Name.Name)
 	source = strings.ReplaceAll(source, "{{FIXTURE}}", fmt.Sprintf("%q", filepath.ToSlash(relativeFixture)))
 	source = strings.ReplaceAll(source, "{{MATCHER_FIXTURE}}", fmt.Sprintf("%q", filepath.ToSlash(relativeMatcherFixture)))
+	hasSendCaps, err := hasRepeatOnUnknownSendCaps(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	sendCountKey, sendCountCheck := "", ""
+	if hasSendCaps {
+		// Only a module whose sdkgo writes sendCount accepts it in a priorHeartbeat marker shorthand.
+		sendCountKey = `, "sendCount"`
+		sendCountCheck = "\n" + `if rawSendCount, counted := priorFields["sendCount"]; counted { var sendCount int32; if bytes.Equal(bytes.TrimSpace(rawSendCount), []byte("null")) || json.Unmarshal(rawSendCount, &sendCount) != nil || sendCount < 0 { return nil, errors.New("invalid prior heartbeat send count") } }`
+	}
+	source = strings.ReplaceAll(source, "{{PRIOR_HEARTBEAT_SEND_COUNT_KEY}}", sendCountKey)
+	source = strings.ReplaceAll(source, "{{PRIOR_HEARTBEAT_SEND_COUNT_CHECK}}", sendCountCheck)
 	formatted, err := format.Source([]byte(source))
 	if err != nil {
 		return nil, fmt.Errorf("format conformance test: %w", err)

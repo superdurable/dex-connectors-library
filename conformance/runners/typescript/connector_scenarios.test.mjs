@@ -30,3 +30,24 @@ test('loadScenarios validates shared fixed clock cases', () => {
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('loadScenarios validates a prior marker sendCount like the marker decoder', () => {
+  const source = JSON.parse(readFileSync(new URL('../../../conformance/connectors/airtable/scenarios.json', import.meta.url), 'utf8'));
+  const scenario = source.scenarios[0];
+  const directory = mkdtempSync(join(tmpdir(), 'connector-send-count-'));
+  try {
+    const path = join(directory, 'scenarios.json');
+    for (const sendCount of [0, 2]) {
+      scenario.priorHeartbeat = { callId: scenario.callId, attempt: 2, state: 'claimed', sendCount };
+      writeFileSync(path, JSON.stringify(source));
+      assert.equal(loadScenarios(pathToFileURL(path))[0].priorHeartbeat.sendCount, sendCount);
+    }
+    for (const sendCount of [-1, 1.5, '2', null, true]) {
+      scenario.priorHeartbeat = { callId: scenario.callId, attempt: 2, state: 'claimed', sendCount };
+      writeFileSync(path, JSON.stringify(source));
+      assert.throws(() => loadScenarios(pathToFileURL(path)), /invalid prior heartbeat/, String(sendCount));
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

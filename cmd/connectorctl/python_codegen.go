@@ -33,6 +33,25 @@ type pythonCodegenInput struct {
 	SharedRequiredFields   map[string][]string `json:"sharedRequiredFields"`
 	HasDeclaredTokenGrants bool                `json:"hasDeclaredTokenGrants"`
 	TimestampSource        string              `json:"timestampSource"`
+	// RepeatOnUnknownTiers holds each Mutation's resolved tier, keyed by operation name, only for a package
+	// whose dex-connectors-sdk floor carries the fields; nil keeps the earlier output.
+	RepeatOnUnknownTiers map[string]pythonRepeatOnUnknownTier `json:"repeatOnUnknownTiers,omitempty"`
+}
+
+type pythonRepeatOnUnknownTier struct {
+	RepeatOnUnknown string `json:"repeatOnUnknown"`
+	MaxSends        int32  `json:"maxSends"`
+}
+
+// pythonRepeatOnUnknownTiers resolves every Mutation's tier so the script never re-derives manifest defaults.
+func pythonRepeatOnUnknownTiers(manifest schema.Manifest) map[string]pythonRepeatOnUnknownTier {
+	tiers := make(map[string]pythonRepeatOnUnknownTier)
+	for _, operation := range manifest.Spec.Operations {
+		if operation.Kind == "mutation" {
+			tiers[operation.Name] = pythonRepeatOnUnknownTier{RepeatOnUnknown: operation.ResolvedRepeatOnUnknown(), MaxSends: operation.ResolvedMaxSends()}
+		}
+	}
+	return tiers
 }
 
 var pythonModelAliasPattern = regexp.MustCompile(`(?m)^# connectorctl: model-alias ([A-Za-z_][A-Za-z_0-9]*)=([A-Za-z_][A-Za-z_0-9]*)$`)
@@ -90,7 +109,15 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest, goPacka
 	if len(mockFacades) == 1 {
 		mockPackageName = filepath.Base(filepath.Dir(mockFacades[0]))
 	}
-	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, Models: models.Models, PackageName: packageName, MockPackageName: mockPackageName, ModelAliases: modelAliases, HasDeclaredTokenGrants: codegen.HasDeclaredTokenGrants(manifest)})
+	input := pythonCodegenInput{Manifest: manifest, Models: models.Models, PackageName: packageName, MockPackageName: mockPackageName, ModelAliases: modelAliases, HasDeclaredTokenGrants: codegen.HasDeclaredTokenGrants(manifest)}
+	hasSendCaps, err := hasPythonRepeatOnUnknownSendCaps(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	if hasSendCaps {
+		input.RepeatOnUnknownTiers = pythonRepeatOnUnknownTiers(manifest)
+	}
+	generated, err := renderPythonCodegen(input)
 	if err != nil {
 		return nil, err
 	}

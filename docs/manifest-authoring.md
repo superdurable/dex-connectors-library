@@ -279,6 +279,19 @@ passes `call.MaxSends()` to `singledispatch.WithMaxSends`, so the manifest stays
 the only source of the number. A module requiring an earlier `sdkgo` gets none
 of these fields; its generated code is unchanged.
 
+Python and TypeScript packages follow their own SDK requirement, not the Go
+module's. When the `[project].dependencies` of `python/pyproject.toml` admit no
+`dex-connectors-sdk` release before 0.10.0 (one requirement without a marker
+whose `==`, `>=`, `~=`, or `>` versions set that floor), each generated Mutation
+definition gets `repeat_on_unknown`, a `limited` one also gets `max_sends`, and
+a `limited` Mutation's Step factory gets `max_sends_override`. Optional
+dependencies and dependency groups do not count. When the `dependencies` of
+`typescript/package.json` pin `@superdurable/connectors-sdk` to exactly 0.11.0
+or later, each generated Mutation definition gets `repeatOnUnknown`, and a
+`limited` one also gets `maxSends`; `devDependencies` and `peerDependencies` do
+not count. Any other requirement, such as a range, a wildcard, a pre-release, or
+an earlier release, keeps the earlier output.
+
 `auth.oauth2.protocol` distinguishes plain OAuth 2.0 from OpenID Connect. It
 defaults to `oauth2` for existing manifests. An `oidc` manifest must also
 declare HTTPS issuer, discovery, and UserInfo endpoints and require a nonce.
@@ -657,9 +670,12 @@ The generated `dex-connector.json` derives the published agent block's `retry`
 from the resolved tier: `safe` exactly when an exposed Mutation's
 `repeatOnUnknown` is `safe`, absent otherwise. Released Dex agent hosts reject
 any other `retry` value, so the tier itself travels in two further keys,
-`repeatOnUnknown` and, for `limited`, `maxSends`. `connectorctl` writes them only
-when the connector's Go module requires `sdkgo` v0.37.0 or later, so a connector
-is advertised as resending only after it adopts the bounded-resend Fence. Older
+`repeatOnUnknown` and, for `limited`, `maxSends`. `connectorctl` writes them into
+a language package's `dex-connector.json` only when that package passes its own
+SDK gate above (`dex-connectors-sdk` 0.10.0 for Python,
+`@superdurable/connectors-sdk` 0.11.0 for TypeScript), whatever the Go module
+requires, so a package is advertised as resending only after it can adopt the
+bounded-resend Fence. Older
 hosts ignore the new keys and treat a call without `retry: safe` as unsafe to
 repeat.
 
