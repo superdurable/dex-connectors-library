@@ -1,6 +1,6 @@
 # Trello Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go@v0.24.0`.
 
 The Python package `dex-connector-atlassian-trello` implements all five operations at `v0.1.0`; see its [package README](python/README.md) and [runnable card-read Flow](python/examples/approved_request_card/README.md). Go-recorded provider scenarios cover Python requests, retries, branches, and output encoding. The Python example ran through a local Dex Worker and Client with a fake Trello HTTP service; live Trello authorization and provider behavior remain unverified for Python.
 
@@ -34,8 +34,10 @@ bodies such as `invalid token` that can repeat request content, so a rejection
 names only the HTTP status, such as `Trello rejected the card with HTTP 400`.
 Members carry an ID, full name, and username, never an email address.
 
-No Trigger and no Studio picker ships in this release; see
-[Not in this release](#not-in-this-release).
+It also exposes one poll Trigger, `cardChanged`, which delivers each card
+created, copied, updated, commented on, moved in, or deleted on one board; see
+[cardChanged Trigger](#cardchanged-trigger). No Studio picker ships in this
+release; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
@@ -92,6 +94,91 @@ token, and the Dex Web exchange, scope-string check, and refresh rotation are
 unverified for it. It can be added later as a second method with
 `sdkgo/oauthtoken`.
 
+## cardChanged Trigger
+
+`cardChanged` polls one board's action history,
+[`GET /1/boards/{id}/actions`](https://developer.atlassian.com/cloud/trello/rest/api-group-boards/#api-boards-boardid-actions-get),
+and delivers one `trello.CardChangedEvent` per card action. It is built on the
+Connector SDK's durable poll Trigger kit
+([`sdkgo/pollingtrigger`](../../../sdkgo/README.md#polling-triggers), sdkgo v0.38.0).
+It uses the existing key and token: reading actions needs only the token's
+`read` scope.
+
+- **Actions.** Every request sends `filter=createCard,copyCard,updateCard,`
+  `commentCard,deleteCard,moveCardToBoard,convertToCardFromCheckItem,emailCard`,
+  `limit=500`, the action fields, and `memberCreator=true`. The event carries
+  the action ID and type, its time, the member, the card snapshot the action
+  recorded (`deleteCard` keeps only the ID, short ID, and list), the list, and
+  for an `updateCard` the sorted `ChangedFields` (the keys of Trello's
+  `data.old`) and `ListBefore` and `ListAfter` for a move. A `commentCard`
+  carries `CommentText`. Board updates, list changes, and other action types are
+  not delivered.
+- **Baseline.** The first poll of a binding reads the newest page and keeps only
+  its position, so earlier actions are never delivered. An empty board has no
+  watermark, and every later card action is new.
+- **Cursor.** The cursor stores the newest delivered action time and the IDs
+  delivered in the minute before it. Each poll sends `since` one minute before
+  that time, so an action recorded in the same moment as one already read but
+  listed later is still delivered, and the stored IDs keep any action from being
+  delivered twice. The cursor keeps at most 2,000 IDs; when a burst puts more
+  inside that minute, it also stores the largest ID it dropped, and every action
+  ID at or below that one counts as delivered. Trello lists actions newest first; the poll pages back with
+  `before=<smallest ID>` until a short page and delivers the actions oldest
+  first, 500 per kit page.
+- **Gaps.** A backlog over 20 pages (10,000 actions) since the last poll, a 400
+  that names `since` or `before`, or a cursor saved for another board records a
+  new baseline and logs a WARN `poll cursor invalid; reseeding` record. Actions
+  in that gap are not delivered. Trello never expires a date cursor, so none of
+  these is expected in normal operation.
+- **Rate limits.** Trello limits each token to 100 requests and each key to 300
+  per 10 seconds. A 429 pauses every binding of the connection for
+  `Retry-After`, or for one 10-second window, since Trello documents none.
+  401, 403, 404 (a board the member cannot open or that does not exist), 5xx,
+  transport failures, and invalid pages back off per binding up to 15 minutes.
+  None of them moves the cursor.
+- **Delivery.** Delivery is at least once. The Trigger event ID is
+  `trello-action-<action ID>`, so a refetch yields the same ID and a Flow target
+  keyed by it starts one Flow per action.
+- **Poll interval.** The connection's `pollInterval` setting is the delay
+  between polls, at least 10 seconds. A quiet board costs one request per poll,
+  shared with the operation Steps on the same token.
+
+`trello.NewProjectCardTriggerRunner` is the durable path. It loads each
+binding's saved board, records every action in the binding's project Trigger
+inbox, and commits the cursor in the binding's project poll cursor only after
+that, so a restarted or replaced replica neither misses nor repeats an action.
+From [`examples/card-changed/main.go`](go/examples/card-changed/main.go):
+
+```go
+triggerRunner, err := trello.NewProjectCardTriggerRunner(project, cardchanged.ConnectionName, trello.ProjectCardTriggerRunnerConfig{
+	CardChangedRoutes: []trello.ProjectCardChangedTriggerRoute{{
+		BindingName: cardchanged.CardChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, cardchanged.AcceptEveryCardChange, cardchanged.ResolveFlowID,
+			cardchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, trello.WithLogger(logger))
+```
+
+`trello.NewCardTriggerRunner` takes the targets and cursor stores directly. A
+route without a cursor store keeps the cursor in memory. The generated
+`trello.NewCardChangedTrigger` factory always does, because it receives no
+project storage. Such a binding records a new baseline on every process start,
+so actions made while the process is stopped are lost. Use them only for tests
+and demonstrations.
+
+Under `dexcli dev`, the Dex Web connections file keeps Trigger inboxes on disk,
+but the poll cursor stays in process memory. A restarted local Worker therefore
+records a new baseline. Hosted project storage keeps both.
+
+The binding configuration is `trello.CardChangedTriggerConfiguration`. The
+`boardInput` Studio unit takes a pasted board address,
+`https://trello.com/b/<short link>/<board name>`, and saves the 8-character
+short link, or saves a pasted 24-character board ID. The board is required; a
+binding without one stops `NewProjectCardTriggerRunner`. Changing the board of
+a binding that already polled makes its next poll record a new baseline. Restart
+the Worker after saving. The unit cannot list boards; see
+[Studio pickers](#studio-pickers).
+
 ## Project configuration
 
 Dex Web or Superverse Studio saves the connection's settings and credentials in
@@ -113,8 +200,8 @@ if err != nil {
 
 `LoadFromEnvironment` reads the `DEX_PROJECT_*` environment described in
 [project configuration](../../../sdkgo/projectconfig/README.md). The API key and
-token stay in project storage and are read for every provider call; `endpoint`
-and `maxResponseBytes` are startup configuration.
+token stay in project storage and are read for every provider call; `endpoint`,
+`maxResponseBytes`, and `pollInterval` are startup configuration.
 
 ## Operations
 
@@ -274,7 +361,9 @@ A board picker would list `GET /1/members/me/boards` and a list picker
 rejects from a Studio command. A Studio command also injects one credential as
 a bearer token or a raw header, and `Authorization` cannot be a raw-header
 name, while Trello needs the key and the token together, in its `OAuth` header
-or as two query parameters. Board and list IDs are therefore operation input.
+or as two query parameters. Board and list IDs are therefore operation input, and the `cardChanged`
+board is pasted into the `boardInput` unit, which derives the short link from
+the board address.
 To find them, run the documented calls with the same header:
 
 ```bash
@@ -288,10 +377,11 @@ A board member can also export the board from the board menu with **Print,
 Export, and Share**; every object in the JSON export carries its 24-character
 `id`.
 
-### Triggers
+### Webhook Triggers
 
-Trello webhooks (`POST /1/webhooks` with `callbackURL` and `idModel`) need
-three things `sdkgo/webhooktrigger` does not offer yet:
+`cardChanged` polls. Trello webhooks (`POST /1/webhooks` with `callbackURL` and
+`idModel`) would deliver the same actions sooner, but need three things
+`sdkgo/webhooktrigger` does not offer yet:
 
 - Trello sends an HTTP `HEAD` to the callback URL when the webhook is created
   and refuses to create it without a 200; `webhooktrigger.Endpoint` accepts only
@@ -304,12 +394,6 @@ three things `sdkgo/webhooktrigger` does not offer yet:
   Trello deletes a webhook whose delivery receives HTTP 410 or whose token is
   revoked, so the binding needs a setup and renewal path.
 
-Trello retries a failed delivery three times, after 30, 60, and 120 seconds,
-and disables a webhook that fails for 30 days and over 1000 times. Its payload
-carries `action.id`, which a source would use as the event ID, but Trello
-shows it only in an example and does not call it a delivery ID. Until a source
-exists, poll with `listCards` on the list or board.
-
 ## Example
 
 [`examples/approved-request-card`](go/examples/approved-request-card) turns an
@@ -317,6 +401,10 @@ approved request into a card in the approved list: it pages through the board's
 open cards for one that already carries the request ID, moves an existing one or
 creates the card once, and comments with the approval. It uses all five
 operations.
+
+[`examples/card-changed`](go/examples/card-changed) is a runnable Trigger
+example: the `cardChanged` binding starts one `TrelloCardChange` Flow per card
+action, which reads the card back with `trello.NewGetCardStep` and records it.
 
 ## Mocks
 
@@ -363,7 +451,13 @@ URLs, every branch above, page cursors and due filters, the dispatch checkpoint
 and its clearing, JSON bodies, read-back verification of every update field,
 label add and remove, plain-text errors without Trello text, rate-limit codes
 with and without `Retry-After`, redirects, oversized and malformed responses,
-credential reflection, and header-unsafe credentials.
+credential reflection, and header-unsafe credentials. The `cardChanged` fake
+board covers the baseline, the action filter, lookback deduplication of a late
+action, a backlog paged with `before`, a burst over the 2,000-ID cursor bound
+delivered exactly once, 429, a 400 for `since`, foreign and
+invalid cursors, a missing board, and the durable runner committing after
+recording. The `ui/` tests cover the setup states and the board input's derived
+short link, validation, and disabled Save.
 
 No live Trello account was used. The following live behavior is unverified: the
 app admin portal labels in the setup guidance; real response shapes of every
@@ -374,4 +468,8 @@ none; whether a JSON body works for every documented parameter; the card name
 and comment length limits; whether a 429 is always returned before a write is
 applied; whether 401 is also the status for a card the member cannot open;
 `Retry-After` on 429; the `atl-request-id` header; and 429 and 5xx behavior
-under load.
+under load. For `cardChanged`: the newest-first order of
+`GET /boards/{id}/actions`, whether `since` and `before` are exclusive, how long
+an action can surface after its recorded time, the `data.old`, `listBefore`,
+and `listAfter` shapes, `limit=500` with `before` paging past 1,000 actions,
+and the 400 text Trello returns for an invalid `since`.

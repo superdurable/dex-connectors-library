@@ -12,6 +12,7 @@ class Config:
 
     endpoint: str = "https://api.trello.com/1"
     max_response_bytes: int = 4194304
+    poll_interval_seconds: float = 30
 
 setattr(Config, '__module__', 'dex_connectors.atlassian_trello.client')
 

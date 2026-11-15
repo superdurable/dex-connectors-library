@@ -46,12 +46,15 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete Trello API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createCard or addComment selects uncertain. */
   maxResponseBytes?: number;
+  /** Delay between cardChanged Trigger polls of each watched board's action history, as a Go duration of at least 10s such as 45s or 2m. Leave blank to keep the displayed interval; a shorter interval delivers card changes sooner and spends more of the token's Trello rate limit of 100 requests per 10 seconds, which operation Steps on the same connection share. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

@@ -18,9 +18,15 @@ import (
 
 const ConnectorID = "trello"
 
+const (
+	UIUnitBoardInput        = "boardInput"
+	UIBoardInputPortBoardID = "boardId"
+)
+
 type Config struct {
-	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 }
 
 type Credentials struct {
@@ -163,6 +169,7 @@ func DefaultConfig() Config {
 	return Config{
 		Endpoint:         "https://api.trello.com/1",
 		MaxResponseBytes: 4194304,
+		PollInterval:     time.Duration(30000000000),
 	}
 }
 
@@ -173,6 +180,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
 	}
 	return config
 }
@@ -187,6 +197,9 @@ func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
+	}
 	return nil
 }
 
@@ -198,6 +211,52 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential token is required")
 	}
 	return nil
+}
+
+var CardChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "cardChanged"},
+	Description: "Receive each card created, copied, updated (moved, renamed, archived, rescheduled, and other field changes), commented on, moved in from another board, or deleted on one board, read by polling the board's action history; the first run records a baseline and delivers no earlier actions.",
+}
+
+type CardChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=trello"`
+	triggerName                             struct{}                       `connector:"triggerName=cardChanged"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineCardChangedTriggerBinding(config CardChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: CardChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type CardChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                              `connector:"connectorId=trello"`
+	triggerName                      struct{}                              `connector:"triggerName=cardChanged"`
+	Connection                       Connection                            `connector:"connection"`
+	ConnectionName                   string                                `connector:"connectionName"`
+	BindingName                      string                                `connector:"bindingName"`
+	Configuration                    CardChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[CardChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewCardChangedTrigger(config CardChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("trello connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: CardChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[CardChangedEvent]{
+		Definition: CardChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.cardChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const ListCardsBranchListed sdkgo.BranchID = "listed"
@@ -230,6 +289,7 @@ type ListCardsStepConfig[IN any] struct {
 	operationID                    struct{}                                           `connector:"operationId=listCards"`
 	StepType                       string                                             `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
 	Connection                     Connection                                         `connector:"connection"`
 	ConnectionName                 string                                             `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListCardsInput                            `connector:"mapToOperationInput"`
@@ -251,7 +311,8 @@ func NewListCardsStep[IN any](config ListCardsStepConfig[IN]) sdkgo.QueryStep[IN
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCardsInput, ListCardsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListCards(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListCards(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListCardsResult] {
 			branches := make([]sdkgo.BranchTarget[ListCardsResult], 0, 5)
@@ -307,6 +368,7 @@ type GetCardStepConfig[IN any] struct {
 	operationID                    struct{}                                `connector:"operationId=getCard"`
 	StepType                       string                                  `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI          `connector:"configurationUI"`
 	Connection                     Connection                              `connector:"connection"`
 	ConnectionName                 string                                  `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetCardInput                   `connector:"mapToOperationInput"`
@@ -328,7 +390,8 @@ func NewGetCardStep[IN any](config GetCardStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCardInput, Card]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetCard(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetCard(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetCardResult] {
 			branches := make([]sdkgo.BranchTarget[GetCardResult], 0, 5)
@@ -372,6 +435,8 @@ var CreateCardDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateCardResult = sdkgo.MutationResult[CreateCardOutput]
@@ -382,6 +447,7 @@ type CreateCardStepConfig[IN any] struct {
 	operationID                       struct{}                                               `connector:"operationId=createCard"`
 	StepType                          string                                                 `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
 	Connection                        Connection                                             `connector:"connection"`
 	ConnectionName                    string                                                 `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreateCardInput                               `connector:"mapToOperationInput"`
@@ -391,6 +457,8 @@ type CreateCardStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateCardResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateCardOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateCardStep[IN any](config CreateCardStepConfig[IN]) sdkgo.MutationStep[IN, CreateCardInput, CreateCardOutput] {
@@ -402,7 +470,8 @@ func NewCreateCardStep[IN any](config CreateCardStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCardInput, CreateCardOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.CreateCard(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateCard(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateCardResult] {
 			branches := make([]sdkgo.BranchTarget[CreateCardResult], 0, 4)
@@ -422,6 +491,7 @@ func NewCreateCardStep[IN any](config CreateCardStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -445,6 +515,7 @@ var UpdateCardDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateCardResult = sdkgo.MutationResult[UpdateCardOutput]
@@ -455,6 +526,7 @@ type UpdateCardStepConfig[IN any] struct {
 	operationID                       struct{}                                               `connector:"operationId=updateCard"`
 	StepType                          string                                                 `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
 	Connection                        Connection                                             `connector:"connection"`
 	ConnectionName                    string                                                 `connector:"connectionName"`
 	MapToOperationInput               func(IN) UpdateCardInput                               `connector:"mapToOperationInput"`
@@ -476,7 +548,8 @@ func NewUpdateCardStep[IN any](config UpdateCardStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCardInput, UpdateCardOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.UpdateCard(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpdateCard(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateCardResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateCardResult], 0, 5)
@@ -522,6 +595,8 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AddCommentResult = sdkgo.MutationResult[AddCommentOutput]
@@ -532,6 +607,7 @@ type AddCommentStepConfig[IN any] struct {
 	operationID                       struct{}                                               `connector:"operationId=addComment"`
 	StepType                          string                                                 `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
 	Connection                        Connection                                             `connector:"connection"`
 	ConnectionName                    string                                                 `connector:"connectionName"`
 	MapToOperationInput               func(IN) AddCommentInput                               `connector:"mapToOperationInput"`
@@ -542,6 +618,8 @@ type AddCommentStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddCommentResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddCommentOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationStep[IN, AddCommentInput, AddCommentOutput] {
@@ -553,7 +631,8 @@ func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddCommentInput, AddCommentOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.AddComment(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.AddComment(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddCommentResult] {
 			branches := make([]sdkgo.BranchTarget[AddCommentResult], 0, 5)
@@ -576,5 +655,6 @@ func NewAddCommentStep[IN any](config AddCommentStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
