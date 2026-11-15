@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Mailchimp Marketing API connector Steps for Dex Flows."""
+"""Mailchimp Marketing API connector Steps and the memberChanged poll Trigger for Dex Flows."""
 
 from ._generated.config import Config, Credentials
 from ._generated.definitions import (
@@ -31,6 +31,8 @@ from .models import (
     ListMembersOutput,
     MarketingPermissionInput,
     Member,
+    MemberChangedEvent,
+    MemberChangedTriggerConfiguration,
     SendCampaignInput,
     SendCampaignOutput,
     UpdateMemberTagsInput,
@@ -52,6 +54,19 @@ from .steps import (
     new_update_member_tags_step,
     new_upsert_member_step,
 )
+from .triggers import (
+    MEMBER_CHANGED_TRIGGER_DEFINITION,
+    MemberChangedTriggerRoute,
+    ProjectMemberChangedTriggerRoute,
+    decode_member_changed_event_payload,
+    decode_member_changed_trigger_configuration,
+    define_member_changed_trigger_binding,
+    member_statuses,
+    new_member_changed_trigger,
+    new_member_trigger_runner,
+    new_project_member_trigger_runner,
+    validate_member_changed_trigger_configuration,
+)
 
 __all__ = [
     "ALREADY_SENT",
@@ -72,10 +87,15 @@ __all__ = [
     "ListMembersOperation",
     "ListMembersOutput",
     "MarketingPermissionInput",
+    "MEMBER_CHANGED_TRIGGER_DEFINITION",
     "Member",
+    "MemberChangedEvent",
+    "MemberChangedTriggerConfiguration",
+    "MemberChangedTriggerRoute",
     "NOT_FOUND",
     "NOT_SENDABLE",
     "PROVIDER_REJECTED",
+    "ProjectMemberChangedTriggerRoute",
     "SEND_CAMPAIGN_DEFINITION",
     "SENT",
     "SendCampaignInput",
@@ -92,12 +112,20 @@ __all__ = [
     "UpsertMemberInput",
     "UpsertMemberOperation",
     "UpsertMemberOutput",
+    "decode_member_changed_event_payload",
+    "decode_member_changed_trigger_configuration",
+    "define_member_changed_trigger_binding",
+    "member_statuses",
     "new_connection",
     "new_connection_with_operations",
     "new_get_member_step",
     "new_list_members_step",
+    "new_member_changed_trigger",
+    "new_member_trigger_runner",
+    "new_project_member_trigger_runner",
     "new_project_connection",
     "new_send_campaign_step",
     "new_update_member_tags_step",
     "new_upsert_member_step",
+    "validate_member_changed_trigger_configuration",
 ]

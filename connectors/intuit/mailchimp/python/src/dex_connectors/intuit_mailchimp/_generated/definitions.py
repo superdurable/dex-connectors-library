@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -79,6 +82,7 @@ UPSERT_MEMBER_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 UPDATE_MEMBER_TAGS_DEFINITION = MutationDefinition(
@@ -95,6 +99,7 @@ UPDATE_MEMBER_TAGS_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 SEND_CAMPAIGN_DEFINITION = MutationDefinition(
@@ -114,4 +119,11 @@ SEND_CAMPAIGN_DEFINITION = MutationDefinition(
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
+)
+
+MEMBER_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="memberChanged"),
+    description="Receive each contact added to or changed in one Mailchimp audience, including subscribes, unsubscribes, profile and tag changes, and cleaned addresses, read by polling contacts by last change time; the first run records a baseline and delivers no existing contacts.",
 )
