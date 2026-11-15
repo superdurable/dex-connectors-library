@@ -15,9 +15,9 @@ spec:
       operations: [listCards, getCard, createCard, updateCard, addComment]
       triggers: []
     typescript:
-      version: v0.1.2
+      version: v0.2.0
       operations: [listCards, getCard, createCard, updateCard, addComment]
-      triggers: []
+      triggers: [cardChanged]
   codegen:
     go:
       package: trello
