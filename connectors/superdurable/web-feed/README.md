@@ -1,6 +1,7 @@
 # Web Feeds Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/web-feed/go@v0.1.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/web-feed/go@v0.1.0`,
+or the TypeScript package with `npm install @superdurable/connector-web-feed@0.1.0`.
 
 > **Verification status: Live.** The checked-in example ran on a real Dex stack
 > through Dex Web against public sites. See [Verification](#verification) for
@@ -254,6 +255,15 @@ Respect each site's terms and `robots.txt`. Poll at a modest interval and use
 conditional GET; the connector honors `Retry-After` but keeps no schedule of
 its own.
 
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) implements all four operations
+with the same branches, limits, address policy, and redirect handling. It
+replays every Go-recorded scenario in
+`conformance/connectors/superdurable/web-feed/scenarios.json`, exports the
+generated mock as `@superdurable/connector-web-feed/mock`, and has its own
+[runnable example](typescript/examples/blog-post-check/README.md).
+
 ## Runnable example
 
 [Blog post check](go/examples/blog-post-check/README.md) discovers a blog's
@@ -286,6 +296,10 @@ process-crash-safe` and use `DEX_FLOW_SERVICE_ADDRESS` when it is not
 `webfeedmock` connection, including a Dex retry, the `notModified` wiring, a
 sitemap index with two children, a skipped removed page, and the first
 post's text read through `readPage`.
+
+`GOWORK=off go test . -run '^TestConnectorConformance$' -count=1` replays the
+shared conformance scenarios against the Go operations; the TypeScript package
+replays the same file.
 
 Live verification is recorded in the
 [example README](go/examples/blog-post-check/README.md#live-verification).

@@ -1,0 +1,2544 @@
+{
+  "connector": "superdurable/web-feed",
+  "scenarios": [
+    {
+      "callId": "cfe7281c-b396-5193-bac8-95126dd117ca",
+      "exchanges": [
+        {
+          "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003crss version=\"2.0\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\" xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:media=\"http://search.yahoo.com/mrss/\"\u003e\n\u003cchannel\u003e\n  \u003ctitle\u003eExample \u0026amp;amp; Friends\u003c/title\u003e\n  \u003clink\u003ehttps://blog.example.com/\u003c/link\u003e\n  \u003catom:link href=\"https://blog.example.com/feed.xml\" rel=\"self\" type=\"application/rss+xml\"/\u003e\n  \u003cdescription\u003e\u003c![CDATA[\u003cp\u003ePosts from the \u003cb\u003eexample\u003c/b\u003e team.\u003c/p\u003e]]\u003e\u003c/description\u003e\n  \u003clastBuildDate\u003eTue, 10 Nov 2026 09:30:00 GMT\u003c/lastBuildDate\u003e\n  \u003citem\u003e\n    \u003ctitle\u003eDon\u0026amp;#8217;t repeat yourself\u003c/title\u003e\n    \u003cmedia:title\u003eThumbnail caption that must not win\u003c/media:title\u003e\n    \u003clink\u003e/posts/dry\u003c/link\u003e\n    \u003cguid isPermaLink=\"false\"\u003epost-42\u003c/guid\u003e\n    \u003cpubDate\u003eTue, 3 Nov 2026 10:00:00 EST\u003c/pubDate\u003e\n    \u003cauthor\u003eavery@example.com (Avery Chen)\u003c/author\u003e\n    \u003cdc:creator\u003eJordan Lee\u003c/dc:creator\u003e\n    \u003ccategory\u003eTooling\u003c/category\u003e\n    \u003ccategory\u003eTooling\u003c/category\u003e\n    \u003ccategory\u003ebuilds\u003c/category\u003e\n    \u003cdescription\u003e\u003c![CDATA[\u003cp\u003eFirst \u003cem\u003eparagraph\u003c/em\u003e.\u003c/p\u003e\u003cscript\u003ealert(1)\u003c/script\u003e\u003cp\u003eSecond paragraph that is long enough to be cut by the summary bound.\u003c/p\u003e]]\u003e\u003c/description\u003e\n  \u003c/item\u003e\n  \u003citem\u003e\n    \u003ctitle\u003ePermalink only\u003c/title\u003e\n    \u003cguid\u003ehttps://blog.example.com/posts/permalink\u003c/guid\u003e\n    \u003cpubDate\u003eMonday, 02-Nov-2026 08:00:00 GMT\u003c/pubDate\u003e\n    \u003ccontent:encoded\u003e\u003c![CDATA[\u003cdiv\u003eEncoded body\u003c/div\u003e]]\u003e\u003c/content:encoded\u003e\n  \u003c/item\u003e\n  \u003citem\u003e\n    \u003ctitle\u003eNo identity\u003c/title\u003e\n    \u003cpubDate\u003enot a date\u003c/pubDate\u003e\n  \u003c/item\u003e\n\u003c/channel\u003e\n\u003c/rss\u003e",
+          "headers": {
+            "Content-Type": "application/rss+xml; charset=utf-8",
+            "ETag": "\"v1\"",
+            "Last-Modified": "Tue, 10 Nov 2026 09:30:00 GMT"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "description": "Posts from the example team.",
+          "etag": "\"v1\"",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://blog.example.com/feed.xml",
+          "format": "rss",
+          "hasMore": true,
+          "itemCount": 3,
+          "items": [
+            {
+              "authors": [
+                "Avery Chen",
+                "Jordan Lee"
+              ],
+              "categories": [
+                "Tooling",
+                "builds"
+              ],
+              "id": "post-42",
+              "link": "https://blog.example.com/posts/dry",
+              "publishedAt": "2026-11-03T15:00:00Z",
+              "summary": "First paragraph. Second paragraph that…",
+              "title": "Don’t repeat yourself"
+            },
+            {
+              "id": "https://blog.example.com/posts/permalink",
+              "link": "https://blog.example.com/posts/permalink",
+              "publishedAt": "2026-11-02T08:00:00Z",
+              "summary": "Encoded body",
+              "title": "Permalink only"
+            }
+          ],
+          "lastModified": "Tue, 10 Nov 2026 09:30:00 GMT",
+          "siteUrl": "https://blog.example.com/",
+          "title": "Example \u0026 Friends",
+          "updatedAt": "2026-11-10T09:30:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "limit": 2,
+        "maxSummaryCharacters": 40,
+        "url": "https://blog.example.com/feed.xml#top"
+      },
+      "name": "readFeed-rss-read",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "0b7356e4-c931-56c4-b8b4-b89ac9a8a429",
+      "exchanges": [
+        {
+          "body": "\u003c?xml version=\"1.0\" encoding=\"utf-8\"?\u003e\n\u003cfeed xmlns=\"http://www.w3.org/2005/Atom\" xml:base=\"https://blog.example.com/blog/\"\u003e\n  \u003ctitle type=\"html\"\u003eExample \u0026lt;b\u0026gt;Engineering\u0026lt;/b\u0026gt;\u003c/title\u003e\n  \u003csubtitle\u003eNotes \u0026amp; more\u003c/subtitle\u003e\n  \u003clink rel=\"self\" href=\"https://blog.example.com/atom.xml\"/\u003e\n  \u003clink rel=\"alternate\" type=\"text/html\" href=\"./\"/\u003e\n  \u003cupdated\u003e2026-11-10T09:30:00+01:00\u003c/updated\u003e\n  \u003cauthor\u003e\u003cname\u003eExample Team\u003c/name\u003e\u003c/author\u003e\n  \u003centry xml:base=\"posts/\"\u003e\n    \u003ctitle type=\"text\"\u003eWhy a \u0026lt; b matters\u003c/title\u003e\n    \u003cid\u003etag:blog.example.com,2026:42\u003c/id\u003e\n    \u003clink rel=\"enclosure\" type=\"audio/mpeg\" href=\"episode.mp3\"/\u003e\n    \u003clink rel=\"alternate\" type=\"application/pdf\" href=\"post.pdf\"/\u003e\n    \u003clink rel=\"alternate\" type=\"text/html\" href=\"faster-builds\"/\u003e\n    \u003cpublished\u003e2026-11-09T08:00:00Z\u003c/published\u003e\n    \u003cupdated\u003e2026-11-10T08:00:00.5Z\u003c/updated\u003e\n    \u003csummary type=\"text\"\u003ePlain \u0026lt;text\u0026gt; summary\u003c/summary\u003e\n    \u003ccategory term=\"builds\" label=\"Builds\"/\u003e\n    \u003ccategory label=\"Label only\"/\u003e\n  \u003c/entry\u003e\n  \u003centry\u003e\n    \u003ctitle\u003eXHTML content\u003c/title\u003e\n    \u003cid\u003etag:blog.example.com,2026:41\u003c/id\u003e\n    \u003clink href=\"https://other.example.com/41\"/\u003e\n    \u003cauthor\u003e\u003cname\u003eAvery Chen\u003c/name\u003e\u003c/author\u003e\n    \u003cupdated\u003e2026-11-01\u003c/updated\u003e\n    \u003csummary type=\"html\"\u003e\u003c/summary\u003e\n    \u003ccontent type=\"xhtml\"\u003e\u003cdiv xmlns=\"http://www.w3.org/1999/xhtml\"\u003eFirst \u003cb\u003ebold\u003c/b\u003e word.\u003c/div\u003e\u003c/content\u003e\n  \u003c/entry\u003e\n\u003c/feed\u003e",
+          "headers": {
+            "Content-Type": "application/atom+xml"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/atom.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "description": "Notes \u0026 more",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://blog.example.com/atom.xml",
+          "format": "atom",
+          "hasMore": false,
+          "itemCount": 2,
+          "items": [
+            {
+              "authors": [
+                "Example Team"
+              ],
+              "categories": [
+                "builds",
+                "Label only"
+              ],
+              "id": "tag:blog.example.com,2026:42",
+              "link": "https://blog.example.com/blog/posts/faster-builds",
+              "publishedAt": "2026-11-09T08:00:00Z",
+              "summary": "Plain \u003ctext\u003e summary",
+              "title": "Why a \u003c b matters",
+              "updatedAt": "2026-11-10T08:00:00.5Z"
+            },
+            {
+              "authors": [
+                "Avery Chen"
+              ],
+              "id": "tag:blog.example.com,2026:41",
+              "link": "https://other.example.com/41",
+              "summary": "First bold word.",
+              "title": "XHTML content",
+              "updatedAt": "2026-11-01T00:00:00Z"
+            }
+          ],
+          "siteUrl": "https://blog.example.com/blog/",
+          "title": "Example Engineering",
+          "updatedAt": "2026-11-10T08:30:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/atom.xml"
+      },
+      "name": "readFeed-atom-read",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "87469165-b936-589c-9cc0-a4d454466d7b",
+      "exchanges": [
+        {
+          "body": "\u003c?xml version=\"1.0\"?\u003e\n\u003crdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns=\"http://purl.org/rss/1.0/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\u003e\n  \u003cchannel rdf:about=\"https://news.example.com/\"\u003e\n    \u003ctitle\u003eExample News\u003c/title\u003e\n    \u003clink\u003ehttps://news.example.com/\u003c/link\u003e\n    \u003cdescription\u003eDaily notes\u003c/description\u003e\n    \u003cdc:date\u003e2026-11-10T06:00:00+00:00\u003c/dc:date\u003e\n  \u003c/channel\u003e\n  \u003citem rdf:about=\"https://news.example.com/story/7\"\u003e\n    \u003ctitle\u003eStory seven\u003c/title\u003e\n    \u003clink\u003ehttps://news.example.com/story/7\u003c/link\u003e\n    \u003cdescription\u003eShort \u0026lt;i\u0026gt;story\u0026lt;/i\u0026gt;.\u003c/description\u003e\n    \u003cdc:creator\u003eSam Rivera\u003c/dc:creator\u003e\n    \u003cdc:subject\u003escience\u003c/dc:subject\u003e\n    \u003cdc:date\u003e2026-11-09T21:15:00-05:00\u003c/dc:date\u003e\n  \u003c/item\u003e\n\u003c/rdf:RDF\u003e",
+          "headers": {
+            "Content-Type": "application/rdf+xml"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/index.rdf",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "description": "Daily notes",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://news.example.com/index.rdf",
+          "format": "rdf",
+          "hasMore": false,
+          "itemCount": 1,
+          "items": [
+            {
+              "authors": [
+                "Sam Rivera"
+              ],
+              "categories": [
+                "science"
+              ],
+              "id": "https://news.example.com/story/7",
+              "link": "https://news.example.com/story/7",
+              "publishedAt": "2026-11-10T02:15:00Z",
+              "summary": "Short story.",
+              "title": "Story seven"
+            }
+          ],
+          "siteUrl": "https://news.example.com/",
+          "title": "Example News",
+          "updatedAt": "2026-11-10T06:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://news.example.com/index.rdf"
+      },
+      "name": "readFeed-rdf-read",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "ef68e42a-e14c-5dad-b434-62b77850ae79",
+      "exchanges": [
+        {
+          "body": "{\"version\": \"https://jsonfeed.org/version/1.1\", \"title\": \"Example JSON\", \"home_page_url\": \"https://blog.example.com/\", \"description\": \"A JSON feed\", \"authors\": [{\"name\": \"Example Team\"}], \"items\": [{\"id\": \"1\", \"url\": \"/posts/one\", \"title\": \"One\", \"summary\": \"Plain summary\", \"content_html\": \"\u003cp\u003eignored\u003c/p\u003e\", \"date_published\": \"2026-11-09T10:00:00-08:00\", \"date_modified\": \"2026-11-09T19:00:00Z\", \"tags\": [\"a\", \"b\"], \"authors\": [{\"name\": \"Avery Chen\"}]}, {\"id\": 2, \"external_url\": \"https://elsewhere.example.com/two\", \"content_html\": \"\u003cp\u003eHTML \u003cb\u003eonly\u003c/b\u003e\u003c/p\u003e\"}, {\"url\": \"https://blog.example.com/posts/three\", \"content_text\": \"Text only\", \"author\": {\"name\": \"Jordan Lee\"}}]}",
+          "headers": {
+            "Content-Type": "application/feed+json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "description": "A JSON feed",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://blog.example.com/feed.json",
+          "format": "json",
+          "hasMore": false,
+          "itemCount": 3,
+          "items": [
+            {
+              "authors": [
+                "Avery Chen"
+              ],
+              "categories": [
+                "a",
+                "b"
+              ],
+              "id": "1",
+              "link": "https://blog.example.com/posts/one",
+              "publishedAt": "2026-11-09T18:00:00Z",
+              "summary": "Plain summary",
+              "title": "One",
+              "updatedAt": "2026-11-09T19:00:00Z"
+            },
+            {
+              "authors": [
+                "Example Team"
+              ],
+              "id": "2",
+              "link": "https://elsewhere.example.com/two",
+              "summary": "HTML only"
+            },
+            {
+              "authors": [
+                "Jordan Lee"
+              ],
+              "id": "https://blog.example.com/posts/three",
+              "link": "https://blog.example.com/posts/three",
+              "summary": "Text only"
+            }
+          ],
+          "siteUrl": "https://blog.example.com/",
+          "title": "Example JSON"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/feed.json"
+      },
+      "name": "readFeed-json-read",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "cbcac7c6-0de2-51c9-a871-63b2c059da7e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "http://blog.example.com/moved?format=rss"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 301
+        },
+        {
+          "body": "",
+          "headers": {
+            "Location": "/final.xml"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/moved",
+          "query": {
+            "format": [
+              "rss"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 307
+        },
+        {
+          "body": "\u003crss\u003e\u003cchannel\u003e\u003ctitle\u003eMoved\u003c/title\u003e\u003c/channel\u003e\u003c/rss\u003e",
+          "headers": {
+            "Content-Type": "text/xml"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/final.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://blog.example.com/final.xml",
+          "format": "rss",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": [],
+          "title": "Moved"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "http://old.example.com/feed"
+      },
+      "name": "readFeed-redirect-upgrades-http",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "1339f671-4998-5a1a-8030-e5084326044c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "ETag": "\"v2\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "If-Modified-Since": [
+              "Mon, 09 Nov 2026 00:00:00 GMT"
+            ],
+            "If-None-Match": [
+              "\"v1\""
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 304
+        }
+      ],
+      "expected": {
+        "branch": "notModified",
+        "failureKind": "",
+        "output": {
+          "etag": "\"v2\"",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://blog.example.com/feed.xml",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": [],
+          "lastModified": "Mon, 09 Nov 2026 00:00:00 GMT"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "etag": "\"v1\"",
+        "lastModified": "Mon, 09 Nov 2026 00:00:00 GMT",
+        "url": "https://blog.example.com/feed.xml"
+      },
+      "name": "readFeed-not-modified",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "fa5458a5-543f-5f84-9dab-a045f395c3d0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 304
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/feed.xml"
+      },
+      "name": "readFeed-not-modified-without-validators",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "e9fa0de6-6db1-59c0-8885-9ed4bebc941e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/missing.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/missing.xml"
+      },
+      "name": "readFeed-not-found",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "850e4476-a6fc-5cc0-b94a-a032347a514d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/gone.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 410
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/gone.xml"
+      },
+      "name": "readFeed-gone",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "aa6d06a4-32bd-5448-b064-0f5dc1924e10",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/feed.xml"
+      },
+      "name": "readFeed-forbidden",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "1ec3c08d-3db2-5892-adf8-595d3fdcbc10",
+      "exchanges": [],
+      "expected": {
+        "branch": "unreachable",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://10.0.0.5/feed.xml"
+      },
+      "name": "readFeed-private-literal",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "d8689027-7e06-5978-9aad-47c3065f0fcd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "http://169.254.169.254/latest"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/to-literal",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "unreachable",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/to-literal"
+      },
+      "name": "readFeed-redirect-to-metadata-literal",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "52eeb3b3-6d98-5645-9770-a48558c04480",
+      "exchanges": [
+        {
+          "body": "\u003c!DOCTYPE html\u003e\u003chtml\u003e\u003chead\u003e\u003ctitle\u003eBlog\u003c/title\u003e\u003c/head\u003e\u003cbody\u003e\u003cp\u003eHi\u003c/p\u003e\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Content-Type": "text/html; charset=utf-8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/"
+      },
+      "name": "readFeed-html-page",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "be206678-7eb6-5e0d-a6b1-873b671608d6",
+      "exchanges": [
+        {
+          "body": "PNG",
+          "headers": {
+            "Content-Type": "image/png"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/image",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/image"
+      },
+      "name": "readFeed-image",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "285f2b9b-9be4-5db5-9314-c8703c47f260",
+      "exchanges": [
+        {
+          "body": "\u003curlset\u003e\u003curl\u003e\u003cloc\u003ehttps://blog.example.com/\u003c/loc\u003e\u003c/url\u003e\u003c/urlset\u003e",
+          "headers": {
+            "Content-Type": "application/xml"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/sitemap.xml"
+      },
+      "name": "readFeed-sitemap-root",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "887b5c3e-25b0-5de2-af5c-9f5d778d002c",
+      "exchanges": [
+        {
+          "body": "{\"data\": []}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/api"
+      },
+      "name": "readFeed-not-a-json-feed",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "bcf8512b-170c-5c2d-8d23-c9e43d7b24d8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "/a"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/a",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 302
+        },
+        {
+          "body": "",
+          "headers": {
+            "Location": "/a"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/a",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 302
+        },
+        {
+          "body": "",
+          "headers": {
+            "Location": "/a"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/a",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 302
+        },
+        {
+          "body": "",
+          "headers": {
+            "Location": "/a"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/a",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 302
+        },
+        {
+          "body": "",
+          "headers": {
+            "Location": "/a"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/a",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 302
+        },
+        {
+          "body": "",
+          "headers": {
+            "Location": "/a"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/a",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://loop.example.com/a"
+      },
+      "name": "readFeed-redirect-loop",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "822748d7-a86f-5a2a-a517-97251a32a051",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "itemCount": 0,
+          "items": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "feed.xml"
+      },
+      "name": "readFeed-invalid-url",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "c33ae605-9240-5046-8591-5df6e6dd947d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/feed.xml"
+      },
+      "name": "readFeed-rate-limited",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "da7a6c06-0e65-5757-a161-2f410950f72c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/feed.xml"
+      },
+      "name": "readFeed-server-error",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "32ac2ff6-0a33-5373-b0f6-8df55bd807eb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://blog.example.com/feed.xml"
+      },
+      "name": "readFeed-transport-failure",
+      "operation": "readFeed"
+    },
+    {
+      "callId": "d926da80-adba-5c71-8e8d-b2037afc1e8f",
+      "exchanges": [
+        {
+          "body": "\u003c!DOCTYPE html\u003e\n\u003chtml\u003e\u003chead\u003e\n\u003cmeta charset=\"utf-8\"\u003e\n\u003ctitle\u003eExample \u0026amp; Co Blog\u003c/title\u003e\n\u003cbase href=\"https://www.example.com/blog/assets/\"\u003e\n\u003clink rel=\"stylesheet alternate\" type=\"application/rss+xml\" href=\"/not-a-feed.css\"\u003e\n\u003clink rel=\"alternate\" type=\"application/json\" href=\"/wp-json/wp/v2/pages/7\"\u003e\n\u003clink rel=\"Alternate\" type=\"application/rss+xml; charset=utf-8\" title=\"Posts\" href=\"../feed.xml\"\u003e\n\u003clink rel=\"alternate\" type=\"application/atom+xml\" title=\"Atom\" href=\"https://www.example.com/blog/atom.xml\"\u003e\n\u003clink rel=\"alternate\" type=\"application/rss+xml\" title=\"Duplicate\" href=\"https://www.example.com/blog/feed.xml#latest\"\u003e\n\u003clink rel=\"alternate\" type=\"application/rss+xml\" href=\"javascript:alert(1)\"\u003e\n\u003clink rel=\"icon\" href=\"/favicon.ico\"\u003e\n\u003c/head\u003e\u003cbody\u003e\n\u003csvg\u003e\u003ctitle\u003eLogo\u003c/title\u003e\u003c/svg\u003e\n\u003clink rel=\"alternate\" type=\"application/feed+json\" title=\"JSON\" href=\"/blog/feed.json\"\u003e\n\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Content-Type": "text/html; charset=utf-8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "discovered",
+        "failureKind": "",
+        "output": {
+          "feeds": [
+            {
+              "mediaType": "application/rss+xml",
+              "title": "Posts",
+              "url": "https://www.example.com/blog/feed.xml"
+            },
+            {
+              "mediaType": "application/atom+xml",
+              "title": "Atom",
+              "url": "https://www.example.com/blog/atom.xml"
+            },
+            {
+              "mediaType": "application/feed+json",
+              "title": "JSON",
+              "url": "https://www.example.com/blog/feed.json"
+            }
+          ],
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/blog/",
+          "isTruncated": false,
+          "pageTitle": "Example \u0026 Co Blog"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "http://www.example.com/blog/"
+      },
+      "name": "discoverFeeds-discovered",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "ba0df7fe-22f5-5967-a7db-4145bc3a9cf0",
+      "exchanges": [
+        {
+          "body": "\u003chtml\u003e\u003chead\u003e\u003ctitle\u003eNo feeds\u003c/title\u003e\u003c/head\u003e\u003cbody\u003e\u003cp\u003eNothing here\u003c/p\u003e\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Content-Type": "text/html"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "discovered",
+        "failureKind": "",
+        "output": {
+          "feeds": [],
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/",
+          "isTruncated": false,
+          "pageTitle": "No feeds"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/"
+      },
+      "name": "discoverFeeds-none",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "d76eb0ff-ddb5-5207-bc65-61ecb9c08776",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "https://www.example.com/blog/"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 308
+        },
+        {
+          "body": "\u003chtml\u003e\u003chead\u003e\u003clink rel=\"alternate\" type=\"application/atom+xml\" href=\"feed.atom\"\u003e\u003c/head\u003e\u003c/html\u003e",
+          "headers": {
+            "Content-Type": "text/html"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "discovered",
+        "failureKind": "",
+        "output": {
+          "feeds": [
+            {
+              "mediaType": "application/atom+xml",
+              "url": "https://www.example.com/blog/feed.atom"
+            }
+          ],
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/blog/",
+          "isTruncated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://example.com/blog"
+      },
+      "name": "discoverFeeds-redirect",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "d736dd63-521c-55f3-9f06-fba8a223613c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/missing",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "feeds": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/missing"
+      },
+      "name": "discoverFeeds-not-found",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "24f78314-e619-5b0f-b534-59a52d8b509a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/private",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "feeds": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/private"
+      },
+      "name": "discoverFeeds-unauthorized",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "77fbe5d3-428d-5689-9673-4b5d65702db8",
+      "exchanges": [],
+      "expected": {
+        "branch": "unreachable",
+        "failureKind": "VALIDATION",
+        "output": {
+          "feeds": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "http://169.254.169.254/"
+      },
+      "name": "discoverFeeds-metadata-literal",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "f1754f0e-bf14-529d-aa9d-4f7be7a542eb",
+      "exchanges": [
+        {
+          "body": "%PDF-1.7",
+          "headers": {
+            "Content-Type": "application/pdf"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/report.pdf",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "feeds": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/report.pdf"
+      },
+      "name": "discoverFeeds-pdf",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "496172a5-29ae-55e0-a365-af97eb384b0f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "feeds": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "ftp://www.example.com/"
+      },
+      "name": "discoverFeeds-invalid-scheme",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "1f6b79cf-7557-5a99-a240-747b588d3d48",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "30"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/"
+      },
+      "name": "discoverFeeds-rate-limited",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "25f76424-729a-51ca-aa3c-816c820cb6a3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/"
+      },
+      "name": "discoverFeeds-server-error",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "d78bacc0-ce9c-5ef0-880c-5edf2b661a34",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/"
+      },
+      "name": "discoverFeeds-transport-failure",
+      "operation": "discoverFeeds"
+    },
+    {
+      "callId": "b7cd5896-b7b4-523f-a6b0-15236b59eb7f",
+      "exchanges": [
+        {
+          "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003curlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\" xmlns:news=\"http://www.google.com/schemas/sitemap-news/0.9\" xmlns:image=\"http://www.google.com/schemas/sitemap-image/1.1\"\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/\u003c/loc\u003e\u003clastmod\u003e2026-11-10\u003c/lastmod\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/blog/older-post\u003c/loc\u003e\u003clastmod\u003e2026-10-01T08:00:00+00:00\u003c/lastmod\u003e\n    \u003cimage:image\u003e\u003cimage:loc\u003ehttps://www.example.com/images/older.png\u003c/image:loc\u003e\u003c/image:image\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/blog/newest-post\u003c/loc\u003e\u003clastmod\u003e2026-11-09T18:00:00Z\u003c/lastmod\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003e/blog/relative-post\u003c/loc\u003e\u003clastmod\u003e2026-11-05\u003c/lastmod\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/blog/undated-post\u003c/loc\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/blog/news-only\u003c/loc\u003e\n    \u003cnews:news\u003e\u003cnews:publication\u003e\u003cnews:name\u003eExample\u003c/news:name\u003e\u003cnews:language\u003een\u003c/news:language\u003e\u003c/news:publication\u003e\n      \u003cnews:publication_date\u003e2026-11-08T12:00:00Z\u003c/news:publication_date\u003e\u003cnews:title\u003eNews \u0026amp; notes\u003c/news:title\u003e\u003c/news:news\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/Blog/case-differs\u003c/loc\u003e\u003clastmod\u003e2026-11-09\u003c/lastmod\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ejavascript:alert(1)\u003c/loc\u003e\u003c/url\u003e\n  \u003curl\u003e\u003clastmod\u003e2026-11-09\u003c/lastmod\u003e\u003c/url\u003e\n\u003c/urlset\u003e",
+          "headers": {
+            "Content-Type": "application/xml",
+            "ETag": "W/\"a41\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "entries": [
+            {
+              "lastModifiedAt": "2026-11-09T18:00:00Z",
+              "url": "https://www.example.com/blog/newest-post"
+            }
+          ],
+          "etag": "W/\"a41\"",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/sitemap.xml",
+          "hasMore": true,
+          "kind": "urlset",
+          "matchedEntryCount": 2,
+          "sitemaps": [],
+          "totalEntryCount": 7
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "lastModifiedAfter": "2026-11-05T00:00:00Z",
+        "limit": 1,
+        "pathPrefix": "/blog/",
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-urlset-filtered",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "f87df7fb-acd5-58c9-aae9-60b50c30d428",
+      "exchanges": [
+        {
+          "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003curlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\" xmlns:news=\"http://www.google.com/schemas/sitemap-news/0.9\" xmlns:image=\"http://www.google.com/schemas/sitemap-image/1.1\"\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/\u003c/loc\u003e\u003clastmod\u003e2026-11-10\u003c/lastmod\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/blog/older-post\u003c/loc\u003e\u003clastmod\u003e2026-10-01T08:00:00+00:00\u003c/lastmod\u003e\n    \u003cimage:image\u003e\u003cimage:loc\u003ehttps://www.example.com/images/older.png\u003c/image:loc\u003e\u003c/image:image\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/blog/newest-post\u003c/loc\u003e\u003clastmod\u003e2026-11-09T18:00:00Z\u003c/lastmod\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003e/blog/relative-post\u003c/loc\u003e\u003clastmod\u003e2026-11-05\u003c/lastmod\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/blog/undated-post\u003c/loc\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/blog/news-only\u003c/loc\u003e\n    \u003cnews:news\u003e\u003cnews:publication\u003e\u003cnews:name\u003eExample\u003c/news:name\u003e\u003cnews:language\u003een\u003c/news:language\u003e\u003c/news:publication\u003e\n      \u003cnews:publication_date\u003e2026-11-08T12:00:00Z\u003c/news:publication_date\u003e\u003cnews:title\u003eNews \u0026amp; notes\u003c/news:title\u003e\u003c/news:news\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ehttps://www.example.com/Blog/case-differs\u003c/loc\u003e\u003clastmod\u003e2026-11-09\u003c/lastmod\u003e\u003c/url\u003e\n  \u003curl\u003e\u003cloc\u003ejavascript:alert(1)\u003c/loc\u003e\u003c/url\u003e\n  \u003curl\u003e\u003clastmod\u003e2026-11-09\u003c/lastmod\u003e\u003c/url\u003e\n\u003c/urlset\u003e",
+          "headers": {
+            "Content-Type": "text/xml"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "entries": [
+            {
+              "lastModifiedAt": "2026-11-09T18:00:00Z",
+              "url": "https://www.example.com/blog/newest-post"
+            },
+            {
+              "newsPublishedAt": "2026-11-08T12:00:00Z",
+              "newsTitle": "News \u0026 notes",
+              "url": "https://www.example.com/blog/news-only"
+            },
+            {
+              "lastModifiedAt": "2026-11-05T00:00:00Z",
+              "url": "https://www.example.com/blog/relative-post"
+            },
+            {
+              "lastModifiedAt": "2026-10-01T08:00:00Z",
+              "url": "https://www.example.com/blog/older-post"
+            },
+            {
+              "url": "https://www.example.com/blog/undated-post"
+            }
+          ],
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/sitemap.xml",
+          "hasMore": false,
+          "kind": "urlset",
+          "matchedEntryCount": 5,
+          "sitemaps": [],
+          "totalEntryCount": 7
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "pathPrefix": "/blog/",
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-urlset-all",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "619dfdba-2b77-5502-b3ab-2d2976d7f451",
+      "exchanges": [
+        {
+          "body": "\u003c?xml version=\"1.0\"?\u003e\n\u003csitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"\u003e\n  \u003csitemap\u003e\u003cloc\u003ehttps://www.example.com/sitemap-pages.xml\u003c/loc\u003e\u003clastmod\u003e2026-09-01\u003c/lastmod\u003e\u003c/sitemap\u003e\n  \u003csitemap\u003e\u003cloc\u003ehttps://www.example.com/sitemap-posts.xml\u003c/loc\u003e\u003clastmod\u003e2026-11-09T10:00:00Z\u003c/lastmod\u003e\u003c/sitemap\u003e\n  \u003csitemap\u003e\u003cloc\u003ehttps://www.example.com/sitemap-authors.xml\u003c/loc\u003e\u003c/sitemap\u003e\n\u003c/sitemapindex\u003e",
+          "headers": {
+            "Content-Type": "text/xml"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap_index.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "entries": [],
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/sitemap_index.xml",
+          "hasMore": true,
+          "kind": "sitemapIndex",
+          "matchedEntryCount": 3,
+          "sitemaps": [
+            {
+              "lastModifiedAt": "2026-11-09T10:00:00Z",
+              "url": "https://www.example.com/sitemap-posts.xml"
+            },
+            {
+              "lastModifiedAt": "2026-09-01T00:00:00Z",
+              "url": "https://www.example.com/sitemap-pages.xml"
+            }
+          ],
+          "totalEntryCount": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "limit": 2,
+        "url": "https://www.example.com/sitemap_index.xml"
+      },
+      "name": "readSitemap-index",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "c86e111f-f139-5959-9d16-7de4534cbfe6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "If-Modified-Since": [
+              "Mon, 09 Nov 2026 10:00:00 GMT"
+            ],
+            "If-None-Match": [
+              "\"posts-1\""
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 304
+        }
+      ],
+      "expected": {
+        "branch": "notModified",
+        "failureKind": "",
+        "output": {
+          "entries": [],
+          "etag": "\"posts-1\"",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/sitemap.xml",
+          "hasMore": false,
+          "lastModified": "Mon, 09 Nov 2026 10:00:00 GMT",
+          "matchedEntryCount": 0,
+          "sitemaps": [],
+          "totalEntryCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "etag": "\"posts-1\"",
+        "lastModified": "Mon, 09 Nov 2026 10:00:00 GMT",
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-not-modified",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "7e653fb3-91b2-5820-80c7-007d125d6e16",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "entries": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "matchedEntryCount": 0,
+          "sitemaps": [],
+          "totalEntryCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-not-found",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "63db5a91-1ecd-5d66-9b86-a4c6c339124d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "entries": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "matchedEntryCount": 0,
+          "sitemaps": [],
+          "totalEntryCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-forbidden",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "7ca0ff88-a0b9-559e-994f-0b82650551c5",
+      "exchanges": [],
+      "expected": {
+        "branch": "unreachable",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entries": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "matchedEntryCount": 0,
+          "sitemaps": [],
+          "totalEntryCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://127.0.0.1/sitemap.xml"
+      },
+      "name": "readSitemap-loopback-literal",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "64f66b1a-aaf9-53a8-970a-770ba3d0bd9a",
+      "exchanges": [
+        {
+          "body": "\u003chtml\u003e\u003cbody\u003eNot found\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Content-Type": "text/html"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "entries": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "matchedEntryCount": 0,
+          "sitemaps": [],
+          "totalEntryCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-html-page",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "0eba104a-779e-5ab8-a817-8a3b1c50b0ba",
+      "exchanges": [
+        {
+          "body": "\u003crss\u003e\u003cchannel/\u003e\u003c/rss\u003e",
+          "headers": {
+            "Content-Type": "application/rss+xml"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "entries": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "matchedEntryCount": 0,
+          "sitemaps": [],
+          "totalEntryCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/feed"
+      },
+      "name": "readSitemap-feed-root",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "8ec28e2e-5dc6-5f96-b40a-840e8f5aa159",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entries": [],
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "hasMore": false,
+          "matchedEntryCount": 0,
+          "sitemaps": [],
+          "totalEntryCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "pathPrefix": "blog/",
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-invalid-prefix",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "d4f731e7-5be8-5595-88b8-61c689fa0785",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "120"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 120000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-rate-limited",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "7205d084-4a41-54eb-a124-9ead7b94eb9a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-server-error",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "d22bc946-06e0-51f9-beb7-1ca2b9e8ec61",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sitemap.xml",
+          "requestHeaders": {
+            "Accept": [
+              "application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/sitemap.xml"
+      },
+      "name": "readSitemap-transport-failure",
+      "operation": "readSitemap"
+    },
+    {
+      "callId": "fac55345-e65f-535c-8131-ddac4a977472",
+      "exchanges": [
+        {
+          "body": "\u003c!DOCTYPE html\u003e\n\u003chtml lang=\"en\"\u003e\u003chead\u003e\n\u003cmeta charset=\"utf-8\"\u003e\n\u003ctitle\u003eSpring release notes \u0026#8211; Example\u003c/title\u003e\n\u003cmeta name=\"description\" content=\"Everything   the team released this spring.\"\u003e\n\u003cmeta name=\"Description\" content=\"A second description that must not win\"\u003e\n\u003cmeta property=\"og:title\" content=\"Spring release notes\"\u003e\n\u003cmeta property=\"og:description\" content=\"Everything released this spring.\"\u003e\n\u003cmeta property=\"og:image\" content=\"/images/spring.png\"\u003e\n\u003cmeta property=\"og:type\" content=\"article\"\u003e\n\u003cmeta property=\"og:site_name\" content=\"Example\"\u003e\n\u003cmeta property=\"article:published_time\" content=\"2026-11-09T17:00:00+00:00\"\u003e\n\u003clink rel=\"canonical\" href=\"/blog/spring-release-notes\"\u003e\n\u003cscript type=\"application/ld+json\"\u003e{ not json \u003c/script\u003e\n\u003cscript type=\"application/ld+json\"\u003e\n{\"@context\": \"https://schema.org\", \"@graph\": [\n  {\"@type\": \"WebSite\", \"name\": \"Example\"},\n  {\"@type\": [\"BlogPosting\"], \"headline\": \"Spring release notes (JSON-LD)\",\n   \"datePublished\": \"2026-11-09T18:00:00+01:00\", \"dateModified\": {\"@value\": \"2026-11-09T19:00:00Z\"}}\n]}\n\u003c/script\u003e\n\u003cscript\u003evar title = \"\u003ctitle\u003eNot this\u003c/title\u003e\";\u003c/script\u003e\n\u003c/head\u003e\u003cbody\u003e\u003csvg\u003e\u003ctitle\u003eIcon\u003c/title\u003e\u003c/svg\u003e\u003ch1\u003eSpring release notes\u003c/h1\u003e\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Content-Type": "text/html; charset=utf-8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/spring-release-notes",
+          "query": {
+            "utm_source": [
+              "feed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "articlePublishedAt": "2026-11-09T17:00:00Z",
+          "canonicalUrl": "https://www.example.com/blog/spring-release-notes",
+          "description": "Everything the team released this spring.",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/blog/spring-release-notes?utm_source=feed",
+          "isTruncated": false,
+          "modifiedAt": "2026-11-09T19:00:00Z",
+          "openGraph": {
+            "description": "Everything released this spring.",
+            "imageUrl": "https://www.example.com/images/spring.png",
+            "siteName": "Example",
+            "title": "Spring release notes",
+            "type": "article"
+          },
+          "publishedAt": "2026-11-09T17:00:00Z",
+          "structuredData": {
+            "dateModified": "2026-11-09T19:00:00Z",
+            "datePublished": "2026-11-09T17:00:00Z",
+            "headline": "Spring release notes (JSON-LD)",
+            "type": "BlogPosting"
+          },
+          "title": "Spring release notes – Example"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/blog/spring-release-notes?utm_source=feed"
+      },
+      "name": "readPageMetadata-article",
+      "operation": "readPageMetadata"
+    },
+    {
+      "callId": "23ee9da2-5419-5c6b-8712-ca251ca3aedf",
+      "exchanges": [
+        {
+          "body": "\u003chtml\u003e\u003chead\u003e\n\u003cmeta property=\"og:updated_time\" content=\"2026-11-02T10:00:00Z\"\u003e\n\u003cscript type=\"application/ld+json\"\u003e[{\"@type\": \"Organization\", \"name\": \"Example\"}, {\"@type\": \"Thing\", \"headline\": \"Fallback node\", \"datePublished\": \"2026-11-01\"}]\u003c/script\u003e\n\u003c/head\u003e\u003cbody\u003e\u003csvg\u003e\u003ctitle\u003eIcon\u003c/title\u003e\u003c/svg\u003e\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Content-Type": "text/html"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/post",
+          "isTruncated": false,
+          "modifiedAt": "2026-11-02T10:00:00Z",
+          "openGraph": {},
+          "publishedAt": "2026-11-01T00:00:00Z",
+          "structuredData": {
+            "datePublished": "2026-11-01T00:00:00Z",
+            "headline": "Fallback node",
+            "type": "Thing"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/post"
+      },
+      "name": "readPageMetadata-fallbacks",
+      "operation": "readPageMetadata"
+    },
+    {
+      "callId": "d559157a-30a7-59f6-8451-e19b383dd561",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/removed",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 410
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false,
+          "openGraph": {},
+          "structuredData": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/blog/removed"
+      },
+      "name": "readPageMetadata-not-found",
+      "operation": "readPageMetadata"
+    },
+    {
+      "callId": "9fe8858f-1c0c-505e-8396-561ee51b2b36",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 451
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false,
+          "openGraph": {},
+          "structuredData": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/blog/post"
+      },
+      "name": "readPageMetadata-forbidden",
+      "operation": "readPageMetadata"
+    },
+    {
+      "callId": "5c427655-8253-515b-9a2d-bd012ec3ab22",
+      "exchanges": [],
+      "expected": {
+        "branch": "unreachable",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false,
+          "openGraph": {},
+          "structuredData": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://100.64.0.9/blog/post"
+      },
+      "name": "readPageMetadata-shared-literal",
+      "operation": "readPageMetadata"
+    },
+    {
+      "callId": "d57af1f0-37da-52a9-96c2-5a7c3474f5b3",
+      "exchanges": [
+        {
+          "body": "PNG",
+          "headers": {
+            "Content-Type": "image/png"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/image.png",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false,
+          "openGraph": {},
+          "structuredData": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/image.png"
+      },
+      "name": "readPageMetadata-image",
+      "operation": "readPageMetadata"
+    },
+    {
+      "callId": "b9d16e03-d89e-5d8a-ade9-723ac0a86db3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTruncated": false,
+          "openGraph": {},
+          "structuredData": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://user:secret@www.example.com/post"
+      },
+      "name": "readPageMetadata-user-information",
+      "operation": "readPageMetadata"
+    },
+    {
+      "callId": "d513f245-424d-56d3-af6b-53ac4fb6f0b0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/post"
+      },
+      "name": "readPageMetadata-rate-limited",
+      "operation": "readPageMetadata"
+    },
+    {
+      "callId": "759ad702-80fb-52ac-a732-6eeec5317a64",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 504
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/post"
+      },
+      "name": "readPageMetadata-server-error",
+      "operation": "readPageMetadata"
+    },
+    {
+      "callId": "f3652f47-d03b-515d-9f1f-0dc0d51958ed",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/post"
+      },
+      "name": "readPageMetadata-transport-failure",
+      "operation": "readPageMetadata"
+    }
+  ],
+  "schemaVersion": 1
+}

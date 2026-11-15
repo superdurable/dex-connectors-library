@@ -1,0 +1,339 @@
+{
+  "connectorId": "web-feed",
+  "releaseTag": "connectors/superdurable/web-feed/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-web-feed",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newReadFeedStep",
+      "kind": "query",
+      "operationId": "readFeed",
+      "inputType": "ReadFeedInput",
+      "description": "Read the newest items of one RSS, Atom, or JSON Feed, such as a blog's feed.xml. Supply the feed url; optionally limit from 1 through 200 (default 50) and maxSummaryCharacters from 1 through 4000 (default 500). Returns the feed title and site link and, for each item in feed order (usually newest first), its ID, title, absolute link, publication and update times in UTC, a plain-text summary, authors, and categories. When you only know a site or blog page URL, find its feed first with the Web Feeds discover_feeds tool. Pass etag and lastModified only to repeat an earlier read of the same feed; an unchanged feed then returns no items.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "invalidResponse": "rejected",
+          "notFound": "rejected",
+          "notModified": "rejected",
+          "providerRejected": "rejected",
+          "unreachable": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "read",
+          "field": "read",
+          "optional": false
+        },
+        {
+          "id": "notModified",
+          "field": "notModified",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "unreachable",
+          "field": "unreachable",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReadFeedInput selects one feed document and, optionally, the validators of a previous read of it.",
+        "properties": {
+          "etag": {
+            "description": "ETag is the etag a previous read of this feed returned. The connector sends it as If-None-Match. Empty sends no If-None-Match header.",
+            "type": "string"
+          },
+          "lastModified": {
+            "description": "LastModified is the lastModified a previous read of this feed returned, an HTTP date. The connector sends it as If-Modified-Since. Empty sends no If-Modified-Since header.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit bounds the returned items, from 1 through 200, in document order. Zero selects 50.",
+            "type": "integer"
+          },
+          "maxSummaryCharacters": {
+            "description": "MaxSummaryCharacters bounds each item summary in Unicode code points, from 1 through 4000. Zero selects 500.",
+            "type": "integer"
+          },
+          "url": {
+            "description": "URL is the absolute http or https URL of the feed document, such as https://go.dev/blog/feed.atom. An http URL is requested over https at the same host; a fragment is ignored.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newDiscoverFeedsStep",
+      "kind": "query",
+      "operationId": "discoverFeeds",
+      "inputType": "DiscoverFeedsInput",
+      "description": "List the RSS, Atom, and JSON feeds that one web page advertises, such as a blog's home page or index. Supply the page url. Returns each feed's absolute URL, title, and media type in page order; read a feed with the Web Feeds read_feed tool. An empty list means the page advertises no feed: look for the site's pages in its sitemap, usually /sitemap.xml at the site's root, with the Web Feeds read_sitemap tool.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "invalidResponse": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected",
+          "unreachable": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "discovered",
+          "field": "discovered",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "unreachable",
+          "field": "unreachable",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DiscoverFeedsInput selects the HTML page whose advertised feeds are listed.",
+        "properties": {
+          "url": {
+            "description": "URL is the absolute http or https URL of an HTML page, usually a site's home page or blog index, such as https://go.dev/blog/. An http URL is requested over https at the same host.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newReadSitemapStep",
+      "kind": "query",
+      "operationId": "readSitemap",
+      "inputType": "ReadSitemapInput",
+      "description": "Read one XML sitemap, such as https://www.example.com/sitemap.xml, to find a site's pages and when they changed, for example on a site that publishes no feed. Supply url; optionally pathPrefix starting with a slash, such as /blog/, to keep only pages under that path, lastModifiedAfter as an RFC 3339 time to keep only pages changed later, and limit from 1 through 2000 (default 200). Returns matching page URLs newest first with their lastmod dates. A sitemap index returns its child sitemaps instead; read the relevant child, such as one whose URL names posts, with this tool. Read a page's title and dates with the Web Feeds read_page_metadata tool. Pass etag and lastModified only to repeat an earlier read of the same sitemap.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "invalidResponse": "rejected",
+          "notFound": "rejected",
+          "notModified": "rejected",
+          "providerRejected": "rejected",
+          "unreachable": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "read",
+          "field": "read",
+          "optional": false
+        },
+        {
+          "id": "notModified",
+          "field": "notModified",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "unreachable",
+          "field": "unreachable",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReadSitemapInput selects one sitemap, the entries to keep, and optionally the validators of a previous read.",
+        "properties": {
+          "etag": {
+            "description": "ETag is the etag a previous read of this sitemap returned. The connector sends it as If-None-Match. Empty sends no If-None-Match header.",
+            "type": "string"
+          },
+          "lastModified": {
+            "description": "LastModified is the lastModified a previous read of this sitemap returned, an HTTP date. The connector sends it as If-Modified-Since. Empty sends no If-Modified-Since header.",
+            "type": "string"
+          },
+          "lastModifiedAfter": {
+            "description": "LastModifiedAfter keeps only urlset entries whose lastmod, or Google News publication date when lastmod is missing, is strictly after it. Entries with neither never match. Nil keeps entries of any date. It does not filter a sitemap index.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "Limit bounds the returned entries or child sitemaps, from 1 through 2000. Zero selects 200.",
+            "type": "integer"
+          },
+          "pathPrefix": {
+            "description": "PathPrefix keeps only urlset entries whose URL path starts with it, compared case-sensitively, such as /blog/. It must start with a slash. Empty keeps every path. It does not filter a sitemap index.",
+            "type": "string"
+          },
+          "url": {
+            "description": "URL is the absolute http or https URL of the sitemap, such as https://www.example.com/sitemap.xml or a .xml.gz file. An http URL is requested over https at the same host.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newReadPageMetadataStep",
+      "kind": "query",
+      "operationId": "readPageMetadata",
+      "inputType": "ReadPageMetadataInput",
+      "description": "Read the head metadata of one web page, such as a blog post URL: its title, meta description, canonical URL, Open Graph title, description, image, type, and site name, article publication and modification times, and the JSON-LD headline and dates. Supply the page url. Returns publishedAt and modifiedAt as the best available times in UTC. It does not return the page's body text.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "invalidResponse": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected",
+          "unreachable": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "read",
+          "field": "read",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "unreachable",
+          "field": "unreachable",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReadPageMetadataInput selects the article page whose head metadata is read.",
+        "properties": {
+          "url": {
+            "description": "URL is the absolute http or https URL of one HTML page, such as a post URL from readSitemap. An http URL is requested over https at the same host.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

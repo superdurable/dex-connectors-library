@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: web-feed
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-web-feed'
+      operations: [readFeed, discoverFeeds, readSitemap, readPageMetadata]
+      triggers: []
   codegen:
     go:
       package: webfeed
