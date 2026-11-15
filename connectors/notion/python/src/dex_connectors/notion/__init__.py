@@ -1,12 +1,15 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Dex-native Notion search, query, read, create, and update operations."""
+"""Dex-native Notion search, query, read, create, and update operations and the databaseRowChanged poll
+Trigger."""
 
 from .client import Client, Config, Credentials
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
 from .models import (
     CreatePageInput,
     CreatePageOutput,
+    DatabaseRowChangedEvent,
+    DatabaseRowChangedTriggerConfiguration,
     DateRange,
     GetPageInput,
     GetPageOutput,
@@ -43,6 +46,23 @@ from .steps import (
     new_query_database_step,
     new_search_step,
     new_update_page_properties_step,
+)
+from .triggers import (
+    DATABASE_ROW_CHANGED_TRIGGER_DEFINITION,
+    DATABASE_ROW_LOOKBACK,
+    MAXIMUM_SEEN_DATABASE_ROWS,
+    DatabaseRowChangedTriggerRoute,
+    DatabaseRowChangeKind,
+    DatabaseRowTriggerRunnerConfig,
+    ProjectDatabaseRowChangedTriggerRoute,
+    ProjectDatabaseRowTriggerRunnerConfig,
+    decode_database_row_changed_event_payload,
+    decode_database_row_changed_trigger_configuration,
+    define_database_row_changed_trigger_binding,
+    new_database_row_changed_trigger,
+    new_database_row_trigger_runner,
+    new_project_database_row_trigger_runner,
+    validate_database_row_changed_trigger_configuration,
 )
 
 __all__ = [
@@ -87,4 +107,21 @@ __all__ = [
     "new_query_database_step",
     "new_search_step",
     "new_update_page_properties_step",
+    "DATABASE_ROW_CHANGED_TRIGGER_DEFINITION",
+    "DATABASE_ROW_LOOKBACK",
+    "MAXIMUM_SEEN_DATABASE_ROWS",
+    "DatabaseRowChangeKind",
+    "DatabaseRowChangedEvent",
+    "DatabaseRowChangedTriggerConfiguration",
+    "DatabaseRowChangedTriggerRoute",
+    "DatabaseRowTriggerRunnerConfig",
+    "ProjectDatabaseRowChangedTriggerRoute",
+    "ProjectDatabaseRowTriggerRunnerConfig",
+    "decode_database_row_changed_event_payload",
+    "decode_database_row_changed_trigger_configuration",
+    "define_database_row_changed_trigger_binding",
+    "new_database_row_changed_trigger",
+    "new_database_row_trigger_runner",
+    "new_project_database_row_trigger_runner",
+    "validate_database_row_changed_trigger_configuration",
 ]

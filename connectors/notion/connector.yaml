@@ -19,10 +19,10 @@ spec:
       operations: [search, queryDatabase, getPage, createPage, updatePageProperties]
       triggers: [databaseRowChanged]
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-notion
       operations: [search, queryDatabase, getPage, createPage, updatePageProperties]
-      triggers: []
+      triggers: [databaseRowChanged]
   configuration:
     fields:
       - name: endpoint
