@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Dex-native Asana task and comment operations."""
+"""Dex-native Asana task and comment operations and the taskChanged poll Trigger."""
 
 from ._generated.config import Config, Credentials
 from .client import Client
@@ -13,12 +13,15 @@ from .models import (
     CustomFieldValue,
     CustomFieldValueInput,
     EnumOptionReference,
+    EventParentReference,
     GetTaskInput,
     ListTasksInput,
     ListTasksOutput,
     ProjectReference,
     SectionReference,
     Task,
+    TaskChangedEvent,
+    TaskChangedTriggerConfiguration,
     TaskMembership,
     TaskReference,
     UpdateTaskInput,
@@ -40,8 +43,24 @@ from .steps import (
     new_list_tasks_step,
     new_update_task_step,
 )
+from .triggers import (
+    TASK_CHANGED_TRIGGER_DEFINITION,
+    ProjectTaskChangedTriggerRoute,
+    ProjectTaskTriggerRunnerConfig,
+    TaskChangeAction,
+    TaskChangedTriggerRoute,
+    TaskTriggerRunnerConfig,
+    decode_task_changed_event_payload,
+    decode_task_changed_trigger_configuration,
+    define_task_changed_trigger_binding,
+    new_project_task_trigger_runner,
+    new_task_changed_trigger,
+    new_task_trigger_runner,
+    validate_task_changed_trigger_configuration,
+)
 
 __all__ = [
+    "TASK_CHANGED_TRIGGER_DEFINITION",
     "AddCommentInput",
     "AddCommentOperation",
     "AddCommentOutput",
@@ -55,21 +74,32 @@ __all__ = [
     "CustomFieldValue",
     "CustomFieldValueInput",
     "EnumOptionReference",
+    "EventParentReference",
     "GetTaskInput",
     "GetTaskOperation",
     "ListTasksInput",
     "ListTasksOperation",
     "ListTasksOutput",
     "ProjectReference",
+    "ProjectTaskChangedTriggerRoute",
+    "ProjectTaskTriggerRunnerConfig",
     "SectionReference",
     "Task",
+    "TaskChangeAction",
+    "TaskChangedEvent",
+    "TaskChangedTriggerConfiguration",
+    "TaskChangedTriggerRoute",
     "TaskMembership",
     "TaskReference",
+    "TaskTriggerRunnerConfig",
     "UpdateTaskInput",
     "UpdateTaskOperation",
     "UpdateTaskOutput",
     "UserReference",
     "WorkspaceReference",
+    "decode_task_changed_event_payload",
+    "decode_task_changed_trigger_configuration",
+    "define_task_changed_trigger_binding",
     "new_add_comment_step",
     "new_connection",
     "new_connection_with_operations",
@@ -77,5 +107,9 @@ __all__ = [
     "new_get_task_step",
     "new_list_tasks_step",
     "new_project_connection",
+    "new_project_task_trigger_runner",
+    "new_task_changed_trigger",
+    "new_task_trigger_runner",
     "new_update_task_step",
+    "validate_task_changed_trigger_configuration",
 ]

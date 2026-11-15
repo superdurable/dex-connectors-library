@@ -395,3 +395,62 @@ class AddCommentOutput:
 
 
 setattr(AddCommentOutput, '__module__', 'dex_connectors.asana.models')
+
+
+# EventParentReference identifies the container of an added or removed task.
+@dataclass(frozen=True, slots=True)
+class EventParentReference:
+    # ID is the container's gid.
+    id: str = ''
+    # ResourceType is project, section, or task.
+    resource_type: str = _dataclass_field(default='', metadata={'dex_json_name': 'resourceType'})
+    # Name is the container's name, as of the poll.
+    name: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(EventParentReference, '__module__', 'dex_connectors.asana.models')
+
+
+# TaskChangedEvent is one task event from the watched project's Asana event stream. Asana events are
+# compact: they name the task and what happened, not the task's current state, so a Flow reads the task
+# with getTask when it needs more.
+@dataclass(frozen=True, slots=True)
+class TaskChangedEvent:
+    # ProjectID is the watched project.
+    project_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'projectId'})
+    # Action is what happened to the task; see TaskChangeAction.
+    action: str = _dataclass_field(kw_only=True)
+    # Task is the task or subtask the event is about, with its name as of the poll.
+    task: TaskReference = _dataclass_field(default_factory=TaskReference)
+    # TaskSubtype is Asana's resource_subtype of the task, such as default_task, milestone, or approval.
+    task_subtype: str = _dataclass_field(default='', metadata={'dex_json_name': 'taskSubtype', 'dex_json_omit_default': True})
+    # ChangedField is the changed task field, such as completed or assignee; set only for changed.
+    changed_field: str = _dataclass_field(default='', metadata={'dex_json_name': 'changedField', 'dex_json_omit_default': True})
+    # ChangeAction is how ChangedField changed: changed for a value, or added or removed for a list entry
+    # such as a follower or a tag. Set only for changed.
+    change_action: str = _dataclass_field(default='', metadata={'dex_json_name': 'changeAction', 'dex_json_omit_default': True})
+    # Parent is the project, section, or task the task was added to or removed from; nil for other actions.
+    parent: EventParentReference | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
+    # User is the Asana user who made the change; nil for a change Asana made itself, such as a rule.
+    user: UserReference | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
+    # OccurredAt is when Asana recorded the change, as an RFC 3339 timestamp.
+    occurred_at: str = _dataclass_field(default='', metadata={'dex_json_name': 'occurredAt'})
+
+
+setattr(TaskChangedEvent, '__module__', 'dex_connectors.asana.models')
+
+
+# TaskChangedTriggerConfiguration is the taskChanged binding configuration that the project picker saves
+# in Dex Web. Changing the project of a binding that already polled makes its next poll record a new
+# baseline for the new project.
+@dataclass(frozen=True, slots=True)
+class TaskChangedTriggerConfiguration:
+    # WorkspaceID is the gid of the project's workspace, kept for the picker only.
+    workspace_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'workspaceId', 'dex_json_omit_default': True})
+    # ProjectID is the gid of the watched project, a decimal string such as 1201000000000001; required.
+    project_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'projectId'})
+    # ProjectName is the picked project's name, kept for display only.
+    project_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'projectName', 'dex_json_omit_default': True})
+
+
+setattr(TaskChangedTriggerConfiguration, '__module__', 'dex_connectors.asana.models')

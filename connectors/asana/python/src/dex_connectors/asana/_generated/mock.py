@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AddCommentInput, AddCommentOutput, CreateTaskInput, CreateTaskOutput, CustomFieldValue, CustomFieldValueInput, EnumOptionReference, GetTaskInput, ListTasksInput, ListTasksOutput, ProjectReference, SectionReference, Task, TaskMembership, TaskReference, UpdateTaskInput, UpdateTaskOutput, UserReference, WorkspaceReference
+from ..models import AddCommentInput, AddCommentOutput, CreateTaskInput, CreateTaskOutput, CustomFieldValue, CustomFieldValueInput, EnumOptionReference, EventParentReference, GetTaskInput, ListTasksInput, ListTasksOutput, ProjectReference, SectionReference, Task, TaskChangedEvent, TaskChangedTriggerConfiguration, TaskMembership, TaskReference, UpdateTaskInput, UpdateTaskOutput, UserReference, WorkspaceReference
 from .definitions import CONNECTOR_ID, ADDED, ADD_COMMENT_DEFINITION, CREATED, CREATE_TASK_DEFINITION, DEFECT, FOUND, GET_TASK_DEFINITION, INVALID_RESPONSE, LISTED, LIST_TASKS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, UNCERTAIN, UPDATED, UPDATE_TASK_DEFINITION
 
 def list_tasks_listed(value: ListTasksOutput, failure: Failure | None = None) -> Case[ListTasksOutput]:
