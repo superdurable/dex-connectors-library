@@ -16,10 +16,10 @@ spec:
       operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
     typescript:
-      version: v0.6.0
+      version: v0.7.0
       package: "@superdurable/connector-slack"
-      operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply]
-      triggers: [channelThreadCreated, threadReplyCreated]
+      operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply, postButtonMessage]
+      triggers: [channelThreadCreated, threadReplyCreated, buttonClicked]
   codegen:
     go:
       package: slack

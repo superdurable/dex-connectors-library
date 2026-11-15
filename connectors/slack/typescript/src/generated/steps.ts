@@ -5,7 +5,7 @@
 import { goToBranch, newMutationStep, type Mutation, type MutationResult, type MutationStep, type MutationStepConfig, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { ListChannelsInput, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, ListChannelMessagesInput, ListChannelMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
+import type { ListChannelsInput, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, ListChannelMessagesInput, ListChannelMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput, PostButtonMessageInput } from './models.js';
 
 /** Configuration for the listChannels connector Step. */
 export interface ListChannelsStepConfig<StepInput, OperationInput = ListChannelsInput, OperationOutput = ListChannelsOutput> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -199,6 +199,34 @@ export function newPostThreadReplyStep<StepInput, OperationInput = PostThreadRep
   const { connection, connectionName, sent, providerRejected, uncertain, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.postThreadReply(), connection: connection.reference, branches: [
+    goToBranch("sent", sent),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the postButtonMessage connector Step. */
+export interface PostButtonMessageStepConfig<StepInput, OperationInput = PostButtonMessageInput, OperationOutput = PostMessageOutput> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ postButtonMessage(): Mutation<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** Slack accepted the message. */
+  sent: StepTarget<MutationResult<OperationOutput>>;
+  /** Slack conclusively rejected the message. */
+  providerRejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** The dispatched message outcome cannot be confirmed. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
+  /** Local input, terminal connection credentials, connection configuration, or connector definition is invalid. */
+  defect?: StepTarget<MutationResult<OperationOutput>>;
+}
+
+/** Build the postButtonMessage Step from a named connection. */
+export function newPostButtonMessageStep<StepInput, OperationInput = PostButtonMessageInput, OperationOutput = PostMessageOutput>(configuration: PostButtonMessageStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, sent, providerRejected, uncertain, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newMutationStep({ ...stepConfiguration, operation: connection.operations.postButtonMessage(), connection: connection.reference, branches: [
     goToBranch("sent", sent),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),

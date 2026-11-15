@@ -4,8 +4,8 @@
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { CheckpointError, InsufficientTimeError, newFence, type Marker } from '@superdurable/connectors-sdk/singledispatch';
 import { failure, isCredentialRejected, retryAfter, type SlackClient, type SlackExchange } from './client.js';
-import { GetThreadReplyDefinition, GetWorkspaceIdentityDefinition, ListChannelMessagesDefinition, ListChannelsDefinition, ListThreadMessagesDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './generated/definitions.js';
-import type { Channel, ChannelMessage, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelMessagesInput, ListChannelMessagesOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './generated/models.js';
+import { GetThreadReplyDefinition, GetWorkspaceIdentityDefinition, ListChannelMessagesDefinition, ListChannelsDefinition, ListThreadMessagesDefinition, PostButtonMessageDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './generated/definitions.js';
+import type { Channel, ChannelMessage, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelMessagesInput, ListChannelMessagesOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostButtonMessageInput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './generated/models.js';
 
 const emptyMessage: Message = { channelId: '', timestamp: '', text: '' };
 const emptyReply: GetThreadReplyOutput = { message: emptyMessage };
@@ -156,6 +156,63 @@ export class PostThreadReplyOperation implements Mutation<PostThreadReplyInput, 
   invoke(call: Call, input: PostThreadReplyInput): Promise<MutationAttempt<PostMessageOutput>> { return postMessage(this.client, call, 'postThreadReply', input.channelId, input.threadTimestamp, input.text); }
 }
 
+/** Post a message with Block Kit buttons, as a top-level message or a thread reply, with a durable single-dispatch fence. */
+export class PostButtonMessageOperation implements Mutation<PostButtonMessageInput, PostMessageOutput> {
+  /** Bind the provider client. */ constructor(private readonly client: SlackClient) {}
+  /** Return the manifest definition. */ definition() { return PostButtonMessageDefinition; }
+  /** Match Go's stable Call ID idempotency key; Slack does not document replay deduplication. */ idempotencyKey(callId: string): string { return callId; }
+  /** Validate the buttons, then invoke the Slack chat.postMessage mutation with the text section and the buttons. */
+  invoke(call: Call, input: PostButtonMessageInput): Promise<MutationAttempt<PostMessageOutput>> {
+    const invalid = validatePostButtonMessageInput(input);
+    if (invalid) return Promise.resolve(newMutationBranch('defect', emptyPost, {}, invalid));
+    return postMessage(this.client, call, 'postButtonMessage', input.channelId, input.threadTimestamp ?? '', input.text, buttonMessageBlocks(input));
+  }
+}
+
+/** Button style that shows a green button; Slack recommends it for at most one button in a message. */
+export const ButtonStylePrimary = 'primary';
+/** Button style that shows a red button for a destructive or rejecting choice. */
+export const ButtonStyleDanger = 'danger';
+
+// Slack Block Kit limits: one actions block holds 25 elements, and a section text holds 3000 characters.
+const maximumButtonMessageButtons = 25;
+const maximumButtonMessageTextCharacters = 3000;
+const maximumButtonActionIDCharacters = 255;
+const maximumButtonTextCharacters = 75;
+const maximumButtonValueCharacters = 2000;
+
+/**
+ * Return a VALIDATION Failure when input breaks a Slack Block Kit limit that postButtonMessage enforces before
+ * sending, and undefined otherwise. The connection's maxMessageCharacters is checked when the operation runs.
+ */
+export function validatePostButtonMessageInput(input: PostButtonMessageInput): Failure | undefined {
+  const invalid = (message: string) => failure('postButtonMessage', 'VALIDATION', message);
+  const characters = (value: string | undefined) => [...(value ?? '')].length;
+  const buttons = input.buttons ?? [];
+  if (!input.channelId.trim()) return invalid('The channel ID is required.');
+  if (!input.text.trim() || characters(input.text) > maximumButtonMessageTextCharacters) return invalid(`The button message text is required and must be at most ${maximumButtonMessageTextCharacters} characters.`);
+  if (buttons.length === 0 || buttons.length > maximumButtonMessageButtons) return invalid(`A button message needs 1 through ${maximumButtonMessageButtons} buttons.`);
+  const actionIds = new Set<string>();
+  for (const button of buttons) {
+    if (!button.actionId.trim() || characters(button.actionId) > maximumButtonActionIDCharacters) return invalid(`Each button action ID is required and must be at most ${maximumButtonActionIDCharacters} characters.`);
+    if (actionIds.has(button.actionId)) return invalid('Each button action ID must be unique.');
+    if (!button.text.trim() || characters(button.text) > maximumButtonTextCharacters) return invalid(`Each button label is required and must be at most ${maximumButtonTextCharacters} characters.`);
+    if (characters(button.value) > maximumButtonValueCharacters) return invalid(`Each button value must be at most ${maximumButtonValueCharacters} characters.`);
+    if (button.style && button.style !== ButtonStylePrimary && button.style !== ButtonStyleDanger) return invalid('Each button style must be primary, danger, or empty.');
+    actionIds.add(button.actionId);
+  }
+  return undefined;
+}
+
+/** Repeat the text in a section, because Slack shows only the blocks of a message that has them. */
+function buttonMessageBlocks(input: PostButtonMessageInput): unknown[] {
+  const elements = (input.buttons ?? []).map(button => ({
+    type: 'button', action_id: button.actionId, text: { type: 'plain_text', text: button.text, emoji: true },
+    ...(button.value ? { value: button.value } : {}), ...(button.style ? { style: button.style } : {}),
+  }));
+  return [{ type: 'section', text: { type: 'mrkdwn', text: input.text } }, { type: 'actions', elements }];
+}
+
 // Slack caps conversations.history at 15 messages for non-Marketplace apps installed since May 2025.
 const maximumChannelHistoryPageSize = 15;
 const slackTimestampPattern = /^[0-9]+(\.[0-9]+)?$/;
@@ -264,7 +321,7 @@ function replyQuery(channelId: string, threadTimestamp: string, replyTimestamp: 
   return new URLSearchParams({ channel: channelId, ts: threadTimestamp, oldest: replyTimestamp, latest: replyTimestamp, inclusive: 'true', limit: '1' });
 }
 
-async function postMessage(client: SlackClient, call: Call, operation: string, channelId: string, threadTimestamp: string, text: string): Promise<MutationAttempt<PostMessageOutput>> {
+async function postMessage(client: SlackClient, call: Call, operation: string, channelId: string, threadTimestamp: string, text: string, blocks?: unknown[]): Promise<MutationAttempt<PostMessageOutput>> {
   if (!channelId.trim() || !text.trim() || [...text].length > client.maxMessageCharacters) return newMutationBranch('defect', emptyPost, {}, failure(operation, 'VALIDATION', 'channel and bounded non-empty text are required'));
   let fence;
   try { fence = newFence(call, 30_000); }
@@ -279,8 +336,9 @@ async function postMessage(client: SlackClient, call: Call, operation: string, c
     return credential.terminal ? newMutationBranch('defect', emptyPost, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable; reconnect the connection'))
       : newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack credentials are temporarily unavailable; no message was sent'));
   }
-  const payload: Record<string, string> = { channel: channelId, text, client_msg_id: call.idempotencyKey ?? '' };
+  const payload: Record<string, unknown> = { channel: channelId, text, client_msg_id: call.idempotencyKey ?? '' };
   if (threadTimestamp) payload.thread_ts = threadTimestamp;
+  if (blocks) payload.blocks = blocks;
   let response: SlackExchange;
   try { response = await fence.dispatch(signal => client.request('POST', 'chat.postMessage', credential.token!, undefined, payload, signal)); }
   catch (error) {

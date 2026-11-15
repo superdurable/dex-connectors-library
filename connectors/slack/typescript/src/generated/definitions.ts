@@ -183,6 +183,8 @@ export const PostChannelMessageDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for postChannelMessage. */
 export const PostChannelMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -212,6 +214,39 @@ export const PostThreadReplyDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for postThreadReply. */
 export const PostThreadReplyMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
+
+/** Branch IDs for postButtonMessage. */
+export const PostButtonMessageBranch = {
+  Sent: "sent",
+  ProviderRejected: "providerRejected",
+  Uncertain: "uncertain",
+  Defect: "defect",
+} as const;
+/** Slack accepted the message. */
+export const PostButtonMessageBranchSent = PostButtonMessageBranch.Sent;
+/** Slack conclusively rejected the message. */
+export const PostButtonMessageBranchProviderRejected = PostButtonMessageBranch.ProviderRejected;
+/** The dispatched message outcome cannot be confirmed. */
+export const PostButtonMessageBranchUncertain = PostButtonMessageBranch.Uncertain;
+/** Local input, terminal connection credentials, connection configuration, or connector definition is invalid. */
+export const PostButtonMessageBranchDefect = PostButtonMessageBranch.Defect;
+/** Manifest definition for postButtonMessage. */
+export const PostButtonMessageDefinition: MutationDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "postButtonMessage" },
+  branches: [
+    { id: "sent", description: "Slack accepted the message." },
+    { id: "providerRejected", description: "Slack conclusively rejected the message.", optional: true },
+    { id: "uncertain", description: "The dispatched message outcome cannot be confirmed.", optional: true },
+    { id: "defect", description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
+};
+/** Manifest metadata for postButtonMessage. */
+export const PostButtonMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

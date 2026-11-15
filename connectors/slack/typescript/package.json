@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-slack",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Slack channel thread operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -45,10 +45,11 @@
     "example:thread:start": "npm run build && tsx examples/list-thread-messages/start.ts",
     "example:channel": "npm run build && tsx examples/list-channel-messages/main.ts",
     "example:channel:start": "npm run build && tsx examples/list-channel-messages/start.ts",
-    "example:approval": "npm run build && tsx examples/thread-approval/main.ts"
+    "example:approval": "npm run build && tsx examples/thread-approval/main.ts",
+    "example:buttons": "npm run build && tsx examples/button-approval/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.10.0",
+    "@superdurable/connectors-sdk": "0.11.0",
     "@superdurable/dex": ">=1.28.0",
     "ws": "^8.23.0",
     "zod": "^4.1.0"

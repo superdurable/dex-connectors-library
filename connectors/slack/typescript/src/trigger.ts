@@ -18,6 +18,7 @@ import { SlackClient, slackCode, type SlackClientOptions } from './client.js';
 import { ConnectorID } from './generated/definitions.js';
 import type { Connection } from './generated/connection.js';
 import { newProjectConnection } from './project.js';
+import { BlockActionsPayloadSchema, ButtonClickEventSchema, ButtonClickedTriggerConfigurationSchema, ButtonClickedTriggerDefinition, blockActionsChannelId, matchButtonClickPayload, type ButtonClickEvent, type ButtonClickedTriggerConfiguration } from './button_trigger.js';
 import { redactSocketURL, type SlackSocketConnection } from './socket_mode.js';
 
 /** Filters Slack messages by text and posting user. */
@@ -77,6 +78,11 @@ export function defineThreadReplyCreatedTriggerBinding(config: SlackTriggerBindi
   return mustTriggerBindingDefinition({ definition: ThreadReplyCreatedTriggerDefinition, ...config });
 }
 
+/** Declare a static buttonClicked binding for Flow Definition tooling and Dex Web. */
+export function defineButtonClickedTriggerBinding(config: SlackTriggerBindingConfig): TriggerBindingDefinition {
+  return mustTriggerBindingDefinition({ definition: ButtonClickedTriggerDefinition, ...config });
+}
+
 /** Path of a connection's relayed Slack events: "/triggers/slack/" and the unpadded base64url connection name. */
 export function relayedTriggerPath(connectionName: string): string {
   return relayedTriggerPathPrefix + Buffer.from(connectionName).toString('base64url');
@@ -96,14 +102,29 @@ export interface ThreadReplyCreatedTriggerRoute {
   /** Routes accepted events into the application. */ target: TriggerTarget<MessageEvent>;
 }
 
+/** One button click binding and its application target. */
+export interface ButtonClickedTriggerRoute {
+  /** Configured binding name. */ bindingName: string;
+  /** Channel, action ID, and clicker filters. */ configuration: ButtonClickedTriggerConfiguration;
+  /** Routes accepted clicks into the application. */ target: TriggerTarget<ButtonClickEvent>;
+}
+
 /**
- * Slack message Triggers that share one Socket Mode connection. Slack sends each event to only one of an
- * app's open Socket Mode connections, so give every Trigger of a connection to one runner.
+ * Slack message and button click Triggers that share one Socket Mode connection. Slack sends each event to
+ * only one of an app's open Socket Mode connections, so give every Trigger of a connection to one runner.
  */
 export interface MessageTriggerRunnerConfig {
   /** Slack connection from newProjectConnection or newConnection with a SlackClient. */ connection: Connection;
   /** Root-message bindings. */ channelThreadCreatedRoutes?: readonly ChannelThreadCreatedTriggerRoute[];
   /** Reply-message bindings. */ threadReplyCreatedRoutes?: readonly ThreadReplyCreatedTriggerRoute[];
+  /**
+   * Button click bindings. Clicks arrive only through Socket Mode, so the credential needs an app_token and the
+   * Slack app needs Interactivity turned on. With button routes, every route's target, message routes included,
+   * must be a durable inbox from newDurableTriggerTarget, so a click can be acknowledged within three seconds
+   * without risking its loss; newMessageTriggerRunner throws otherwise. newProjectMessageTriggerRunner always
+   * supplies durable inboxes.
+   */
+  buttonClickedRoutes?: readonly ButtonClickedTriggerRoute[];
 }
 
 /** One root-message binding from the project configuration and its application target. */
@@ -111,10 +132,14 @@ export interface ProjectChannelThreadCreatedTriggerRoute { /** Configured bindin
 /** One reply-message binding from the project configuration and its application target. */
 export interface ProjectThreadReplyCreatedTriggerRoute { /** Configured binding name. */ bindingName: string; /** Application target. */ target: TriggerTarget<MessageEvent> }
 
-/** Slack message Trigger bindings selected from the project configuration. */
+/** One button click binding from the project configuration and its application target. */
+export interface ProjectButtonClickedTriggerRoute { /** Configured binding name. */ bindingName: string; /** Application target. */ target: TriggerTarget<ButtonClickEvent> }
+
+/** Slack message and button click Trigger bindings selected from the project configuration. */
 export interface ProjectMessageTriggerRunnerConfig {
   /** Root-message bindings. */ channelThreadCreatedRoutes?: readonly ProjectChannelThreadCreatedTriggerRoute[];
   /** Reply-message bindings. */ threadReplyCreatedRoutes?: readonly ProjectThreadReplyCreatedTriggerRoute[];
+  /** Button click bindings, received through Socket Mode only; see MessageTriggerRunnerConfig.buttonClickedRoutes. */ buttonClickedRoutes?: readonly ProjectButtonClickedTriggerRoute[];
 }
 
 /** Configuration of one standalone Slack message Trigger. */
@@ -136,23 +161,52 @@ export function newThreadReplyCreatedTrigger(config: SlackMessageTriggerConfig<T
   return newStandaloneTrigger(config, ThreadReplyCreatedTriggerDefinition, ThreadReplyCreatedTriggerConfigurationSchema.parse(config.configuration), true);
 }
 
+/** Configuration of one standalone buttonClicked Trigger. */
+export interface SlackButtonClickedTriggerConfig {
+  /** Slack connection. */ connection: Connection;
+  /** Static connection name; must equal the connection's name. */ connectionName: string;
+  /** Static binding name. */ bindingName: string;
+  /** Channel, action ID, and clicker filters. */ configuration: ButtonClickedTriggerConfiguration;
+  /** Routes accepted clicks into the application. */ target: TriggerTarget<ButtonClickEvent>;
+}
+
+/**
+ * Create one buttonClicked Trigger, at parity with Go's generated NewButtonClickedTrigger. A click is
+ * acknowledged before delivery, so it needs a durable inbox, which newTrigger cannot pass to its source:
+ * run always rejects. Use newProjectMessageTriggerRunner with buttonClickedRoutes instead.
+ */
+export function newButtonClickedTrigger(config: SlackButtonClickedTriggerConfig): TriggerRunner {
+  if (config.connectionName !== config.connection.reference.name) throw new TypeError(`slack connector trigger connectionName "${config.connectionName}" must equal its connection's name "${config.connection.reference.name}"`);
+  const client = slackClientOf(config.connection);
+  const configuration = ButtonClickedTriggerConfigurationSchema.parse(config.configuration);
+  const source = newButtonClickedTriggerSource(client, config.connection.reference, config.bindingName, configuration);
+  const triggerSource: TriggerSource<ButtonClickEvent> = {
+    run: async (context, target) => {
+      if (!hasDurableTriggerInbox(target)) throw new TypeError(buttonClicksRequireDurableInboxesMessage);
+      await runSocketModeRoutes(context, { messages: [], buttons: [{ source, target }] });
+    },
+  };
+  const definition = ButtonClickedTriggerDefinition;
+  return newTrigger({ definition, binding: { connection: config.connection.reference, trigger: definition.trigger, name: config.bindingName }, source: triggerSource, target: config.target, logger: client.triggerLogger });
+}
+
 /**
  * Receives Slack messages for one connection and dispatches matching routes. It uses Socket Mode when the
  * connection's credential has an app_token. A runner from newProjectMessageTriggerRunner whose shared
  * connection has none receives the events its host relays instead, through serveHTTP.
  */
 export class MessageTriggerRunner {
-  readonly #routes: MessageTriggerRoute[];
+  readonly #routes: SocketModeRoutes;
   readonly #relay: RelayedMessageReceiver | undefined;
 
   /** @internal Use newMessageTriggerRunner or newProjectMessageTriggerRunner. */
-  constructor(routes: MessageTriggerRoute[], relay: RelayedMessageReceiver | undefined) {
+  constructor(routes: SocketModeRoutes, relay: RelayedMessageReceiver | undefined) {
     this.#routes = routes;
     this.#relay = relay;
   }
 
   /**
-   * Replay each route's durable inbox in order, roots first, then receive and dispatch Slack events until
+   * Replay each route's durable inbox in order, roots first, then replies, then button clicks, then receive and dispatch Slack events until
    * the context ends or the runner fails. Before each reconnect it replays the inboxes again, so an event
    * persisted on a failed connection is delivered before any envelope read on the next one.
    *
@@ -165,11 +219,15 @@ export class MessageTriggerRunner {
    * shared connection, it replays the inboxes, serves relayed events through serveHTTP, and registers the
    * connection name with the host, retrying while the host is unavailable; it rejects when the host
    * refuses the registration, when the scope no longer selects the connection, and for a connection that
-   * is not shared.
+   * is not shared. A host relays only Events API messages, so a relayed runner with button routes rejects.
    */
   async run(context: TriggerContext): Promise<void> {
-    if (this.#relay && await this.#relay.selectRelayedMode(context)) { await this.#relay.run(context); return; }
-    await replayMessageTriggerRoutes(context, this.#routes);
+    if (this.#relay && await this.#relay.selectRelayedMode(context)) {
+      if (this.#routes.buttons.length > 0) throw new Error(`Slack connection "${this.#relay.connectionName}" has no app_token for Socket Mode, and button clicks reach only Socket Mode; add an app_token or remove the buttonClicked routes`);
+      await this.#relay.run(context);
+      return;
+    }
+    await replaySocketModeRoutes(context, this.#routes);
     await runSocketModeRoutes(context, this.#routes);
   }
 
@@ -186,13 +244,16 @@ export class MessageTriggerRunner {
   }
 }
 
-/** Create one runner for every configured Slack message Trigger route of a connection. */
+/**
+ * Create one runner for every configured Slack message and button click Trigger route of a connection. It
+ * throws for button routes unless every route's target is a durable inbox.
+ */
 export function newMessageTriggerRunner(config: MessageTriggerRunnerConfig): MessageTriggerRunner {
-  return new MessageTriggerRunner(messageTriggerRoutes(config), undefined);
+  return new MessageTriggerRunner(socketModeRoutesOf(config), undefined);
 }
 
 /**
- * Open connectionName and its configured bindings from the loaded project and create one durable runner,
+ * Open connectionName and its configured message and button bindings from the loaded project and create one durable runner,
  * which uses Socket Mode or the host's relay as MessageTriggerRunner.run describes. Mount the runner's
  * serveHTTP at relayedTriggerPath(connectionName). Each route's target receives its events through the
  * binding's durable project inbox, which every replica shares. A route whose binding is not configured
@@ -201,26 +262,30 @@ export function newMessageTriggerRunner(config: MessageTriggerRunnerConfig): Mes
 export function newProjectMessageTriggerRunner(project: LoadedProject, connectionName: string, config: ProjectMessageTriggerRunnerConfig, options: SlackClientOptions = {}): MessageTriggerRunner {
   const connection = newProjectConnection(project, connectionName, options);
   const client = slackClientOf(connection);
-  const durable = (triggerName: string, bindingName: string, target: TriggerTarget<MessageEvent>) => {
+  const durable = <Event>(triggerName: string, bindingName: string, target: TriggerTarget<Event>, eventSchema: z.ZodType<Event>) => {
     const key: TriggerInboxKey = { connectorId: ConnectorID, connectionName, triggerName, bindingName };
-    return { key, target: newDurableTriggerTarget(project.triggerInbox(key), key, target, { logger: client.triggerLogger, decodePayload: (_payloadJSON, payloadBytes) => MessageEventSchema.parse(parseTriggerPayloadJSON(payloadBytes)) }) };
+    return { key, target: newDurableTriggerTarget(project.triggerInbox(key), key, target, { logger: client.triggerLogger, decodePayload: (_payloadJSON, payloadBytes) => eventSchema.parse(parseTriggerPayloadJSON(payloadBytes)) }) };
   };
   const decode = <Configuration>(key: TriggerInboxKey, schema: z.ZodType<Configuration>): Configuration => {
     try { return decodeTriggerConfiguration(project.configuration, key, schema); }
     catch (error) { throw new Error(`slack ${key.triggerName} binding "${key.bindingName}" configuration: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); }
   };
-  const routes = messageTriggerRoutes({
+  const routes = socketModeRoutesOf({
     connection,
     channelThreadCreatedRoutes: (config.channelThreadCreatedRoutes ?? []).map(route => {
-      const wrapped = durable(ChannelThreadCreatedTriggerDefinition.trigger.triggerName, route.bindingName, route.target);
+      const wrapped = durable(ChannelThreadCreatedTriggerDefinition.trigger.triggerName, route.bindingName, route.target, MessageEventSchema);
       return { bindingName: route.bindingName, target: wrapped.target, configuration: decode(wrapped.key, ChannelThreadCreatedTriggerConfigurationSchema) };
     }),
     threadReplyCreatedRoutes: (config.threadReplyCreatedRoutes ?? []).map(route => {
-      const wrapped = durable(ThreadReplyCreatedTriggerDefinition.trigger.triggerName, route.bindingName, route.target);
+      const wrapped = durable(ThreadReplyCreatedTriggerDefinition.trigger.triggerName, route.bindingName, route.target, MessageEventSchema);
       return { bindingName: route.bindingName, target: wrapped.target, configuration: decode(wrapped.key, ThreadReplyCreatedTriggerConfigurationSchema) };
     }),
+    buttonClickedRoutes: (config.buttonClickedRoutes ?? []).map(route => {
+      const wrapped = durable(ButtonClickedTriggerDefinition.trigger.triggerName, route.bindingName, route.target, ButtonClickEventSchema);
+      return { bindingName: route.bindingName, target: wrapped.target, configuration: decode(wrapped.key, ButtonClickedTriggerConfigurationSchema) };
+    }),
   });
-  return new MessageTriggerRunner(routes, new RelayedMessageReceiver(project, connection.reference, client, routes));
+  return new MessageTriggerRunner(routes, new RelayedMessageReceiver(project, connection.reference, client, socketModeRoutesIdentity(routes), routes.messages));
 }
 
 const relayedTriggerPathPrefix = '/triggers/slack/';
@@ -233,39 +298,71 @@ const relayedEnvelopeID = 'relayed';
 /** How often the relayed receiver checks that its source runs before it registers. */
 const relayedSourceStartPollMs = 10;
 
-/** One binding's source: its identity, channel, matcher, and whether it matches replies or roots. */
-interface MessageTriggerSource {
+/** Names a Trigger source's connection and binding in credential reads and log records. */
+interface TriggerBindingIdentity {
   client: SlackClient;
   connection: ConnectionRef;
   triggerName: string;
   bindingName: string;
-  channelId: string;
-  matcher: MessageMatcher;
-  requiresThread: boolean;
   logger: TriggerLogger;
 }
 
+/** One binding's source: its identity, channel, matcher, and whether it matches replies or roots. */
+interface MessageTriggerSource extends TriggerBindingIdentity {
+  channelId: string;
+  matcher: MessageMatcher;
+  requiresThread: boolean;
+}
+
+/** One button binding's source: its identity and filters. */
+interface ButtonClickedTriggerSource extends TriggerBindingIdentity { configuration: ButtonClickedTriggerConfiguration }
+
 interface MessageTriggerRoute { source: MessageTriggerSource; target: TriggerTarget<MessageEvent> }
+interface ButtonClickedTriggerSourceRoute { source: ButtonClickedTriggerSource; target: TriggerTarget<ButtonClickEvent> }
 interface PendingMessageTriggerDelivery { source: MessageTriggerSource; target: TriggerTarget<MessageEvent>; event: TriggerEvent<MessageEvent> }
+interface PendingButtonClickedDelivery { source: ButtonClickedTriggerSource; target: TriggerTarget<ButtonClickEvent>; event: TriggerEvent<ButtonClickEvent> }
 interface SocketEnvelope { envelopeId: string; type: string; payload: unknown; reason: string }
+
+/** Routes that share one socket, because Slack sends each envelope to only one app connection. */
+interface SocketModeRoutes { messages: MessageTriggerRoute[]; buttons: ButtonClickedTriggerSourceRoute[] }
+/** One envelope's matched deliveries; at most one list is non-empty. */
+interface SocketModeDeliveries { messages: PendingMessageTriggerDelivery[]; buttons: PendingButtonClickedDelivery[] }
+
+/** Slack's interactive acknowledgement deadline; later, the clicker sees an error. */
+const slackInteractiveAcknowledgementLimitMs = 3_000;
+const buttonClicksRequireDurableInboxesMessage = 'Slack button click Triggers require durable inboxes for every route on their Socket Mode connection: '
+  + 'add the binding to buttonClickedRoutes of newProjectMessageTriggerRunner, or give newMessageTriggerRunner newDurableTriggerTarget targets';
+
+/** Return the first route's identity, which names the shared connection. */
+function socketModeRoutesIdentity(routes: SocketModeRoutes): TriggerBindingIdentity {
+  return routes.messages[0]?.source ?? routes.buttons[0]!.source;
+}
+
+/** Report whether every route's target records and replays events, so queued deliveries lose none. */
+function hasDurableInboxes(routes: SocketModeRoutes): boolean {
+  return routes.messages.every(route => hasDurableTriggerInbox(route.target)) && routes.buttons.every(route => hasDurableTriggerInbox(route.target));
+}
 
 function newStandaloneTrigger(config: SlackMessageTriggerConfig<unknown>, definition: TriggerDefinition, configuration: { channelId: string; threadTriggerMatcher?: MessageMatcher | undefined; threadReplyMatcher?: MessageMatcher | undefined }, requiresThread: boolean): TriggerRunner {
   if (config.connectionName !== config.connection.reference.name) throw new TypeError(`slack connector trigger connectionName "${config.connectionName}" must equal its connection's name "${config.connection.reference.name}"`);
   const client = slackClientOf(config.connection);
   const source = newMessageTriggerSource(client, config.connection.reference, definition.trigger.triggerName, config.bindingName, configuration.channelId, (requiresThread ? configuration.threadReplyMatcher : configuration.threadTriggerMatcher) ?? {}, requiresThread);
-  const triggerSource: TriggerSource<MessageEvent> = { run: (context, target) => runSocketModeRoutes(context, [{ source, target }]) };
+  const triggerSource: TriggerSource<MessageEvent> = { run: (context, target) => runSocketModeRoutes(context, { messages: [{ source, target }], buttons: [] }) };
   return newTrigger({ definition, binding: { connection: config.connection.reference, trigger: definition.trigger, name: config.bindingName }, source: triggerSource, target: config.target, logger: client.triggerLogger });
 }
 
-function messageTriggerRoutes(config: MessageTriggerRunnerConfig): MessageTriggerRoute[] {
+function socketModeRoutesOf(config: MessageTriggerRunnerConfig): SocketModeRoutes {
   const client = slackClientOf(config.connection);
   const bindingKeys = new Set<string>();
   const routes: MessageTriggerRoute[] = [];
-  const add = (triggerName: string, bindingName: string, target: TriggerTarget<MessageEvent>, channelId: string, matcher: MessageMatcher | undefined, requiresThread: boolean) => {
+  const reserveBindingName = (triggerName: string, bindingName: string, target: unknown) => {
     const trimmed = bindingName?.trim();
     if (!trimmed || !target) throw new TypeError('Slack message Trigger binding name and target are required');
     if (bindingKeys.has(`${triggerName}\0${trimmed}`)) throw new TypeError(`Slack message Trigger binding name "${trimmed}" is duplicated`);
     bindingKeys.add(`${triggerName}\0${trimmed}`);
+  };
+  const add = (triggerName: string, bindingName: string, target: TriggerTarget<MessageEvent>, channelId: string, matcher: MessageMatcher | undefined, requiresThread: boolean) => {
+    reserveBindingName(triggerName, bindingName, target);
     routes.push({ source: newMessageTriggerSource(client, config.connection.reference, triggerName, bindingName, channelId, matcher ?? {}, requiresThread), target });
   };
   for (const route of config.channelThreadCreatedRoutes ?? []) {
@@ -276,8 +373,21 @@ function messageTriggerRoutes(config: MessageTriggerRunnerConfig): MessageTrigge
     const configuration = ThreadReplyCreatedTriggerConfigurationSchema.parse(route.configuration);
     add('threadReplyCreated', route.bindingName, route.target, configuration.channelId, configuration.threadReplyMatcher, true);
   }
-  if (routes.length === 0) throw new TypeError('Slack message Trigger routes are required');
-  return routes;
+  const buttons: ButtonClickedTriggerSourceRoute[] = [];
+  for (const route of config.buttonClickedRoutes ?? []) {
+    reserveBindingName('buttonClicked', route.bindingName, route.target);
+    const configuration = ButtonClickedTriggerConfigurationSchema.parse(route.configuration);
+    buttons.push({ source: newButtonClickedTriggerSource(client, config.connection.reference, route.bindingName, configuration), target: route.target });
+  }
+  if (routes.length === 0 && buttons.length === 0) throw new TypeError('Slack message Trigger routes are required');
+  const socketModeRoutes = { messages: routes, buttons };
+  if (buttons.length > 0 && !hasDurableInboxes(socketModeRoutes)) throw new TypeError(buttonClicksRequireDurableInboxesMessage);
+  return socketModeRoutes;
+}
+
+function newButtonClickedTriggerSource(client: SlackClient, connection: ConnectionRef, bindingName: string, configuration: ButtonClickedTriggerConfiguration): ButtonClickedTriggerSource {
+  const triggerName = ButtonClickedTriggerDefinition.trigger.triggerName;
+  return { client, connection, triggerName, bindingName, configuration, logger: withTriggerLoggerAttributes(client.triggerLogger, bindingAttributes(connection, triggerName, bindingName)) };
 }
 
 function newMessageTriggerSource(client: SlackClient, connection: ConnectionRef, triggerName: string, bindingName: string, channelId: string, matcher: MessageMatcher, requiresThread: boolean): MessageTriggerSource {
@@ -301,7 +411,7 @@ function bindingAttributes(connection: ConnectionRef, triggerName: string, bindi
   return { ...connectionAttributes(connection), trigger: triggerName, ...(bindingName ? { binding: bindingName } : {}) };
 }
 
-function logConnection(source: MessageTriggerSource, context: TriggerContext, level: TriggerLogLevel, message: string, attributes: TriggerLogAttributes = {}): void {
+function logConnection(source: TriggerBindingIdentity, context: TriggerContext, level: TriggerLogLevel, message: string, attributes: TriggerLogAttributes = {}): void {
   logTriggerRecord(source.client.triggerLogger, context, level, message, { ...connectionAttributes(source.connection), ...attributes });
 }
 
@@ -312,8 +422,14 @@ function socketModeReconnectBackoffMs(client: SlackClient, failures: number): nu
   return Math.min(delay, client.triggerTimings.reconnectMaxDelayMs);
 }
 
+/** Deliver every route's pending durable inbox events in route order: roots, then replies, then button clicks. */
+async function replaySocketModeRoutes(context: TriggerContext, routes: SocketModeRoutes): Promise<void> {
+  await replayMessageTriggerRoutes(context, routes.messages);
+  await replayMessageTriggerRoutes(context, routes.buttons);
+}
+
 /** Deliver every route's pending durable inbox events in route order, roots first. */
-async function replayMessageTriggerRoutes(context: TriggerContext, routes: readonly MessageTriggerRoute[]): Promise<void> {
+async function replayMessageTriggerRoutes(context: TriggerContext, routes: readonly { target: { replayTriggerDeliveries?: (context: TriggerContext) => Promise<void> } }[]): Promise<void> {
   for (const route of routes) {
     if (!route.target.replayTriggerDeliveries) continue;
     try { await route.target.replayTriggerDeliveries(context); }
@@ -329,8 +445,8 @@ class SocketModeDisconnect extends Error {
   constructor(readonly reason: string) { super(`Slack requested a Socket Mode reconnect: ${reason}`); }
 }
 
-async function runSocketModeRoutes(context: TriggerContext, routes: readonly MessageTriggerRoute[]): Promise<void> {
-  const source = routes[0]!.source;
+async function runSocketModeRoutes(context: TriggerContext, routes: SocketModeRoutes): Promise<void> {
+  const source = socketModeRoutesIdentity(routes);
   let isReconnecting = false;
   let failures = 0;
   for (;;) {
@@ -358,8 +474,8 @@ async function runSocketModeRoutes(context: TriggerContext, routes: readonly Mes
  * connection received an envelope, so the caller counts consecutive failed attempts. With durable inboxes,
  * a separate loop delivers a bounded queue in arrival order and the connection's end waits for it.
  */
-async function runSocketModeConnection(context: TriggerContext, routes: readonly MessageTriggerRoute[], isReconnecting: boolean): Promise<{ isHealthy: boolean; error: unknown }> {
-  const source = routes[0]!.source;
+async function runSocketModeConnection(context: TriggerContext, routes: SocketModeRoutes, isReconnecting: boolean): Promise<{ isHealthy: boolean; error: unknown }> {
+  const source = socketModeRoutesIdentity(routes);
   const connectionAbort = new AbortController();
   const stopConnection = () => connectionAbort.abort();
   if (context.signal.aborted) stopConnection();
@@ -369,7 +485,7 @@ async function runSocketModeConnection(context: TriggerContext, routes: readonly
   try {
     // A connection can end after an event was persisted but before it was delivered. Deliver it before
     // reading newer envelopes, so a reply cannot overtake its root.
-    if (isReconnecting) await replayMessageTriggerRoutes(context, routes);
+    if (isReconnecting) await replaySocketModeRoutes(context, routes);
     let appToken: string | undefined;
     try { appToken = (await source.client.resolveTriggerCredentials(triggerCredentialCall(source, randomUUID() as CallID, context.signal), context.signal)).appToken?.reveal(); }
     catch (error) {
@@ -387,7 +503,7 @@ async function runSocketModeConnection(context: TriggerContext, routes: readonly
     if (connectionAbort.signal.aborted) { opened.close(); return { isHealthy: false, error: new TriggerDeliveryAbortedError() }; }
     connectionAbort.signal.addEventListener('abort', () => opened.close(), { once: true });
     logConnection(source, context, 'info', 'slack socket mode connected', { reconnect: isReconnecting });
-    if (!routes.every(route => hasDurableTriggerInbox(route.target))) {
+    if (!hasDurableInboxes(routes)) {
       // Only one acknowledged event can then await delivery, so a stopped process loses at most one.
       return { isHealthy: state.isHealthy, error: await readSocketModeEnvelopes(context, opened, routes, undefined, state) };
     }
@@ -406,29 +522,36 @@ async function runSocketModeConnection(context: TriggerContext, routes: readonly
 }
 
 /** Record and acknowledge envelopes until the connection ends; queue deliveries, or deliver inline when queue is undefined. */
-async function readSocketModeEnvelopes(context: TriggerContext, connection: SlackSocketConnection, routes: readonly MessageTriggerRoute[], queue: DeliveryQueue | undefined, state: { isHealthy: boolean }): Promise<unknown> {
-  const source = routes[0]!.source;
+async function readSocketModeEnvelopes(context: TriggerContext, connection: SlackSocketConnection, routes: SocketModeRoutes, queue: DeliveryQueue | undefined, state: { isHealthy: boolean }): Promise<unknown> {
+  const source = socketModeRoutesIdentity(routes);
   for (;;) {
     let message: unknown;
     try { message = await connection.readMessage(source.client.triggerTimings.readTimeoutMs); }
     catch (error) { return context.signal.aborted ? new TriggerDeliveryAbortedError() : error; }
+    const receivedAtMs = Date.now();
     state.isHealthy = true;
     const envelope = socketEnvelope(message);
     if (envelope.type === 'disconnect') return new SocketModeDisconnect(slackCode(envelope.reason));
-    let deliveries: PendingMessageTriggerDelivery[];
-    try { deliveries = decodeMessageTriggerDeliveries(context, routes, envelope); }
+    let deliveries: SocketModeDeliveries;
+    try { deliveries = decodeSocketModeDeliveries(context, routes, envelope); }
     catch (error) {
       logConnection(source, context, 'warn', 'trigger event skipped: undecodable', { envelope_id: envelope.envelopeId, error: error instanceof Error ? error.message : String(error) });
       try { await acknowledgeEnvelope(connection, envelope.envelopeId); } catch (acknowledgeError) { return acknowledgeError; }
       continue;
     }
     try {
-      for (const delivery of deliveries) await prepareTriggerDelivery(context, delivery.target, delivery.event);
+      for (const delivery of deliveries.messages) await prepareTriggerDelivery(context, delivery.target, delivery.event);
+      for (const delivery of deliveries.buttons) await prepareTriggerDelivery(context, delivery.target, delivery.event);
       await acknowledgeEnvelope(connection, envelope.envelopeId);
     } catch (error) { return error; }
-    if (deliveries.length === 0) continue;
+    if (deliveries.messages.length === 0 && deliveries.buttons.length === 0) continue;
+    const elapsedMs = Date.now() - receivedAtMs;
+    if (envelope.type === 'interactive' && elapsedMs > slackInteractiveAcknowledgementLimitMs) {
+      // Slack has already shown the clicker an error, but the recorded click is still delivered.
+      logConnection(source, context, 'warn', 'slack interactive envelope acknowledged late', { envelope_id: envelope.envelopeId, elapsed_ms: elapsedMs });
+    }
     if (!queue) {
-      try { await deliverMessageTriggerDeliveries(context, deliveries); } catch (error) { return error; }
+      try { await deliverSocketModeDeliveries(context, deliveries); } catch (error) { return error; }
       continue;
     }
     // A full queue pauses reading; the inboxes hold what was acknowledged, and Slack resends the rest.
@@ -443,9 +566,49 @@ async function deliverQueuedDeliveries(context: TriggerContext, queue: DeliveryQ
     const deliveries = await queue.next();
     if (!deliveries) return deliveryError;
     if (deliveryError !== undefined) continue;
-    try { await deliverMessageTriggerDeliveries(context, deliveries); }
+    try { await deliverSocketModeDeliveries(context, deliveries); }
     catch (error) { deliveryError = error; stopConnection(); }
   }
+}
+
+/** Deliver one envelope's deliveries inline in route order until each is consumed. */
+async function deliverSocketModeDeliveries(context: TriggerContext, deliveries: SocketModeDeliveries): Promise<void> {
+  await deliverMessageTriggerDeliveries(context, deliveries.messages);
+  await deliverButtonClickedDeliveries(context, deliveries.buttons);
+}
+
+/** Deliver one envelope's clicks in route order, with channel, thread, and message log attributes. */
+async function deliverButtonClickedDeliveries(context: TriggerContext, deliveries: readonly PendingButtonClickedDelivery[]): Promise<void> {
+  for (const delivery of deliveries) {
+    const click = delivery.event.payload;
+    const deliveryContext = withTriggerLogAttributes(context, { channel: click.channelId, thread_ts: click.threadTimestamp, message_ts: click.messageTimestamp });
+    await deliverTrigger(deliveryContext, delivery.target, delivery.event, { logger: delivery.source.logger });
+  }
+}
+
+/** Send interactive envelopes to button routes, when any, and every other envelope to message routes. */
+function decodeSocketModeDeliveries(context: TriggerContext, routes: SocketModeRoutes, envelope: SocketEnvelope): SocketModeDeliveries {
+  if (envelope.type === 'interactive' && envelope.envelopeId.trim() && routes.buttons.length > 0) return { messages: [], buttons: decodeButtonClickedDeliveries(context, routes.buttons, envelope) };
+  if (routes.messages.length > 0) return { messages: decodeMessageTriggerDeliveries(context, routes.messages, envelope), buttons: [] };
+  const source = socketModeRoutesIdentity(routes);
+  if (source.client.triggerLogger.isEnabled('debug')) logConnection(source, context, 'debug', 'slack socket mode envelope ignored', { type: envelope.type, envelope_id: envelope.envelopeId });
+  return { messages: [], buttons: [] };
+}
+
+/** Match one interactive envelope against the button routes. */
+function decodeButtonClickedDeliveries(context: TriggerContext, routes: readonly ButtonClickedTriggerSourceRoute[], envelope: SocketEnvelope): PendingButtonClickedDelivery[] {
+  if (envelope.payload === undefined) throw new Error('decode Slack interactive payload: payload is missing');
+  const payload = BlockActionsPayloadSchema.parse(envelope.payload);
+  const deliveries: PendingButtonClickedDelivery[] = [];
+  for (const route of routes) {
+    const matched = matchButtonClickPayload(route.source.configuration, payload);
+    // Most interactions belong to other bindings, so build the record only when DEBUG is enabled.
+    if (route.source.logger.isEnabled('debug')) {
+      for (const reason of matched.ignored) logTriggerRecord(route.source.logger, context, 'debug', 'trigger event ignored', { envelope_id: envelope.envelopeId, channel: blockActionsChannelId(payload), reason });
+    }
+    for (const event of matched.events) deliveries.push({ source: route.source, target: route.target, event });
+  }
+  return deliveries;
 }
 
 /**
@@ -525,7 +688,7 @@ async function acknowledgeEnvelope(connection: SlackSocketConnection, envelopeId
 }
 
 /** Identify a source's credential reads; a project connection's provider refuses a call without the connector ID. */
-function triggerCredentialCall(source: MessageTriggerSource, id: CallID, signal: AbortSignal) {
+function triggerCredentialCall(source: TriggerBindingIdentity, id: CallID, signal: AbortSignal) {
   return createTriggerCall(source.connection, { connectorId: ConnectorID, operationId: source.triggerName }, id, signal);
 }
 
@@ -535,14 +698,14 @@ function withAbortSignal(context: TriggerContext, signal: AbortSignal): TriggerC
 
 /** Bounded FIFO of one connection's acknowledged deliveries. */
 class DeliveryQueue {
-  readonly #items: PendingMessageTriggerDelivery[][] = [];
+  readonly #items: SocketModeDeliveries[] = [];
   #isClosed = false;
   #readerWake: (() => void) | undefined;
   #writerWake: (() => void) | undefined;
 
   constructor(private readonly capacity: number) {}
 
-  async push(deliveries: PendingMessageTriggerDelivery[], signal: AbortSignal): Promise<void> {
+  async push(deliveries: SocketModeDeliveries, signal: AbortSignal): Promise<void> {
     while (this.#items.length >= this.capacity) {
       throwIfTriggerAborted(signal);
       await new Promise<void>(resolve => {
@@ -557,7 +720,7 @@ class DeliveryQueue {
     this.#readerWake?.();
   }
 
-  async next(): Promise<PendingMessageTriggerDelivery[] | undefined> {
+  async next(): Promise<SocketModeDeliveries | undefined> {
     while (this.#items.length === 0) {
       if (this.#isClosed) return undefined;
       await new Promise<void>(resolve => { this.#readerWake = resolve; });
@@ -577,7 +740,7 @@ class RelayedMessageReceiver {
   readonly #source: TriggerSource<PendingMessageTriggerDelivery[]>;
   readonly #callId = randomUUID() as CallID;
 
-  constructor(private readonly project: LoadedProject, private readonly connection: ConnectionRef, private readonly client: SlackClient, private readonly routes: readonly MessageTriggerRoute[]) {
+  constructor(private readonly project: LoadedProject, private readonly connection: ConnectionRef, private readonly client: SlackClient, private readonly identity: TriggerBindingIdentity, private readonly routes: readonly MessageTriggerRoute[]) {
     this.endpoint = new WebhookEndpoint<Record<string, never>, PendingMessageTriggerDelivery[]>({
       connectorId: ConnectorID, triggerName: 'relayedMessage', connection,
       // The relay's signature uses the scope token, so the public route never reads a Slack credential.
@@ -589,9 +752,12 @@ class RelayedMessageReceiver {
     this.#source = this.endpoint.newSource();
   }
 
+  /** The relayed connection's name. */
+  get connectionName(): string { return this.connection.name; }
+
   /** Read the credential once, retrying while it is unavailable, and report whether the connection lacks an app_token and so receives relayed events. */
   async selectRelayedMode(context: TriggerContext): Promise<boolean> {
-    const source = this.routes[0]!.source;
+    const source = this.identity;
     for (let failures = 1; ; failures++) {
       try {
         const credentials = await this.client.resolveTriggerCredentials(triggerCredentialCall(source, this.#callId, context.signal), context.signal);
@@ -636,7 +802,7 @@ class RelayedMessageReceiver {
 
   /** Wait until the source runs, then register, retrying while the host is unavailable; stop early when the source stops. */
   async #register(context: TriggerContext, sourceResult: () => { error?: unknown } | undefined): Promise<void> {
-    const source = this.routes[0]!.source;
+    const source = this.identity;
     const key = { connectorId: ConnectorID, connectionName: this.connection.name };
     while (this.endpoint.runningSourceCount() === 0) {
       const result = sourceResult();
@@ -670,7 +836,7 @@ class RelayedMessageReceiver {
       const isDeferred = error instanceof RelayTokenRenewalDeferredError;
       const isUnavailable = error instanceof CredentialBrokerUnavailableError;
       const reason = isDeferred ? 'token_renewal_deferred' : isUnavailable ? 'verification_unavailable' : 'invalid_signature';
-      logConnection(this.routes[0]!.source, { signal: new AbortController().signal, logAttributes: {}, recordSkip: () => undefined }, isUnavailable && !isDeferred ? 'warn' : 'debug', 'slack relayed request refused', { reason });
+      logConnection(this.identity, { signal: new AbortController().signal, logAttributes: {}, recordSkip: () => undefined }, isUnavailable && !isDeferred ? 'warn' : 'debug', 'slack relayed request refused', { reason });
       throw isUnavailable ? new WebhookVerificationUnavailableError(error) : error;
     }
   }
