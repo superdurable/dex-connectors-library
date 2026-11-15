@@ -94,7 +94,7 @@ function ProjectPickerUnit({target, connectionCloudId, projects = [], isProjectL
     {isProjectListTruncated && <StudioNotice tone="attention">
       Jira returned more projects than one list can show. Enter the project key to use one that is not listed.
     </StudioNotice>}
-    <StudioField hint="Uppercase project key, shown in Jira > Projects > View all projects under Key, such as OPS. Leave it blank to use each Start Flow input's projectKey." label="Project key">
+    <StudioField hint={"Uppercase project key, shown in Jira > Projects > View all projects under Key, such as OPS. " + projectKeyBlankHint(target)} label="Project key">
       <input onChange={(event) => { setProjectKey(event.target.value.toUpperCase()); setProject(undefined); }} placeholder="OPS" type="text" value={projectKey}/>
     </StudioField>
     {!isProjectKeyValid && <StudioNotice tone="error">The project key must be uppercase letters, digits, or underscores, starting with a letter.</StudioNotice>}
@@ -128,6 +128,13 @@ function savedProject(target: ConnectorStudioConfigurationUnitTarget): JiraProje
   const key = stringValue(target.value.projectKey);
   if (key === "") return undefined;
   return {id: stringValue(target.value.projectId), key, name: stringValue(target.value.projectName) || key};
+}
+
+/** projectKeyBlankHint says what a blank key means for the Step or Trigger the picker configures. */
+function projectKeyBlankHint(target: ConnectorStudioConfigurationUnitTarget): string {
+  return target.scope.kind === "trigger"
+    ? "Leave it blank to watch every project the account can browse."
+    : "Leave it blank to use each Start Flow input's projectKey.";
 }
 
 function stringValue(value: unknown): string { return typeof value === "string" ? value : ""; }

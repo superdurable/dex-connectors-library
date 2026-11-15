@@ -1,6 +1,6 @@
 # Jira Cloud Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/jira`.
 
@@ -37,8 +37,12 @@ names only the HTTP status and the
 field IDs Jira listed, such as `Jira rejected the issue with HTTP 400 (fields:
 summary)`, and the same IDs appear in the Value's `RejectedFieldIDs`.
 
-No Trigger ships in this release. Jira webhooks need the shared webhook source
-design; until it lands, poll with `searchIssues`.
+It also exposes one Go Trigger:
+
+- `issueChanged` delivers each issue created or updated in one project, or in
+  every project the account can browse, read by polling enhanced JQL search on
+  the `updated` time. See [issueChanged Trigger](#issuechanged-trigger). The
+  Python and TypeScript packages do not implement it.
 
 ## TypeScript package
 
@@ -111,7 +115,10 @@ command (`GET https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/project/sea
 The host stays fixed; only the `cloudId` path segment is a declared parameter,
 which Dex Web checks against `^[A-Za-z0-9._~-]+$` and path-escapes. On a
 `createIssue` Step it asks Jira for projects the account can create issues in
-(`action=create`). It stores `projectId`, `projectKey`, and `projectName`.
+(`action=create`); on every other Step and on an `issueChanged` Trigger
+binding it lists projects the account can browse (`action=browse`). It stores
+`projectId`, `projectKey`, and `projectName`. On a Trigger binding a blank key
+watches every browsable project.
 
 Dex Web `cli-v1.1.0` sends no connection configuration to a unit, so the unit
 cannot read the connection's `cloudId`. It asks for a site `cloudId` used only
@@ -143,6 +150,100 @@ stay in project storage, are read for every provider call, and are refreshed
 first when the access token is missing, has no recorded expiry, or expires
 within five minutes; `cloudId`, `endpoint`, and `maxResponseBytes` are startup
 configuration.
+
+## issueChanged Trigger
+
+`issueChanged` polls Jira's enhanced search,
+[`POST /rest/api/3/search/jql`](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/#api-rest-api-3-search-jql-post),
+and delivers one `jira.IssueChangedEvent` per new issue version. It is built on
+the Connector SDK's durable poll Trigger kit
+([`sdkgo/pollingtrigger`](../../../sdkgo/README.md#polling-triggers), sdkgo
+v0.38.0) and needs only the `read:jira-work` scope the connection already
+grants.
+
+- **Query.** Each poll sends `project = <id> AND updated >= -<N>m ORDER BY
+  updated ASC`, with 100 issues per page and the standard issue fields. A blank
+  project drops the project clause. `N` is a relative bound in minutes, so the
+  query does not depend on the account's time zone, which Jira applies to
+  absolute JQL dates. It covers the cursor's latest `updated` time minus a
+  two-minute lookback, plus one minute for JQL's minute precision.
+- **Cursor.** The cursor keeps the latest `updated` instant read and a tie set
+  of `issueID@updatedMillis` versions within the lookback (at most 1,000). A
+  re-read issue whose version is in the tie set is skipped. An update that
+  Jira's search index shows late, but within the lookback, is still delivered.
+  An index delay longer than two minutes can miss an update. Times come from
+  Jira's clock, read from each search response's `Date` header, so a skewed
+  host clock does not move the window.
+- **Baseline.** The first poll of a binding records Jira's current time, or a
+  later `updated` time Jira reports, and marks the issues updated within the
+  lookback as seen. Existing issues are never delivered.
+- **Pages.** Pages continue with `nextPageToken`, repeating the same JQL as Jira
+  requires; the kit reads up to 10 pages per poll. Jira does not document that
+  a token survives an issue moving in the `updated` order, so once a page moves
+  the committed position more than a minute past where the search began, the
+  next page is a fresh search from that position; it re-reads an issue an
+  update slid back across the page boundary, and the tie set skips the overlap.
+  A token is followed only through a burst of issues updated within about
+  three minutes. A sequence older than the lookback restarts from the committed
+  position, because the relative bound moves with Jira's clock. A page token
+  Jira rejects with 400, for example one that expired, also restarts the
+  search. None of these loses a change.
+- **Change kind.** Search reports no change type, so `ChangeKind` is derived.
+  `created` means `updated` is within one second of `created`. Every other
+  change is `updated`. Several edits between two polls arrive as one change
+  with the latest state. Deleted issues and issues moved out of the project are
+  not reported.
+- **Reset.** A cursor that cannot be decoded, or that belongs to another site or
+  project, is replaced by a new baseline. The kit logs a WARN `poll cursor
+  invalid; reseeding` record. Changes between the last poll and the new
+  baseline are not delivered.
+- **Rate limits.** Jira answers an exhausted hourly points quota, a burst limit,
+  or a per-issue limit with 429 and `Retry-After`
+  ([rate limiting](https://developer.atlassian.com/cloud/jira/platform/rate-limiting/)).
+  A 429, or a transient 503 that carries `Retry-After`, pauses every binding of
+  the connection for `Retry-After`; a 429 without it backs off exponentially.
+  Other failures, including other 5xx, back off per binding. None of them
+  moves the cursor.
+- **Delivery.** Delivery is at least once. The Trigger event ID is a hash of the
+  site, the issue ID, and the `updated` instant, so a refetch yields the same ID
+  and a Flow target keyed by it starts one Flow per issue version.
+- **Poll interval.** The connection's `pollInterval` setting is the delay
+  between polls, at least 5 seconds. A poll normally makes one search request.
+
+`jira.NewProjectIssueTriggerRunner` is the durable path. It loads each
+binding's saved project, records every change in the binding's project Trigger
+inbox, and commits the cursor in the binding's project poll cursor only after
+that, so a restarted or replaced replica neither misses nor repeats a change.
+From [`examples/issue-changed/main.go`](go/examples/issue-changed/main.go):
+
+```go
+triggerRunner, err := jira.NewProjectIssueTriggerRunner(project, issuechanged.ConnectionName, jira.ProjectIssueTriggerRunnerConfig{
+	IssueChangedRoutes: []jira.ProjectIssueChangedTriggerRoute{{
+		BindingName: issuechanged.IssueChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, issuechanged.AcceptEveryIssueChange, issuechanged.ResolveFlowID,
+			issuechanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, jira.WithLogger(logger))
+```
+
+`jira.NewIssueTriggerRunner` takes the targets and cursor stores directly. A
+route without a cursor store keeps the cursor in memory. The generated
+`jira.NewIssueChangedTrigger` factory always does, because it receives no
+project storage. Such a binding records a new baseline on every process start,
+so changes made while the process is stopped are lost. Use them only for tests
+and demonstrations.
+
+Under `dexcli dev`, the Dex Web connections file keeps Trigger inboxes on disk,
+but the poll cursor stays in process memory. A restarted local Worker therefore
+records a new baseline. Hosted project storage keeps both.
+
+The binding configuration is `jira.IssueChangedTriggerConfiguration`: the
+`projectPicker` unit saves `projectId`, `projectKey`, and `projectName`. The ID
+selects the project when it is set, so a renamed key keeps working. A typed key
+without an ID selects by key. Restart the Worker after saving.
+
+This release polls. Jira webhooks need a site administrator or a dynamic
+webhook registration with a 30-day refresh, so they are not implemented yet.
 
 ## Operations
 
@@ -319,7 +420,7 @@ The test asserts literal call inputs and counts for all five operations.
 
 ## Not in this release
 
-- Triggers for issue and comment events, which need the shared webhook source.
+- Webhook Triggers for issue and comment events, and a comment Trigger.
 - API-token (HTTP Basic) authentication, which Studio setup commands cannot
   send.
 - Custom field writes, priorities, parents, and an issue type picker.
@@ -346,6 +447,15 @@ go run ./cmd/connectorctl generate --check connectors/atlassian/jira/connector.y
 (cd connectors/atlassian/jira/ui && npm ci && npm test && npm run build)
 ```
 
+The `issueChanged` tests run against `internal/jirasearchfake`, a local
+enhanced search stand-in. They cover the baseline, ascending delivery with
+stable IDs, project filtering, a late-indexed update within the lookback,
+paging, an update that shifts a paged backlog, a rejected and a stale page
+token, a host clock ahead of Jira, 429 and 503 with `Retry-After`, and resets
+for another site or project. The
+[`issue-changed`](go/examples/issue-changed) integration tests run them through
+a real Dex Worker, including a restart and a changed project.
+
 The deterministic fakes cover every branch above, JQL escaping and injection
 attempts, ADF conversion both ways, one refresh after a 401, a second 401,
 rate limits with `Retry-After`, redirects, oversized and malformed responses,
@@ -365,4 +475,7 @@ search and status category ID clauses; workflow and transition-screen rejections
 `project/search` commands through Dex Web; and the developer-console paths in
 the setup guidance. Entity-property writes during issue/comment creation,
 property read-back, the undocumented comment-list and single-comment property
-expansions, and 503 responses under load are also unverified live.
+expansions, and 503 responses under load are also unverified live. For
+`issueChanged`, relative `updated >= -Nm` bounds, `ORDER BY updated ASC`
+paging, the search index delay, and 400 for an expired page token are
+unverified against live Jira.

@@ -81,6 +81,17 @@ describe("Jira setup", () => {
     expect(markup).toContain("Jira returned more projects than one list can show.");
   });
 
+  it("explains a blank project for an issueChanged Trigger binding", () => {
+    const markup = renderToStaticMarkup(<JiraConfigurationUnit connectionCloudId={siteID} onChooseProject={() => undefined} onSave={() => undefined}
+      target={{...projectTarget, instanceId: "watchedProject", label: "Watched project",
+        scope: {kind: "trigger", triggerName: "issueChanged", bindingName: "project-issue-changes", flowType: "JiraIssueChange"},
+        description: "Choose the Jira project whose created and updated issues start this Flow. Leave it unsaved to watch every project the account can browse."}}/>);
+    expect(markup).toContain("Watched project");
+    expect(markup).toContain("Leave it blank to watch every project the account can browse.");
+    expect(markup).not.toContain("Start Flow input");
+    expect(markup).toContain("<strong>Project:</strong> Operations (OPS)");
+  });
+
   it("rejects a lowercase project key and requires a key for a required unit", () => {
     const invalid = renderToStaticMarkup(<JiraConfigurationUnit connectionCloudId={siteID} onChooseProject={() => undefined} onSave={() => undefined}
       target={{...projectTarget, value: {projectKey: "ops"}}}/>);

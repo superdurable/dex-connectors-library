@@ -48,6 +48,8 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse. An oversized response to an accepted createIssue or addComment is checked against Jira's Call ID property before selecting success or uncertain. */
   maxResponseBytes?: number;
+  /** Delay between issueChanged Trigger polls of Jira's enhanced issue search, as a Go duration of at least 5s such as 15s or 2m. Each poll normally makes one search request, which spends the app's hourly Jira rate-limit points, so shorten it only when Flows must start sooner. Blank keeps the displayed interval; connections without an issueChanged Trigger never poll. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -55,6 +57,7 @@ export const ConfigSchema = z.object({
   "cloudId": z.string().optional(),
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

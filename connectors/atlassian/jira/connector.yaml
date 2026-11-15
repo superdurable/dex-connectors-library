@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: jira
   displayName: Jira
-  description: Search and read Jira Cloud issues with bounded JQL, create issues and comments without silent duplicates, and move issues through their workflow.
+  description: Search and read Jira Cloud issues with bounded JQL, create issues and comments without silent duplicates, move issues through their workflow, and start Flows when issues are created or updated.
   company: Atlassian
   categories: [project-management, developer-tools]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: atlassian
   languages:
@@ -43,6 +43,12 @@ spec:
         description: "Maximum complete Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse. An oversized response to an accepted createIssue or addComment is checked against Jira's Call ID property before selecting success or uncertain."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between issueChanged Trigger polls of Jira's enhanced issue search, as a Go duration of at least 5s such as 15s or 2m. Each poll normally makes one search request, which spends the app's hourly Jira rate-limit points, so shorten it only when Flows must start sooner. Blank keeps the displayed interval; connections without an issueChanged Trigger never poll."
+        required: false
+        default: 30s
   auth:
     refreshable: true
     type: oauth2
@@ -132,12 +138,18 @@ spec:
           - {name: cloudId, goName: CloudID, type: string}
       - id: projectPicker
         goName: ProjectPicker
-        description: "Choose one Jira project on the connection's site; the unit stores the project ID, key, and name, and a Step that creates issues lists only projects the account can create issues in."
+        description: "Choose one Jira project on the connection's site; the unit stores the project ID, key, and name, a Step that creates issues lists only projects the account can create issues in, and an issueChanged Trigger binding lists the projects the account can browse."
         backendCapabilities: [jira.projects-list]
         outputs:
           - {name: projectId, goName: ProjectID, type: string}
           - {name: projectKey, goName: ProjectKey, type: string}
           - {name: projectName, goName: ProjectName, type: string}
+  triggers:
+    - name: issueChanged
+      goName: IssueChanged
+      eventType: IssueChangedEvent
+      configurationType: IssueChangedTriggerConfiguration
+      description: "Receive each Jira issue created or updated in one project, or in every project the account can browse, read by polling enhanced JQL search on the updated time; the first run records a baseline and delivers no existing issues."
   operations:
     - name: searchIssues
       goName: SearchIssues
