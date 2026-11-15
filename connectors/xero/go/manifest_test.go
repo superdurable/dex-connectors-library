@@ -25,8 +25,6 @@ type guidanceManifest struct {
 			Methods       []guidanceAuth  `yaml:"methods"`
 			Fields        []guidanceField `yaml:"fields"`
 		} `yaml:"auth"`
-		Studio     any   `yaml:"studio"`
-		Triggers   []any `yaml:"triggers"`
 		Operations []struct {
 			Name          string `yaml:"name"`
 			Kind          string `yaml:"kind"`
@@ -87,7 +85,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 		names = append(names, field.Name)
 	}
 	require.Equal(t, []string{
-		"maxResponseBytes", "client_id", "client_secret", "access_token",
+		"maxResponseBytes", "pollInterval", "client_id", "client_secret", "access_token",
 		"client_id", "client_secret", "access_token", "refresh_token", "organisation",
 	}, names, "a new visible field needs its own guidance review")
 
@@ -101,7 +99,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 			switch {
 			case field.Type == "secretString":
 				require.True(t, strings.HasPrefix(field.Description, "Secret"), "secret fields say so first")
-			case field.Name != "maxResponseBytes":
+			case field.Name != "maxResponseBytes" && field.Name != "pollInterval":
 				require.True(t, strings.HasPrefix(field.Description, "Non-secret"), "non-secret fields say so first")
 			}
 			switch {
@@ -115,6 +113,9 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 			case field.Name == "client_id" || field.Name == "client_secret":
 				require.Contains(t, field.Description, "https://developer.xero.com/app/manage")
 				require.Contains(t, field.Description, "Configuration")
+			case field.Name == "pollInterval":
+				require.Contains(t, field.Description, "at least 30s", "New rejects a shorter interval")
+				require.Contains(t, field.Description, "daily Xero API limit")
 			case field.Name == "organisation":
 				require.Contains(t, field.Description, "https://go.xero.com")
 				require.Contains(t, field.Description, "tenant ID")
@@ -174,14 +175,38 @@ func TestOperationsNeedAnAuthorizedConnectionAndWritesStayInsideTheKeyLifetime(t
 	}
 }
 
-// TestManifestDeclaresNoStudioBundleOrTriggers records that /connections returns an array, which Studio
-// setup commands reject, and that Xero webhooks need an intent-to-receive handshake.
-func TestManifestDeclaresNoStudioBundleOrTriggers(t *testing.T) {
-	manifest := readGuidanceManifest(t)
-	require.Nil(t, manifest.Spec.Studio)
-	require.Empty(t, manifest.Spec.Triggers)
-	_, err := os.Stat("../ui")
-	require.True(t, os.IsNotExist(err))
+// TestManifestDeclaresOnePollTriggerAndAStaticFilterUnit records that /connections returns an array, which
+// Studio setup commands reject, so the only unit is a fixed invoice filter with no provider command, and
+// that the only Trigger polls, because Xero webhooks need an intent-to-receive handshake.
+func TestManifestDeclaresOnePollTriggerAndAStaticFilterUnit(t *testing.T) {
+	contents, err := os.ReadFile("../connector.yaml")
+	require.NoError(t, err)
+	var manifest struct {
+		Spec struct {
+			Studio struct {
+				Commands []any `yaml:"commands"`
+				Units    []struct {
+					ID                  string   `yaml:"id"`
+					Description         string   `yaml:"description"`
+					BackendCapabilities []string `yaml:"backendCapabilities"`
+				} `yaml:"units"`
+			} `yaml:"studio"`
+			Triggers []struct {
+				Name string `yaml:"name"`
+			} `yaml:"triggers"`
+		} `yaml:"spec"`
+	}
+	require.NoError(t, yaml.Unmarshal(contents, &manifest))
+	require.Empty(t, manifest.Spec.Studio.Commands, "no Xero endpoint fits a Studio setup command")
+	require.Len(t, manifest.Spec.Studio.Units, 1)
+	unit := manifest.Spec.Studio.Units[0]
+	require.Equal(t, UIUnitInvoiceChangeFilter, unit.ID)
+	require.Empty(t, unit.BackendCapabilities)
+	for _, guidance := range []string{"ACCREC", "ACCPAY", "AUTHORISED", "unset receives every invoice and bill"} {
+		require.Contains(t, unit.Description, guidance)
+	}
+	require.Len(t, manifest.Spec.Triggers, 1)
+	require.Equal(t, InvoiceChangedTriggerDefinition.Trigger.TriggerName, manifest.Spec.Triggers[0].Name)
 }
 
 func findField(fields []guidanceField, name string) guidanceField {

@@ -1,6 +1,6 @@
 # Xero Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/xero/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/xero/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/xero`.
 
@@ -26,7 +26,10 @@ is optional, and an unwired optional branch fails the Flow. Every operation
 uses async Execute durability and a 30-second Execute timeout. Reads use the one-hour default retry budget; the two writes retry for up to four minutes, which
 keeps every attempt inside Xero's six-minute Idempotency-Key lifetime.
 
-This release has no Triggers and no Studio pickers; see
+It also has one Go Trigger, `invoiceChanged`, which polls `GET /Invoices` and
+starts a Flow for each sales invoice or bill created or changed; see
+[invoiceChanged Trigger](#invoicechanged-trigger). The Python and TypeScript
+packages implement no Triggers. There are no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
 ## Xero setup
@@ -295,18 +298,75 @@ errors, such as
 | rejected client, grant, or scope at the token endpoint | `providerRejected`, `AUTHENTICATION` |
 | invalid input or connection configuration | `defect`, with no request |
 
-## Not in this release
+## invoiceChanged Trigger
 
-### Triggers
+`invoiceChanged` delivers one `xero.InvoiceChangedEvent` for each sales invoice
+(`ACCREC`) or bill (`ACCPAY`) whose `UpdatedDateUTC` moves, with the invoice
+as [`GET /Invoices`](https://developer.xero.com/documentation/api/accounting/invoices)
+lists it: line items, exact decimal totals, `AmountDue`, and the new status.
+It uses the `accounting.invoices` scope the connection already requests. It is
+built on the `sdkgo/pollingtrigger` durable poll kit.
 
-Xero webhooks require an
+- **Baseline.** The first poll reads the most recently changed invoices once
+  and starts at Xero's `DateTimeUTC`, so existing invoices are never delivered.
+- **Polls.** Each poll sends `If-Modified-Since` five seconds before the
+  newest change delivered, to the second, with `order=UpdatedDateUTC ASC`,
+  `pageSize=100`, and the binding's `Statuses` and `Type` filters. Changes in
+  that overlap that were already delivered are skipped, so a change that
+  becomes visible late, or one in the same second as a delivered one, still
+  arrives once. A full page advances the cursor to its newest change; only
+  when every invoice on a page changed inside one overlap window does the next
+  request ask for the next page number, up to 1,000 pages.
+- **Event IDs** hash the invoice ID and `UpdatedDateUTC`, so a refetch after a
+  crash yields the same ID and the Dex Flow target starts one Flow per change.
+  Xero lists no change type, so a creation and an update look alike. Xero also
+  notes that some edits, such as a due date on a partly paid invoice, leave
+  `UpdatedDateUTC` unchanged; those are not delivered.
+- **Filter.** The `invoiceChangeFilter` unit saves an optional `type` and
+  `statuses` list; an unsaved binding receives every invoice and bill. A
+  status filter matches the status after the change, so `PAID` reacts to an
+  invoice paid in full.
+- **Reset.** Xero has no expiring change token. A cursor saved for another
+  filter, or read through another organisation's `Xero-Tenant-Id`, is marked
+  invalid: the kit records a new baseline and logs `poll cursor invalid;
+  reseeding` at WARN, and changes in the gap are not delivered.
+- **Rate limits.** Every poll spends at least one of the organisation's 60
+  calls a minute and 5,000 (or 1,000) calls a day, shared with operation
+  Steps; the `pollInterval` connection setting is at least 30 seconds. A 429
+  for the minute, app-minute, or concurrency limit pauses every binding of the
+  connection for `Retry-After`; the daily limit pauses for its full
+  `Retry-After`, until the limit resets. Other failures back off per binding
+  up to 15 minutes.
+
+`xero.NewProjectInvoiceTriggerRunner` loads each binding's saved filter and
+records every change in the binding's project Trigger inbox before its cursor
+commits in the binding's project poll cursor, so a restarted or replaced
+Worker neither misses nor repeats a change. `xero.NewInvoiceTriggerRunner`
+takes targets and cursor stores directly. The generated
+`xero.NewInvoiceChangedTrigger` keeps the cursor in memory and records a new
+baseline on every start. `xero.WithLogger` sends the runner's records to an
+application logger; records never carry invoice payloads or credentials.
+
+The [`examples/invoice-changed`](go/examples/invoice-changed/main.go) Worker
+wires one binding:
+
+```go
+triggerRunner, err := xero.NewProjectInvoiceTriggerRunner(project, invoicechanged.ConnectionName, xero.ProjectInvoiceTriggerRunnerConfig{
+	InvoiceChangedRoutes: []xero.ProjectInvoiceChangedTriggerRoute{{
+		BindingName: invoicechanged.InvoiceChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, invoicechanged.AcceptEveryInvoiceChange, invoicechanged.ResolveFlowID,
+			invoicechanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, options...)
+```
+
+Xero webhooks are not used: they require an
 ["intent to receive"](https://developer.xero.com/documentation/guides/webhooks/overview)
-validation before Xero delivers events: the endpoint must answer every
-correctly signed payload with 2xx and every incorrectly signed one with
-`401 Unauthorized` within five seconds. `sdkgo/webhooktrigger` answers a
-verification failure with 400 and has no handshake hook yet, so no Trigger
-ships. Until then, poll with `listInvoices` or `listContacts` and
-`modifiedSince`.
+validation, where the endpoint answers every incorrectly signed payload with
+`401 Unauthorized` within five seconds, and `sdkgo/webhooktrigger` answers a
+verification failure with 400 and has no handshake hook yet.
+
+## Not in this release
 
 ### Studio pickers
 
@@ -317,6 +377,8 @@ commands accept only a JSON object, and `/connections` returns an array.
 Custom Connection's token is minted by the Worker rather than stored by Dex
 Web. Account codes, such as `090` for a bank account, are therefore
 operation input, found in Xero under **Accounting > Chart of accounts**.
+The `ui/` bundle therefore declares no setup command: its only unit,
+`invoiceChangeFilter`, offers Xero's fixed invoice types and statuses.
 
 ## Example
 
@@ -325,6 +387,10 @@ operation input, found in Xero under **Accounting > Chart of accounts**.
 customer's contact by email, looks for an invoice already raised for the
 order's reference, raises an approved invoice when there is none, records the
 order's payment, and reads the invoice back to confirm it is paid.
+
+[`examples/invoice-changed`](go/examples/invoice-changed) is started by the
+`invoiceChanged` Trigger: each invoice change starts one `XeroInvoiceChange`
+Flow, which reads the invoice back with `xero.NewGetInvoiceStep`.
 
 ## Mocks
 
@@ -385,7 +451,12 @@ the only organisation, exact decimal requests and responses, .NET dates,
 paging and filters, the Idempotency-Key and its replay under a slow or lost
 first request and a lost Worker, the minute and daily limits, a cached 500,
 Xero error tokens without message text, redirects, and oversized, malformed,
-and credential-reflecting responses.
+and credential-reflecting responses. The `invoiceChanged` fake
+(`go/internal/xeroinvoicefake`) covers the baseline, If-Modified-Since to the
+second, the overlap window, same-instant changes, paging by time and by page
+number, the type and status filters, filter and organisation resets, and the
+minute and daily limits; the example's real Dex tests cover delivery across a
+restart, a filter reset, and a rate-limit pause.
 
 No live Xero organisation was used. The following live behavior is
 unverified: whether Xero's code exchange response includes `scope`; Xero's
@@ -395,7 +466,10 @@ whether a Custom Connection token accepts or ignores `Xero-Tenant-Id`;
 whether a 503 is cached under an idempotency key; JSON number formatting of
 amounts in live responses; `If-Modified-Since` parsing; Xero's
 `EmailAddress` filter with `==`; the developer portal labels in the setup
-guidance; and the response to an invoice number reused by another invoice.
+guidance; the response to an invoice number reused by another invoice; and, for
+`invoiceChanged`, whether `If-Modified-Since` is inclusive, `order=UpdatedDateUTC
+ASC` with paging, the `DateTimeUTC` envelope field, and how late a change can
+become visible after its `UpdatedDateUTC`.
 
 ## Python package
 

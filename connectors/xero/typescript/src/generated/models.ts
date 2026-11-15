@@ -44,6 +44,8 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Largest complete Xero API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of line items. An oversized read selects invalidResponse, and an oversized answer to an accepted createInvoice or recordPayment selects uncertain. */
   maxResponseBytes?: number;
+  /** Delay between invoiceChanged Trigger polls of Xero's invoice list, as a Go duration of at least 30s such as 2m or 10m. Every poll spends at least one call of the organisation's daily Xero API limit, 5,000 calls or 1,000 on starter tiers, shared with this connection's operations, so a shorter interval delivers changes sooner but leaves fewer calls for Steps. Leave blank to keep the displayed interval. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
   /** Non-secret Xero organisation the connection uses: its name exactly as shown at the top left of Xero after signing in at https://go.xero.com, such as Demo Company (US), or its tenant ID, a UUID. Xero lets a user connect several organisations in one consent, and the connector reads them from https://api.xero.com/connections. Blank uses the only organisation the user connected and fails when there are several. */
   organisation?: string;
 }
@@ -51,6 +53,7 @@ export interface Config {
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
   "organisation": z.string().optional(),
 });
 

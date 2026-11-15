@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: xero
   displayName: Xero
-  description: "Find Xero contacts by email, list and read invoices, raise invoices with exact decimal amounts in any enabled currency, and record payments against them, with every write sent under a Xero Idempotency-Key derived from the Step."
+  description: "Find Xero contacts by email, list and read invoices, raise invoices with exact decimal amounts in any enabled currency, record payments against them, with every write sent under a Xero Idempotency-Key derived from the Step, and receive each invoice or bill that is created or changed."
   company: Xero
   categories: [finance-payments]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: xero
   languages:
@@ -31,6 +31,12 @@ spec:
         description: "Largest complete Xero API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of line items. An oversized read selects invalidResponse, and an oversized answer to an accepted createInvoice or recordPayment selects uncertain."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between invoiceChanged Trigger polls of Xero's invoice list, as a Go duration of at least 30s such as 2m or 10m. Every poll spends at least one call of the organisation's daily Xero API limit, 5,000 calls or 1,000 on starter tiers, shared with this connection's operations, so a shorter interval delivers changes sooner but leaves fewer calls for Steps. Leave blank to keep the displayed interval."
+        required: false
+        default: 5m
   auth:
     refreshable: true
     defaultMethod: custom-connection
@@ -137,6 +143,26 @@ spec:
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_client, invalid_grant, unauthorized_client, unsupported_grant_type, invalid_scope]
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    units:
+      - id: invoiceChangeFilter
+        goName: InvoiceChangeFilter
+        description: "Choose which Xero invoices start the Flow: sales invoices (ACCREC), bills (ACCPAY), or both, and optionally only those whose status after the change is one of DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED, or DELETED. The unit stores Xero's own type and status values; leaving both unset receives every invoice and bill. Xero offers no read-only list of these values, so the choices are fixed in the unit."
+        outputs:
+          - {name: type, goName: Type, type: string}
+          - {name: statuses, goName: Statuses, type: stringList}
+  triggers:
+    - name: invoiceChanged
+      goName: InvoiceChanged
+      eventType: InvoiceChangedEvent
+      configurationType: InvoiceChangedTriggerConfiguration
+      description: "Receive each Xero sales invoice or bill created or changed in the organisation, with its line items and exact decimal totals, read by polling GET /Invoices with If-Modified-Since; the first run records a baseline and delivers no existing invoices."
   operations:
     - name: listContacts
       goName: ListContacts
@@ -304,6 +330,8 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 4m, reason: {kind: duplicateWriteRisk, explanation: "Xero retains the invoice Idempotency-Key for six minutes, so stop createInvoice retries within four minutes before replay can make another invoice."}}
+        # Every attempt sends the Step's Xero Idempotency-Key, so a repeat inside the four-minute retry window replays the first answer.
+        repeatOnUnknown: safe
       mocks:
         - name: approvedOrderInvoice
           branch: created
@@ -338,6 +366,8 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 4m, reason: {kind: duplicateWriteRisk, explanation: "Xero retains the payment Idempotency-Key for six minutes, so stop recordPayment retries within four minutes before replay can record another payment."}}
+        # Every attempt sends the Step's Xero Idempotency-Key, so a repeat inside the four-minute retry window replays the first answer.
+        repeatOnUnknown: safe
       mocks:
         - name: orderPayment
           branch: recorded
