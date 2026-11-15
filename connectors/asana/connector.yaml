@@ -14,9 +14,9 @@ spec:
       operations: [listTasks, getTask, createTask, updateTask, addComment]
       triggers: [taskChanged]
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       operations: [listTasks, getTask, createTask, updateTask, addComment]
-      triggers: []
+      triggers: [taskChanged]
   provider: asana
   codegen:
     go:
