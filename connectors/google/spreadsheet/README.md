@@ -15,7 +15,7 @@ The Google Sheets Connector exposes operation-specific Dex Step factories:
 | `getValues` | Query | Reads one bounded A1 range as formatted values | `read` | Go, Python, TypeScript |
 | `findRow` | Query | Finds the one row whose key column holds a stable key | `found` | Go, Python, TypeScript |
 | `upsertRow` | Mutation | Replaces the row with a stable key, or appends it when absent | `upserted` | Go, Python, TypeScript |
-| `rowAdded` | Trigger | Each row appended below the last processed row of one picked tab | | Go, Python |
+| `rowAdded` | Trigger | Each row appended below the last processed row of one picked tab | | Go, Python, TypeScript |
 
 It uses a separate `google-sheets-oauth` Connection with the least-privilege
 `drive.file` scope. A Google Picker grant selects each accessible spreadsheet;
@@ -195,8 +195,12 @@ npm run build --prefix ui
 
 ## TypeScript package
 
-`typescript/` publishes `@superdurable/connector-google-sheets` v0.1.0 with
-`getValues`, `findRow`, and `upsertRow`. Its runnable
+`typescript/` publishes `@superdurable/connector-google-sheets` v0.2.0 with
+`getValues`, `findRow`, `upsertRow`, and the `rowAdded` Trigger. Its
+[`new-row-intake` example](typescript/examples/new-row-intake/README.md) starts
+one Flow per added row through `newProjectRowAddedTriggerRunner`, with the same
+cursor, realignment, and quota behavior as Go and cursor documents shared byte
+for byte. Its runnable
 [`upsert-contact` example](typescript/examples/upsert-contact/README.md) uses the
 static `google-sheets-contacts` connection and generated OAuth refresh wiring.
 The TypeScript package replays Go conformance scenarios and runs its Flow against

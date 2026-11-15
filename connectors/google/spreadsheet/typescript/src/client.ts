@@ -3,7 +3,8 @@
 
 import { BodyTooLargeError, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { MaxChangesPerPage } from '@superdurable/connectors-sdk/pollingtrigger';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { GetValuesOperation, FindRowOperation, UpsertRowOperation } from './operations.js';
@@ -11,6 +12,11 @@ import { GetValuesOperation, FindRowOperation, UpsertRowOperation } from './oper
 const defaultEndpoint = 'https://sheets.googleapis.com/v4';
 const defaultResponseBytes = 4_194_304;
 const defaultRows = 10_000;
+const defaultPollIntervalMs = 30_000;
+const defaultPollPageSize = 100;
+
+/** The largest pollPageSize, which keeps one rowAdded poll page within the poll kit's bound. */
+export const MaxRowAddedPollPageSize = MaxChangesPerPage;
 
 /** Caller-owned transport and clock for deterministic provider tests. */
 export interface SpreadsheetClientOptions {
@@ -20,6 +26,12 @@ export interface SpreadsheetClientOptions {
   now?: () => Date;
   /** Token endpoint transport for OAuth agreement tests. */
   refreshFetch?: typeof fetch;
+  /**
+   * Receives the rowAdded runners' records: seeded and committed cursors, failed polls, realigned row
+   * positions, and delivery outcomes, with row numbers but never cell values, tab titles, or credentials.
+   * Omitted uses defaultTriggerLogger. It also applies to the durable inboxes of newProjectRowAddedTriggerRunner.
+   */
+  triggerLogger?: TriggerLogger;
 }
 
 /** One response or transport classification, preserving status on oversized replies. */
@@ -38,9 +50,12 @@ export class SpreadsheetClient {
   private readonly endpoint: string;
   private readonly maxResponseBytes: number;
   readonly maxRows: number;
+  /** Delay between rowAdded polls of each binding, in milliseconds; at least 1000. */ readonly pollIntervalMs: number;
+  /** Rows after the last processed row that one rowAdded poll reads, from 1 to MaxRowAddedPollPageSize. */ readonly pollPageSize: number;
+  /** The rowAdded Trigger logger from the client options, when given. */ readonly triggerLogger: TriggerLogger | undefined;
   private readonly credentials: CredentialSource;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
-  private readonly now: () => Date;
+  /** Clock for receipts and rowAdded event times. */ readonly now: () => Date;
   private readonly refreshDriver: ManifestCredentialRefreshDriver<Credentials>;
 
   /** Bind one named connection without contacting Google. */
@@ -56,6 +71,11 @@ export class SpreadsheetClient {
     this.maxResponseBytes = config.maxResponseBytes || defaultResponseBytes;
     this.maxRows = config.maxRows || defaultRows;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1 || !Number.isSafeInteger(this.maxRows) || this.maxRows < 2) throw new TypeError('Google Sheets response and row limits must be positive');
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    this.pollPageSize = config.pollPageSize || defaultPollPageSize;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < 1000) throw new TypeError('Google Sheets pollInterval must be at least one second');
+    if (!Number.isSafeInteger(this.pollPageSize) || this.pollPageSize < 1 || this.pollPageSize > MaxRowAddedPollPageSize) throw new TypeError(`Google Sheets pollPageSize must be from 1 to ${MaxRowAddedPollPageSize}`);
+    this.triggerLogger = options.triggerLogger;
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
@@ -89,7 +109,7 @@ export class SpreadsheetClient {
   }
 
   /** Make one request, refreshing once on 401 for reads. */
-  async request(call: Call, credential: Credentials, method: string, spreadsheetId: string, suffix: string, query: Record<string, string>, body?: unknown, write = false, signal?: AbortSignal, timeoutMs = 25_000): Promise<{ exchange: SpreadsheetExchange; credential: Credentials }> {
+  async request(call: Call, credential: Credentials, method: string, spreadsheetId: string, suffix: string, query: Readonly<Record<string, string | readonly string[]>>, body?: unknown, write = false, signal?: AbortSignal, timeoutMs = 25_000): Promise<{ exchange: SpreadsheetExchange; credential: Credentials }> {
     const url = `${this.endpoint}/spreadsheets/${goPathEscape(spreadsheetId)}${suffix}?${goQueryEncode(query)}`;
     const payload = body === undefined ? undefined : Buffer.from(JSON.stringify(body));
     for (let attempt = 0; attempt < (write ? 1 : 2); attempt++) {
@@ -150,7 +170,8 @@ export class SpreadsheetClient {
 export function goPathEscape(value: string): string { return Array.from(Buffer.from(value)).map(byte => /[A-Za-z0-9._~$&+=:@-]/.test(String.fromCharCode(byte)) ? String.fromCharCode(byte) : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`).join(''); }
 
 function header(headers: ProviderResponse['headers'], name: string): string { const value = headers[name]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
-function goFormatValue(value: unknown): string {
+/** Format one decoded cell value as Go fmt.Sprint formats it. */
+export function goFormatValue(value: unknown): string {
   if (value === null) return '<nil>';
   if (typeof value === 'string') return value;
   if (typeof value === 'number') return formatGoFloat(value);
