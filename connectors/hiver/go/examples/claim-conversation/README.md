@@ -51,18 +51,26 @@ is not a published release.
 ## Configure and run
 
 This example is part of the connector module, so Dex needs release metadata
-built from this source, passed as an override; without it the connection
-shows **Unsupported**. The connector has no Studio bundle. From the repository
-root:
+and the Studio bundle built from this source, passed as an override; without
+them the connection shows **Unsupported**. From the repository root:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
+npm ci --prefix sdk/react && npm run build --prefix sdk/react
+npm ci --prefix connectors/hiver/ui && npm run build --prefix connectors/hiver/ui
 mkdir -p /tmp/hiver-release
+go run ./cmd/connectorctl ui-artifact \
+  --manifest connectors/hiver/connector.yaml \
+  --ui-root connectors/hiver/ui/dist \
+  --output /tmp/hiver-release/connector-ui.tgz \
+  --digest-output /tmp/hiver-release/connector-ui.tgz.sha256
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/hiver/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/hiver/go \
-  --version v0.23.0 --tag connectors/hiver/go/v0.23.0 \
+  --version v0.24.0 --tag connectors/hiver/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
+  --ui-artifact /tmp/hiver-release/connector-ui.tgz \
+  --ui-digest /tmp/hiver-release/connector-ui.tgz.sha256 \
   --output /tmp/hiver-release/connector-release.json \
   --digest-output /tmp/hiver-release/connector-release.json.sha256
 dexcli dev \
@@ -75,7 +83,8 @@ Follow the [Hiver setup](../../../README.md#hiver-setup), then open
 Hiver Steps of `HiverClaimConversation` use. Paste the admin's API key and
 save; the status becomes **Ready**. Leave `maxResponseBytes` and
 `requestIntervalMilliseconds` blank unless Hiver has raised your account's
-rate limit. The example has no Step configuration. Dex Web or Superverse
+rate limit; `pollInterval` and `pollPagesPerPoll` apply only to the
+`conversationReceived` Trigger, which this example does not use. The example has no Step configuration. Dex Web or Superverse
 Studio writes the connection to the project configuration.
 
 In a second terminal, start the Worker from `connectors/hiver` with the

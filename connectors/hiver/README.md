@@ -1,8 +1,8 @@
 # Hiver Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hiver/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hiver/go@v0.24.0`.
 
-The Python package is `dex-connector-hiver==0.1.0`. It implements all six operations with generated Step factories and has no Triggers. Its [runnable conversation claim Flow](python/examples/claim_conversation/flow.py), [Worker entrypoint](python/examples/claim_conversation/main.py), and [package guide](python/README.md) show the static `hiver-support` connection and local Dex verification. Python replay uses the Go-recorded [conformance scenarios](../../conformance/connectors/hiver/scenarios.json), including multipart note and shared draft requests. Live Hiver authorization and API behavior remain unverified.
+The Python package is `dex-connector-hiver==0.1.0`. It implements all six operations with generated Step factories and does not implement the `conversationReceived` Trigger, which is Go-only. Its [runnable conversation claim Flow](python/examples/claim_conversation/flow.py), [Worker entrypoint](python/examples/claim_conversation/main.py), and [package guide](python/README.md) show the static `hiver-support` connection and local Dex verification. Python replay uses the Go-recorded [conformance scenarios](../../conformance/connectors/hiver/scenarios.json), including multipart note and shared draft requests. Live Hiver authorization and API behavior remain unverified.
 
 For `addNote`, Python preserves Hiver's `created_at` through microseconds. A returned timestamp with nonzero sub-microsecond digits selects `uncertain` with a `created_at` protocol failure because the accepted note cannot be safely resent. The [Python package guide](python/README.md) describes this limit.
 
@@ -32,12 +32,13 @@ and `createSharedDraft` use a 30-second Execute timeout; `updateConversation`,
 which may make up to eight spaced requests, uses 60 seconds. Reads and `updateConversation` use the one-hour default retry budget; `addNote` and `createSharedDraft` keep five attempts within five minutes and use sync durability
 because Hiver has no idempotency key; see [Duplicate safety](#duplicate-safety).
 
-This release has no Triggers and no Studio pickers; see
-[Not in this release](#not-in-this-release).
+The `conversationReceived` Trigger starts a Flow for each conversation that
+newly appears in one shared inbox, which the binding picks with the
+`inboxPicker` unit; see [conversationReceived Trigger](#conversationreceived-trigger).
 
 ## Hiver setup
 
-A connection needs one secret and has two optional settings:
+A connection needs one secret and has four optional settings:
 
 - **api_key**, a secret credential field. Only a Hiver admin can create it, at
   **Admin Panel > Integrations > Developer APIs > Create an API key** in Hiver
@@ -53,6 +54,10 @@ A connection needs one secret and has two optional settings:
 - **requestIntervalMilliseconds**, optional: the shortest time between two
   requests of this connection in one Worker, 1000 by default; see
   [Request spacing](#request-spacing).
+- **pollInterval**, optional: the delay between `conversationReceived` polls of
+  each binding, a Go duration of at least 1s, 5m by default.
+- **pollPagesPerPoll**, optional: the pages of 100 conversations one poll
+  reads, from 2 to 5, 3 by default.
 
 ## Project configuration
 
@@ -173,6 +178,85 @@ message ID or the message's SMTP `Message-ID`, such as
 cannot send a reply: a Hiver user reviews, edits, and sends the shared draft,
 so this is the connector's public-reply path.
 
+## conversationReceived Trigger
+
+Hiver's API documents no webhooks, and its conversation list documents no
+timestamp, filter, or order (<https://developer.hiverhq.com/hiver-api>), so the
+Trigger polls `GET /v1/inboxes/{inbox_id}/conversations` with `limit=100` and
+`next_page`, using the sdkgo [poll Trigger kit](../../sdkgo/README.md#polling-triggers).
+It needs no permission beyond the connection's API key.
+
+- **Binding.** `ConversationReceivedTriggerConfiguration.InboxID` names one
+  shared inbox. Dex Web saves it from the `inboxPicker` unit, which lists the
+  account's inboxes through the read-only `listInboxes` setup command
+  (`GET https://api2.hiverhq.com/v1/inboxes`, bearer API key), or accepts the
+  inbox ID typed in.
+- **Event.** `ConversationReceivedEvent` carries the inbox ID and the
+  `Conversation` as the list reported it: status, assignee, tag IDs, Gmail
+  thread ID, and private permalink. The event ID is
+  `conversation-<inboxId>-<conversationId>`, so a redelivery starts no second
+  Flow. `OccurredAt` is when the poll found the conversation; Hiver reports no
+  arrival time.
+- **Baseline.** A new binding first walks the whole list, 10 pages per fetch
+  without waiting between fetches, and records every conversation ID without
+  delivering it. A conversation that arrives during the walk is part of the
+  baseline when a page the walk reads later lists it, and is delivered after
+  the baseline otherwise. A conversation removed from the list during the walk
+  can likewise shift an existing one past a page boundary, and that one is then
+  delivered once after the baseline.
+- **Polls.** After the baseline, each poll reads the first page plus up to
+  `pollPagesPerPoll - 1` pages of a sweep that continues across polls through
+  the whole list. A conversation is delivered the first time any of those pages
+  lists an ID the binding does not track: on the next poll when Hiver lists new
+  conversations first, otherwise within one sweep, about
+  `ceil(conversations / (100 * (pollPagesPerPoll - 1)))` polls. IDs that two
+  complete sweeps in a row never listed, such as deleted conversations, stop
+  being tracked. Hiver does not document how `next_page` tokens behave when the
+  list changes, so a conversation removed during a sweep can shift another one
+  past a page boundary; waiting for a second sweep keeps that conversation
+  tracked instead of delivering it again as new.
+- **Cursor.** The durable cursor holds the sweep's `next_page` token and a
+  keyed snapshot of tracked IDs. A rejected sweep token (400, 404, 410, or 422)
+  restarts the sweep from the first page and keeps every tracked ID, so nothing
+  is missed. A cursor for another inbox, or one that cannot be decoded, is
+  invalid: the kit records a new baseline and logs `poll cursor invalid;
+  reseeding`; conversations between the two are not delivered.
+- **Limits.** One binding tracks at most `MaxTrackedConversations` (50,000)
+  IDs. An inbox whose list holds more pauses with the ERROR record
+  `poll paused: cursor state exceeds bound`, retried every 30 minutes. Each
+  page holds at most 100 conversations, so a poll delivers at most 500.
+- **Rate limits.** Requests share the connection's request spacing with its
+  Steps. A 429 holds the client and pauses every binding of the runner for the
+  longer of `Retry-After` and `pollInterval`, or backs off exponentially
+  without `Retry-After`. Other failures back off per binding up to 30 minutes,
+  or `pollInterval` when longer. A poll costs `pollPagesPerPoll` of the
+  account's 5000 daily requests: the defaults use at most 864 per binding per
+  day, and a baseline costs one request per 100 conversations.
+
+`hiver.NewProjectConversationReceivedTriggerRunner` loads each binding from the
+project configuration and records every conversation in the binding's durable
+Trigger inbox before the cursor commits, so a restarted Worker neither misses
+nor repeats one. `hiver.NewConversationReceivedTriggerRunner` takes cursor
+stores and targets directly, and the generated
+`hiver.NewConversationReceivedTrigger` keeps its cursor in memory, so it
+records a new baseline after each restart. `hiver.WithLogger` sends the
+runner's records, which never carry conversation contents, page tokens, or the
+API key, to a logger.
+
+[`examples/new-conversation-intake/main.go`](go/examples/new-conversation-intake/main.go)
+wires it:
+
+```go
+triggerRunner, err := hiver.NewProjectConversationReceivedTriggerRunner(project, newconversationintake.ConnectionName,
+	[]hiver.ProjectConversationReceivedTriggerRoute{{
+		BindingName: newconversationintake.ConversationReceivedTriggerBinding, Target: newConversationTarget(client, flow, logger),
+	}}, options...)
+```
+
+A status, assignee, or tag change Trigger would have to compare every
+conversation on every sweep against Hiver's 5000 daily requests, so it is not
+offered.
+
 ## Request spacing
 
 Hiver limits every account to one request per second and 5000 requests per
@@ -275,21 +359,6 @@ carries the Call ID, the inbox, conversation, note, or draft ID, and an
 
 ## Not in this release
 
-### Triggers
-
-Hiver's API documentation describes no webhooks or event subscriptions, and
-`sdkgo` has no durable per-binding poll cursor for a polling Trigger, so the
-connector declares no Trigger. A Flow that reacts to new conversations polls
-`listConversations` on a Timer.
-
-### Studio pickers
-
-An inbox picker would fit the Studio setup command limits: `GET
-https://api2.hiverhq.com/v1/inboxes` is a fixed HTTPS host with a bearer
-credential and a JSON object response. This release keeps the inbox an
-operation input instead, and the example resolves it from the shared mailbox
-address a person already knows through `listInboxes`.
-
 ### Not in Hiver's API
 
 Sending a reply, creating a conversation, unassigning, reading message bodies,
@@ -300,6 +369,11 @@ the conversation list are not in Hiver's API documentation. Note mentions,
 verified against a live account.
 
 ## Example
+
+[`examples/new-conversation-intake`](go/examples/new-conversation-intake)
+starts one Flow per new conversation of the picked shared inbox through the
+`conversationReceived` Trigger and reads its message IDs with
+`getConversation`.
 
 [`examples/claim-conversation`](go/examples/claim-conversation) is a runnable Dex
 Web **Start Flow** example that uses all six operations: it finds a shared
@@ -353,6 +427,13 @@ go run ./cmd/connectorctl validate connectors/hiver/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/hiver/connector.yaml
 ```
 
+The `inboxPicker` Studio bundle builds and tests from `connectors/hiver/ui`:
+
+```bash
+npm ci --prefix sdk/react && npm run build --prefix sdk/react
+cd connectors/hiver/ui && npm ci && npm test && npm run build
+```
+
 The provider fakes cover bearer authentication, request spacing across
 concurrent Steps and a cancelled wait, the client-wide hold after a 429 and
 its reset, page tokens and limits, string and numeric IDs, the documented
@@ -362,7 +443,11 @@ a rejected read-back, multipart notes and drafts, the dispatch checkpoint and
 its safe-retry marker, a checkpoint Dex never stored, status classification without
 Hiver's message text, `Retry-After`, redirects, oversized, malformed, and
 credential-reflecting responses, 503 retry with the same correlation Call ID,
-missing heartbeat fail-closed behavior, and accepted responses without an ID.
+missing heartbeat fail-closed behavior, and accepted responses without an ID. The `conversationReceived` fake
+covers the baseline walk, newest-first and oldest-first lists, sweeps across
+polls, deleted conversations, expired page tokens during the baseline and a
+sweep, 429 with and without `Retry-After`, a missing inbox, invalid and
+re-pointed cursors, and delivery across a restart on a real Dex Server.
 
 No live Hiver account was used. The following live behavior is unverified:
 the element type of `tags.to_apply` and `tags.to_remove`, which Hiver's
@@ -374,9 +459,12 @@ draft body renders markup; the order of `message_ids`; whether
 `users/search` matches email exactly; whether list endpoints honor `limit` and
 `next_page` for conversations and tags as the general pagination section
 describes; whether 429 responses carry `Retry-After` and are always returned
-before a write is applied; the `X-Request-Id` header; and the Admin Panel path
-in the setup guidance.
+before a write is applied; the `X-Request-Id` header; the Admin Panel path
+in the setup guidance; for `conversationReceived`, the order of the
+conversation list, how Hiver answers an expired `next_page` token, whether
+the list includes closed conversations, and the inbox list fields the picker
+reads.
 
 ## TypeScript package
 
-The TypeScript package at [`typescript/`](typescript/README.md) implements all six operations in `@superdurable/connector-hiver` version `0.1.0`. Its checked-in list-inboxes Flow uses the static `hiver-support` connection and runs through a real Dex Worker and Client in the integration test. The Go-recorded cross-language scenarios cover every operation branch, 429 and 503 Retry, transport failure, multipart note and draft writes, and uncertain outcomes. Live Hiver provider behavior is still unverified.
+The TypeScript package at [`typescript/`](typescript/README.md) implements all six operations in `@superdurable/connector-hiver` version `0.1.0`. Its checked-in list-inboxes Flow uses the static `hiver-support` connection and runs through a real Dex Worker and Client in the integration test. The Go-recorded cross-language scenarios cover every operation branch, 429 and 503 Retry, transport failure, multipart note and draft writes, and uncertain outcomes. It does not implement the `conversationReceived` Trigger. Live Hiver provider behavior is still unverified.

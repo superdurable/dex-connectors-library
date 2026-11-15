@@ -17,9 +17,16 @@ import (
 
 const ConnectorID = "hiver"
 
+const (
+	UIUnitInboxPicker        = "inboxPicker"
+	UIInboxPickerPortInboxID = "inboxId"
+)
+
 type Config struct {
-	MaxResponseBytes            int64 `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
-	RequestIntervalMilliseconds int64 `json:"requestIntervalMilliseconds,omitempty" yaml:"requestIntervalMilliseconds,omitempty"`
+	MaxResponseBytes            int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	RequestIntervalMilliseconds int64         `json:"requestIntervalMilliseconds,omitempty" yaml:"requestIntervalMilliseconds,omitempty"`
+	PollInterval                time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
+	PollPagesPerPoll            int64         `json:"pollPagesPerPoll,omitempty" yaml:"pollPagesPerPoll,omitempty"`
 }
 
 type Credentials struct {
@@ -163,6 +170,8 @@ func DefaultConfig() Config {
 	return Config{
 		MaxResponseBytes:            4194304,
 		RequestIntervalMilliseconds: 1000,
+		PollInterval:                time.Duration(300000000000),
+		PollPagesPerPoll:            3,
 	}
 }
 
@@ -174,6 +183,12 @@ func withConfigDefaults(config Config) Config {
 	if config.RequestIntervalMilliseconds == 0 {
 		config.RequestIntervalMilliseconds = defaults.RequestIntervalMilliseconds
 	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
+	}
+	if config.PollPagesPerPoll == 0 {
+		config.PollPagesPerPoll = defaults.PollPagesPerPoll
+	}
 	return config
 }
 
@@ -184,6 +199,12 @@ func (config Config) Validate() error {
 	if config.RequestIntervalMilliseconds < 0 {
 		return fmt.Errorf("configuration requestIntervalMilliseconds cannot be negative")
 	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
+	}
+	if config.PollPagesPerPoll < 0 {
+		return fmt.Errorf("configuration pollPagesPerPoll cannot be negative")
+	}
 	return nil
 }
 
@@ -192,6 +213,52 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+var ConversationReceivedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "conversationReceived"},
+	Description: "Receive each conversation that newly appears in one picked Hiver shared inbox, found by polling the inbox's conversation list; conversations already in the inbox when the binding first polls are never delivered.",
+}
+
+type ConversationReceivedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=hiver"`
+	triggerName                             struct{}                       `connector:"triggerName=conversationReceived"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineConversationReceivedTriggerBinding(config ConversationReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: ConversationReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type ConversationReceivedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                       `connector:"connectorId=hiver"`
+	triggerName                      struct{}                                       `connector:"triggerName=conversationReceived"`
+	Connection                       Connection                                     `connector:"connection"`
+	ConnectionName                   string                                         `connector:"connectionName"`
+	BindingName                      string                                         `connector:"bindingName"`
+	Configuration                    ConversationReceivedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[ConversationReceivedEvent] `connector:"triggerTarget"`
+}
+
+func NewConversationReceivedTrigger(config ConversationReceivedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hiver connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ConversationReceivedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[ConversationReceivedEvent]{
+		Definition: ConversationReceivedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.conversationReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const ListInboxesBranchListed sdkgo.BranchID = "listed"
@@ -222,6 +289,7 @@ type ListInboxesStepConfig[IN any] struct {
 	operationID                    struct{}                                             `connector:"operationId=listInboxes"`
 	StepType                       string                                               `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                       `connector:"configurationUI"`
 	Connection                     Connection                                           `connector:"connection"`
 	ConnectionName                 string                                               `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListInboxesInput                            `connector:"mapToOperationInput"`
@@ -242,7 +310,8 @@ func NewListInboxesStep[IN any](config ListInboxesStepConfig[IN]) sdkgo.QuerySte
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInboxesInput, ListInboxesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListInboxes(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListInboxes(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListInboxesResult] {
 			branches := make([]sdkgo.BranchTarget[ListInboxesResult], 0, 4)
@@ -295,6 +364,7 @@ type ListConversationsStepConfig[IN any] struct {
 	operationID                    struct{}                                                   `connector:"operationId=listConversations"`
 	StepType                       string                                                     `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                             `connector:"configurationUI"`
 	Connection                     Connection                                                 `connector:"connection"`
 	ConnectionName                 string                                                     `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListConversationsInput                            `connector:"mapToOperationInput"`
@@ -316,7 +386,8 @@ func NewListConversationsStep[IN any](config ListConversationsStepConfig[IN]) sd
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListConversationsInput, ListConversationsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListConversations(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListConversations(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListConversationsResult] {
 			branches := make([]sdkgo.BranchTarget[ListConversationsResult], 0, 5)
@@ -372,6 +443,7 @@ type GetConversationStepConfig[IN any] struct {
 	operationID                    struct{}                                               `connector:"operationId=getConversation"`
 	StepType                       string                                                 `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
 	Connection                     Connection                                             `connector:"connection"`
 	ConnectionName                 string                                                 `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetConversationInput                          `connector:"mapToOperationInput"`
@@ -393,7 +465,8 @@ func NewGetConversationStep[IN any](config GetConversationStepConfig[IN]) sdkgo.
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetConversationInput, ConversationDetails]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetConversation(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetConversation(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetConversationResult] {
 			branches := make([]sdkgo.BranchTarget[GetConversationResult], 0, 5)
@@ -439,6 +512,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateConversationResult = sdkgo.MutationResult[UpdateConversationOutput]
@@ -449,6 +523,7 @@ type UpdateConversationStepConfig[IN any] struct {
 	operationID                       struct{}                                                       `connector:"operationId=updateConversation"`
 	StepType                          string                                                         `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                                 `connector:"configurationUI"`
 	Connection                        Connection                                                     `connector:"connection"`
 	ConnectionName                    string                                                         `connector:"connectionName"`
 	MapToOperationInput               func(IN) UpdateConversationInput                               `connector:"mapToOperationInput"`
@@ -470,7 +545,8 @@ func NewUpdateConversationStep[IN any](config UpdateConversationStepConfig[IN]) 
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateConversationInput, UpdateConversationOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.UpdateConversation(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpdateConversation(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateConversationResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateConversationResult], 0, 5)
@@ -516,6 +592,8 @@ var AddNoteDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AddNoteResult = sdkgo.MutationResult[AddNoteOutput]
@@ -526,6 +604,7 @@ type AddNoteStepConfig[IN any] struct {
 	operationID                       struct{}                                            `connector:"operationId=addNote"`
 	StepType                          string                                              `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                      `connector:"configurationUI"`
 	Connection                        Connection                                          `connector:"connection"`
 	ConnectionName                    string                                              `connector:"connectionName"`
 	MapToOperationInput               func(IN) AddNoteInput                               `connector:"mapToOperationInput"`
@@ -536,6 +615,8 @@ type AddNoteStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddNoteResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddNoteOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddNoteStep[IN any](config AddNoteStepConfig[IN]) sdkgo.MutationStep[IN, AddNoteInput, AddNoteOutput] {
@@ -547,7 +628,8 @@ func NewAddNoteStep[IN any](config AddNoteStepConfig[IN]) sdkgo.MutationStep[IN,
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddNoteInput, AddNoteOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.AddNote(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.AddNote(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddNoteResult] {
 			branches := make([]sdkgo.BranchTarget[AddNoteResult], 0, 5)
@@ -570,6 +652,7 @@ func NewAddNoteStep[IN any](config AddNoteStepConfig[IN]) sdkgo.MutationStep[IN,
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -593,6 +676,8 @@ var CreateSharedDraftDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateSharedDraftResult = sdkgo.MutationResult[SharedDraft]
@@ -603,6 +688,7 @@ type CreateSharedDraftStepConfig[IN any] struct {
 	operationID                       struct{}                                          `connector:"operationId=createSharedDraft"`
 	StepType                          string                                            `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                    `connector:"configurationUI"`
 	Connection                        Connection                                        `connector:"connection"`
 	ConnectionName                    string                                            `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreateSharedDraftInput                   `connector:"mapToOperationInput"`
@@ -613,6 +699,8 @@ type CreateSharedDraftStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateSharedDraftResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SharedDraft]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateSharedDraftStep[IN any](config CreateSharedDraftStepConfig[IN]) sdkgo.MutationStep[IN, CreateSharedDraftInput, SharedDraft] {
@@ -624,7 +712,8 @@ func NewCreateSharedDraftStep[IN any](config CreateSharedDraftStepConfig[IN]) sd
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSharedDraftInput, SharedDraft]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.CreateSharedDraft(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateSharedDraft(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateSharedDraftResult] {
 			branches := make([]sdkgo.BranchTarget[CreateSharedDraftResult], 0, 5)
@@ -647,5 +736,6 @@ func NewCreateSharedDraftStep[IN any](config CreateSharedDraftStepConfig[IN]) sd
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
