@@ -19,7 +19,11 @@ and the Python package offers the six other than `listChannelMessages`. Both
 posts recommend approval and claim no safe retry. From Go v1.8.0, TypeScript
 v0.8.0, and Python v0.5.0 their tool metadata also carries `repeatOnUnknown: limited` and `maxSends: 3`: a post
 whose outcome is unknown may be sent up to three times (see
-[Operations](#operations)). The reads need no approval:
+[Operations](#operations)). Dex agent hosts honor that cap from Dex Agents
+0.6.12: enable these posts with a cap above 1 only after no Worker older than
+0.6.12 runs that session Flow type, and do not roll back below 0.6.12 while a
+bounded call is open. A cap of 1 is safe on any Worker. The reads need no
+approval:
 
 - `slack_list_channels` (`listChannels`) finds channel IDs from a name such as
   `#general`. The post tools tell the model to look a channel up with it
