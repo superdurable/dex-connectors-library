@@ -29,7 +29,12 @@ It also exposes one Trigger:
 
 ## TypeScript package
 
-`@superdurable/connector-google-calendar@0.1.0` implements the same five operations as TypeScript Dex Steps. Its [package README](typescript/README.md) covers setup, generated OAuth refresh, and the runnable meeting lookup. The package has no Triggers. Its TypeScript version is independent of this Go connector's version.
+`@superdurable/connector-google-calendar@0.2.0` implements the same five operations as TypeScript Dex Steps and the `eventChanged` Trigger on the TypeScript poll Trigger kit (`@superdurable/connectors-sdk@0.12.0`). Its sync cursor documents match Go's byte for byte, so Go and TypeScript replicas share a binding's cursor and inbox. Its [package README](typescript/README.md) covers setup, generated OAuth refresh, the runnable meeting lookup, and the runnable [event change example](typescript/examples/event-changed/README.md). Its TypeScript version is independent of this Go connector's version.
+
+| Capability | Kind | Languages |
+| --- | --- | --- |
+| `listEvents`, `getEvent`, `createEvent`, `updateEvent`, `queryFreeBusy` | Operations | Go, TypeScript, Python |
+| `eventChanged` | Trigger | Go, TypeScript |
 
 ## Python package
 
