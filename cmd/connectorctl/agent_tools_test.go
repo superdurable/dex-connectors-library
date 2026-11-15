@@ -55,7 +55,7 @@ func TestCatalogAgentToolMetadataMatchesLanguagePackageManifests(t *testing.T) {
 				operations, err := agentToolOperations(manifest, newConnectorGoPackage(manifestPath))
 				require.NoError(t, err, directory)
 				for path, contents := range publishedLanguageManifests(t, directory) {
-					comparedFactories.Add(int64(requireAgentToolsMatchLanguageManifest(t, path, contents, manifest, operations)))
+					comparedFactories.Add(int64(requireAgentToolsMatchLanguageManifest(t, manifestPath, path, contents, manifest, operations)))
 				}
 				hasAdopted, err := hasAdoptedGoAgentTools(manifestPath, manifest)
 				require.NoError(t, err, directory)
@@ -105,7 +105,7 @@ func TestGenerateAgentToolsOnlyAfterTheModuleRequiresTheSDKRelease(t *testing.T)
 	require.NoError(t, err)
 	packageManifest, err := os.ReadFile(packageManifestPath)
 	require.NoError(t, err)
-	require.Equal(t, 1, requireAgentToolsMatchLanguageManifest(t, packageManifestPath, packageManifest, manifest, operations))
+	require.Equal(t, 1, requireAgentToolsMatchLanguageManifest(t, manifestPath, packageManifestPath, packageManifest, manifest, operations))
 	vet := exec.Command("go", "vet", "./...")
 	vet.Dir = goDirectory
 	output, err := vet.CombinedOutput()
@@ -214,8 +214,10 @@ func TestGoOnlyAgentToolKeepsLanguageInputSchemas(t *testing.T) {
 }
 
 // requireAgentToolsMatchLanguageManifest compares every listed exposed operation and returns how many it compared.
-func requireAgentToolsMatchLanguageManifest(t *testing.T, path string, contents []byte, manifest schema.Manifest, operations []codegen.AgentToolOperation) int {
+func requireAgentToolsMatchLanguageManifest(t *testing.T, manifestPath, path string, contents []byte, manifest schema.Manifest, operations []codegen.AgentToolOperation) int {
 	t.Helper()
+	hasSendCaps, err := hasRepeatOnUnknownSendCaps(manifestPath)
+	require.NoError(t, err)
 	var document struct {
 		ConnectorID string `json:"connectorId"`
 		Factories   []struct {
@@ -240,7 +242,7 @@ func requireAgentToolsMatchLanguageManifest(t *testing.T, path string, contents 
 			require.Equal(t, factory.Description, operation.Description, "%s %s", path, factory.OperationID)
 			require.Equal(t, factory.InputType, operation.Operation.InputType, "%s %s", path, factory.OperationID)
 			require.JSONEq(t, string(factory.InputSchema), string(operation.InputSchema), "%s %s", path, factory.OperationID)
-			expectedAgent, err := json.Marshal(dexConnectorOperationAgent(operation.Operation))
+			expectedAgent, err := json.Marshal(dexConnectorOperationAgent(operation.Operation, hasSendCaps))
 			require.NoError(t, err)
 			require.JSONEq(t, string(factory.Agent), string(expectedAgent), "%s %s", path, factory.OperationID)
 			var agent struct {

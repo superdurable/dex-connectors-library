@@ -558,7 +558,11 @@ func generate(args []string) error {
 		}
 		return writeGeneratedFiles(generated)
 	}
-	generated, err := codegen.Generate(manifest)
+	generateOptions, err := repeatOnUnknownGenerateOptions(args[0])
+	if err != nil {
+		return err
+	}
+	generated, err := codegen.Generate(manifest, generateOptions...)
 	if err != nil {
 		return err
 	}

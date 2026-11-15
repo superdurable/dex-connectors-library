@@ -217,9 +217,27 @@ func TestGeneratedLanguageManifestRejectsInputModelThatGoLacks(t *testing.T) {
 }
 
 func TestDexConnectorOperationAgentCarriesRetry(t *testing.T) {
-	exposed := true
-	operation := schema.Operation{Agent: &schema.OperationAgent{Exposed: &exposed, Retry: schema.OperationAgentRetrySafe, Branches: map[string]string{"lost": "unknown"}}}
-	require.Equal(t, &dexConnectorAgent{Exposed: true, Retry: "safe", Branches: map[string]string{"lost": "unknown"}}, dexConnectorOperationAgent(operation))
+	exposed, declined := true, false
+	operation := schema.Operation{Kind: "mutation", Agent: &schema.OperationAgent{Exposed: &exposed, Retry: schema.OperationAgentRetrySafe, Branches: map[string]string{"lost": "unknown"}}}
+	require.Equal(t, &dexConnectorAgent{Exposed: true, Retry: "safe", Branches: map[string]string{"lost": "unknown"}}, dexConnectorOperationAgent(operation, false))
+	require.Equal(t, &dexConnectorAgent{Exposed: true, Retry: "safe", RepeatOnUnknown: "safe", Branches: map[string]string{"lost": "unknown"}}, dexConnectorOperationAgent(operation, true))
+
+	limited := schema.Operation{Kind: "mutation", Agent: &schema.OperationAgent{Exposed: &exposed}}
+	require.Equal(t, &dexConnectorAgent{Exposed: true}, dexConnectorOperationAgent(limited, false), "a module before sdkgo v0.37.0 publishes no tier")
+	require.Equal(t, &dexConnectorAgent{Exposed: true, RepeatOnUnknown: "limited", MaxSends: 3}, dexConnectorOperationAgent(limited, true),
+		"retry stays absent: Dex agent hosts reject any retry value other than safe")
+	limited.Execution.MaxSends = 5
+	require.Equal(t, &dexConnectorAgent{Exposed: true, RepeatOnUnknown: "limited", MaxSends: 5}, dexConnectorOperationAgent(limited, true))
+
+	explicitSafe := schema.Operation{Kind: "mutation", Execution: schema.Execution{RepeatOnUnknown: "safe"}, Agent: &schema.OperationAgent{Exposed: &exposed}}
+	require.Equal(t, &dexConnectorAgent{Exposed: true, Retry: "safe"}, dexConnectorOperationAgent(explicitSafe, false))
+	unsafe := schema.Operation{Kind: "mutation", Execution: schema.Execution{RepeatOnUnknown: "unsafe"}, Agent: &schema.OperationAgent{Exposed: &exposed}}
+	require.Equal(t, &dexConnectorAgent{Exposed: true, RepeatOnUnknown: "unsafe"}, dexConnectorOperationAgent(unsafe, true))
+
+	query := schema.Operation{Kind: "query", Agent: &schema.OperationAgent{Exposed: &exposed}}
+	require.Equal(t, &dexConnectorAgent{Exposed: true}, dexConnectorOperationAgent(query, true), "a Query carries neither retry nor a tier")
+	declinedMutation := schema.Operation{Kind: "mutation", Agent: &schema.OperationAgent{Exposed: &declined}}
+	require.Equal(t, &dexConnectorAgent{Exposed: false}, dexConnectorOperationAgent(declinedMutation, true))
 }
 
 func generateWithManifest(t *testing.T, manifestPath, source string) error {

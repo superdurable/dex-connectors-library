@@ -481,6 +481,9 @@ func TestAgentToolConstructorsValidateMetadata(t *testing.T) {
 		"array input schema":        {change: func(m *sdkgo.AgentToolMetadata) { m.InputSchema = json.RawMessage(`[]`) }, wantMessage: "input schema must be a JSON object"},
 		"invalid connection":        {connection: sdkgo.ConnectionRef{Provider: "agent-provider"}, wantMessage: "agent tool connection"},
 		"retry safe mutation is ok": {change: func(m *sdkgo.AgentToolMetadata) { m.IsRetrySafe = true }},
+		"tier the definition lacks": {change: func(m *sdkgo.AgentToolMetadata) {
+			m.RepeatOnUnknown, m.MaxSends = sdkgo.RepeatOnUnknownLimited, 3
+		}, wantMessage: "RepeatOnUnknown and MaxSends do not match"},
 		"listed defect unknown is ok": {change: func(m *sdkgo.AgentToolMetadata) {
 			m.BranchOutcomes[sdkgo.DefectBranchID] = sdkgo.AgentBranchOutcomeUnknown
 		}},
@@ -513,6 +516,8 @@ func TestAgentToolConstructorsValidateMetadata(t *testing.T) {
 		"mutation kind":              {change: func(m *sdkgo.AgentToolMetadata) { m.Kind = sdkgo.AgentOperationKindMutation }, wantMessage: "kind"},
 		"dex-agents style tool name": {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "agent-provider_list_story_i_d_s" }, wantMessage: `must be "agent-provider_list_story_ids"`},
 		"retry safe query":           {change: func(m *sdkgo.AgentToolMetadata) { m.IsRetrySafe = true }, wantMessage: "only a Mutation may be retry safe"},
+		"query with a tier":          {change: func(m *sdkgo.AgentToolMetadata) { m.RepeatOnUnknown = sdkgo.RepeatOnUnknownSafe }, wantMessage: "RepeatOnUnknown and MaxSends do not match"},
+		"query with a send cap":      {change: func(m *sdkgo.AgentToolMetadata) { m.MaxSends = 2 }, wantMessage: "RepeatOnUnknown and MaxSends do not match"},
 		"unknown query outcome": {change: func(m *sdkgo.AgentToolMetadata) {
 			m.BranchOutcomes[agentBranchRateLimited] = sdkgo.AgentBranchOutcomeUnknown
 		}, wantMessage: "a Query branch may only be rejected"},

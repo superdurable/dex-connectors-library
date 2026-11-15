@@ -449,6 +449,77 @@ type Execution struct {
 	// DispatchFence requires sync Execute durability for heartbeat checkpoint visibility.
 	DispatchFence bool   `yaml:"dispatchFence,omitempty" json:"dispatchFence,omitempty"`
 	Retry         *Retry `yaml:"retry,omitempty" json:"retry,omitempty"`
+	// RepeatOnUnknown is safe, limited, or unsafe; empty takes Operation.ResolvedRepeatOnUnknown's default.
+	RepeatOnUnknown string `yaml:"repeatOnUnknown,omitempty" json:"repeatOnUnknown,omitempty"`
+	// MaxSends caps possibly effective sends of a limited Mutation's Call ID, from 2 to 10; zero means 3.
+	MaxSends int32 `yaml:"maxSends,omitempty" json:"maxSends,omitempty"`
+}
+
+const (
+	// RepeatOnUnknownSafe repeats an unknown outcome within the Step retry policy.
+	RepeatOnUnknownSafe = "safe"
+	// RepeatOnUnknownLimited reads back, then resends while possible sends stay below maxSends.
+	RepeatOnUnknownLimited = "limited"
+	// RepeatOnUnknownUnsafe reads back only and never resends; adding one requires an owner-reviewed issue.
+	RepeatOnUnknownUnsafe = "unsafe"
+	// DefaultLimitedMaxSends is the send cap of a limited operation that omits execution.maxSends.
+	DefaultLimitedMaxSends int32 = 3
+	// MinimumLimitedMaxSends is the smallest execution.maxSends; one send would never resend.
+	MinimumLimitedMaxSends int32 = 2
+	// MaximumLimitedMaxSends is the largest execution.maxSends, equal to sdkgo.MaxSendsCeiling.
+	MaximumLimitedMaxSends int32 = 10
+)
+
+// ResolvedRepeatOnUnknown returns execution.repeatOnUnknown, or its default when omitted: safe for a
+// Query, safe for a Mutation whose agent.retry is safe, and limited for every other Mutation.
+func (operation Operation) ResolvedRepeatOnUnknown() string {
+	switch {
+	case operation.Execution.RepeatOnUnknown != "":
+		return operation.Execution.RepeatOnUnknown
+	case operation.Kind != "mutation":
+		return RepeatOnUnknownSafe
+	case operation.Agent != nil && operation.Agent.Retry == OperationAgentRetrySafe:
+		return RepeatOnUnknownSafe
+	default:
+		return RepeatOnUnknownLimited
+	}
+}
+
+// ResolvedMaxSends returns the send cap of a limited operation: execution.maxSends, or
+// DefaultLimitedMaxSends when omitted. It is zero for every other tier.
+func (operation Operation) ResolvedMaxSends() int32 {
+	if operation.ResolvedRepeatOnUnknown() != RepeatOnUnknownLimited {
+		return 0
+	}
+	if operation.Execution.MaxSends == 0 {
+		return DefaultLimitedMaxSends
+	}
+	return operation.Execution.MaxSends
+}
+
+func validateOperationRepeatOnUnknown(operation Operation) []string {
+	var problems []string
+	execution := operation.Execution
+	switch execution.RepeatOnUnknown {
+	case "", RepeatOnUnknownSafe, RepeatOnUnknownLimited, RepeatOnUnknownUnsafe:
+	default:
+		problems = append(problems, operation.Name+": execution.repeatOnUnknown must be safe, limited, or unsafe")
+	}
+	if operation.Kind == "query" && execution.RepeatOnUnknown != "" && execution.RepeatOnUnknown != RepeatOnUnknownSafe {
+		problems = append(problems, operation.Name+": a query's execution.repeatOnUnknown may only be safe")
+	}
+	resolved := operation.ResolvedRepeatOnUnknown()
+	if execution.MaxSends != 0 {
+		if resolved != RepeatOnUnknownLimited {
+			problems = append(problems, operation.Name+": execution.maxSends requires execution.repeatOnUnknown limited")
+		} else if execution.MaxSends < MinimumLimitedMaxSends || execution.MaxSends > MaximumLimitedMaxSends {
+			problems = append(problems, fmt.Sprintf("%s: execution.maxSends must be within %d through %d", operation.Name, MinimumLimitedMaxSends, MaximumLimitedMaxSends))
+		}
+	}
+	if operation.Agent != nil && operation.Agent.Retry == OperationAgentRetrySafe && resolved != RepeatOnUnknownSafe {
+		problems = append(problems, operation.Name+": agent.retry safe requires execution.repeatOnUnknown safe")
+	}
+	return problems
 }
 
 // Retry declares a Connector Step Execute retry policy.
@@ -924,6 +995,7 @@ func (manifest Manifest) Validate() error {
 		if operation.Execution.DispatchFence && operation.Execution.Durability != "sync" {
 			problems = append(problems, operation.Name+": dispatchFence requires sync execution durability")
 		}
+		problems = append(problems, validateOperationRepeatOnUnknown(operation)...)
 		if retry := operation.Execution.Retry; retry != nil {
 			if initialInterval, err := time.ParseDuration(retry.InitialInterval); err != nil || initialInterval <= 0 {
 				problems = append(problems, operation.Name+": retry initialInterval must be a positive duration")

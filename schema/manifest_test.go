@@ -168,6 +168,31 @@ func TestManifestDurationPatternsRejectZero(t *testing.T) {
 	}
 }
 
+func TestManifestJSONSchemaChecksRepeatOnUnknown(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition struct {
+		Definitions map[string]any `json:"$defs"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	const resource = "https://connectors.dex.dev/execution.schema.json"
+	require.NoError(t, compiler.AddResource(resource, definition.Definitions["execution"]))
+	compiled, err := compiler.Compile(resource)
+	require.NoError(t, err)
+	execution := func(fields string) any {
+		var document any
+		require.NoError(t, json.Unmarshal([]byte(`{"executeMethodTimeout":"30s","durability":"sync"`+fields+`}`), &document))
+		return document
+	}
+	for _, fields := range []string{"", `,"repeatOnUnknown":"safe"`, `,"repeatOnUnknown":"unsafe"`, `,"maxSends":5`, `,"repeatOnUnknown":"limited","maxSends":2`, `,"repeatOnUnknown":"limited","maxSends":10`} {
+		require.NoError(t, compiled.Validate(execution(fields)), fields)
+	}
+	for _, fields := range []string{`,"repeatOnUnknown":"always"`, `,"maxSends":1`, `,"maxSends":11`, `,"repeatOnUnknown":"safe","maxSends":3`, `,"repeatOnUnknown":"unsafe","maxSends":3`} {
+		require.Error(t, compiled.Validate(execution(fields)), fields)
+	}
+}
+
 func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 	fixture, err := os.ReadFile("testdata/google-oauth.yaml")
 	require.NoError(t, err)
@@ -309,6 +334,64 @@ func TestDispatchFenceRequiresSyncDurability(t *testing.T) {
 	require.ErrorContains(t, manifest.Validate(), "dispatchFence requires sync execution durability")
 	manifest.Spec.Operations[0].Execution.Durability = "sync"
 	require.NoError(t, manifest.Validate())
+}
+
+func TestRepeatOnUnknownValidationAndDefaults(t *testing.T) {
+	exposed := true
+	safeAgent := &schema.OperationAgent{Exposed: &exposed, Retry: schema.OperationAgentRetrySafe}
+	for name, testCase := range map[string]struct {
+		kind, repeatOnUnknown string
+		maxSends              int32
+		agent                 *schema.OperationAgent
+		problem               string
+		wantResolved          string
+		wantMaxSends          int32
+	}{
+		"query default":                 {kind: "query", wantResolved: "safe"},
+		"explicit safe query":           {kind: "query", repeatOnUnknown: "safe", wantResolved: "safe"},
+		"limited query":                 {kind: "query", repeatOnUnknown: "limited", problem: "a query's execution.repeatOnUnknown may only be safe"},
+		"unsafe query":                  {kind: "query", repeatOnUnknown: "unsafe", problem: "a query's execution.repeatOnUnknown may only be safe"},
+		"query send cap":                {kind: "query", maxSends: 3, problem: "execution.maxSends requires execution.repeatOnUnknown limited"},
+		"mutation default":              {kind: "mutation", wantResolved: "limited", wantMaxSends: 3},
+		"mutation default with a cap":   {kind: "mutation", maxSends: 5, wantResolved: "limited", wantMaxSends: 5},
+		"limited at the floor":          {kind: "mutation", repeatOnUnknown: "limited", maxSends: 2, wantResolved: "limited", wantMaxSends: 2},
+		"limited at the ceiling":        {kind: "mutation", repeatOnUnknown: "limited", maxSends: 10, wantResolved: "limited", wantMaxSends: 10},
+		"limited below the floor":       {kind: "mutation", repeatOnUnknown: "limited", maxSends: 1, problem: "execution.maxSends must be within 2 through 10"},
+		"limited above the ceiling":     {kind: "mutation", repeatOnUnknown: "limited", maxSends: 11, problem: "execution.maxSends must be within 2 through 10"},
+		"negative cap":                  {kind: "mutation", maxSends: -1, problem: "execution.maxSends must be within 2 through 10"},
+		"safe mutation":                 {kind: "mutation", repeatOnUnknown: "safe", wantResolved: "safe"},
+		"safe mutation with a cap":      {kind: "mutation", repeatOnUnknown: "safe", maxSends: 3, problem: "execution.maxSends requires execution.repeatOnUnknown limited"},
+		"unsafe mutation":               {kind: "mutation", repeatOnUnknown: "unsafe", wantResolved: "unsafe"},
+		"unsafe mutation with a cap":    {kind: "mutation", repeatOnUnknown: "unsafe", maxSends: 3, problem: "execution.maxSends requires execution.repeatOnUnknown limited"},
+		"unknown tier":                  {kind: "mutation", repeatOnUnknown: "sometimes", problem: "execution.repeatOnUnknown must be safe, limited, or unsafe"},
+		"agent retry safe implies safe": {kind: "mutation", agent: safeAgent, wantResolved: "safe"},
+		"agent retry safe and safe":     {kind: "mutation", repeatOnUnknown: "safe", agent: safeAgent, wantResolved: "safe"},
+		"agent retry safe and limited":  {kind: "mutation", repeatOnUnknown: "limited", agent: safeAgent, problem: "agent.retry safe requires execution.repeatOnUnknown safe"},
+		"agent retry safe and unsafe":   {kind: "mutation", repeatOnUnknown: "unsafe", agent: safeAgent, problem: "agent.retry safe requires execution.repeatOnUnknown safe"},
+		"agent retry safe with a cap":   {kind: "mutation", maxSends: 3, agent: safeAgent, problem: "execution.maxSends requires execution.repeatOnUnknown limited"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			operation := &manifest.Spec.Operations[0]
+			operation.Kind, operation.Idempotency = testCase.kind, "none"
+			if testCase.kind == "mutation" {
+				operation.Idempotency = "required"
+			}
+			operation.Execution.RepeatOnUnknown, operation.Execution.MaxSends = testCase.repeatOnUnknown, testCase.maxSends
+			operation.Agent = testCase.agent
+			if testCase.problem != "" {
+				require.ErrorContains(t, manifest.Validate(), testCase.problem)
+				return
+			}
+			require.NoError(t, manifest.Validate())
+			require.Equal(t, testCase.wantResolved, operation.ResolvedRepeatOnUnknown())
+			require.Equal(t, testCase.wantMaxSends, operation.ResolvedMaxSends())
+		})
+	}
 }
 
 func TestOperationAgentReviewValidation(t *testing.T) {
