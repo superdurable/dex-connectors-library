@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: zendesk-support
   displayName: Zendesk Support
-  description: Search, read, create, and update Zendesk Support tickets, with duplicate-safe ticket creation and follow-up comments.
+  description: Search, read, create, and update Zendesk Support tickets, with duplicate-safe ticket creation and follow-up comments, and receive each created, updated, or deleted ticket.
   company: Zendesk
   categories: [customer-support]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: zendesk
   languages:
@@ -36,6 +36,12 @@ spec:
         description: "Maximum complete Zendesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions are unusually large. An oversized response selects invalidResponse."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between ticketChanged Trigger polls of Zendesk's incremental ticket export, as a Go duration of at least 5s such as 30s or 5m. Leave blank to keep the displayed interval; a shorter interval delivers changes sooner but shares the export's 10 requests per minute per account with other bindings and integrations. Takes effect when the Worker restarts."
+        required: false
+        default: 1m
   auth:
     type: apiKey
     connectionKind: zendesk-support-api-token
@@ -43,7 +49,7 @@ spec:
       - name: email
         goName: Email
         type: string
-        description: "Non-secret email address of the Zendesk agent or administrator the connector acts as, listed at https://{subdomain}.zendesk.com/admin under People > Team > Team members; enter one bare address such as agent@example.com. Tickets and comments the connector writes are authored by this user, and it can only read and change tickets that user can. It is stored with the API token, so replacing both takes effect without an application restart."
+        description: "Non-secret email address of the Zendesk agent or administrator the connector acts as, listed at https://{subdomain}.zendesk.com/admin under People > Team > Team members; enter one bare address such as agent@example.com. Tickets and comments the connector writes are authored by this user, and it can only read and change tickets that user can. The ticketChanged Trigger reads Zendesk's incremental ticket export, which Zendesk allows only for administrators, so enter an administrator's address when an application uses it. It is stored with the API token, so replacing both takes effect without an application restart."
         required: true
       - name: api_token
         goName: APIToken
@@ -58,6 +64,12 @@ spec:
         - Open Apps and integrations > APIs > API tokens, select Add API token, enter a description such as Dex, select Save, and copy the token shown once into api_token.
         - Enter the email address of the agent the connector acts as; Zendesk authenticates it as {email}/token with the token, and that agent's role limits which tickets the connector can read and change.
         - Zendesk deletes tokens unused for 30 days and plans to stop accepting API tokens on April 30, 2027; to revoke access, open the token's options menu and choose Deactivate.
+  triggers:
+    - name: ticketChanged
+      goName: TicketChanged
+      eventType: TicketChangedEvent
+      configurationType: TicketChangedTriggerConfiguration
+      description: "Receive each ticket created, updated, or deleted in the account, read through Zendesk's cursor-based incremental ticket export; the first run records a baseline and delivers no existing tickets. Requires an admin connection."
   operations:
     - name: searchTickets
       goName: SearchTickets
@@ -136,6 +148,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every attempt sends the same Step-derived Zendesk Idempotency-Key, so a repeat returns the first ticket.
+        repeatOnUnknown: safe
       mocks:
         - name: openedCustomerIssue
           branch: created

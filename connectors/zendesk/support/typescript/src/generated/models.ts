@@ -46,19 +46,22 @@ export interface Config {
   subdomain: string;
   /** Maximum complete Zendesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions are unusually large. An oversized response selects invalidResponse. */
   maxResponseBytes?: number;
+  /** Delay between ticketChanged Trigger polls of Zendesk's incremental ticket export, as a Go duration of at least 5s such as 30s or 5m. Leave blank to keep the displayed interval; a shorter interval delivers changes sooner but shares the export's 10 requests per minute per account with other bindings and integrations. Takes effect when the Worker restarts. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "subdomain": z.string(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
   /** Secret Zendesk API token created at https://{subdomain}.zendesk.com/admin under Apps and integrations > APIs > API tokens > Add API token; Zendesk shows the full token only once, when you select Save. It is an opaque string of letters and digits. Stored only in this credential field; after deactivating or replacing a token in Admin Center, paste the new token here. */
   apiToken: SecretString;
-  /** Non-secret email address of the Zendesk agent or administrator the connector acts as, listed at https://{subdomain}.zendesk.com/admin under People > Team > Team members; enter one bare address such as agent@example.com. Tickets and comments the connector writes are authored by this user, and it can only read and change tickets that user can. It is stored with the API token, so replacing both takes effect without an application restart. */
+  /** Non-secret email address of the Zendesk agent or administrator the connector acts as, listed at https://{subdomain}.zendesk.com/admin under People > Team > Team members; enter one bare address such as agent@example.com. Tickets and comments the connector writes are authored by this user, and it can only read and change tickets that user can. The ticketChanged Trigger reads Zendesk's incremental ticket export, which Zendesk allows only for administrators, so enter an administrator's address when an application uses it. It is stored with the API token, so replacing both takes effect without an application restart. */
   email: string;
 }
 
@@ -86,7 +89,7 @@ export type CredentialSource = CredentialProvider<Credentials>;
    * statuses or several tags match any of them. At least one filter is required. */
 export interface SearchTicketsInput {
   /** Statuses matches tickets in any of these Zendesk statuses. Empty matches every status. */
-  "statuses"?: Array<"closed" | "hold" | "new" | "open" | "pending" | "solved" | (string & {})> | undefined;
+  "statuses"?: Array<"closed" | "deleted" | "hold" | "new" | "open" | "pending" | "solved" | (string & {})> | undefined;
   /** RequesterEmail matches tickets whose requester has this email address, such as jane@example.com. */
   "requesterEmail"?: string | undefined;
   /** Tags matches tickets carrying any of these lowercase tags. */
@@ -118,7 +121,7 @@ export interface Ticket {
   /** IsDescriptionTruncated reports that Description was cut at MaxTextBytes. */
   "isDescriptionTruncated"?: boolean | undefined;
   /** Status is Zendesk's status value. */
-  "status": "closed" | "hold" | "new" | "open" | "pending" | "solved" | (string & {});
+  "status": "closed" | "deleted" | "hold" | "new" | "open" | "pending" | "solved" | (string & {});
   /** CustomStatusID is the custom ticket status when the account enables custom statuses. */
   "customStatusId"?: number | undefined;
   /** Priority is Zendesk's priority value, or empty when the ticket has none. */
@@ -257,7 +260,7 @@ export interface UpdateTicketInput {
   /** TicketID is the Zendesk ticket ID. */
   "ticketId": number;
   /** Status is the new Zendesk status, or empty to keep it. */
-  "status"?: "closed" | "hold" | "new" | "open" | "pending" | "solved" | (string & {}) | undefined;
+  "status"?: "closed" | "deleted" | "hold" | "new" | "open" | "pending" | "solved" | (string & {}) | undefined;
   /** Priority is the new Zendesk priority, or empty to keep it. */
   "priority"?: "high" | "low" | "normal" | "urgent" | (string & {}) | undefined;
   /** AssigneeID assigns an agent, or zero to keep the assignee. */
