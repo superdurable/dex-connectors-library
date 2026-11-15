@@ -6,7 +6,7 @@ six operations. See its [package guide](typescript/README.md) and
 replay and Dex integration use a local stand-in; live Gorgias behavior is
 unverified.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/gorgias/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/gorgias/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/gorgias`.
 
@@ -44,7 +44,11 @@ Gorgias's 20-second rate-limit window and its `Retry-After` header.
 `createTicket` and `addNote` use sync durability because Gorgias has no
 idempotency key; see [Duplicate safety](#duplicate-safety).
 
-This release has no Triggers, no Studio pickers, and no OAuth method; see
+It also exposes one Go poll Trigger, [`ticketChanged`](#ticketchanged-trigger),
+which starts a Flow for every ticket event in the account's event log, such as
+`ticket-created`, `ticket-updated`, or `ticket-closed`. The Python and
+TypeScript packages do not implement it. This release has no webhook Trigger,
+no Studio pickers, and no OAuth method; see
 [Not in this release](#not-in-this-release).
 
 ## Gorgias setup
@@ -71,8 +75,8 @@ connector authenticates with HTTP Basic, the email as the user name and the
 key as the password, as Gorgias's API reference specifies.
 
 Credentials are reread before every provider call, so replacing the key in Dex
-Web takes effect without a restart. The domain and response limit are startup
-configuration.
+Web takes effect without a restart. The domain, response limit, and
+`pollInterval` are startup configuration.
 
 ## Project configuration
 
@@ -307,6 +311,87 @@ in seconds. Each Receipt carries the Call ID, the ticket, message, or customer
 ID, the `X-Gorgias-Account-Api-Call-Limit` value such as `10/40` as
 `apiCallLimit` metadata, and an `X-Request-Id` header when Gorgias sends one.
 
+## ticketChanged Trigger
+
+`ticketChanged` polls Gorgias's
+[list events](https://developers.gorgias.com/reference/list-events) endpoint,
+`GET /api/events`, with `order_by=created_datetime:asc`,
+`created_datetime[gte]`, `limit=100`, and one `types` value for each ticket
+event type it reads (`gorgias.TicketEventTypes()`). It needs no Gorgias setup
+and no permission beyond the connection's API key: it reads the events the
+user's role can see. Each delivery is a `gorgias.TicketChangedEvent` with
+`EventID`, `EventType`, `TicketID` (the event's `object_id`), `OccurredAt`,
+`UserID` (zero for a rule or other automatic change), and `Context`. The event
+names the ticket but not its fields, so read the ticket with `getTicket`, as
+the example does.
+
+- **Event types.** The Trigger reads the 22 `ticket-*` event types whose object
+  is a ticket, from `ticket-created`, `ticket-updated`, `ticket-closed`, and
+  `ticket-reopened` to `ticket-tags-added`, `ticket-merged`, and
+  `ticket-deleted`. Message events such as `ticket-message-created` are not
+  read: their object is a message, and Gorgias documents no ticket ID for it.
+  One action in Gorgias can record several events, such as `ticket-updated`
+  and `ticket-tags-added`, and each arrives as its own delivery.
+- **Baseline.** The first poll of a binding records Gorgias's current time,
+  from the response `Date` header, as the cursor and delivers no earlier event.
+  The Worker's clock is used only when Gorgias sends no `Date` header, so a
+  Worker clock running ahead of Gorgias's never skips events.
+- **Cursor.** The cursor is the newest `created_datetime` read so far, at
+  Gorgias's microsecond precision. Each poll starts 15 seconds earlier
+  (`gorgias.TicketEventOverlap`), so an event whose write commits a little
+  after its timestamp is still read, and the cursor remembers the IDs of the
+  events inside that window, so none is delivered twice. The Trigger event ID
+  is `gorgias-event-<id>`, the same on every refetch.
+- **Pages.** A full page of 100 events continues at once from its last
+  event's time, up to five pages per poll, and the rest waits for the next
+  poll. Only a page of 100 events that all share one microsecond can skip
+  events, because the next request starts one microsecond later.
+- **Rate limits.** Gorgias allows an API-key integration 40 requests per
+  20-second window (a 10-second window on Enterprise), shared by the
+  connector's Steps and other integrations, and answers 429 with `Retry-After`
+  in seconds, as its
+  [limitations page](https://developers.gorgias.com/reference/limitations)
+  documents. A 429 pauses every binding of the connection for `Retry-After`,
+  or at least the poll interval. When the `X-Gorgias-Account-Api-Call-Limit`
+  header shows three quarters of the window spent, such as `30/40`, a poll
+  stops paging and leaves the rest for the next poll.
+- **Failures.** A `created_datetime` filter never expires, so a 400, 401,
+  403, 5xx, or invalid page backs off per binding and retries from the same
+  position, and the events recorded meanwhile arrive once Gorgias answers
+  again. Only an undecodable stored cursor records a new baseline and logs a
+  WARN record; events between the last commit and the new baseline are not
+  delivered.
+
+The binding configuration, `gorgias.TicketChangedTriggerConfiguration`, has
+one optional field. `eventTypes` limits deliveries, for example to
+`["ticket-created"]` for new tickets or `["ticket-closed"]` for a satisfaction
+follow-up. Empty delivers every type the Trigger reads. Skipped events still
+move the cursor, so adding a type later never delivers events the binding
+already passed. Studio setup commands cannot send the API key over HTTP Basic
+to a per-account host (see [Studio pickers](#studio-pickers)), so the binding
+has no picker units; the configuration is saved under the binding in the
+project configuration.
+
+`gorgias.NewProjectTicketTriggerRunner` loads each saved binding and records
+every event in the binding's project Trigger inbox before the cursor commits,
+so a restarted or replaced Worker neither misses nor repeats an event. From
+[`examples/ticket-changed/main.go`](go/examples/ticket-changed/main.go):
+
+```go
+triggerRunner, err := gorgias.NewProjectTicketTriggerRunner(project, ticketchanged.ConnectionName, gorgias.ProjectTicketTriggerRunnerConfig{
+	TicketChangedRoutes: []gorgias.ProjectTicketChangedTriggerRoute{{
+		BindingName: ticketchanged.TicketChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, ticketchanged.AcceptEveryTicketChange, ticketchanged.ResolveFlowID,
+			ticketchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, options...)
+```
+
+`gorgias.NewTicketTriggerRunner` takes explicit routes and cursor stores, and
+`gorgias.WithLogger` sends the runner's records to an application logger. The
+generated `gorgias.NewTicketChangedTrigger` keeps its cursor in memory, so it
+records a new baseline on every start.
+
 ## Not in this release
 
 ### Triggers
@@ -318,10 +403,8 @@ events. Gorgias documents no request signature, so a receiver could
 authenticate a call only by a static header the integration sends in plain
 configuration, and the templated body carries no event ID unless the
 administrator adds one. `sdkgo/webhooktrigger` needs a verifiable request and
-a stable event ID, so the connector declares no Trigger. A Trigger would need
-a signed or otherwise verifiable source, or a durable per-binding poll cursor
-over `GET /api/events`, which `sdkgo` does not have yet. Until then, poll with
-`searchTickets` and `updatedSince`.
+a stable event ID, so the connector declares no webhook Trigger and polls the
+event log instead; see [ticketChanged Trigger](#ticketchanged-trigger).
 
 ### OAuth2
 
@@ -364,7 +447,10 @@ outcomes where each operation declares them. `findCustomerByEmail` reports
 absence with an empty customer list, matching the real classifier. Script
 other tickets, customers, and notes for different requests.
 
-## Example
+## Examples
+
+[`examples/ticket-changed`](go/examples/ticket-changed) starts one Flow for
+every ticket event and reads the ticket back with `getTicket`.
 
 [`examples/triage-issue`](go/examples/triage-issue) is a runnable Dex Web
 **Start Flow** example that uses all six operations: it finds the customer,
@@ -408,6 +494,9 @@ Worker and before a later attempt resends, repeated lookups and `Retry-After`,
 credential failures after a dispatch, reply routing from a known helpdesk
 address, the ticket read again after a partly applied update, only-changed-field updates and set-based tag changes,
 Gorgias error codes and field names without message text, `Retry-After`,
+the event log baseline, overlap window, full-page scan, binding event-type
+filter, rate-budget stop, 429 pause, 400 retry from the same position,
+undecodable-cursor reseed,
 redirects, offset-less timestamps, oversized, malformed, and
 credential-reflecting responses, and invalid credentials.
 
@@ -423,5 +512,9 @@ reply sent from the address the customer wrote to is accepted for every email
 integration; whether Gorgias reports `integration_id` on received and sent
 emails and accepts it on a reply; whether 429 responses are always returned before a write is
 applied; the error body shape beyond `error.msg` and `error.data`; the
-`X-Request-Id` header; and the Settings > Account > REST API path in the setup
-guidance.
+`X-Request-Id` header; the Settings > Account > REST API path in the setup
+guidance; and, for `ticketChanged`, whether `GET /api/events` returns the
+documented bare array, accepts `created_datetime[gte]` with a `Z` offset and
+repeated `types` values, reports `object_type: Ticket` with the ticket ID as
+`object_id` for every `ticket-*` type it reads, and how long Gorgias keeps
+events.

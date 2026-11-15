@@ -31,8 +31,8 @@ type guidanceManifest struct {
 			} `yaml:"guide"`
 			OAuth2 any `yaml:"oauth2"`
 		} `yaml:"auth"`
-		Studio   any   `yaml:"studio"`
-		Triggers []any `yaml:"triggers"`
+		Studio   any               `yaml:"studio"`
+		Triggers []guidanceTrigger `yaml:"triggers"`
 	} `yaml:"spec"`
 }
 
@@ -42,6 +42,12 @@ type guidanceField struct {
 	Required    bool   `yaml:"required"`
 	Default     any    `yaml:"default"`
 	Description string `yaml:"description"`
+}
+
+type guidanceTrigger struct {
+	Name              string `yaml:"name"`
+	ConfigurationType string `yaml:"configurationType"`
+	Description       string `yaml:"description"`
 }
 
 var gorgiasURLPattern = regexp.MustCompile(`https://(docs\.gorgias\.com|\{domain\}\.gorgias\.com)/[^\s;,)]*`)
@@ -60,7 +66,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"domain", "maxResponseBytes", "email", "api_key"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"domain", "maxResponseBytes", "pollInterval", "email", "api_key"}, names, "a new visible field needs its own guidance review")
 
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
@@ -105,13 +111,35 @@ func TestAPIKeyGuideCoversWhereTheKeyIsAndHowToRevokeIt(t *testing.T) {
 	}
 }
 
-// TestManifestDeclaresNoStudioBundleOrTrigger records that Studio cannot reach a per-account host with HTTP Basic, and Gorgias webhooks are unsigned.
-func TestManifestDeclaresNoStudioBundleOrTrigger(t *testing.T) {
+// TestManifestDeclaresNoStudioBundle records that Studio cannot reach a per-account host with HTTP Basic,
+// so the ticketChanged binding has no picker unit.
+func TestManifestDeclaresNoStudioBundle(t *testing.T) {
 	manifest := readGuidanceManifest(t)
 	require.Nil(t, manifest.Spec.Studio)
-	require.Empty(t, manifest.Spec.Triggers)
 	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err))
+}
+
+// TestTicketChangedIsTheOnlyTriggerAndItsGuidanceNamesTheRateLimit keeps the poll Trigger's copy tied to
+// Gorgias's request budget, since the binding has no configuration unit to carry it.
+func TestTicketChangedIsTheOnlyTriggerAndItsGuidanceNamesTheRateLimit(t *testing.T) {
+	manifest := readGuidanceManifest(t)
+	require.Len(t, manifest.Spec.Triggers, 1, "Gorgias HTTP integrations are unsigned, so no push Trigger is declared")
+	require.Equal(t, "ticketChanged", manifest.Spec.Triggers[0].Name)
+	require.Equal(t, "TicketChangedTriggerConfiguration", manifest.Spec.Triggers[0].ConfigurationType)
+	require.Contains(t, manifest.Spec.Triggers[0].Description, "baseline")
+	for _, field := range manifest.Spec.Configuration.Fields {
+		if field.Name != "pollInterval" {
+			continue
+		}
+		require.Equal(t, "duration", field.Type)
+		require.Equal(t, "1m", field.Default)
+		for _, guidance := range []string{"ticketChanged", "GET /api/events", "Go duration of at least 10s", "40 API-key requests per 20-second window", "Leave blank", "Worker restarts"} {
+			require.Contains(t, field.Description, guidance)
+		}
+		return
+	}
+	t.Fatal("pollInterval is not declared")
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {
