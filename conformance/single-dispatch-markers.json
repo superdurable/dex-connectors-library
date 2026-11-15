@@ -19,5 +19,30 @@
     "attempt": 4,
     "state": "claimed",
     "providerId": "object-42"
+  },
+  {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "attempt": 5,
+    "state": "claimed",
+    "sendCount": 2
+  },
+  {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "attempt": 6,
+    "state": "notSent",
+    "sendCount": 2
+  },
+  {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "attempt": 7,
+    "state": "canResend",
+    "sendCount": 2
+  },
+  {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "attempt": 8,
+    "state": "claimed",
+    "providerId": "object-43",
+    "sendCount": 3
   }
 ]

@@ -156,19 +156,39 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   unwired optional branch fails the Flow when selected. Wire another branch
   only to show a required business reaction, and put a comment at that wiring
   naming the reaction.
-- A connector selects a branch for a definite business outcome and retries
-  every safe-to-repeat failure until the retry budget runs out, when the Flow
-  fails. Declare Mutation `uncertain` only if the request may have reached the
-  provider, no idempotency key, stable deduplication ID, absolute replacement,
-  upsert, or delete makes repetition safe, and read-back cannot confirm it. A
-  transport failure before the request left the process, 429, and 503 return
-  Retry; exhausted retries never become uncertainty.
+- A connector selects a branch for a definite business outcome, such as a bad
+  request, invalid input, or a provider refusal, and never repeats it. An
+  unknown outcome, such as a timeout, a connection lost after dispatch, or a
+  5xx, repeats as the operation's `execution.repeatOnUnknown` tier allows, until
+  the retry budget runs out, when the Flow fails. A transport failure before the
+  request left the process, 429, and 503 return Retry; exhausted retries never
+  become uncertainty. The tiers:
+  - `safe`: a read, an idempotency key, an absolute replacement, upsert, or
+    delete, or a harmless repeat. Retry within the Step retry policy. Every Query
+    is `safe`.
+  - `limited`: not idempotent, but a duplicate is acceptable, such as an email,
+    a chat message, a ticket, an SMS, or a billed LLM call. Read back first when
+    possible, then resend while possible sends stay below `execution.maxSends`
+    (2 to 10, default 3), passing `call.MaxSends()` to the single-dispatch
+    Fence. Select `uncertain` only when the cap is reached and read-back cannot
+    confirm the write. A Mutation that omits the tier is `limited` with
+    `maxSends: 3`, or `safe` when `agent.retry` is `safe`.
+  - `unsafe`: a duplicate does real, hard-to-undo harm. Use it almost never:
+    adding one requires a GitHub issue that mentions @longquanzheng and explains
+    why. Read back only and never resend; an unconfirmed write selects
+    `uncertain`.
+- When an operation's repeat safety depends on application-supplied content,
+  such as SQL `execute` or a generic HTTP `sendRequest`, the generic operation
+  is `safe`, and a separate `*NonIdempotent` operation, such as
+  `executeNonIdempotent` or `postNonIdempotent`, is `unsafe`. The application
+  chooses which to use.
 - Omitted manifest `execution.retry` uses one-second initial delay, coefficient
   2, five-minute maximum interval, unlimited attempts, and one-hour total
   duration. A policy with limited attempts or under one hour requires a sentence
   explaining `billedOperation`, `personWaiting`, or `duplicateWriteRisk`;
   applications override per Step with
-  `StepOptionsOverride.ExecuteRetry`.
+  `StepOptionsOverride.ExecuteRetry`, and override one `limited` Step's send cap
+  with the factory's `MaxSends` (1 to 10), which also widens limited attempts.
 - Execute durability defaults to async. Use sync only when the operation is very
   likely to exceed seven seconds. An LLM generation call may use sync. Do not
   choose sync merely because the Execute timeout ceiling is 30 seconds.

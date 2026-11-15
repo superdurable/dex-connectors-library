@@ -31,7 +31,11 @@ func generatedAgentToolFiles(manifestPath string, manifest schema.Manifest, goPa
 	if err != nil {
 		return nil, err
 	}
-	source, err := codegen.GenerateAgentTools(manifest, operations)
+	generateOptions, err := repeatOnUnknownGenerateOptions(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	source, err := codegen.GenerateAgentTools(manifest, operations, generateOptions...)
 	if err != nil {
 		return nil, err
 	}

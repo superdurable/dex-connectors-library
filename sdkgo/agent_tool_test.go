@@ -395,6 +395,89 @@ func TestAgentToolDecodesArgumentsStrictly(t *testing.T) {
 	}
 }
 
+type tieredAgentMutation struct {
+	agentMutation
+	repeatOnUnknown sdkgo.RepeatOnUnknown
+	maxSends        int32
+}
+
+func (mutation *tieredAgentMutation) Definition() sdkgo.MutationDefinition {
+	definition := agentMutationDefinition()
+	definition.RepeatOnUnknown = mutation.repeatOnUnknown
+	definition.MaxSends = mutation.maxSends
+	return definition
+}
+
+func newTieredAgentTool(t *testing.T, repeatOnUnknown sdkgo.RepeatOnUnknown, maxSends int32) (sdkgo.AgentTool, *tieredAgentMutation) {
+	t.Helper()
+	mutation := &tieredAgentMutation{repeatOnUnknown: repeatOnUnknown, maxSends: maxSends}
+	metadata := agentMutationMetadata()
+	metadata.RepeatOnUnknown, metadata.MaxSends = repeatOnUnknown, maxSends
+	metadata.IsRetrySafe = repeatOnUnknown == sdkgo.RepeatOnUnknownSafe
+	tool, err := sdkgo.NewMutationAgentTool(mutation, agentConnection, metadata)
+	require.NoError(t, err)
+	return tool, mutation
+}
+
+func TestMutationAgentToolAppliesPerCallMaxSends(t *testing.T) {
+	for _, scenario := range []struct {
+		name    string
+		options []sdkgo.RunOption
+		want    int32
+	}{
+		{name: "definition cap", want: 3},
+		{name: "raised cap", options: []sdkgo.RunOption{sdkgo.WithMaxSends(5)}, want: 5},
+		{name: "ceiling", options: []sdkgo.RunOption{sdkgo.WithMaxSends(sdkgo.MaxSendsCeiling)}, want: sdkgo.MaxSendsCeiling},
+		{name: "cap that disables resend", options: []sdkgo.RunOption{sdkgo.WithMaxSends(1)}, want: 1},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			tool, mutation := newTieredAgentTool(t, sdkgo.RepeatOnUnknownLimited, 3)
+			attempt, err := tool.RunAttemptWithOptions(agentStepContext(), json.RawMessage(`{"text":"hi"}`), scenario.options...)
+			require.NoError(t, err)
+			require.Equal(t, sdkgo.AgentToolAttemptSucceeded, attempt.Outcome)
+			require.Len(t, mutation.calls, 1)
+			require.Equal(t, scenario.want, mutation.calls[0].MaxSends())
+		})
+	}
+}
+
+func TestAgentToolRejectsInvalidRunOptionsBeforeInvoking(t *testing.T) {
+	for _, scenario := range []struct {
+		name            string
+		repeatOnUnknown sdkgo.RepeatOnUnknown
+		maxSends        int32
+		option          sdkgo.RunOption
+		wantMessage     string
+	}{
+		{name: "zero cap", repeatOnUnknown: sdkgo.RepeatOnUnknownLimited, maxSends: 3, option: sdkgo.WithMaxSends(0), wantMessage: "within 1 through 10"},
+		{name: "cap above the ceiling", repeatOnUnknown: sdkgo.RepeatOnUnknownLimited, maxSends: 3, option: sdkgo.WithMaxSends(sdkgo.MaxSendsCeiling + 1), wantMessage: "within 1 through 10"},
+		{name: "nil option", repeatOnUnknown: sdkgo.RepeatOnUnknownLimited, maxSends: 3, wantMessage: "RunOption is nil"},
+		{name: "safe tier", repeatOnUnknown: sdkgo.RepeatOnUnknownSafe, option: sdkgo.WithMaxSends(2), wantMessage: "requires a Mutation whose RepeatOnUnknown is limited"},
+		{name: "unsafe tier", repeatOnUnknown: sdkgo.RepeatOnUnknownUnsafe, option: sdkgo.WithMaxSends(2), wantMessage: "requires a Mutation whose RepeatOnUnknown is limited"},
+		{name: "definition before tiers", option: sdkgo.WithMaxSends(2), wantMessage: "requires a Mutation whose RepeatOnUnknown is limited"},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			tool, mutation := newTieredAgentTool(t, scenario.repeatOnUnknown, scenario.maxSends)
+			attempt, err := tool.RunAttemptWithOptions(agentStepContext(), json.RawMessage(`{"text":"hi"}`), scenario.option)
+			require.ErrorIs(t, err, sdkgo.ErrAgentToolRunOptionInvalid)
+			require.ErrorContains(t, err, "agent-provider_post_reply")
+			require.ErrorContains(t, err, scenario.wantMessage)
+			require.Equal(t, sdkgo.AgentToolAttempt{}, attempt)
+			require.Zero(t, mutation.invocations)
+		})
+	}
+	t.Run("query", func(t *testing.T) {
+		query := &agentQuery{}
+		tool, err := sdkgo.NewQueryAgentTool(query, agentConnection, agentQueryMetadata())
+		require.NoError(t, err)
+		attempt, err := tool.RunAttemptWithOptions(agentStepContext(), json.RawMessage(`{"text":"hi"}`), sdkgo.WithMaxSends(2))
+		require.ErrorIs(t, err, sdkgo.ErrAgentToolRunOptionInvalid)
+		require.ErrorContains(t, err, "agent-provider_list_story_ids")
+		require.Equal(t, sdkgo.AgentToolAttempt{}, attempt)
+		require.Zero(t, query.invocations)
+	})
+}
+
 func TestAgentToolRecoversPanicsAndReportsInvocation(t *testing.T) {
 	invokePanics := &agentMutation{invoke: func(sdkgo.Call, agentInput) sdkgo.MutationAttempt[agentOutput] {
 		panic("provider response secret-token")
@@ -481,6 +564,9 @@ func TestAgentToolConstructorsValidateMetadata(t *testing.T) {
 		"array input schema":        {change: func(m *sdkgo.AgentToolMetadata) { m.InputSchema = json.RawMessage(`[]`) }, wantMessage: "input schema must be a JSON object"},
 		"invalid connection":        {connection: sdkgo.ConnectionRef{Provider: "agent-provider"}, wantMessage: "agent tool connection"},
 		"retry safe mutation is ok": {change: func(m *sdkgo.AgentToolMetadata) { m.IsRetrySafe = true }},
+		"tier the definition lacks": {change: func(m *sdkgo.AgentToolMetadata) {
+			m.RepeatOnUnknown, m.MaxSends = sdkgo.RepeatOnUnknownLimited, 3
+		}, wantMessage: "RepeatOnUnknown and MaxSends do not match"},
 		"listed defect unknown is ok": {change: func(m *sdkgo.AgentToolMetadata) {
 			m.BranchOutcomes[sdkgo.DefectBranchID] = sdkgo.AgentBranchOutcomeUnknown
 		}},
@@ -513,6 +599,8 @@ func TestAgentToolConstructorsValidateMetadata(t *testing.T) {
 		"mutation kind":              {change: func(m *sdkgo.AgentToolMetadata) { m.Kind = sdkgo.AgentOperationKindMutation }, wantMessage: "kind"},
 		"dex-agents style tool name": {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "agent-provider_list_story_i_d_s" }, wantMessage: `must be "agent-provider_list_story_ids"`},
 		"retry safe query":           {change: func(m *sdkgo.AgentToolMetadata) { m.IsRetrySafe = true }, wantMessage: "only a Mutation may be retry safe"},
+		"query with a tier":          {change: func(m *sdkgo.AgentToolMetadata) { m.RepeatOnUnknown = sdkgo.RepeatOnUnknownSafe }, wantMessage: "RepeatOnUnknown and MaxSends do not match"},
+		"query with a send cap":      {change: func(m *sdkgo.AgentToolMetadata) { m.MaxSends = 2 }, wantMessage: "RepeatOnUnknown and MaxSends do not match"},
 		"unknown query outcome": {change: func(m *sdkgo.AgentToolMetadata) {
 			m.BranchOutcomes[agentBranchRateLimited] = sdkgo.AgentBranchOutcomeUnknown
 		}, wantMessage: "a Query branch may only be rejected"},

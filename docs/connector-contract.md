@@ -86,8 +86,14 @@ TypeScript export `./dex-connector.json`.
   Without it, a host must treat the call as unsafe to repeat. The claim ends with
   that policy: a host or application that widens the retry window must keep it
   inside the provider's key retention, and a new Step execution has a new Call ID
-  that nothing dedupes. See
+  that nothing dedupes. It is published exactly when the Mutation's
+  `repeatOnUnknown` tier is `safe`; current Dex hosts reject any other `retry`
+  value. See
   [Agent tool metadata](manifest-authoring.md#agent-tool-metadata).
+- `agent.repeatOnUnknown` and, for `limited`, `agent.maxSends` carry a
+  Mutation's tier once its Go module requires `sdkgo` v0.37.0. Hosts that do not
+  read them fall back to `retry`, so a `limited` or `unsafe` call stays unsafe to
+  repeat there. A host may offer a per-tool override of the cap, from 1 to 10.
 - `agent.branches` classifies optional branches. `rejected` means the call
   changed nothing: the provider refused it, or the connector refused it before
   sending. `unknown` means the effect may have happened, so a host must not let the
@@ -195,7 +201,8 @@ for any other provider call, another write, or a polling iteration.
 An operation declares stable branches in its manifest and generated
 definition. Every operation declares the standard `defect` branch, always
 optional. A Mutation declares the standard `uncertain` branch only for a
-possibly applied write that it cannot safely repeat or confirm.
+possibly applied write that its `repeatOnUnknown` tier forbids sending again
+and that it cannot confirm.
 
 ```go
 type QueryResult[T any] struct {
@@ -236,16 +243,53 @@ the selected branch, and, when present, the safe Failure kind and at most 1024
 bytes of its message. Invalid UTF-8 is replaced with the Unicode replacement
 character. A cut message ends with `(truncated)`.
 
-Mutation uncertainty is rare. Use `NewMutationUncertain` only when all three
-conditions hold: the request may have reached the provider; no idempotency key,
-stable deduplication ID, absolute replacement, upsert, or delete makes a repeat
-safe; and a read-back cannot confirm the outcome. A transport failure before the
-request left the process, a 429, and a 503 return Retry. A Mutation that can
-retry under the same key or read back before sending again returns Retry.
-Exhausting retries fails the Flow; it never turns into uncertainty. A Mutation
-that cannot produce uncertainty omits that branch and target. Invalid Attempts
-and local SDK defects fail closed to the standard `defect` branch. See the
-[uncertainty audit](uncertain-audit.md) for current declarations and fixes.
+### Repeat on an unknown outcome
+
+A definite error, such as a bad request, invalid input, or a provider refusal,
+is never repeated: it selects its branch, or fails the Flow when that branch is
+unwired. An unknown outcome, such as a timeout, a connection lost after
+dispatch, or a 5xx, repeats as the operation's manifest
+`execution.repeatOnUnknown` tier allows. Never repeating is worse than an
+occasional duplicate message, so almost every operation repeats:
+
+| Tier | Operations | Unknown outcome |
+| --- | --- | --- |
+| `safe` | Reads; an idempotency key; an absolute replacement, upsert, or delete; or a harmless repeat. | Retry within the Step retry policy. |
+| `limited` | Not idempotent, but a duplicate is acceptable: send an email, post a chat message, create a ticket, send an SMS, or make a billed LLM call. | Read back first when the connector can. Resend while the possible sends of the Call ID stay below `execution.maxSends` (2 to 10, default 3). Select `uncertain` only when the cap is reached and read-back cannot confirm the write. |
+| `unsafe` | A duplicate does real, hard-to-undo harm. Almost never; adding one requires a GitHub issue that mentions the repository owner and explains why. | Read back only and never resend; an unconfirmed write selects `uncertain`. |
+
+An omitted tier is `safe` for a Query, and for a Mutation whose `agent.retry`
+is `safe`; every other Mutation is `limited` with `maxSends: 3`. A Query may
+only be `safe`. `maxSends` caps sends, not attempts: the Execute retry policy
+still bounds attempts. When an operation's repeat safety depends on content the
+application supplies, such as SQL `execute` or a generic HTTP `sendRequest`, the
+generic operation is `safe` and a separate `*NonIdempotent` operation, such as
+`executeNonIdempotent` or `postNonIdempotent`, is `unsafe`; the application
+chooses.
+
+A `limited` Go operation enforces its cap with the single-dispatch Fence's
+bounded resend, described under
+[Single-dispatch fence guarantee](#single-dispatch-fence-guarantee). The cap
+comes from the generated definition through `Call.MaxSends`, never a copied
+number. An application changes one Step's cap with the operation-specific
+factory's `MaxSends` field, from 1 (no resend) to 10. The generated factory of a
+`safe` or `unsafe` operation has no such field. A raised cap adds its difference
+from the manifest cap to a manifest retry policy that limits attempts, so the cap
+stays reachable; an explicit `StepOptionsOverride.ExecuteRetry` is used as given.
+The value is part of the Step configuration, so every attempt of one Step
+execution sees the same cap. These fields need `sdkgo` v0.37.0; `connectorctl`
+generates them only for a module that requires it.
+
+Mutation uncertainty is rare. Use `NewMutationUncertain` only when the request
+may have reached the provider, a read-back cannot confirm the outcome, and the
+tier forbids another send: always for `unsafe`, and once the cap is reached for
+`limited`. A transport failure before the request left the process, a 429, and
+a 503 return Retry. A Mutation that can retry under the same key or read back
+before sending again returns Retry. Exhausting retries fails the Flow; it never
+turns into uncertainty. A Mutation that cannot produce uncertainty omits that
+branch and target. Invalid Attempts and local SDK defects fail closed to the
+standard `defect` branch. See the [uncertainty audit](uncertain-audit.md) for
+current declarations; the tiers supersede its never-resend verdicts.
 
 `FailureKind` records a safe fact, not retry policy. Authentication,
 authorization, not-found, rate-limit, transport, protocol, provider rejection,
@@ -330,7 +374,8 @@ guarantee.
 The fence reads the last checkpoint before credentials or provider lookups. It
 permits one send only on attempt one with no marker, or after the immediately
 preceding attempt recorded `notSent` or `canResend` for the same Call ID. A
-missing, foreign, stale, or claimed marker never authorizes another write.
+missing, foreign, stale, or claimed marker never authorizes another write,
+except through the [bounded resend](#bounded-resend) of a `limited` operation.
 Use exactly one Fence per Step call per attempt; separate Fence instances do
 not share an in-process send latch. A foreign marker fails closed with no
 provider identity exposed. The connector reads back a saved provider identity when possible; an
@@ -371,6 +416,34 @@ retain its latest persisted marker or no marker. A persisted `notSent` or
 `canResend` can authorize only the next attempt; a claim or missing marker
 cannot. The fence does not guarantee exactly-once delivery or confirmation of
 an accepted write when the provider exposes no reliable read-back.
+
+#### Bounded resend
+
+A `limited` operation constructs its Fence with
+`singledispatch.WithMaxSends(call.MaxSends())`. Without that option, or with
+1, the Fence behaves exactly as described above and writes the same markers.
+With a cap of 2 or more, each marker also records `sendCount`, the number of
+possibly effective sends of the Call ID through that attempt: a claim counts its
+own send, `notSent` and `canResend` carry the count from before their claim, and
+a provider-ID claim keeps its claim's count. The next attempt computes an upper
+bound of earlier sends: none on attempt one; one per earlier attempt without a
+marker; otherwise the marker's count plus the attempts after it. A marker
+without a count, written by an uncapped Fence or an earlier release, counts its
+own attempt for a claim and the attempts before it otherwise. A foreign or
+invalid marker, including a count larger than its attempt allows, still fails
+closed.
+
+A decision that would require read-back becomes `ReadBackThenResendAllowed`
+while that bound is below the cap. The connector reads back first when it can:
+a confirmed write selects the happy path, and a definite absence or an
+inconclusive read-back permits one `Dispatch`, whose claim records the bound
+plus one. A saved provider ID is read back before any resend. A connector
+without read-back may dispatch directly. A pre-send Retry under this decision
+records no `notSent`, which would let the next attempt skip read-back. At the
+cap, or for a marker from the current or a later attempt, the decision stays
+`ReadBackRequired` and an unconfirmed write selects `uncertain`. Because the
+Fence takes the cap per call, a marker's count stays valid when an application
+changes the cap.
 
 `StepOptionsOverride` overlays non-zero Execute fields and can add
 `dex.ProceedToOnExecuteFailure`. That recovery target accepts the original

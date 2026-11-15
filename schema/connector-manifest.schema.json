@@ -792,6 +792,8 @@
         "heartbeatTimeout": { "type": "string", "minLength": 1 },
         "durability": { "enum": ["sync", "async"] },
         "dispatchFence": { "type": "boolean", "description": "Requires sync Execute durability; the operation uses a heartbeat dispatch fence." },
+        "repeatOnUnknown": { "enum": ["safe", "limited", "unsafe"], "description": "How an unknown outcome may repeat the send. Omitted means safe for a query or a mutation with agent.retry safe, otherwise limited. A query may only be safe; unsafe requires an owner-reviewed GitHub issue." },
+        "maxSends": { "type": "integer", "minimum": 2, "maximum": 10, "description": "Caps possibly effective sends of one Call ID for a limited mutation; omitted means 3. It caps sends, not attempts." },
         "retry": {
           "type": ["object", "null"],
           "additionalProperties": false,
@@ -814,8 +816,16 @@
           }
         }
       },
-      "if": { "properties": { "dispatchFence": { "const": true } }, "required": ["dispatchFence"] },
-      "then": { "properties": { "durability": { "const": "sync" } } }
+      "allOf": [
+        {
+          "if": { "properties": { "dispatchFence": { "const": true } }, "required": ["dispatchFence"] },
+          "then": { "properties": { "durability": { "const": "sync" } } }
+        },
+        {
+          "if": { "required": ["maxSends"] },
+          "then": { "properties": { "repeatOnUnknown": { "const": "limited" } } }
+        }
+      ]
     },
     "mockFailure": {
       "type": "object",

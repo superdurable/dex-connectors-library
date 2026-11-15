@@ -118,6 +118,14 @@ type MutationStepConfig[STEP_IN, OP_IN, OUT any] struct {
 	TextOptions []dex.BufferedTextStreamOption
 	// StepOptionsOverride overrides execute-only defaults; WaitFor options are rejected.
 	StepOptionsOverride *dex.StepOptions
+	// MaxSends overrides the send cap of a limited operation for this Step; zero keeps the
+	// definition's MaxSends. It ranges from 1, which disables resend, to MaxSendsCeiling,
+	// and NewMutationStep rejects it for an operation whose RepeatOnUnknown is not limited.
+	// Every attempt of the Step's executions sees the same cap through Call.MaxSends. A
+	// value above the definition's MaxSends adds the difference to a definition retry
+	// policy that limits attempts, so the cap stays reachable; StepOptionsOverride's
+	// ExecuteRetry replaces the policy unchanged.
+	MaxSends int32
 }
 
 type connectorStepIdentity struct {
@@ -159,6 +167,7 @@ type MutationStep[STEP_IN, OP_IN, OUT any] struct {
 	textStream          *dex.Stream[string]
 	textOptions         []dex.BufferedTextStreamOption
 	stepOptions         *dex.StepOptions
+	maxSends            int32
 }
 
 // NewQueryStep constructs query step after validating its inputs.
@@ -180,7 +189,7 @@ func NewQueryStep[STEP_IN, OP_IN, OUT any](config QueryStepConfig[STEP_IN, OP_IN
 	if err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
-	options, err := stepOptions(definition.StepDefaults, config.StepOptionsOverride)
+	options, err := stepOptions(definition.StepDefaults, config.StepOptionsOverride, 0)
 	if err != nil {
 		return QueryStep[STEP_IN, OP_IN, OUT]{}, err
 	}
@@ -224,7 +233,11 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 	if err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
-	options, err := stepOptions(definition.StepDefaults, config.StepOptionsOverride)
+	extraAttempts, err := maxSendsOverrideExtraAttempts(definition, config.MaxSends)
+	if err != nil {
+		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
+	}
+	options, err := stepOptions(definition.StepDefaults, config.StepOptionsOverride, extraAttempts)
 	if err != nil {
 		return MutationStep[STEP_IN, OP_IN, OUT]{}, err
 	}
@@ -236,7 +249,7 @@ func NewMutationStep[STEP_IN, OP_IN, OUT any](config MutationStepConfig[STEP_IN,
 		optionalBranches: optionalBranches,
 		resultAttribute:  config.ResultAttribute, progressStream: config.ProgressStream,
 		textStream: config.TextStream, textOptions: append([]dex.BufferedTextStreamOption(nil), config.TextOptions...),
-		stepOptions: options,
+		stepOptions: options, maxSends: config.MaxSends,
 	}, nil
 }
 
@@ -320,7 +333,11 @@ func (step MutationStep[STEP_IN, OP_IN, OUT]) Execute(ctx dex.Context, input STE
 }
 
 func (step MutationStep[STEP_IN, OP_IN, OUT]) runOptions() []RunOption {
-	return factoryRunOptions(step.progressStream, step.textStream, step.textOptions)
+	options := factoryRunOptions(step.progressStream, step.textStream, step.textOptions)
+	if step.maxSends != 0 {
+		options = append(options, WithMaxSends(step.maxSends))
+	}
+	return options
 }
 
 // StepRef creates a non-executable reference to a stable Dex Step type.
@@ -443,13 +460,35 @@ func targetHasStep[T any](target dex.Step[T]) bool {
 	return !isNilValue(target) && strings.TrimSpace(dex.GetFinalStepType(target)) != ""
 }
 
-func stepOptions(defaults StepDefaults, override *dex.StepOptions) (*dex.StepOptions, error) {
+// maxSendsOverrideExtraAttempts validates a Step's send cap override and returns the
+// attempts it adds to a definition policy that limits attempts.
+func maxSendsOverrideExtraAttempts(definition MutationDefinition, maxSends int32) (int32, error) {
+	if maxSends == 0 {
+		return 0, nil
+	}
+	if definition.RepeatOnUnknown != RepeatOnUnknownLimited {
+		return 0, fmt.Errorf("MaxSends requires an operation whose RepeatOnUnknown is limited")
+	}
+	if err := validateMaxSendsOverride(maxSends); err != nil {
+		return 0, err
+	}
+	if definition.StepDefaults.ExecuteRetry == nil {
+		return 0, nil
+	}
+	attempts := definition.StepDefaults.ExecuteRetry.MaximumAttempts
+	return widenedExecuteAttempts(attempts, definition.MaxSends, maxSends) - attempts, nil
+}
+
+func stepOptions(defaults StepDefaults, override *dex.StepOptions, extraExecuteAttempts int32) (*dex.StepOptions, error) {
 	if override != nil && hasWaitForOptions(override) {
 		return nil, fmt.Errorf("execute-only connector Step rejects WaitFor options")
 	}
 	executeRetry := cloneRetryPolicy(defaults.ExecuteRetry)
 	if executeRetry == nil {
 		executeRetry = DefaultConnectorStepExecuteRetryPolicy()
+	}
+	if executeRetry.MaximumAttempts > 0 {
+		executeRetry.MaximumAttempts += extraExecuteAttempts
 	}
 	merged := &dex.StepOptions{
 		ExecuteMethodTimeout: defaults.ExecuteMethodTimeout,

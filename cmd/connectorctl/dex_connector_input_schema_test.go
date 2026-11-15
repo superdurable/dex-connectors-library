@@ -132,6 +132,24 @@ func TestPackageManifestSchemaRejectsWhatTheAnalyzerRejectsAndAgentTypos(t *test
 	require.NoError(t, schemaDocument.Validate(operationFactory("mutation", `{"exposed":true,"retry":"safe"}`)))
 	require.NoError(t, schemaDocument.Validate(operationFactory("mutation", `{"exposed":true,"branches":{"failed":"rejected","lost":"unknown"}}`)))
 	require.NoError(t, schemaDocument.Validate(operationFactory("query", `{"exposed":true,"branches":{"missing":"rejected"}}`)))
+	require.NoError(t, schemaDocument.Validate(operationFactory("mutation", `{"exposed":true,"repeatOnUnknown":"limited","maxSends":3}`)))
+	require.NoError(t, schemaDocument.Validate(operationFactory("mutation", `{"exposed":true,"retry":"safe","repeatOnUnknown":"safe"}`)))
+	require.NoError(t, schemaDocument.Validate(operationFactory("mutation", `{"exposed":true,"repeatOnUnknown":"unsafe"}`)))
+	for name, document := range map[string]any{
+		"limited without a cap":       operationFactory("mutation", `{"exposed":true,"repeatOnUnknown":"limited"}`),
+		"cap below two":               operationFactory("mutation", `{"exposed":true,"repeatOnUnknown":"limited","maxSends":1}`),
+		"cap above ten":               operationFactory("mutation", `{"exposed":true,"repeatOnUnknown":"limited","maxSends":11}`),
+		"cap without a tier":          operationFactory("mutation", `{"exposed":true,"maxSends":3}`),
+		"cap on unsafe":               operationFactory("mutation", `{"exposed":true,"repeatOnUnknown":"unsafe","maxSends":3}`),
+		"safe tier without retry":     operationFactory("mutation", `{"exposed":true,"repeatOnUnknown":"safe"}`),
+		"retry safe on limited":       operationFactory("mutation", `{"exposed":true,"retry":"safe","repeatOnUnknown":"limited","maxSends":3}`),
+		"retry carrying a tier value": operationFactory("mutation", `{"exposed":true,"retry":"limited"}`),
+		"unknown tier":                operationFactory("mutation", `{"exposed":true,"repeatOnUnknown":"sometimes"}`),
+		"tier on a query":             operationFactory("query", `{"exposed":true,"repeatOnUnknown":"safe"}`),
+		"tier when declined":          operationFactory("mutation", `{"exposed":false,"repeatOnUnknown":"unsafe"}`),
+	} {
+		require.Error(t, schemaDocument.Validate(document), name)
+	}
 	for name, document := range map[string]any{
 		"unknown agent field":    operationFactory("mutation", `{"exposed":true,"retyr":"safe"}`),
 		"retry on a query":       operationFactory("query", `{"exposed":true,"retry":"safe"}`),
