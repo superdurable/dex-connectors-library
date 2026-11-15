@@ -6,7 +6,7 @@ import asyncio
 import base64
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote_plus
@@ -47,6 +47,9 @@ _DOMAIN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 _FIELD = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
+# Keeps a ticketChanged poll loop inside Freshdesk's per-minute Tickets List sublimit.
+_MINIMUM_POLL_INTERVAL_SECONDS = 10
+_DEFAULT_POLL_INTERVAL_SECONDS = 60
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +80,11 @@ class Client:
             raise ValueError("Freshdesk domain and credential provider are required")
         if type(config.max_response_bytes) is not int or config.max_response_bytes < 1:
             raise ValueError("Freshdesk response limit must be positive")
+        if config.poll_interval_seconds == 0:
+            # A zero pollInterval keeps the one-minute default, as Go's withConfigDefaults does.
+            config = replace(config, poll_interval_seconds=_DEFAULT_POLL_INTERVAL_SECONDS)
+        if config.poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError("Freshdesk pollInterval must be at least 10s")
         self.config = config
         self.credentials = credentials
         self._endpoint = validate_base_url(
