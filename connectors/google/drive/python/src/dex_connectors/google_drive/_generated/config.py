@@ -15,6 +15,8 @@ class Config:
     max_text_bytes: int = 1048576
     max_upload_bytes: int = 5242880
     search_page_size: int = 25
+    poll_interval_seconds: float = 30
+    poll_page_size: int = 100
 
 setattr(Config, '__module__', 'dex_connectors.google_drive.client')
 

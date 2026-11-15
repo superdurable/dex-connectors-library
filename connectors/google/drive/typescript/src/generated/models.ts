@@ -52,6 +52,10 @@ export interface Config {
   maxUploadBytes?: number;
   /** Number of files searchFiles requests per page when the Step input leaves pageSize at zero; enter a whole number from 1 to 100 only to change the trade-off that smaller pages return sooner and larger pages need fewer requests. */
   searchPageSize?: number;
+  /** Wait between two Google Drive changes.list polls of the file Triggers, as a Go duration of at least 1s such as 15s or 2m; shorten it only when Flows must start sooner, because every poll spends Drive API per-user query quota. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
+  /** Number of Drive changes one file Trigger poll requests per changes.list page, a whole number from 1 to 500; lower it only when large pages exceed maxResponseBytes, and raise it only to catch up on bursts in fewer requests. */
+  pollPageSize?: number;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -61,6 +65,8 @@ export const ConfigSchema = z.object({
   "maxTextBytes": z.number().int().optional(),
   "maxUploadBytes": z.number().int().optional(),
   "searchPageSize": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
+  "pollPageSize": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

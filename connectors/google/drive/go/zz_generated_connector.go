@@ -22,14 +22,18 @@ const (
 	UIUnitFolderPicker           = "folderPicker"
 	UIFolderPickerPortFolderID   = "folderId"
 	UIFolderPickerPortFolderName = "folderName"
+	UIUnitMimeTypePicker         = "mimeTypePicker"
+	UIMimeTypePickerPortMimeType = "mimeType"
 )
 
 type Config struct {
-	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
-	MaxTextBytes     int64  `json:"maxTextBytes,omitempty" yaml:"maxTextBytes,omitempty"`
-	MaxUploadBytes   int64  `json:"maxUploadBytes,omitempty" yaml:"maxUploadBytes,omitempty"`
-	SearchPageSize   int64  `json:"searchPageSize,omitempty" yaml:"searchPageSize,omitempty"`
+	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	MaxTextBytes     int64         `json:"maxTextBytes,omitempty" yaml:"maxTextBytes,omitempty"`
+	MaxUploadBytes   int64         `json:"maxUploadBytes,omitempty" yaml:"maxUploadBytes,omitempty"`
+	SearchPageSize   int64         `json:"searchPageSize,omitempty" yaml:"searchPageSize,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
+	PollPageSize     int64         `json:"pollPageSize,omitempty" yaml:"pollPageSize,omitempty"`
 }
 
 type Credentials struct {
@@ -233,6 +237,8 @@ func DefaultConfig() Config {
 		MaxTextBytes:     1048576,
 		MaxUploadBytes:   5242880,
 		SearchPageSize:   25,
+		PollInterval:     time.Duration(30000000000),
+		PollPageSize:     100,
 	}
 }
 
@@ -252,6 +258,12 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.SearchPageSize == 0 {
 		config.SearchPageSize = defaults.SearchPageSize
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
+	}
+	if config.PollPageSize == 0 {
+		config.PollPageSize = defaults.PollPageSize
 	}
 	return config
 }
@@ -274,6 +286,12 @@ func (config Config) Validate() error {
 	}
 	if config.SearchPageSize < 0 {
 		return fmt.Errorf("configuration searchPageSize cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
+	}
+	if config.PollPageSize < 0 {
+		return fmt.Errorf("configuration pollPageSize cannot be negative")
 	}
 	return nil
 }
@@ -327,6 +345,144 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
+}
+
+var FileCreatedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "fileCreated"},
+	Description: "Receive a Drive file created after the Trigger first started, optionally only in one folder or of one MIME type.",
+}
+
+type FileCreatedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=google-drive"`
+	triggerName                             struct{}                       `connector:"triggerName=fileCreated"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineFileCreatedTriggerBinding(config FileCreatedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: FileCreatedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type FileCreatedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                       `connector:"connectorId=google-drive"`
+	triggerName                      struct{}                       `connector:"triggerName=fileCreated"`
+	Connection                       Connection                     `connector:"connection"`
+	ConnectionName                   string                         `connector:"connectionName"`
+	BindingName                      string                         `connector:"bindingName"`
+	Configuration                    FileTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[FileEvent] `connector:"triggerTarget"`
+}
+
+func NewFileCreatedTrigger(config FileCreatedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-drive connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: FileCreatedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[FileEvent]{
+		Definition: FileCreatedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.fileCreatedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+var FileUpdatedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "fileUpdated"},
+	Description: "Receive an existing Drive file whose modified time advanced, optionally only in one folder or of one MIME type.",
+}
+
+type FileUpdatedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=google-drive"`
+	triggerName                             struct{}                       `connector:"triggerName=fileUpdated"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineFileUpdatedTriggerBinding(config FileUpdatedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: FileUpdatedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type FileUpdatedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                       `connector:"connectorId=google-drive"`
+	triggerName                      struct{}                       `connector:"triggerName=fileUpdated"`
+	Connection                       Connection                     `connector:"connection"`
+	ConnectionName                   string                         `connector:"connectionName"`
+	BindingName                      string                         `connector:"bindingName"`
+	Configuration                    FileTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[FileEvent] `connector:"triggerTarget"`
+}
+
+func NewFileUpdatedTrigger(config FileUpdatedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-drive connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: FileUpdatedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[FileEvent]{
+		Definition: FileUpdatedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.fileUpdatedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+var FileTrashedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "fileTrashed"},
+	Description: "Receive a Drive file moved to the trash, optionally only in one folder or of one MIME type.",
+}
+
+type FileTrashedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=google-drive"`
+	triggerName                             struct{}                       `connector:"triggerName=fileTrashed"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineFileTrashedTriggerBinding(config FileTrashedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: FileTrashedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type FileTrashedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                       `connector:"connectorId=google-drive"`
+	triggerName                      struct{}                       `connector:"triggerName=fileTrashed"`
+	Connection                       Connection                     `connector:"connection"`
+	ConnectionName                   string                         `connector:"connectionName"`
+	BindingName                      string                         `connector:"bindingName"`
+	Configuration                    FileTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[FileEvent] `connector:"triggerTarget"`
+}
+
+func NewFileTrashedTrigger(config FileTrashedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-drive connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: FileTrashedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[FileEvent]{
+		Definition: FileTrashedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.fileTrashedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const SearchFilesBranchFound sdkgo.BranchID = "found"
@@ -598,6 +754,8 @@ var UploadFileDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UploadFileResult = sdkgo.MutationResult[UploadFileOutput]
@@ -619,6 +777,8 @@ type UploadFileStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UploadFileResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UploadFileOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationStep[IN, UploadFileInput, UploadFileOutput] {
@@ -654,5 +814,6 @@ func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

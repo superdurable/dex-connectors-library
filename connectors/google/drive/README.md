@@ -1,6 +1,6 @@
 # Google Drive Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/drive/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/drive/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/drive`.
 
@@ -20,9 +20,12 @@ Step retries. It exposes operation-specific Dex Step factories:
 - `drive.NewUploadFileStep` creates one file from text or bytes in an optional
   parent folder.
 
-The connector does not modify, move, share, or delete existing files, and this
-release has no Triggers. A Drive change Trigger needs a durable change-cursor
-design that is still open.
+It also declares three Go Triggers that share one durable `changes.list`
+poller per connection: `fileCreated`, `fileUpdated`, and `fileTrashed`, each
+filtered by an optional direct parent folder and an exact MIME type. See
+[File Triggers](#file-triggers).
+
+The connector does not modify, move, share, or delete existing files.
 
 ## TypeScript package
 
@@ -245,6 +248,96 @@ retries credential resolution. Only each operation's
 happy-path branch is required; every other branch is optional and fails the
 Flow when unwired.
 
+## File Triggers
+
+`drive.NewProjectFileTriggerRunner` reads the connection's Drive change log
+once per poll for every `fileCreated`, `fileUpdated`, and `fileTrashed`
+binding of that connection, and delivers each binding's matching events in
+change order. It is built on the `sdkgo/pollingtrigger` kit (sdkgo v0.38.0):
+
+- On first start it stores Drive's
+  [`changes.getStartPageToken`](https://developers.google.com/workspace/drive/api/reference/rest/v3/changes/getStartPageToken)
+  token as the cursor, so existing files never start a Flow.
+- Each poll calls
+  [`changes.list`](https://developers.google.com/workspace/drive/api/reference/rest/v3/changes/list)
+  with `includeItemsFromAllDrives`, `supportsAllDrives`, `spaces=drive`, and
+  `includeRemoved=false`, follows `nextPageToken`, and stores
+  `newStartPageToken` when the list is exhausted, as the
+  [change guide](https://developers.google.com/workspace/drive/api/guides/manage-changes)
+  describes. Google documents that both tokens do not expire.
+- Each event is recorded in its binding's project Trigger inbox before the
+  shared cursor, `poll-feeds/google-drive/<connection>/fileChanges/head`,
+  commits past it. A restarted or replaced replica neither misses nor replays
+  a change, and replicas may share one cursor.
+
+Drive change records name no change kind, so the connector derives it from
+the [file resource](https://developers.google.com/workspace/drive/api/reference/rest/v3/files)
+times against a checkpoint, the latest change time of the previous complete
+pass, minus a five-minute lookback for change records that arrive late:
+
+| Trigger | Delivered when | Event ID |
+|---|---|---|
+| `fileCreated` | the file is not trashed and `createdTime` is after the checkpoint | `<fileId>@created` |
+| `fileUpdated` | the file is not trashed, `modifiedTime` is after the checkpoint, and at least one second after `createdTime` | `<fileId>@modified@<modifiedTime ms>` |
+| `fileTrashed` | `trashed` is true and `trashedTime`, or the change time when Drive omits it, is after the checkpoint | `<fileId>@trashed@<time ms>` |
+
+Event IDs are stable, so the lookback's repeated events and a refetch after a
+crash start no second Flow with `sdkgo.NewDexFlowTriggerTarget`. Drive
+populates `trashedTime` only for shared drive items, so a My Drive
+`fileTrashed` event is identified by its change time: a later change to a My
+Drive file that is already in the trash delivers `fileTrashed` again with a
+new event ID. A file that
+is created and edited before one poll produces both `fileCreated` and
+`fileUpdated`. Permission, sharing, rename-only, and view changes that leave
+`modifiedTime` unchanged deliver nothing. A file moved into a watched folder,
+a restored file, a permanently deleted file (`removed`), and shared drive
+changes deliver nothing. The first checkpoint is the local clock when the
+cursor is seeded, so a clock far ahead of Google's can misclassify files
+created in the first minutes. The payload, `drive.FileEvent`, carries
+metadata only, never content; read content with `drive.NewReadFileTextStep`.
+
+`drive.FileTriggerConfiguration` filters each binding. `folderId` matches
+the file's direct parent only, because Drive reports only the direct parent;
+subfolders are not searched. `mimeType` matches exactly. Blank fields match
+everything, so a blank `fileCreated` binding starts a Flow for every new file
+the connection can see, including folders. A binding without saved
+configuration is a startup error.
+
+Rate limits pause every binding of the runner: 429 and the 403
+`rateLimitExceeded` and `userRateLimitExceeded` reasons honor `Retry-After`
+or back off exponentially. A 404 or 410 for a stored page token, or a 400
+unless Google names a parameter other than `pageToken`, reseeds the cursor and
+logs a WARN record with the reset count; changes between the last
+commit and the reseed are not delivered. Two connection settings tune the
+poll: `pollInterval` and `pollPageSize` (1 to 500 changes per page).
+
+This snippet is from the runnable
+[`examples/file-intake/main.go`](go/examples/file-intake/main.go):
+
+```go
+runner, err := drive.NewProjectFileTriggerRunner(project, fileintake.ConnectionName, drive.ProjectFileTriggerRunnerConfig{
+	FileCreatedRoutes: []drive.ProjectFileTriggerRoute{{
+		BindingName: fileintake.NewFileTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, fileintake.AcceptCreatedFile, fileintake.ResolveFlowID,
+			fileintake.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, drive.WithLogger(logger))
+```
+
+`drive.WithLogger` receives the runner's records, which carry connector,
+connection, feed, binding, and event IDs, never file names, page tokens, or
+credentials. The generated per-Trigger factories, such as
+`drive.NewFileCreatedTrigger`, poll one binding with an in-memory cursor, so a
+restart reseeds and misses changes made while stopped; use the project runner
+for durable delivery. `drive.NewFileTriggerRunner` takes an explicit
+`pollingtrigger.CursorStore` for tests and applications without project
+storage.
+
+The Triggers use the existing `drive.readonly` scope, which `changes.list`
+accepts. Under `dexcli dev` with Dex Web's `connections.json`, inboxes persist
+in `trigger-inboxes/` but the poll cursor lives in process memory, so a Worker
+restart reseeds there; hosted project storage keeps it.
+
 ## Studio folder picker
 
 The manifest declares one read-only Studio command, `listFolders`, which lists
@@ -257,6 +350,13 @@ at most 20 pages, reports a truncated list, and accepts a pasted folder ID or
 pasted folder saves a blank display name. Blank means the operation runs
 without a folder.
 
+The `mimeTypePicker` unit has one `mimeType` output. It lists Google Docs,
+Sheets, Slides, Forms, folders, and common upload types from Google's
+[MIME type guide](https://developers.google.com/workspace/drive/api/guides/mime-types),
+and accepts any other exact lowercase `type/subtype` without parameters.
+Blank matches every type. Drive cannot enumerate MIME types per account, so
+the list is release-owned and needs no setup command.
+
 The `ui/` package builds the credential-safe Studio bundle published as
 `connector-ui.tgz` with the Connector release. The repository requires a UI
 artifact for any manifest that declares Studio commands or units, so the bundle
@@ -268,6 +368,8 @@ exists only to render the connection status and this picker from the shared
 [`examples/text-copy`](go/examples/text-copy) is a runnable Dex Web
 **Start Flow** example that resolves a file by exact name, reads its text,
 uploads a text copy, and reads the copy back.
+[`examples/file-intake`](go/examples/file-intake) starts one Flow for every
+file created in a configured folder through the durable `fileCreated` runner.
 
 ## Python package
 
@@ -294,3 +396,9 @@ Worker, retry, persistence, and transition coverage:
 ```bash
 GOWORK=off go test -tags=integration ./... -count=1 -v
 ```
+
+The file Trigger integration test drives `NewProjectFileTriggerRunner`
+against an in-process Drive change log and a real Dex server, through a
+runner restart; like Drive, the fake reports `trashedTime` only for shared
+drive files. Live Google change-log behavior, including change-record ordering
+and the error body Drive returns for a rejected page token, is not verified.
