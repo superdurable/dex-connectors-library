@@ -8,13 +8,13 @@ import { CRMObjectSchema, type CRMObject, type GetObjectInput, type ObjectPage, 
 
 const propertyName = /^[A-Za-z0-9][A-Za-z0-9_]{0,99}$/;
 const associationName = /^associations\.[a-z][a-z0-9_]{0,63}$/;
-const recordId = /^[0-9]{1,20}$/;
-const cursor = /^[0-9]{1,5}$/;
+/** A HubSpot record ID (hs_object_id). */ export const recordId = /^[0-9]{1,20}$/;
+/** A search paging offset. */ export const cursor = /^[0-9]{1,5}$/;
 const zeroObject: CRMObject = { objectType: '', id: '', archived: false };
 const zeroPage: ObjectPage = { objectType: '', total: 0, objects: [] };
 const zeroUpsert: UpsertedObject = { object: zeroObject, created: false };
 
-type ObjectType = SearchObjectsInput['objectType'];
+/** A supported CRM object type. */ export type ObjectType = SearchObjectsInput['objectType'];
 
 /** Search one bounded CRM page. */
 export class SearchObjectsOperation implements Query<SearchObjectsInput, ObjectPage> {
@@ -27,23 +27,8 @@ export class SearchObjectsOperation implements Query<SearchObjectsInput, ObjectP
     const result = await this.client.exchange(call, 'searchObjects', '', 'POST', objectsPath(input.objectType, 'search'), undefined, body);
     if ('outcome' in result) return queryOutcome(result.outcome, zeroPage, 'providerRejected');
     const receipt = this.client.receipt(call, result.response);
-    try {
-      const decoded = jsonObject(result.response.body);
-      const total = integerField(decoded, 'total');
-      if (total < 0) throw new TypeError('HubSpot returned a malformed response');
-      const results = decoded.results;
-      if (results !== undefined && results !== null && !Array.isArray(results)) throw new TypeError('HubSpot returned a malformed response');
-      const objects = (results ?? [] as unknown[]).map(item => decodeCRMObject(input.objectType, item));
-      const page: ObjectPage = { objectType: input.objectType, total, objects };
-      if (decoded.paging !== undefined && decoded.paging !== null) {
-        const paging = requireObject(decoded.paging);
-        if (paging.next !== undefined && paging.next !== null) {
-          const after = stringField(requireObject(paging.next), 'after');
-          if (after) { if (!cursor.test(after)) throw new TypeError('HubSpot returned an invalid search cursor'); page.nextAfter = after; }
-        }
-      }
-      return newQueryBranch('searched', page, receipt);
-    } catch (error) { return queryFailure('searchObjects', 'invalidResponse', 'PROTOCOL', zeroPage, receipt, error); }
+    try { return newQueryBranch('searched', decodeObjectPage(input.objectType, result.response.body), receipt); }
+    catch (error) { return queryFailure('searchObjects', 'invalidResponse', 'PROTOCOL', zeroPage, receipt, error); }
   }
 }
 
@@ -140,13 +125,13 @@ function queryFailure<T>(operation: string, branch: string, kind: Failure['kind'
 function mutationFailure<T>(operation: string, branch: string, kind: Failure['kind'], zero: T, receipt: ReceiptDraft, error: unknown): MutationAttempt<T> {
   return newMutationBranch(branch, zero, receipt, { kind, provider: 'hubspot', operation, message: error instanceof Error ? error.message : 'HubSpot returned a malformed response' });
 }
-function validateObjectType(value: ObjectType): void { if (!['contacts', 'companies', 'deals'].includes(value)) throw new Error('object type must be contacts, companies, or deals'); }
+export function validateObjectType(value: ObjectType): void { if (!['contacts', 'companies', 'deals'].includes(value)) throw new Error('object type must be contacts, companies, or deals'); }
 function validateRecordId(value: string): void { if (!recordId.test(value)) throw new Error('object ID must be a decimal HubSpot record ID'); }
 function uniqueProperties(values: string[]): string[] { if (values.length > 100) throw new Error('at most 100 properties can be requested'); const unique = [...new Set(values)]; if (unique.some(value => !propertyName.test(value))) throw new Error('requested property name is invalid'); return unique; }
 function validateValues(properties: Record<string, string> | undefined, required: boolean): void { if (required && !Object.keys(properties ?? {}).length) throw new Error('at least one property value is required'); if (Object.keys(properties ?? {}).length > 100) throw new Error('at most 100 property values can be written'); for (const [name, value] of Object.entries(properties ?? {})) { if (!propertyName.test(name)) throw new Error('written property name is invalid'); if ([...value].length > 65_536) throw new Error('property values cannot exceed 65536 characters'); } }
-function objectsPath(objectType: ObjectType, suffix: string): string { return `crm/objects/2026-09/${objectType}/${suffix}`; }
+export function objectsPath(objectType: ObjectType, suffix: string): string { return `crm/objects/2026-09/${objectType}/${suffix}`; }
 export function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
-function searchBody(input: SearchObjectsInput): Record<string, unknown> {
+export function searchBody(input: SearchObjectsInput): Record<string, unknown> {
   validateObjectType(input.objectType);
   const groups = input.filterGroups ?? [];
   if (groups.length > 5) throw new Error('search allows at most 5 filter groups');
@@ -176,6 +161,24 @@ function validateFilter(filter: SearchFilter): void {
 }
 function requireObject(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('HubSpot returned a malformed response'); return value as Record<string, unknown>; }
 function jsonObject(body: Uint8Array): Record<string, unknown> { return requireObject(JSON.parse(Buffer.from(body).toString()) as unknown); }
+/** Decode one search response page; it throws for a malformed page or paging cursor. */
+export function decodeObjectPage(objectType: ObjectType, body: Uint8Array): ObjectPage {
+  const decoded = jsonObject(body);
+  const total = integerField(decoded, 'total');
+  if (total < 0) throw new TypeError('HubSpot returned a malformed response');
+  const results = decoded.results;
+  if (results !== undefined && results !== null && !Array.isArray(results)) throw new TypeError('HubSpot returned a malformed response');
+  const objects = (results ?? [] as unknown[]).map(item => decodeCRMObject(objectType, item));
+  const page: ObjectPage = { objectType, total, objects };
+  if (decoded.paging !== undefined && decoded.paging !== null) {
+    const paging = requireObject(decoded.paging);
+    if (paging.next !== undefined && paging.next !== null) {
+      const after = stringField(requireObject(paging.next), 'after');
+      if (after) { if (!cursor.test(after)) throw new TypeError('HubSpot returned an invalid search cursor'); page.nextAfter = after; }
+    }
+  }
+  return page;
+}
 function stringField(value: Record<string, unknown>, field: string): string { const candidate = value[field]; if (candidate === null || candidate === undefined) return ''; if (typeof candidate !== 'string') throw new TypeError('HubSpot returned a malformed response'); return candidate; }
 function integerField(value: Record<string, unknown>, field: string): number { const candidate = value[field]; if (candidate === null || candidate === undefined) return 0; if (!Number.isSafeInteger(candidate)) throw new TypeError('HubSpot returned a malformed response'); return candidate as number; }
 function booleanField(value: Record<string, unknown>, field: string): boolean { const candidate = value[field]; if (candidate === null || candidate === undefined) return false; if (typeof candidate !== 'boolean') throw new TypeError('HubSpot returned a malformed response'); return candidate; }

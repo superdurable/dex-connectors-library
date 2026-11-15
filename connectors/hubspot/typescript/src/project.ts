@@ -17,7 +17,14 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   return newGeneratedProjectConnection(project, connectionName, (loadedProject, name) => {
     const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'hubspot' && entry.connectionName === name);
     if (!selected) throw new TypeError('HubSpot project connection is not configured');
-    const config = ConfigSchema.parse(selected.configuration);
+    const { pollInterval, ...settings } = (selected.configuration ?? {}) as Record<string, unknown>;
+    const config = ConfigSchema.parse({ ...settings, ...(pollInterval === undefined || pollInterval === null ? {} : { pollIntervalMs: pollIntervalMilliseconds(pollInterval) }) });
     return new HubSpotClient(config, newProjectCredentialProvider(loadedProject, name, decodeCredentials, encodeCredentials, decodeSharedCredentials), options);
   });
+}
+
+/** Convert the saved pollInterval, Go time.Duration nanoseconds, to whole milliseconds, rounding down. */
+function pollIntervalMilliseconds(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new TypeError('HubSpot configuration pollInterval must be a whole number of nanoseconds');
+  return Math.floor(value / 1_000_000);
 }

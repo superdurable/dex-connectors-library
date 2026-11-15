@@ -13,12 +13,12 @@ companies, and deals through HubSpot's 2026-09 CRM object API. It is the
 system-of-record write path for a Flow: identify a person by email, find the
 deal that belongs to them, and move that deal forward.
 
-| Operation | Kind | HubSpot endpoint | Happy branch |
-| --- | --- | --- | --- |
-| `searchObjects` | Query | `POST /crm/objects/2026-09/{objectType}/search` | `searched` |
-| `getObject` | Query | `GET /crm/objects/2026-09/{objectType}/{recordId}` | `found` |
-| `upsertObject` | Mutation | `POST /crm/objects/2026-09/{objectType}/batch/upsert` with one input | `upserted` |
-| `updateObject` | Mutation | `PATCH /crm/objects/2026-09/{objectType}/{recordId}` | `updated` |
+| Operation | Kind | HubSpot endpoint | Happy branch | Languages |
+| --- | --- | --- | --- | --- |
+| `searchObjects` | Query | `POST /crm/objects/2026-09/{objectType}/search` | `searched` | Go, Python, TypeScript |
+| `getObject` | Query | `GET /crm/objects/2026-09/{objectType}/{recordId}` | `found` | Go, Python, TypeScript |
+| `upsertObject` | Mutation | `POST /crm/objects/2026-09/{objectType}/batch/upsert` with one input | `upserted` | Go, Python, TypeScript |
+| `updateObject` | Mutation | `PATCH /crm/objects/2026-09/{objectType}/{recordId}` | `updated` | Go, Python, TypeScript |
 
 It also exposes one Trigger:
 
@@ -348,4 +348,9 @@ The [Python package](python/README.md) implements the four CRM operations in thi
 
 ## TypeScript package
 
-The TypeScript package in [`typescript/`](typescript/README.md) implements the four CRM operations with the generated manifest OAuth refresh wiring. Its [search deals example](typescript/examples/search-deals/README.md) runs a Dex Worker and Client using the static `hubspot-crm` connection. Provider replay and a real local Dex integration test cover the public path; live HubSpot authorization and API behavior still require testing through Dex Web Connections.
+The TypeScript package in [`typescript/`](typescript/README.md) implements the four CRM operations with the generated manifest OAuth refresh wiring and, from v0.2.0, the `crmObjectChanged` Trigger at parity with Go, on the TypeScript poll Trigger kit. Its cursor documents match the Go connector's byte for byte, so Go and TypeScript replicas can share one binding's cursor and inbox. Its [search deals example](typescript/examples/search-deals/README.md) runs a Dex Worker and Client using the static `hubspot-crm` connection, and its [crm-object-changed example](typescript/examples/crm-object-changed/README.md) starts one Flow per changed record. Provider replay and real local Dex integration tests cover the public path; live HubSpot authorization and API behavior still require testing through Dex Web Connections.
+
+| Capability | Kind | Languages |
+| --- | --- | --- |
+| `searchObjects`, `getObject`, `upsertObject`, `updateObject` | Operations | Go, Python, TypeScript |
+| `crmObjectChanged` | Trigger | Go, TypeScript |

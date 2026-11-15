@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { ReauthorizationRequiredError, RetryError, resolveCredential, resolveCredentialAfterRejection, SecretString, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, SecretString, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -9,6 +9,9 @@ import type { Config, CredentialSource, Credentials } from './generated/models.j
 import { GetObjectOperation, SearchObjectsOperation, UpdateObjectOperation, UpsertObjectOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.hubapi.com';
+const defaultPollIntervalMs = 30_000;
+/** Keeps a crmObjectChanged poll loop well inside HubSpot's search rate limit. */
+const minimumPollIntervalMs = 5_000;
 const knownCategories = new Set(['BAD_REQUEST', 'CONFLICT', 'EXPIRED_AUTHENTICATION', 'INVALID_AUTHENTICATION', 'MISSING_SCOPES', 'OBJECT_ALREADY_EXISTS', 'OBJECT_NOT_FOUND', 'RATE_LIMITS', 'VALIDATION_ERROR']);
 
 /** Replace the provider sender or clock in deterministic tests. */
@@ -17,6 +20,12 @@ export interface HubSpotClientOptions {
   send?: (request: ProviderRequest) => Promise<ProviderResponse>;
   /** Clock used for retry dates and receipts. */
   now?: () => Date;
+  /**
+   * Receives the crmObjectChanged Trigger runner's records: seeds, reseeds after an unusable cursor, failed polls,
+   * rate-limit pauses, and the durable inboxes newProjectCRMObjectTriggerRunner opens. Records carry binding
+   * identity and never record properties or credentials. Omitted uses defaultTriggerLogger. Operation Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
 
 /** Classified unsuccessful exchange. */
@@ -40,14 +49,23 @@ export class HubSpotClient {
   private readonly maxResponseBytes: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly now: () => Date;
+  /** Delay between crmObjectChanged polls in milliseconds. */ readonly pollIntervalMs: number;
+  /** Trigger record destination. */ readonly triggerLogger: TriggerLogger;
   private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'HubSpot', auth: Authorization, credentialFields: CredentialFields });
 
-  /** Validate settings and bind a credential source without contacting HubSpot. */
+  /**
+   * Validate settings and bind a credential source without contacting HubSpot. A blank endpoint uses
+   * https://api.hubapi.com, a zero maxResponseBytes uses one MiB, and a zero pollIntervalMs uses 30 seconds;
+   * pollIntervalMs must be at least 5 seconds.
+   */
   constructor(config: Config, private readonly credentials: CredentialSource, options: HubSpotClientOptions = {}) {
     if (!credentials) throw new TypeError('HubSpot credential provider is required');
     this.endpoint = validateBaseURL(config.endpoint || defaultEndpoint);
     this.maxResponseBytes = config.maxResponseBytes || 1_048_576;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('HubSpot maxResponseBytes must be positive');
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('HubSpot pollInterval must be at least 5s');
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
   }
