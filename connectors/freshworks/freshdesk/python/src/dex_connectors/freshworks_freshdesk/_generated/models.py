@@ -324,3 +324,32 @@ class AddNoteOutput:
 
 
 setattr(AddNoteOutput, '__module__', 'dex_connectors.freshworks_freshdesk.models')
+
+
+# TicketChangedEvent is one created or updated ticket read from Freshdesk's List All Tickets endpoint.
+# Several changes made between two polls arrive as one delivery of the ticket's latest version. Spam and
+# deleted tickets are not listed, so a ticket moved to spam or trash is not delivered.
+@dataclass(frozen=True, slots=True)
+class TicketChangedEvent:
+    # ChangeKind is the derived change kind; see TicketChangeKind.
+    change_kind: str = _dataclass_field(metadata={'dex_json_name': 'changeKind'})
+    # Ticket is the ticket as the list returned it. Description is empty, because the list omits it
+    # unless a request pays extra API credits; read the ticket with getTicket for its text and conversations.
+    ticket: Ticket
+
+
+setattr(TicketChangedEvent, '__module__', 'dex_connectors.freshworks_freshdesk.models')
+
+
+# TicketChangedTriggerConfiguration is the ticketChanged binding configuration saved for a Trigger
+# binding in the project configuration. Freshdesk setup commands cannot authenticate with the agent's
+# HTTP Basic API key, so the binding has no provider picker; every field is optional.
+@dataclass(frozen=True, slots=True)
+class TicketChangedTriggerConfiguration:
+    # ChangeKinds limits deliveries to these kinds, such as ["created"] to start a Flow only for new
+    # tickets. Empty, the default, delivers both created and updated tickets. Skipped changes still move
+    # the cursor, so adding a kind later never delivers changes the binding already passed.
+    change_kinds: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'changeKinds', 'dex_json_omit_default': True})
+
+
+setattr(TicketChangedTriggerConfiguration, '__module__', 'dex_connectors.freshworks_freshdesk.models')
