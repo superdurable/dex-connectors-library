@@ -1,6 +1,6 @@
 # Confluence Cloud Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go@v0.25.0`.
 
 The TypeScript package is `@superdurable/connector-atlassian-confluence@0.1.0`.
 It implements all five operations with the same branch identities and OAuth
@@ -51,10 +51,16 @@ any token. A rejection names only the HTTP status, such as `Confluence rejected
 the page with HTTP 400`. Page bodies are returned only as converted Markdown or
 plain text, cut at a caller-chosen character limit.
 
-No Trigger ships in this release. Confluence Cloud webhooks are registered in
-an Atlassian Connect app descriptor, and neither the v1 nor the v2 REST API has
-a webhook endpoint an OAuth 2.0 (3LO) connection could call, so a connection
-cannot subscribe to page events. Poll with `searchPages` instead.
+The Go module also exposes one Trigger, which Python and TypeScript do not
+implement:
+
+- `pageChanged` delivers each page created or updated in one space, or in every
+  space the connection can view, by polling CQL search. See
+  [pageChanged Trigger](#pagechanged-trigger).
+
+Confluence Cloud webhooks are registered in an Atlassian Connect app descriptor
+or a Forge app, and neither the v1 nor the v2 REST API has a webhook endpoint an
+OAuth 2.0 (3LO) connection could call, so the Trigger polls.
 
 ## Mocks
 
@@ -80,7 +86,7 @@ Create one OAuth 2.0 (3LO) app at
 1. **Create > OAuth 2.0 integration**, name the app, and accept the terms.
 2. **Permissions > Confluence API > Add**, then **Configure**:
    - under **Classic scopes**, add `search:confluence`, which the v1 CQL search
-     requires;
+     and the `pageChanged` Trigger's polls require;
    - under **Granular scopes**, add `read:page:confluence`,
      `write:page:confluence`, `read:space:confluence`,
      `read:comment:confluence`, and `write:comment:confluence`, which the v2
@@ -166,8 +172,8 @@ if err != nil {
 [project configuration](../../../sdkgo/projectconfig/README.md). Credentials
 stay in project storage, are read for every provider call, and are refreshed
 first when the access token is missing, has no recorded expiry, or expires
-within five minutes; `cloudId`, `endpoint`, and `maxResponseBytes` are startup
-configuration.
+within five minutes; `cloudId`, `endpoint`, `maxResponseBytes`, and
+`pollInterval` are startup configuration.
 
 ## Operations
 
@@ -343,6 +349,99 @@ execution:
 An application handles `uncertain` without adding the comment again
 automatically; the example leaves that branch unwired, so the Flow fails.
 
+## pageChanged Trigger
+
+`pageChanged` polls Confluence's CQL
+[content search](https://developer.atlassian.com/cloud/confluence/rest/v1/api-group-content/)
+and delivers one `confluence.PageChangedEvent` per new page version. It is
+built on the Connector SDK's durable poll Trigger kit
+([`sdkgo/pollingtrigger`](../../../sdkgo/README.md#polling-triggers), sdkgo
+v0.38.0) and uses only the `search:confluence` scope the connection already
+requests.
+
+- **Query.** Each scan sends
+  `type = page [AND space = "<key>"] AND lastmodified >= "<yyyy-MM-dd HH:mm>" ORDER BY lastmodified DESC`
+  with `limit=100` and `expand=space,version`, and follows the search cursor in
+  `_links.next`. CQL
+  [dates](https://developer.atlassian.com/cloud/confluence/cql-fields/) have
+  minute precision and are read in the authorizing user's Confluence time
+  zone, so the date bound is widened by twelve hours. The scan itself is
+  bounded by each result's absolute `version.when`: it stops at the first page
+  older than the window.
+- **Window.** A scan covers every page modified since ten minutes before the
+  previous scan began. The lookback covers clock skew and search index lag of
+  up to ten minutes; an edit indexed later than that is missed.
+- **Seen versions.** The cursor's keyed snapshot keeps each recently seen
+  page's version number and time. A result whose version is not newer than
+  the stored one, including an older version a lagging index still returns,
+  is skipped. Entries older than the next window are dropped when a scan
+  completes. At 10,000 entries the least recently seen are evicted, which can
+  repeat a version but never lose one.
+- **Baseline.** The first poll of a binding records every page modified in the
+  lookback window as seen. No existing page is delivered.
+- **Change kind.** `created` is version 1 and `updated` is any later version.
+  A page edited several times between two polls arrives once, at the version
+  current when the poll read it, so `created` can be missed for a page
+  created and edited before the next poll.
+- **Pagination.** A scan reads at most 10 search pages per poll and continues
+  on the next poll. A search cursor Confluence rejects with HTTP 400 restarts
+  the scan from its first page with the same window, so nothing is skipped.
+  Because the search is ordered newest first, a page edited during a
+  multi-page scan moves ahead of the cursor and is read by the next scan.
+- **Invalid cursor.** A stored cursor that cannot be decoded, or that names
+  another site or space, records a new baseline and logs a WARN
+  `poll cursor invalid; reseeding` record. Changes since the last poll are not
+  delivered.
+- **Rate limits.** Confluence answers a
+  [rate-limited](https://developer.atlassian.com/cloud/confluence/rate-limiting/)
+  request with HTTP 429 and `Retry-After` in seconds. A 429, or a 503 with
+  `Retry-After`, pauses every binding of the connection for that wait, or backs
+  off exponentially without it; a 429 from the accessible-resources site lookup
+  does the same. Other failures back off per binding up to 15 minutes. None of
+  them moves the cursor.
+- **Delivery.** Delivery is at least once. The Trigger event ID hashes the
+  site, page ID, and version number, so a refetch yields the same ID and a
+  Flow target keyed by it starts one Flow per version.
+- **Poll interval.** The connection's `pollInterval` setting is the delay
+  between polls, at least 10 seconds. Each poll costs one search request when
+  nothing changed.
+
+`confluence.NewProjectPageTriggerRunner` is the durable path. It loads each
+binding's saved space, records every change in the binding's project Trigger
+inbox, and commits the scan position in the binding's project poll cursor only
+after that, so a restarted or replaced replica neither misses nor repeats a
+version. From
+[`examples/page-changed/main.go`](go/examples/page-changed/main.go):
+
+```go
+triggerRunner, err := confluence.NewProjectPageTriggerRunner(project, pagechanged.ConnectionName, confluence.ProjectPageTriggerRunnerConfig{
+	PageChangedRoutes: []confluence.ProjectPageChangedTriggerRoute{{
+		BindingName: pagechanged.PageChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, pagechanged.AcceptEveryPageChange, pagechanged.ResolveFlowID,
+			pagechanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, confluence.WithLogger(logger))
+```
+
+`confluence.NewPageTriggerRunner` takes the targets and cursor stores directly.
+A route without a cursor store keeps its position in memory. The generated
+`confluence.NewPageChangedTrigger` factory always does, because it receives no
+project storage. Such a binding records a new baseline on every process start,
+so changes made while the process is stopped are lost. Use them only for tests
+and demonstrations. Under `dexcli dev`, the poll cursor also stays in process
+memory; hosted project storage keeps it.
+
+The binding configuration is `confluence.PageChangedTriggerConfiguration`: the
+`spacePicker` unit saves `spaceId`, `spaceKey`, and `spaceName`, and the
+Trigger filters by `spaceKey`. A blank or unsaved binding watches every space
+the account can view. Changing the space of a binding that already polled
+records a new baseline. Restart the Worker after saving.
+
+[`examples/page-changed`](go/examples/page-changed) is a runnable Trigger
+example: the `pageChanged` binding starts one `ConfluencePageChange` Flow per
+page version, which reads the page back as Markdown with
+`confluence.NewGetPageStep` and records it.
+
 ## Duplicate dispatch
 
 Both durability modes use the same attempts and retry rules. Sync persists a
@@ -358,7 +457,8 @@ The page gains one version despite two update requests.
 
 ## Not in this release
 
-- Triggers, because Confluence webhooks are app-level (see above).
+- Push Triggers, because Confluence webhooks are app-level (see above), and a
+  Trigger for comments, blog posts, or deleted pages.
 - API-token (HTTP Basic) authentication, which Studio setup commands cannot
   send.
 - Blog posts, inline comments, comment replies, drafts, labels and properties
@@ -372,8 +472,8 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-With the latest Dex development server running, the example owns its real
-Worker, retry, RPC, persistence, and transition coverage:
+With the latest Dex development server running, the examples own their real
+Worker, retry, RPC, persistence, transition, and Trigger delivery coverage:
 
 ```bash
 GOWORK=off go test -tags=integration ./... -count=1 -v
@@ -393,7 +493,15 @@ Document Format conversion to Markdown and plain text, hostile and malformed
 bodies, one refresh after a 401, a second 401, rate limits with `Retry-After`,
 redirects, oversized responses, token reflection, site resolution, title
 reconciliation, version markers, comment read-back, and the refresh driver's
-JSON grant, rotation, 403 `invalid_grant`, outage, and scope checks.
+JSON grant, rotation, 403 `invalid_grant`, outage, and scope checks. For
+`pageChanged`, they cover the baseline, one delivery per version, stale-version
+skipping, search cursor pagination and restart after HTTP 400, snapshot
+expiry, 429 with `Retry-After`, and a cursor for another space. The
+[`examples/page-changed`](go/examples/page-changed) integration tests run the
+Trigger on a real Dex Worker and Client against an in-process Confluence site:
+no baseline delivery, one Flow per version, versions saved while the Trigger
+process is stopped delivered after a restart whose first search answers 429,
+and a changed space recorded as a new baseline.
 
 No live Atlassian credentials were used. The following live behavior is
 unverified: Dex Web's form-encoded authorization-code exchange against
@@ -409,5 +517,8 @@ the status Confluence returns for a stale version number; the `Atl-Traceid`
 response header; how Confluence rewrites written storage, which reconciliation
 compares as text; CQL `lastmodified` time zone handling and `expand=space,version`
 on content search; 429 and 5xx behavior under load; the `accessible-resources`
-and `spaces` commands through Dex Web; and the developer-console paths in the
-setup guidance.
+and `spaces` commands through Dex Web; the developer-console paths in the
+setup guidance; and, for `pageChanged`, whether `ORDER BY lastmodified DESC`
+orders by the same time as `version.when`, how far the search index lags
+behind edits, whether an expired search cursor answers HTTP 400, and the
+response to a deleted space key.

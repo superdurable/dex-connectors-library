@@ -48,6 +48,8 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete Confluence API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to read longer pages. An oversized read selects invalidResponse, and a write whose response is oversized is confirmed by reading the page or comment back. */
   maxResponseBytes?: number;
+  /** Delay between pageChanged Trigger polls of Confluence CQL search, as a Go duration of at least 10s such as 30s or 5m. Leave blank to keep the displayed interval; shorter intervals deliver page changes sooner and spend more of the OAuth app's quota described at https://developer.atlassian.com/cloud/confluence/rate-limiting/. Operations ignore it, and the value is read when the application starts. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -55,6 +57,7 @@ export const ConfigSchema = z.object({
   "cloudId": z.string().optional(),
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */
