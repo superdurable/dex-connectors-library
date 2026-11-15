@@ -13,6 +13,8 @@ class Config:
     endpoint: str = "https://sheets.googleapis.com/v4"
     max_response_bytes: int = 4194304
     max_rows: int = 10000
+    poll_interval_seconds: float = 30
+    poll_page_size: int = 100
 
 setattr(Config, '__module__', 'dex_connectors.google_spreadsheet.client')
 
