@@ -426,6 +426,9 @@ needs `sdkgo` v0.28.0 or later; connectors need no change.
   refreshes the shared connection.
 - Trigger inboxes persist in `trigger-inboxes/` beside `connections.json`, so
   acknowledged events survive a restart.
+- Poll Trigger cursors persist in `poll-cursors/` (one per binding) and
+  `poll-feeds/` (one per shared feed) beside them, so a restarted poller resumes
+  where it committed instead of reseeding.
 - Each loaded connection exposes the record's `authorizationId` as
   `AuthorizationID` and its `authMethodIds` as `AuthMethodIDs`. A refresh
   write-back changes only `credentials` and `credentialExpiresAt`, so it keeps

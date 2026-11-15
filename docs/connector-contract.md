@@ -150,6 +150,13 @@ retries on its own schedule, such as a poller, runs each attempt through
 `sdkgo.TriggerAttempt`, so it does not report an event that an inbox or runner
 skipped as delivered after a retry. It keeps retrying a failed event until the
 event is consumed, even after the provider stops listing it.
+A source that polls a provider change feed should use `sdkgo/pollingtrigger`,
+which stores a durable cursor per binding or per shared feed and commits it
+past a change only after every target recorded or consumed it. Its fetcher
+must derive every event ID purely from the provider change, so a refetch after
+a crash yields the same IDs. A cursor the provider rejects permanently is
+reseeded and the gap is logged, never delivered silently; the source documents
+that gap.
 Applications supply the Flow ID resolver and start-input mapper, and the SDK
 derives the Flow-start request ID from the provider event ID. RPC targets use
 the same direct bound Flow method for registration and target invocation. The

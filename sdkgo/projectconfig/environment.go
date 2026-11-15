@@ -172,6 +172,16 @@ func (project *LoadedProject) TriggerInbox(key TriggerInboxKey) (*TriggerInbox, 
 	return NewTriggerInbox(project.objects, project.scope, key)
 }
 
+// PollCursorStore binds one Trigger binding's durable poll cursor in the loaded project scope.
+func (project *LoadedProject) PollCursorStore(key PollCursorKey) (*PollCursorStore, error) {
+	return NewPollCursorStore(project.objects, project.scope, key)
+}
+
+// PollFeedCursorStore binds one shared feed's durable poll cursor in the loaded project scope.
+func (project *LoadedProject) PollFeedCursorStore(key PollFeedKey) (*PollCursorStore, error) {
+	return NewPollFeedCursorStore(project.objects, project.scope, key)
+}
+
 // ResolveApplicationEnvironment loads exact pinned app secrets without provider refresh or mutable configuration reads.
 // Resolve and optionally Apply the result before starting application goroutines; never place returned values in a Flow.
 func (project *LoadedProject) ResolveApplicationEnvironment(ctx context.Context) (ApplicationEnvironment, error) {
