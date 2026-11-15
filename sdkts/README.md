@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.10.1`, requires Node 22 or 24, and uses `@superdurable/dex` 1.45.4 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.11.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.45.4 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -82,6 +82,8 @@ const query = newQueryStep({
   branches: [goToBranch('found', new StepRef('QueryDone'))],
 });
 ```
+
+A Mutation Step factory's `maxSends` option sets the send cap of one Step, from 1 to 10, replacing the operation's manifest `execution.maxSends`; 1 disables resend. Only an operation whose definition declares `repeatOnUnknown: 'limited'` accepts it, and construction throws for `safe`, `unsafe`, or a definition that predates the field. When the manifest retry policy limits attempts and `stepOptionsOverride.executeRetry` is unset, a larger cap adds the difference to the maximum attempts; it never lowers them. Every attempt receives the cap on `Call.maxSendsOverride`, which the connector's single-dispatch `Fence` applies. The [Step factory example](examples/steps.mjs) raises a cap from 3 to 5.
 
 ## Progress and text Streams
 
@@ -300,7 +302,9 @@ if (token.nextRefreshToken(new SecretString('test-refresh-token')).reveal() !== 
 
 ## Single-dispatch markers
 
-The [runnable marker example](examples/singledispatch.mjs) demonstrates the Go-compatible heartbeat checkpoint decision. The [runnable fence example](examples/fence.mjs) records a claim before one provider write, repeats it every five seconds while the write runs, and checkpoints an accepted provider ID for read-back. Construct one `Fence` per sync-durable Mutation Step attempt, call `decide()` before credentials or provider lookups, and use `recordNotSent()` for a pre-send Retry. `dispatch()` passes an `AbortSignal` bounded by the smaller of the Execute timeout and public `Context.deadline`, preserving time for outcome classification. Use `recordCanResend()` only after positive evidence the provider did not process a request. A failed claim checkpoint prevents the send; an unconfirmed claim on a later attempt permits read-back only.
+The [runnable marker example](examples/singledispatch.mjs) demonstrates the Go-compatible heartbeat checkpoint decision. The [runnable fence example](examples/fence.mjs) records a claim before one provider write, repeats it every five seconds while the write runs, and checkpoints an accepted provider ID for read-back. Construct one `Fence` per sync-durable Mutation Step attempt, call `decide()` before credentials or provider lookups, and use `recordNotSent()` for a pre-send Retry. `dispatch()` passes an `AbortSignal` bounded by the smaller of the Execute timeout and public `Context.deadline`, preserving time for outcome classification. Use `recordCanResend()` only after positive evidence the provider did not process a request. A failed claim checkpoint prevents the send; by default, an unconfirmed claim on a later attempt permits read-back only.
+
+Bounded resend lets a `limited` operation, whose duplicate is acceptable, resend after an unknown outcome. Pass the manifest send cap as `newFence(call, timeout, { maxSends })`, an integer from 1 to 10. Without the option the cap is 1, which disables resend and keeps the decisions of earlier releases. From 2, an application's `Call.maxSendsOverride` replaces the connector's cap. With a cap of at least 2, markers carry `sendCount`, the possibly effective sends of the call ID through its attempt, omitted when zero; with a cap of 1 they keep the earlier bytes. Decoding accepts both forms. The fence bounds the sends before the current attempt: without a marker, one per earlier attempt; otherwise the marker's count plus one per later attempt. A legacy marker without `sendCount` counts its own attempt when `claimed` and the earlier attempts when `notSent` or `canResend`. Below the cap, a decision that would require read-back becomes `readBackThenResendAllowed`: read back when possible, select the happy path on confirmed success, and otherwise call `dispatch()` once. A marker with `providerId` still means reading back that ID first. At the cap, the decision stays `readBackRequired`, so an unconfirmed outcome selects `uncertain`. A claim records the bound plus one, `notSent` and `canResend` record the bound, and a provider ID records its claim's count. `recordNotSent()` is allowed only after `sendAllowed`, and a short write window records `notSent` only then: after `readBackThenResendAllowed` an earlier send is unresolved, so return Retry without it, and the next attempt counts this one as a possible send. A foreign or invalid marker fails closed. A marker from the current or a later attempt never permits a resend; it requires read-back.
 
 ```js
 import { decideDispatch } from '../dist/singledispatch/index.js';
@@ -309,6 +313,9 @@ const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
 const first = decideDispatch(callId, 1, undefined);
 const later = decideDispatch(callId, 2, { callId, attempt: 1, state: 'claimed' });
 if (first.kind !== 'sendAllowed' || later.kind !== 'readBackRequired') throw new Error('single-dispatch decision example failed');
+const belowCap = decideDispatch(callId, 2, { callId, attempt: 1, state: 'claimed', sendCount: 1 }, undefined, 3);
+const atCap = decideDispatch(callId, 4, { callId, attempt: 3, state: 'claimed', sendCount: 3 }, undefined, 3);
+if (belowCap.kind !== 'readBackThenResendAllowed' || atCap.kind !== 'readBackRequired') throw new Error('bounded resend decision example failed');
 ```
 
 ```js
@@ -321,6 +328,12 @@ const result = await fence.dispatch(async signal => {
   return { providerId: 'item-1' };
 });
 await fence.recordProviderId(result.providerId);
+
+const retryFence = newFence(createCall(retryContext, call.connection, call.operation), 10_000, { maxSends: 3 });
+const retryDecision = retryFence.decide();
+if (retryDecision.kind !== 'readBackThenResendAllowed' || retryDecision.marker?.providerId !== 'item-1') throw new Error('bounded resend was not offered');
+const isWriteConfirmedByReadBack = false; // A real connector reads back retryDecision.marker.providerId here.
+if (!isWriteConfirmedByReadBack) await retryFence.dispatch(async () => ({ providerId: 'item-2' }));
 ```
 
 ## Triggers
@@ -348,6 +361,10 @@ const runner = newTrigger({ definition, binding: { connection, trigger: definiti
 ```
 
 ## Release notes
+
+### 0.11.0
+
+Bounded resend on unknown outcomes in the single-dispatch fence. The heartbeat marker gains an optional `sendCount`, the possibly effective sends of the call ID through the marker's attempt, encoded after `providerId` and omitted when zero. Only a `Fence` with a send cap of at least 2 writes it; a cap of 1 writes the same marker bytes as 0.10.1. `FenceOptions.maxSends` and a new last parameter of `decideDispatch` set the send cap from 1 to 10. With a cap of at least 2, a decision that would require read-back becomes the new `DecisionKind` `readBackThenResendAllowed` while the bounded prior sends stay below the cap: the connector reads back and may then call `dispatch()` once. At the cap it stays `readBackRequired`. `Decision.priorSendUpperBound` reports the bound. `MutationDefinition` gains `repeatOnUnknown` and `maxSends`, and `MutationStepConfig.maxSends` lets an application set one `limited` Step's cap, carried to the Fence on the new `Call.maxSendsOverride` through the new `CallOptions` of `createCall`. The default cap is 1, so a connector that does not pass `maxSends` keeps every earlier decision and marker; `readBackThenResendAllowed` appears only with a cap of at least 2. Earlier SDK releases reject a marker with `sendCount` as invalid, so roll back a connector that enabled bounded resend only after its in-flight fenced calls finish. These additions are not breaking.
 
 ### 0.10.1
 
