@@ -15,6 +15,7 @@ import { CredentialBrokerTokenSecretName, readApplicationSecretValue } from './a
 import type { ApplicationEnvironment } from './application_environment.js';
 import { CredentialBrokerClient, CredentialBrokerUnavailableError, RejectedCredentialNotRefreshedError, type BrokerCredential, type RelayedRequestHeaders } from './broker.js';
 import { TriggerInbox, type TriggerInboxKey } from './trigger_inbox.js';
+import { newPollCursorStore, newPollFeedCursorStore, type PollCursorKey, type PollCursorStore, type PollFeedKey } from './poll_cursor.js';
 import { isLocalStorageHost } from '../netpolicy.js';
 import { ReauthorizationRequiredError } from '../errors.js';
 
@@ -82,6 +83,12 @@ export class LoadedProject {
 
   /** Bind one Trigger binding's durable inbox in this project's storage without reading or writing objects. */
   triggerInbox(key: TriggerInboxKey): TriggerInbox { return new TriggerInbox(this.connections.objects, this.configuration.scope, key); }
+
+  /** Bind one Trigger binding's durable poll cursor in this project's storage without reading or writing objects. */
+  pollCursorStore(key: PollCursorKey): PollCursorStore { return newPollCursorStore(this.connections.objects, this.configuration.scope, key); }
+
+  /** Bind one shared feed's durable poll cursor in this project's storage without reading or writing objects. */
+  pollFeedCursorStore(key: PollFeedKey): PollCursorStore { return newPollFeedCursorStore(this.connections.objects, this.configuration.scope, key); }
 
   /**
    * Tell the credential broker that the shared connection receives relayed Trigger events at this

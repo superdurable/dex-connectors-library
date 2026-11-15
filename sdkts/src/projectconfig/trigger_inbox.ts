@@ -7,7 +7,7 @@ import {
   type TriggerContext, type TriggerEvent, type TriggerLogger, type TriggerTarget,
 } from '../trigger_delivery.js';
 import { scopePrefix, type Configuration as ProjectConfiguration, type Scope } from './model.js';
-import { InvalidRawJSONError, compactGoRawJSON, decodeGoJSONString, encodeGoJSONValue, encodeGoString, formatGoTime, parseTriggerPayloadJSON, rawJSONArrayElements, rawJSONKind, rawJSONObjectMembers } from './raw_json.js';
+import { InvalidRawJSONError, compactGoRawJSON, decodeGoStringField, encodeGoJSONValue, encodeGoString, formatGoTime, isGoFieldKey, parseTriggerPayloadJSON, rawJSONArrayElements, rawJSONKind, rawJSONObjectMembers } from './raw_json.js';
 import { ConflictError, ObjectNotFoundError, OutcomeUnknownError, type ObjectStore } from './storage.js';
 
 /** Schema of one binding's inbox object, shared with the Go Connector SDK. */
@@ -148,31 +148,6 @@ function encodeInboxDocument(events: PendingTriggerEvent[]): Buffer {
   });
   parts.push(Buffer.from(']}'));
   return Buffer.concat(parts);
-}
-
-/**
- * Report whether a JSON object key names a Go struct field, as encoding/json matches keys: exactly or
- * case-insensitively with Unicode simple folding, under which U+017F folds to s and U+212A to k.
- */
-function isGoFieldKey(key: string, field: string): boolean {
-  return key === field || key.toLowerCase().replaceAll('ſ', 's') === field.toLowerCase();
-}
-
-/**
- * Decode one JSON value into a Go string field: a string decodes as Go decodes strings, and null leaves the
- * field unchanged, as encoding/json does; any other kind is a type error.
- */
-function decodeGoStringField(raw: Uint8Array, current: string): string {
-  const kind = rawJSONKind(raw);
-  if (kind === 'null') return current;
-  if (kind !== 'string') throw new InvalidRawJSONError();
-  return decodeGoJSONString(Buffer.from(raw).subarray(firstByteIndex(raw)));
-}
-
-function firstByteIndex(raw: Uint8Array): number {
-  let index = 0;
-  while (raw[index] === 0x20 || raw[index] === 0x09 || raw[index] === 0x0a || raw[index] === 0x0d) index++;
-  return index;
 }
 
 /**

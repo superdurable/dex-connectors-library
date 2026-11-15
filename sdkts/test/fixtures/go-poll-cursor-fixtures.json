@@ -1,0 +1,1477 @@
+{
+  "credentialCalls": [
+    {
+      "callId": "ee978027-5c59-5753-a179-3676156da4dd",
+      "connection": "default",
+      "connectorId": "sample",
+      "provider": "google",
+      "triggerName": "messageReceived"
+    },
+    {
+      "callId": "bbb67781-7292-5972-b84b-b52735bce2f8",
+      "connection": "main-é-流程 😀",
+      "connectorId": "sample",
+      "provider": "sample",
+      "triggerName": "itemCreated"
+    }
+  ],
+  "decodeCases": [
+    {
+      "name": "unseeded",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":null}"
+    },
+    {
+      "name": "missing state",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEifQ==",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":null}"
+    },
+    {
+      "name": "golden",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InJvdyA8Nz4gJiDigKhlbmQiLCJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJyb3ctMSIsImhhc2giOiI5Zjg2ZDA4MTg4NGM3ZDY1Iiwic2VlbiI6MTIsInZhbHVlIjp7Ik5hbWUiOiJBZGEifX0seyJrZXkiOiJyb3ctMiIsImhhc2giOiIwMTIzNDU2Nzg5YWJjZGVmIiwic2VlbiI6M31dfSwic2VlZGVkQXRVbml4TXMiOjE3NjMxNjQ4MDAwMDAsImNvbW1pdHRlZEF0VW5peE1zIjoxNzYzMTY1NDAwMDAwLCJjb21taXRDb3VudCI6MTIsInJlc2V0Q291bnQiOjAsImxhc3RSZXNldEF0VW5peE1zIjpudWxsfX0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"row \\u003c7\\u003e \\u0026 \\u2028end\",\"snapshot\":{\"entries\":[{\"key\":\"row-1\",\"hash\":\"9f86d081884c7d65\",\"seen\":12,\"value\":{\"Name\":\"Ada\"}},{\"key\":\"row-2\",\"hash\":\"0123456789abcdef\",\"seen\":3}]},\"seededAtUnixMs\":1763164800000,\"committedAtUnixMs\":1763165400000,\"commitCount\":12,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "pretty printed",
+      "input": "ewogICJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLAogICJzdGF0ZSIgOiB7InRva2VuIiA6ICJ0IiwgInNuYXBzaG90IiA6IHsiZW50cmllcyIgOiBbIHsia2V5IjoiYSIsICJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiIsICJzZWVuIjoxLCAidmFsdWUiIDogeyAiYiIgOiBbIDEgLCAyIF0gfSB9IF0gfSB9Cn0K",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"t\",\"snapshot\":{\"entries\":[{\"key\":\"a\",\"hash\":\"0123456789abcdef\",\"seen\":1,\"value\":{\"b\":[1,2]}}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "empty state",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6e319",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":null,\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "case-insensitive keys",
+      "input": "eyJTQ0hFTUFWRVJTSU9OIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJTdGF0ZSI6eyJUT0tFTiI6InQiLCJTbmFwc2hvdCI6eyJFTlRSSUVTIjpbeyJLRVkiOiJhIiwiSGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJTRUVOIjo0fV19LCJjb21taXRjb3VudCI6NSwiTGFzdFJlc2V0QXRVbml4TVMiOjl9fQ==",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"t\",\"snapshot\":{\"entries\":[{\"key\":\"a\",\"hash\":\"0123456789abcdef\",\"seen\":4}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":5,\"resetCount\":0,\"lastResetAtUnixMs\":9}}"
+    },
+    {
+      "name": "unicode folded keys",
+      "input": "eyLFv2NoZW1hVmVyc2lvbiI6ImNvbm5lY3RvcnMuZGV4LmRldi9wcm9qZWN0LXBvbGwtY3Vyc29yL3YxYWxwaGExIiwic3RhdGUiOnsixb9uYXDFv2hvdCI6eyJlbnRyaWVzIjpbeyLihKpleSI6ImEiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiJ9XX0sInJlxb9ldENvdW50IjoxfX0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"a\",\"hash\":\"0123456789abcdef\",\"seen\":0}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":1,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "duplicate state merges",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImEiLCJjb21taXRDb3VudCI6M30sInN0YXRlIjp7ImNvbW1pdENvdW50Ijo0fX0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"a\",\"snapshot\":null,\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":4,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "duplicate state then null",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InQiLCJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjoyLCJ2YWx1ZSI6eyJ4IjoxfX1dfSwic2VlZGVkQXRVbml4TXMiOjEsImNvbW1pdHRlZEF0VW5peE1zIjoyLCJjb21taXRDb3VudCI6MywicmVzZXRDb3VudCI6MCwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9LCJzdGF0ZSI6bnVsbH0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":null}"
+    },
+    {
+      "name": "duplicate snapshot merges",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjoyLCJ2YWx1ZSI6eyJ4IjoxfX1dfSwic25hcHNob3QiOnt9fX0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"a\",\"hash\":\"0123456789abcdef\",\"seen\":2,\"value\":{\"x\":1}}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "duplicate entries reuse elements",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjoyLCJ2YWx1ZSI6eyJ4IjoxfX0seyJrZXkiOiJiIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYifV0sImVudHJpZXMiOlt7ImtleSI6ImMifV19fX0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"c\",\"hash\":\"0123456789abcdef\",\"seen\":2,\"value\":{\"x\":1}}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "duplicate entries grow",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjoyfV0sImVudHJpZXMiOlt7ImtleSI6ImIifSx7ImtleSI6ImMiLCJoYXNoIjoiOWY4NmQwODE4ODRjN2Q2NSJ9XX19fQ==",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"b\",\"hash\":\"0123456789abcdef\",\"seen\":2},{\"key\":\"c\",\"hash\":\"9f86d081884c7d65\",\"seen\":0}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "duplicate entries then empty",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYifV0sImVudHJpZXMiOltdfX19",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "duplicate value last wins",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJ2YWx1ZSI6eyJ4IjoxfSwidmFsdWUiOlsyXX1dfX19",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"a\",\"hash\":\"0123456789abcdef\",\"seen\":0,\"value\":[2]}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "duplicate schema with null",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzY2hlbWFWZXJzaW9uIjpudWxsLCJzdGF0ZSI6bnVsbH0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":null}"
+    },
+    {
+      "name": "null scalar fields",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6bnVsbCwic25hcHNob3QiOm51bGwsInNlZWRlZEF0VW5peE1zIjpudWxsLCJjb21taXR0ZWRBdFVuaXhNcyI6bnVsbCwiY29tbWl0Q291bnQiOm51bGwsInJlc2V0Q291bnQiOm51bGwsImxhc3RSZXNldEF0VW5peE1zIjpudWxsfX0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":null,\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "null entries",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpudWxsfX19",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "null entry",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbbnVsbF19fX0=",
+      "error": true
+    },
+    {
+      "name": "null entry fields",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjpudWxsfV19fX0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"a\",\"hash\":\"0123456789abcdef\",\"seen\":0}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "null value",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJ2YWx1ZSI6bnVsbH1dfX19",
+      "error": true
+    },
+    {
+      "name": "negative zero counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6LTB9fQ==",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":null,\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "largest safe integer",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6OTAwNzE5OTI1NDc0MDk5MSwibGFzdFJlc2V0QXRVbml4TXMiOi05MDA3MTk5MjU0NzQwOTkxfX0=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":null,\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":9007199254740991,\"resetCount\":0,\"lastResetAtUnixMs\":-9007199254740991}}"
+    },
+    {
+      "name": "fractional counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6MS4wfX0=",
+      "error": true
+    },
+    {
+      "name": "exponent counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6MWUyfX0=",
+      "error": true
+    },
+    {
+      "name": "overflowing counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6OTIyMzM3MjAzNjg1NDc3NTgwOH19",
+      "error": true
+    },
+    {
+      "name": "string counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6IjEifX0=",
+      "error": true
+    },
+    {
+      "name": "number token",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6MX19",
+      "error": true
+    },
+    {
+      "name": "boolean snapshot",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6dHJ1ZX19",
+      "error": true
+    },
+    {
+      "name": "object entries",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjp7fX19fQ==",
+      "error": true
+    },
+    {
+      "name": "array state",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6W119",
+      "error": true
+    },
+    {
+      "name": "invalid UTF-8 token",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImH//mLDKCJ9fQ==",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"a��b�(\",\"snapshot\":null,\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "surrogate escape token",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6Ilx1ZDgwMHhcdWRjMDB58J+YgCJ9fQ==",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"�x�y😀\",\"snapshot\":null,\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "escaped token",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IjxcL1xiXGZcblxyXHRcIlxcIn19",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\\u003c/\\b\\f\\n\\r\\t\\\"\\\\\",\"snapshot\":null,\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "extra top-level field",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbCwiZXh0cmEiOjF9",
+      "error": true
+    },
+    {
+      "name": "extra state field",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbnMiOiJ0In19",
+      "error": true
+    },
+    {
+      "name": "extra snapshot field",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbXSwic2l6ZSI6MH19fQ==",
+      "error": true
+    },
+    {
+      "name": "extra entry field",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJub3RlIjoxfV19fX0=",
+      "error": true
+    },
+    {
+      "name": "other schema",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjIiLCJzdGF0ZSI6bnVsbH0=",
+      "error": true
+    },
+    {
+      "name": "missing schema",
+      "input": "eyJzdGF0ZSI6bnVsbH0=",
+      "error": true
+    },
+    {
+      "name": "trailing value",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0ge30=",
+      "error": true
+    },
+    {
+      "name": "trailing whitespace",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0gCgk=",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":null}"
+    },
+    {
+      "name": "top-level null",
+      "input": "bnVsbA==",
+      "error": true
+    },
+    {
+      "name": "top-level array",
+      "input": "W10=",
+      "error": true
+    },
+    {
+      "name": "not JSON",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6fQ==",
+      "error": true
+    },
+    {
+      "name": "empty document",
+      "input": "",
+      "error": true
+    },
+    {
+      "name": "unsorted entries",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJiIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYifSx7ImtleSI6ImEiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiJ9XX19fQ==",
+      "error": true
+    },
+    {
+      "name": "utf8 sorted entries",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiLvvaEiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiJ9LHsia2V5Ijoi8J+YgCIsImhhc2giOiIwMTIzNDU2Nzg5YWJjZGVmIn1dfX19",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"｡\",\"hash\":\"0123456789abcdef\",\"seen\":0},{\"key\":\"😀\",\"hash\":\"0123456789abcdef\",\"seen\":0}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "utf16 sorted entries",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiLwn5iAIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYifSx7ImtleSI6Iu+9oSIsImhhc2giOiIwMTIzNDU2Nzg5YWJjZGVmIn1dfX19",
+      "error": true
+    },
+    {
+      "name": "negative seen",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjotMX1dfX19",
+      "error": true
+    },
+    {
+      "name": "negative commit count",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6LTF9fQ==",
+      "error": true
+    },
+    {
+      "name": "bad hash",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlBQkNERUYifV19fX0=",
+      "error": true
+    },
+    {
+      "name": "value with whitespace",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJ2YWx1ZSI6IHsgImIiIDogIjwmPiIgfSB9XX19fQ==",
+      "error": false,
+      "output": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"a\",\"hash\":\"0123456789abcdef\",\"seen\":0,\"value\":{\"b\":\"\\u003c\\u0026\\u003e\"}}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    }
+  ],
+  "encodeCases": [
+    {
+      "name": "golden",
+      "state": {
+        "token": "row \u003c7\u003e \u0026 \u2028end",
+        "snapshot": [
+          {
+            "key": "row-1",
+            "hash": "9f86d081884c7d65",
+            "seen": 12,
+            "valueBase64": "eyAiTmFtZSI6ICJBZGEiIH0="
+          },
+          {
+            "key": "row-2",
+            "hash": "0123456789abcdef",
+            "seen": 3
+          }
+        ],
+        "seededAtUnixMs": 1763164800000,
+        "committedAtUnixMs": 1763165400000,
+        "commitCount": 12,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"row \\u003c7\\u003e \\u0026 \\u2028end\",\"snapshot\":{\"entries\":[{\"key\":\"row-1\",\"hash\":\"9f86d081884c7d65\",\"seen\":12,\"value\":{\"Name\":\"Ada\"}},{\"key\":\"row-2\",\"hash\":\"0123456789abcdef\",\"seen\":3}]},\"seededAtUnixMs\":1763164800000,\"committedAtUnixMs\":1763165400000,\"commitCount\":12,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "reset without snapshot",
+      "state": {
+        "token": "",
+        "snapshot": null,
+        "seededAtUnixMs": 1763165999000,
+        "committedAtUnixMs": 1763165999000,
+        "commitCount": 7,
+        "resetCount": 2,
+        "lastResetAtUnixMs": 1763165999000
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":null,\"seededAtUnixMs\":1763165999000,\"committedAtUnixMs\":1763165999000,\"commitCount\":7,\"resetCount\":2,\"lastResetAtUnixMs\":1763165999000}}"
+    },
+    {
+      "name": "empty snapshot",
+      "state": {
+        "token": "t",
+        "snapshot": [],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 1,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"t\",\"snapshot\":{\"entries\":[]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":1,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "escaped token",
+      "state": {
+        "token": "\u0000\t\n\"\\/\u2029 é 😀  ",
+        "snapshot": null,
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\\u0000\\t\\n\\\"\\\\/\\u2029 é 😀  \",\"snapshot\":null,\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "compacted value",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "k",
+            "hash": "0123456789abcdef",
+            "seen": 1,
+            "valueBase64": "eyJ6IiA6IG51bGwsCiAiYSIgOiBbMSwgMi41MGUrMywgIjxiPibigKgiLCB0cnVlXX0="
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"k\",\"hash\":\"0123456789abcdef\",\"seen\":1,\"value\":{\"z\":null,\"a\":[1,2.50e+3,\"\\u003cb\\u003e\\u0026\\u2028\",true]}}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "scalar values",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "0123456789abcdef",
+            "seen": 0,
+            "valueBase64": "ICJ0ZXh0IiA="
+          },
+          {
+            "key": "b",
+            "hash": "0123456789abcdef",
+            "seen": 0,
+            "valueBase64": "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM="
+          },
+          {
+            "key": "c",
+            "hash": "0123456789abcdef",
+            "seen": 0,
+            "valueBase64": "ZmFsc2U="
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"a\",\"hash\":\"0123456789abcdef\",\"seen\":0,\"value\":\"text\"},{\"key\":\"b\",\"hash\":\"0123456789abcdef\",\"seen\":0,\"value\":12345678901234567890123},{\"key\":\"c\",\"hash\":\"0123456789abcdef\",\"seen\":0,\"value\":false}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "utf8 key order",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "｡",
+            "hash": "0123456789abcdef",
+            "seen": 0
+          },
+          {
+            "key": "😀",
+            "hash": "0123456789abcdef",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"｡\",\"hash\":\"0123456789abcdef\",\"seen\":0},{\"key\":\"😀\",\"hash\":\"0123456789abcdef\",\"seen\":0}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "utf16 key order is unsorted",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "😀",
+            "hash": "0123456789abcdef",
+            "seen": 0
+          },
+          {
+            "key": "｡",
+            "hash": "0123456789abcdef",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "duplicate keys",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "0123456789abcdef",
+            "seen": 0
+          },
+          {
+            "key": "a",
+            "hash": "9f86d081884c7d65",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "negative times are allowed",
+      "state": {
+        "token": "",
+        "snapshot": null,
+        "seededAtUnixMs": -5,
+        "committedAtUnixMs": -1,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":null,\"seededAtUnixMs\":-5,\"committedAtUnixMs\":-1,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "negative commit count",
+      "state": {
+        "token": "",
+        "snapshot": null,
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": -1,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "negative reset count",
+      "state": {
+        "token": "",
+        "snapshot": null,
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": -1,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "negative seen",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "0123456789abcdef",
+            "seen": -1
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "uppercase hash",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "ABCDEF0123456789",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "short hash",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "0123456789abcde",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "longest hash",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "abababababababababababababababababababababababababababababababab",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"a\",\"hash\":\"abababababababababababababababababababababababababababababababab\",\"seen\":0}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "long hash",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "ababababababababababababababababababababababababababababababababc",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "empty key",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "",
+            "hash": "0123456789abcdef",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "longest key",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "",
+            "keyRepeat": {
+              "text": "é",
+              "count": 512
+            },
+            "hash": "0123456789abcdef",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "{\"schemaVersion\":\"connectors.dex.dev/project-poll-cursor/v1alpha1\",\"state\":{\"token\":\"\",\"snapshot\":{\"entries\":[{\"key\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"hash\":\"0123456789abcdef\",\"seen\":0}]},\"seededAtUnixMs\":0,\"committedAtUnixMs\":0,\"commitCount\":0,\"resetCount\":0,\"lastResetAtUnixMs\":null}}"
+    },
+    {
+      "name": "long key",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "",
+            "keyRepeat": {
+              "text": "é",
+              "count": 512
+            },
+            "hash": "0123456789abcdef",
+            "seen": 0
+          },
+          {
+            "key": "",
+            "keyRepeat": {
+              "text": "é",
+              "count": 513
+            },
+            "hash": "0123456789abcdef",
+            "seen": 0
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "null value",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "0123456789abcdef",
+            "seen": 0,
+            "valueBase64": "IG51bGwg"
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "empty value",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "0123456789abcdef",
+            "seen": 0,
+            "valueBase64": ""
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    },
+    {
+      "name": "malformed value",
+      "state": {
+        "token": "",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "0123456789abcdef",
+            "seen": 0,
+            "valueBase64": "eyJhIjp9"
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      },
+      "document": "",
+      "error": "invalid"
+    }
+  ],
+  "headKeys": [
+    {
+      "name": "unicode binding",
+      "binding": {
+        "ConnectorID": "sample",
+        "ConnectionName": "main-é-流程 😀",
+        "TriggerName": "itemCreated",
+        "BindingName": "main / west"
+      },
+      "key": "projects/sample-project/preview/poll-cursors/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/itemCreated/bWFpbiAvIHdlc3Q/head"
+    },
+    {
+      "name": "unicode feed",
+      "feed": {
+        "ConnectorID": "sample",
+        "ConnectionName": "main-é-流程 😀",
+        "FeedName": "itemChanges"
+      },
+      "key": "projects/sample-project/preview/poll-feeds/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/itemChanges/head"
+    },
+    {
+      "name": "ascii binding",
+      "binding": {
+        "ConnectorID": "google-drive",
+        "ConnectionName": "default",
+        "TriggerName": "fileCreated",
+        "BindingName": "start"
+      },
+      "key": "projects/sample-project/preview/poll-cursors/google-drive/ZGVmYXVsdA/fileCreated/c3RhcnQ/head"
+    },
+    {
+      "name": "ascii feed",
+      "feed": {
+        "ConnectorID": "google-drive",
+        "ConnectionName": "default",
+        "FeedName": "driveChanges"
+      },
+      "key": "projects/sample-project/preview/poll-feeds/google-drive/ZGVmYXVsdA/driveChanges/head"
+    }
+  ],
+  "snapshotCases": [
+    {
+      "name": "diff from nothing sorts by UTF-8 bytes",
+      "operation": "diff",
+      "previous": null,
+      "items": [
+        {
+          "key": "😀",
+          "hash": "0123456789abcdef"
+        },
+        {
+          "key": "｡",
+          "hash": "9f86d081884c7d65",
+          "value": {
+            "v": 1
+          }
+        },
+        {
+          "key": "a",
+          "hash": "aaaaaaaaaaaaaaaa"
+        }
+      ],
+      "options": {
+        "maxEntries": 0,
+        "keepValues": true,
+        "evictLeastRecentlySeen": false
+      },
+      "result": {
+        "added": [
+          {
+            "key": "a",
+            "hash": "aaaaaaaaaaaaaaaa",
+            "seen": 0
+          },
+          {
+            "key": "｡",
+            "hash": "9f86d081884c7d65",
+            "seen": 0,
+            "value": {
+              "v": 1
+            }
+          },
+          {
+            "key": "😀",
+            "hash": "0123456789abcdef",
+            "seen": 0
+          }
+        ],
+        "changed": [],
+        "next": [
+          {
+            "key": "a",
+            "hash": "aaaaaaaaaaaaaaaa",
+            "seen": 0
+          },
+          {
+            "key": "｡",
+            "hash": "9f86d081884c7d65",
+            "seen": 0,
+            "value": {
+              "v": 1
+            }
+          },
+          {
+            "key": "😀",
+            "hash": "0123456789abcdef",
+            "seen": 0
+          }
+        ],
+        "removed": []
+      }
+    },
+    {
+      "name": "diff added changed removed",
+      "operation": "diff",
+      "previous": [
+        {
+          "key": "change",
+          "hash": "0123456789abcdef",
+          "seen": 4,
+          "value": {
+            "v": "old"
+          }
+        },
+        {
+          "key": "drop",
+          "hash": "0123456789abcdef",
+          "seen": 1
+        },
+        {
+          "key": "keep",
+          "hash": "0123456789abcdef",
+          "seen": 3,
+          "value": {
+            "v": "keep"
+          }
+        }
+      ],
+      "items": [
+        {
+          "key": "new",
+          "hash": "aaaaaaaaaaaaaaaa",
+          "value": {
+            "v": "new"
+          }
+        },
+        {
+          "key": "keep",
+          "hash": "0123456789abcdef",
+          "value": {
+            "v": "keep2"
+          }
+        },
+        {
+          "key": "change",
+          "hash": "9f86d081884c7d65",
+          "value": {
+            "v": "new"
+          }
+        }
+      ],
+      "options": {
+        "maxEntries": 0,
+        "keepValues": true,
+        "evictLeastRecentlySeen": false
+      },
+      "result": {
+        "added": [
+          {
+            "key": "new",
+            "hash": "aaaaaaaaaaaaaaaa",
+            "seen": 0,
+            "value": {
+              "v": "new"
+            }
+          }
+        ],
+        "changed": [
+          {
+            "current": {
+              "key": "change",
+              "hash": "9f86d081884c7d65",
+              "seen": 0,
+              "value": {
+                "v": "new"
+              }
+            },
+            "previous": {
+              "key": "change",
+              "hash": "0123456789abcdef",
+              "seen": 4,
+              "value": {
+                "v": "old"
+              }
+            }
+          }
+        ],
+        "next": [
+          {
+            "key": "change",
+            "hash": "9f86d081884c7d65",
+            "seen": 0,
+            "value": {
+              "v": "new"
+            }
+          },
+          {
+            "key": "keep",
+            "hash": "0123456789abcdef",
+            "seen": 3,
+            "value": {
+              "v": "keep2"
+            }
+          },
+          {
+            "key": "new",
+            "hash": "aaaaaaaaaaaaaaaa",
+            "seen": 0,
+            "value": {
+              "v": "new"
+            }
+          }
+        ],
+        "removed": [
+          {
+            "key": "drop",
+            "hash": "0123456789abcdef",
+            "seen": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "diff without values",
+      "operation": "diff",
+      "previous": [
+        {
+          "key": "change",
+          "hash": "0123456789abcdef",
+          "seen": 4,
+          "value": {
+            "v": "old"
+          }
+        },
+        {
+          "key": "drop",
+          "hash": "0123456789abcdef",
+          "seen": 1
+        },
+        {
+          "key": "keep",
+          "hash": "0123456789abcdef",
+          "seen": 3,
+          "value": {
+            "v": "keep"
+          }
+        }
+      ],
+      "items": [
+        {
+          "key": "change",
+          "hash": "9f86d081884c7d65",
+          "value": {
+            "v": "new"
+          }
+        }
+      ],
+      "options": {
+        "maxEntries": 0,
+        "keepValues": false,
+        "evictLeastRecentlySeen": false
+      },
+      "result": {
+        "added": [],
+        "changed": [
+          {
+            "current": {
+              "key": "change",
+              "hash": "9f86d081884c7d65",
+              "seen": 0
+            },
+            "previous": {
+              "key": "change",
+              "hash": "0123456789abcdef",
+              "seen": 4,
+              "value": {
+                "v": "old"
+              }
+            }
+          }
+        ],
+        "next": [
+          {
+            "key": "change",
+            "hash": "9f86d081884c7d65",
+            "seen": 0
+          }
+        ],
+        "removed": [
+          {
+            "key": "drop",
+            "hash": "0123456789abcdef",
+            "seen": 1
+          },
+          {
+            "key": "keep",
+            "hash": "0123456789abcdef",
+            "seen": 3,
+            "value": {
+              "v": "keep"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "diff empty listing removes everything",
+      "operation": "diff",
+      "previous": [
+        {
+          "key": "change",
+          "hash": "0123456789abcdef",
+          "seen": 4,
+          "value": {
+            "v": "old"
+          }
+        },
+        {
+          "key": "drop",
+          "hash": "0123456789abcdef",
+          "seen": 1
+        },
+        {
+          "key": "keep",
+          "hash": "0123456789abcdef",
+          "seen": 3,
+          "value": {
+            "v": "keep"
+          }
+        }
+      ],
+      "items": [],
+      "options": {
+        "maxEntries": 0,
+        "keepValues": false,
+        "evictLeastRecentlySeen": false
+      },
+      "result": {
+        "added": [],
+        "changed": [],
+        "next": [],
+        "removed": [
+          {
+            "key": "change",
+            "hash": "0123456789abcdef",
+            "seen": 4,
+            "value": {
+              "v": "old"
+            }
+          },
+          {
+            "key": "drop",
+            "hash": "0123456789abcdef",
+            "seen": 1
+          },
+          {
+            "key": "keep",
+            "hash": "0123456789abcdef",
+            "seen": 3,
+            "value": {
+              "v": "keep"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "diff duplicate keys",
+      "operation": "diff",
+      "previous": null,
+      "items": [
+        {
+          "key": "a",
+          "hash": "0123456789abcdef"
+        },
+        {
+          "key": "a",
+          "hash": "9f86d081884c7d65"
+        }
+      ],
+      "options": {
+        "maxEntries": 0,
+        "keepValues": false,
+        "evictLeastRecentlySeen": false
+      },
+      "error": "invalid"
+    },
+    {
+      "name": "diff bad hash",
+      "operation": "diff",
+      "previous": null,
+      "items": [
+        {
+          "key": "a",
+          "hash": "XYZ"
+        }
+      ],
+      "options": {
+        "maxEntries": 0,
+        "keepValues": false,
+        "evictLeastRecentlySeen": false
+      },
+      "error": "invalid"
+    },
+    {
+      "name": "diff over max entries",
+      "operation": "diff",
+      "previous": null,
+      "items": [
+        {
+          "key": "a",
+          "hash": "0123456789abcdef"
+        },
+        {
+          "key": "b",
+          "hash": "0123456789abcdef"
+        }
+      ],
+      "options": {
+        "maxEntries": 1,
+        "keepValues": false,
+        "evictLeastRecentlySeen": false
+      },
+      "error": "tooLarge"
+    },
+    {
+      "name": "diff rejects eviction",
+      "operation": "diff",
+      "previous": null,
+      "items": [],
+      "options": {
+        "maxEntries": 0,
+        "keepValues": false,
+        "evictLeastRecentlySeen": true
+      },
+      "error": "invalid"
+    },
+    {
+      "name": "diff invalid max entries",
+      "operation": "diff",
+      "previous": null,
+      "items": [],
+      "options": {
+        "maxEntries": 100001,
+        "keepValues": false,
+        "evictLeastRecentlySeen": false
+      },
+      "error": "invalid"
+    },
+    {
+      "name": "apply upserts and removals",
+      "operation": "apply",
+      "previous": [
+        {
+          "key": "change",
+          "hash": "0123456789abcdef",
+          "seen": 4,
+          "value": {
+            "v": "old"
+          }
+        },
+        {
+          "key": "drop",
+          "hash": "0123456789abcdef",
+          "seen": 1
+        },
+        {
+          "key": "keep",
+          "hash": "0123456789abcdef",
+          "seen": 3,
+          "value": {
+            "v": "keep"
+          }
+        }
+      ],
+      "items": [
+        {
+          "key": "change",
+          "hash": "9f86d081884c7d65",
+          "value": {
+            "v": "new"
+          }
+        },
+        {
+          "key": "added",
+          "hash": "aaaaaaaaaaaaaaaa"
+        }
+      ],
+      "removedKeys": [
+        "drop",
+        "missing",
+        "added"
+      ],
+      "options": {
+        "maxEntries": 0,
+        "keepValues": true,
+        "evictLeastRecentlySeen": false
+      },
+      "result": {
+        "next": [
+          {
+            "key": "added",
+            "hash": "aaaaaaaaaaaaaaaa",
+            "seen": 0
+          },
+          {
+            "key": "change",
+            "hash": "9f86d081884c7d65",
+            "seen": 0,
+            "value": {
+              "v": "new"
+            }
+          },
+          {
+            "key": "keep",
+            "hash": "0123456789abcdef",
+            "seen": 3,
+            "value": {
+              "v": "keep"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "apply evicts least recently seen",
+      "operation": "apply",
+      "previous": [
+        {
+          "key": "change",
+          "hash": "0123456789abcdef",
+          "seen": 4,
+          "value": {
+            "v": "old"
+          }
+        },
+        {
+          "key": "drop",
+          "hash": "0123456789abcdef",
+          "seen": 1
+        },
+        {
+          "key": "keep",
+          "hash": "0123456789abcdef",
+          "seen": 3,
+          "value": {
+            "v": "keep"
+          }
+        }
+      ],
+      "items": [
+        {
+          "key": "z1",
+          "hash": "aaaaaaaaaaaaaaaa"
+        },
+        {
+          "key": "z2",
+          "hash": "bbbbbbbbbbbbbbbb"
+        }
+      ],
+      "options": {
+        "maxEntries": 3,
+        "keepValues": false,
+        "evictLeastRecentlySeen": true
+      },
+      "result": {
+        "next": [
+          {
+            "key": "change",
+            "hash": "0123456789abcdef",
+            "seen": 4,
+            "value": {
+              "v": "old"
+            }
+          },
+          {
+            "key": "z1",
+            "hash": "aaaaaaaaaaaaaaaa",
+            "seen": 0
+          },
+          {
+            "key": "z2",
+            "hash": "bbbbbbbbbbbbbbbb",
+            "seen": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "apply evicts ties by key",
+      "operation": "apply",
+      "previous": [
+        {
+          "key": "a",
+          "hash": "0123456789abcdef",
+          "seen": 2
+        },
+        {
+          "key": "b",
+          "hash": "0123456789abcdef",
+          "seen": 2
+        },
+        {
+          "key": "c",
+          "hash": "0123456789abcdef",
+          "seen": 2
+        }
+      ],
+      "items": [],
+      "options": {
+        "maxEntries": 2,
+        "keepValues": false,
+        "evictLeastRecentlySeen": true
+      },
+      "result": {
+        "next": [
+          {
+            "key": "a",
+            "hash": "0123456789abcdef",
+            "seen": 2
+          },
+          {
+            "key": "b",
+            "hash": "0123456789abcdef",
+            "seen": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "apply over max entries",
+      "operation": "apply",
+      "previous": [
+        {
+          "key": "change",
+          "hash": "0123456789abcdef",
+          "seen": 4,
+          "value": {
+            "v": "old"
+          }
+        },
+        {
+          "key": "drop",
+          "hash": "0123456789abcdef",
+          "seen": 1
+        },
+        {
+          "key": "keep",
+          "hash": "0123456789abcdef",
+          "seen": 3,
+          "value": {
+            "v": "keep"
+          }
+        }
+      ],
+      "items": [
+        {
+          "key": "z1",
+          "hash": "aaaaaaaaaaaaaaaa"
+        }
+      ],
+      "options": {
+        "maxEntries": 3,
+        "keepValues": false,
+        "evictLeastRecentlySeen": false
+      },
+      "error": "tooLarge"
+    },
+    {
+      "name": "apply duplicate upserts",
+      "operation": "apply",
+      "previous": null,
+      "items": [
+        {
+          "key": "a",
+          "hash": "0123456789abcdef"
+        },
+        {
+          "key": "a",
+          "hash": "9f86d081884c7d65"
+        }
+      ],
+      "options": {
+        "maxEntries": 0,
+        "keepValues": false,
+        "evictLeastRecentlySeen": false
+      },
+      "error": "invalid"
+    }
+  ]
+}

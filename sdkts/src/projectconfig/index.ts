@@ -11,4 +11,5 @@ export * from './provider.js';
 export * from './dexweb_store.js';
 export * from './shared_connections.js';
 export * from './trigger_inbox.js';
+export * from './poll_cursor.js';
 export { InvalidRawJSONError, encodeGoJSONValue, parseTriggerPayloadJSON } from './raw_json.js';

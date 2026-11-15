@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connectors-sdk",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Provider-neutral TypeScript contracts for Dex connectors",
   "repository": {
     "type": "git",
@@ -58,6 +58,10 @@
       "types": "./dist/webhooktrigger/index.d.ts",
       "import": "./dist/webhooktrigger/index.js"
     },
+    "./pollingtrigger": {
+      "types": "./dist/pollingtrigger/index.d.ts",
+      "import": "./dist/pollingtrigger/index.js"
+    },
     "./relaysignature": {
       "types": "./dist/relaysignature/index.d.ts",
       "import": "./dist/relaysignature/index.js"
@@ -70,12 +74,12 @@
   ],
   "scripts": {
     "prepack": "npm run build",
-    "build": "tsup src/index.ts src/providerhttp/index.ts src/projectconfig/index.ts src/connectormock/index.ts src/oauthtoken/index.ts src/singledispatch/index.ts src/textgen/index.ts src/textgen/openaichat/index.ts src/textgen/textgentest/index.ts src/webhooktrigger/index.ts src/relaysignature/index.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/providerhttp/index.ts src/projectconfig/index.ts src/connectormock/index.ts src/oauthtoken/index.ts src/singledispatch/index.ts src/textgen/index.ts src/textgen/openaichat/index.ts src/textgen/textgentest/index.ts src/webhooktrigger/index.ts src/pollingtrigger/index.ts src/relaysignature/index.ts --format esm --dts --clean",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
     "test": "vitest run",
     "test:package": "node test/pack_smoke.mjs",
-    "test:integration": "npm run build && node test/integ/step_flows.mjs && node test/integ/trigger_flows.mjs",
+    "test:integration": "npm run build && node test/integ/step_flows.mjs && node test/integ/trigger_flows.mjs && node test/integ/polling_trigger_flows.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run test:package"
   },
   "dependencies": {
