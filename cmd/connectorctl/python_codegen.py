@@ -46,6 +46,7 @@ connection_definitions = "CONNECTOR_ID, PROVIDER" if connection_provider == "PRO
 package_name = payload["packageName"]
 mock_package_name = payload["mockPackageName"]
 model_aliases = payload.get("modelAliases") or {}
+triggers = payload.get("triggers") or []
 # Resolved Mutation tiers, present only when the package's SDK floor carries them.
 repeat_on_unknown_tiers = payload.get("repeatOnUnknownTiers") or {}
 
@@ -409,6 +410,10 @@ def render_definitions():
     lines += [
         "    RetryPolicy,",
         "    StepDefaults,",
+    ]
+    if triggers:
+        lines += ["    TriggerDefinition,", "    TriggerRef,"]
+    lines += [
         "    default_connector_step_execute_retry_policy,",
         ")",
         "",
@@ -474,6 +479,151 @@ def render_definitions():
             if tier["maxSends"] > 0:
                 lines.append(f"    max_sends={tier['maxSends']},")
         lines += [")", ""]
+    for trigger in triggers:
+        lines += [
+            f"{trigger['constantName']}_TRIGGER_DEFINITION = TriggerDefinition(",
+            f"    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name={quoted(trigger['name'])}),",
+            f"    description={quoted(trigger['description'])},",
+            ")",
+            "",
+        ]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+# STRICT_CONFIGURATION_HELPER matches Go strictJSON: exact JSON shapes, no unknown keys, null keeps defaults.
+STRICT_CONFIGURATION_HELPER = """\
+def _allows_none(annotation: Any) -> bool:
+    return annotation is Any or (
+        get_origin(annotation) in (Union, UnionType) and NoneType in get_args(annotation)
+    )
+
+
+# Checks one stored JSON value against a configuration annotation, as Go strictJSON does.
+def _strict_configuration(trigger: str, value: Any, annotation: Any, path: str) -> Any:
+    def invalid(problem: str) -> ValueError:
+        return ValueError(f"{trigger} {path} {problem}")
+
+    if annotation is Any:
+        return value
+    origin = get_origin(annotation)
+    if origin in (Union, UnionType):
+        if value is None:
+            return None
+        options = [option for option in get_args(annotation) if option is not NoneType]
+        return _strict_configuration(trigger, value, options[0], path) if len(options) == 1 else value
+    if value is None:
+        raise invalid("must not be null")
+    if is_dataclass(annotation):
+        if not isinstance(value, dict):
+            raise invalid("must be an object")
+        hints = get_type_hints(annotation, localns=vars(_generated_models))
+        by_wire_name = {item.metadata.get("dex_json_name", item.name): item for item in fields(annotation)}
+        unknown = sorted(set(value) - set(by_wire_name))
+        if unknown:
+            raise invalid(f"has unknown field {unknown[0]!r}")
+        checked = {}
+        for wire_name, item in value.items():
+            field_info = by_wire_name[wire_name]
+            if item is None and not _allows_none(hints[field_info.name]):
+                # Go leaves the zero value for null; a field without a default has none.
+                if field_info.default is MISSING and field_info.default_factory is MISSING:
+                    raise ValueError(f"{trigger} {path}.{wire_name} must not be null")
+                continue
+            checked[wire_name] = _strict_configuration(trigger, item, hints[field_info.name], f"{path}.{wire_name}")
+        return checked
+    if origin in (tuple, list):
+        if not isinstance(value, list):
+            raise invalid("must be a list")
+        element = get_args(annotation)[0]
+        return [_strict_configuration(trigger, item, element, f"{path}[{index}]") for index, item in enumerate(value)]
+    if origin is dict:
+        if not isinstance(value, dict):
+            raise invalid("must be an object")
+        element = get_args(annotation)[1]
+        return {key: _strict_configuration(trigger, item, element, f"{path}.{key}") for key, item in value.items()}
+    if annotation is bool and not isinstance(value, bool):
+        raise invalid("must be a boolean")
+    if annotation is int and (isinstance(value, bool) or not isinstance(value, int)):
+        raise invalid("must be an integer")
+    if annotation is float and (isinstance(value, bool) or not isinstance(value, (int, float))):
+        raise invalid("must be a number")
+    if annotation in (str, datetime) and not isinstance(value, str):
+        raise invalid("must be a string")
+    return value
+
+
+""".splitlines()
+
+
+def render_triggers():
+    if not triggers:
+        return None
+    configuration_models = sorted(
+        {model_aliases.get(trigger["configurationType"], trigger["configurationType"]) for trigger in triggers}
+    )
+    lines = [
+        "# Copyright (c) 2026 Super Durable",
+        "# SPDX-License-Identifier: MIT",
+        "",
+        "import json",
+        "from dataclasses import MISSING, fields, is_dataclass",
+        "from datetime import datetime",
+        "from types import NoneType, UnionType",
+        "from typing import Any, Union, get_args, get_origin, get_type_hints",
+        "",
+        "from dex import CodecRegistry, Value, WireKind",
+        "from dex_connectors.sdk import (",
+        "    ConnectorConfigurationUI,",
+        "    TriggerBindingDefinition,",
+        "    must_trigger_binding_definition,",
+        ")",
+        "",
+        "from ..models import " + ", ".join(configuration_models),
+        "from . import models as _generated_models",
+        "from .definitions import "
+        + ", ".join(trigger["constantName"] + "_TRIGGER_DEFINITION" for trigger in triggers),
+        "",
+        "",
+        *STRICT_CONFIGURATION_HELPER,
+    ]
+    for trigger in triggers:
+        factory = trigger["factoryName"]
+        decoder = factory.removeprefix("define_").removesuffix("_trigger_binding")
+        decoder = f"decode_{decoder}_trigger_configuration"
+        model = model_aliases.get(trigger["configurationType"], trigger["configurationType"])
+        lines += [
+            f"def {factory}(",
+            "    *,",
+            "    connection_name: str,",
+            "    binding_name: str,",
+            "    configuration_ui: ConnectorConfigurationUI | None = None,",
+            ") -> TriggerBindingDefinition:",
+            "    return must_trigger_binding_definition(",
+            "        TriggerBindingDefinition(",
+            f"            definition={trigger['constantName']}_TRIGGER_DEFINITION,",
+            "            connection_name=connection_name,",
+            "            binding_name=binding_name,",
+            "            configuration_ui=configuration_ui,",
+            "        )",
+            "    )",
+            "",
+            f"setattr({factory}, '__module__', 'dex_connectors.{package_name}.triggers')",
+            "",
+            "",
+            f"def {decoder}(value: dict[str, Any]) -> {model}:",
+            f"    checked = _strict_configuration({quoted(trigger['name'])}, value, {model}, 'configuration')",
+            "    try:",
+            f"        decoded = CodecRegistry().resolve({model}).decode(Value(WireKind.JSON, json.dumps(checked)))",
+            "    except (TypeError, ValueError) as error:",
+            f"        raise ValueError({quoted(trigger['name'] + ' configuration did not decode')}) from error",
+            f"    if not isinstance(decoded, {model}):",
+            f"        raise ValueError({quoted(trigger['name'] + ' configuration did not decode')})",
+            "    return decoded",
+            "",
+            f"setattr({decoder}, '__module__', 'dex_connectors.{package_name}.triggers')",
+            "",
+            "",
+        ]
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -1563,6 +1713,9 @@ if payload["hasDeclaredTokenGrants"]:
 connection_source = render_connection()
 if connection_source is not None:
     result["connection.py"] = connection_source
+triggers_source = render_triggers()
+if triggers_source is not None:
+    result["triggers.py"] = triggers_source
 mock_source = render_mock()
 if mock_source is not None:
     result["mock.py"] = mock_source

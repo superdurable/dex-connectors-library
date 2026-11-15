@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
@@ -25,14 +26,15 @@ var pythonCodegenSource string
 var pythonTimestampSource string
 
 type pythonCodegenInput struct {
-	Manifest               schema.Manifest     `json:"manifest"`
-	Models                 []gomodel.Model     `json:"models"`
-	PackageName            string              `json:"packageName"`
-	MockPackageName        string              `json:"mockPackageName"`
-	ModelAliases           map[string]string   `json:"modelAliases"`
-	SharedRequiredFields   map[string][]string `json:"sharedRequiredFields"`
-	HasDeclaredTokenGrants bool                `json:"hasDeclaredTokenGrants"`
-	TimestampSource        string              `json:"timestampSource"`
+	Manifest               schema.Manifest        `json:"manifest"`
+	Models                 []gomodel.Model        `json:"models"`
+	PackageName            string                 `json:"packageName"`
+	MockPackageName        string                 `json:"mockPackageName"`
+	ModelAliases           map[string]string      `json:"modelAliases"`
+	SharedRequiredFields   map[string][]string    `json:"sharedRequiredFields"`
+	HasDeclaredTokenGrants bool                   `json:"hasDeclaredTokenGrants"`
+	TimestampSource        string                 `json:"timestampSource"`
+	Triggers               []pythonCodegenTrigger `json:"triggers"`
 	// RepeatOnUnknownTiers holds each Mutation's resolved tier, keyed by operation name, only for a package
 	// whose dex-connectors-sdk floor carries the fields; nil keeps the earlier output.
 	RepeatOnUnknownTiers map[string]pythonRepeatOnUnknownTier `json:"repeatOnUnknownTiers,omitempty"`
@@ -52,6 +54,16 @@ func pythonRepeatOnUnknownTiers(manifest schema.Manifest) map[string]pythonRepea
 		}
 	}
 	return tiers
+}
+
+// pythonCodegenTrigger carries Go-derived names, so generated code matches dex-connector.json factories.
+type pythonCodegenTrigger struct {
+	Name              string `json:"name"`
+	ConstantName      string `json:"constantName"`
+	FactoryName       string `json:"factoryName"`
+	Description       string `json:"description"`
+	EventType         string `json:"eventType"`
+	ConfigurationType string `json:"configurationType"`
 }
 
 var pythonModelAliasPattern = regexp.MustCompile(`(?m)^# connectorctl: model-alias ([A-Za-z_][A-Za-z_0-9]*)=([A-Za-z_][A-Za-z_0-9]*)$`)
@@ -81,6 +93,9 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest, goPacka
 				break
 			}
 		}
+	}
+	for _, trigger := range declaredTriggers(manifest, manifest.Spec.Languages.Python.Triggers) {
+		rootNames = append(rootNames, trigger.EventType, trigger.ConfigurationType)
 	}
 	publishedNames, err := publishedPythonModelNames(filepath.Join(packageDirectory, "_generated", "models.py"))
 	if err != nil {
@@ -124,6 +139,7 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest, goPacka
 	manualFiles := map[string]string{
 		"connection.py": filepath.Join(packageDirectory, "connection.py"),
 		"steps.py":      filepath.Join(packageDirectory, "steps.py"),
+		"triggers.py":   filepath.Join(packageDirectory, "triggers.py"),
 	}
 	if len(mockFacades) == 1 {
 		manualFiles["mock.py"] = mockFacades[0]
@@ -171,6 +187,16 @@ func renderPythonCodegen(input pythonCodegenInput) (map[string]string, error) {
 	input.TimestampSource = pythonTimestampSource
 	input.HasDeclaredTokenGrants = codegen.HasDeclaredTokenGrants(input.Manifest)
 	input.SharedRequiredFields = make(map[string][]string)
+	input.Triggers = nil
+	if input.Manifest.Spec.Languages != nil && input.Manifest.Spec.Languages.Python != nil {
+		for _, trigger := range declaredTriggers(input.Manifest, input.Manifest.Spec.Languages.Python.Triggers) {
+			input.Triggers = append(input.Triggers, pythonCodegenTrigger{
+				Name: trigger.Name, ConstantName: strings.ToUpper(lowerCamelToSnake(trigger.Name)),
+				FactoryName: pythonTriggerBindingFactoryName(trigger.Name), Description: trigger.Description,
+				EventType: trigger.EventType, ConfigurationType: trigger.ConfigurationType,
+			})
+		}
+	}
 	for _, method := range input.Manifest.Spec.Auth.AuthMethods() {
 		input.SharedRequiredFields[method.ID] = codegen.SharedRequiredCredentialFields(method)
 	}

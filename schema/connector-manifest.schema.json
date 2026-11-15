@@ -193,7 +193,7 @@
         "package": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
 		"timestampFormat": { "const": "rfc3339Nano" },
         "operations": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-        "triggers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "maxItems": 0 }
+        "triggers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
       }
     },
     "typescriptLanguage": {

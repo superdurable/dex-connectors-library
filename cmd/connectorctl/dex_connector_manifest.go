@@ -158,7 +158,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 			}
 			packageManifest.Factories = append(packageManifest.Factories, factory)
 		}
-		packageManifest.Factories = append(packageManifest.Factories, typeScriptTriggerBindingFactories(manifest, language.packageDeclaration.Triggers)...)
+		packageManifest.Factories = append(packageManifest.Factories, triggerBindingFactories(manifest, language.name, language.packageDeclaration.Triggers)...)
 		contents, err := encodeLanguageManifest(packageManifest)
 		if err != nil {
 			return nil, fmt.Errorf("encode %s connector package manifest: %w", language.name, err)
@@ -309,23 +309,40 @@ func lowerCamelToSnake(name string) string {
 	return converted.String()
 }
 
-// typeScriptTriggerBindingFactories describes the static Trigger binding factory of each declared Trigger, which
-// Dex Web reads to configure a binding, as Go's DefineXTriggerBinding. Manifest validation keeps Python Trigger
-// lists empty, so only TypeScript packages declare them.
-func typeScriptTriggerBindingFactories(manifest schema.Manifest, declared []string) []dexConnectorFactory {
+// triggerBindingFactories describes the static Trigger binding factory of each declared Trigger, which Dex Web
+// reads to configure a binding, as Go's DefineXTriggerBinding. Python names and fields are snake case.
+func triggerBindingFactories(manifest schema.Manifest, languageName string, declared []string) []dexConnectorFactory {
+	factories := make([]dexConnectorFactory, 0, len(declared))
+	for _, trigger := range declaredTriggers(manifest, declared) {
+		factory := dexConnectorFactory{
+			Name: "define" + trigger.GoName + "TriggerBinding", Kind: "trigger", TriggerName: trigger.Name,
+			Fields: dexConnectorFields{ConnectionName: "connectionName", BindingName: "bindingName", ConfigurationUI: "configurationUI"},
+		}
+		if languageName == "python" {
+			factory.Name = pythonTriggerBindingFactoryName(trigger.Name)
+			factory.Fields = dexConnectorFields{ConnectionName: "connection_name", BindingName: "binding_name", ConfigurationUI: "configuration_ui"}
+		}
+		factories = append(factories, factory)
+	}
+	return factories
+}
+
+// declaredTriggers returns the manifest Triggers a language package lists, in manifest order.
+func declaredTriggers(manifest schema.Manifest, declared []string) []schema.Trigger {
 	selected := make(map[string]bool, len(declared))
 	for _, name := range declared {
 		selected[name] = true
 	}
-	factories := make([]dexConnectorFactory, 0, len(declared))
+	triggers := make([]schema.Trigger, 0, len(declared))
 	for _, trigger := range manifest.Spec.Triggers {
-		if !selected[trigger.Name] {
-			continue
+		if selected[trigger.Name] {
+			triggers = append(triggers, trigger)
 		}
-		factories = append(factories, dexConnectorFactory{
-			Name: "define" + trigger.GoName + "TriggerBinding", Kind: "trigger", TriggerName: trigger.Name,
-			Fields: dexConnectorFields{ConnectionName: "connectionName", BindingName: "bindingName", ConfigurationUI: "configurationUI"},
-		})
 	}
-	return factories
+	return triggers
+}
+
+// pythonTriggerBindingFactoryName is the Python mirror of TypeScript define<GoName>TriggerBinding.
+func pythonTriggerBindingFactoryName(triggerName string) string {
+	return "define_" + lowerCamelToSnake(triggerName) + "_trigger_binding"
 }

@@ -545,9 +545,10 @@ under `mocks` with the import path of its generated `mockPackage`. The workflow
 publishes matching `catalog.yaml` and `catalog.json` documents.
 Each operation and Trigger also lists its supported languages for connectors
 with language packages. Language release validation checks declared operations
-and Triggers against generated `dex-connector.json` factories. Manifest
-validation rejects nonempty Python Trigger lists until Python Trigger factories
-are supported; TypeScript packages may declare Triggers.
+and Triggers against generated `dex-connector.json` factories. Python and
+TypeScript packages may declare Triggers. A Python package that declares a
+Trigger must require `dex-connectors-sdk>=0.11.0,<1`, the first SDK release
+with Trigger support; validation rejects a lower floor or a legacy exact pin.
 
 The `Release Connectors and Catalog` workflow runs automatically after a push
 to `main`. It compares every declared manifest version with reachable tags and

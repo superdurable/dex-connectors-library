@@ -782,6 +782,8 @@ PYTHON_SDK_EXACT_REQUIREMENT = re.compile(r"dex-connectors-sdk==" + PYTHON_SDK_S
 # A floor of 1.0.0 or later cannot satisfy <1; SDK v1 needs a tooling change to the accepted bound.
 PYTHON_SDK_FLOOR_REQUIREMENT = re.compile(r"dex-connectors-sdk>=(0)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*),<1")
 PYTHON_DISTRIBUTION_NAME = re.compile(r"\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)")
+# The first dex-connectors-sdk release with Trigger bindings, inbox delivery, and webhook endpoints.
+PYTHON_TRIGGER_SDK_FLOOR = (0, 11, 0)
 
 
 @dataclass(frozen=True)
@@ -836,6 +838,20 @@ def validate_python_sdk_lock_at_floor(path: Path, requirement: PythonSDKRequirem
                          f"{PYTHON_SDK_DISTRIBUTION}=={requirement.version}")
 
 
+def validate_python_trigger_sdk_floor(path: Path, requirement: PythonSDKRequirement) -> None:
+    """Reject a Trigger-declaring Python package whose SDK requirement allows a release without Triggers."""
+    connector_manifest_path = language_connector_manifest_path(path, "python")
+    if not connector_manifest_path.is_file():
+        return
+    document = json.loads(connector_manifest_path.read_text(encoding="utf-8"))
+    factories = document.get("factories") if isinstance(document, dict) else None
+    declares_trigger = isinstance(factories, list) and any(
+        isinstance(factory, dict) and factory.get("kind") == "trigger" for factory in factories
+    )
+    if declares_trigger and tuple(int(part) for part in requirement.version.split(".")) < PYTHON_TRIGGER_SDK_FLOOR:
+        raise ValueError(f"Python Trigger packages require {PYTHON_SDK_DISTRIBUTION}>=0.11.0")
+
+
 def validate_language_package(
     component_path: str, language: str, lookup: DependencyReleaseLookup, require_go_release: bool = True,
     allow_pending_go_release: bool = False,
@@ -853,6 +869,7 @@ def validate_language_package(
         dependencies = python_package_dependencies(manifest)
         sdk_name = PYTHON_SDK_DISTRIBUTION
         sdk_requirement = parse_python_sdk_requirement(component_path, dependencies)
+        validate_python_trigger_sdk_floor(path, sdk_requirement)
         if sdk_requirement.is_floor:
             validate_python_sdk_lock_at_floor(path, sdk_requirement)
         sdk_versions = [sdk_requirement.version]
