@@ -52,7 +52,7 @@ async def test_message_delivery_real_dex(tmp_path: Path) -> None:
             },
         )
 
-    reference = ConnectionRef("twilio-messaging", CONNECTION_NAME)
+    reference = ConnectionRef("twilio", CONNECTION_NAME)
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as provider_http_client:
         client = Client(
             Config(
