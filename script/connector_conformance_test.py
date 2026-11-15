@@ -104,6 +104,29 @@ class MutationSelfTestSelectionTest(unittest.TestCase):
         self.assertEqual(["alpha", "beta", "gamma"], [connector.name for connector in connectors])
 
 
+class MutationPortScopeTest(unittest.TestCase):
+    """Mutate scenarios that every port replays, and skip a port only for an operation it does not implement."""
+
+    implemented = {"python": {"getItem"}, "typescript": {"getItem", "listItems"}}
+
+    def test_scenarios_every_port_replays_come_first_in_fixture_order(self) -> None:
+        scenarios = [{"name": "search", "operation": "searchItems"}, {"name": "list", "operation": "listItems"},
+                     {"name": "get-1", "operation": "getItem"}, {"name": "get-2", "operation": "getItem"}]
+        ordered = connector_conformance.scenarios_every_port_replays_first(scenarios, self.implemented)
+        self.assertEqual(["get-1", "get-2", "search", "list"], [item["name"] for item in ordered])
+
+    def test_go_only_connector_keeps_fixture_order(self) -> None:
+        scenarios = [{"name": "search", "operation": "searchItems"}, {"name": "get", "operation": "getItem"}]
+        self.assertEqual(scenarios, connector_conformance.scenarios_every_port_replays_first(scenarios, {}))
+
+    def test_ports_replay_only_implemented_operations(self) -> None:
+        self.assertTrue(connector_conformance.does_language_replay("go", "searchItems", self.implemented))
+        self.assertTrue(connector_conformance.does_language_replay("python", "getItem", self.implemented))
+        self.assertFalse(connector_conformance.does_language_replay("python", "listItems", self.implemented))
+        self.assertTrue(connector_conformance.does_language_replay("typescript", "listItems", self.implemented))
+        self.assertFalse(connector_conformance.does_language_replay("typescript", "searchItems", self.implemented))
+
+
 class OperationDiscoveryComparisonTest(unittest.TestCase):
     """Compare base and head connectorctl conformance-operations output over fixture connectors."""
 
