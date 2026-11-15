@@ -73,17 +73,24 @@ is not a published release.
 
 This example is part of the connector module, so Dex needs release metadata
 built from this source, passed as an override; without it the connection
-shows **Unsupported**. The connector has no Studio bundle. From the repository
-root:
+shows **Unsupported**. The connector has a Studio bundle for the
+`employeeChanged` Trigger's change type unit, so build it with the release
+metadata. From the repository root:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
+(npm ci --prefix sdk/react && npm run build --prefix sdk/react)
+(cd connectors/bamboohr/ui && npm ci && npm run build)
 mkdir -p /tmp/bamboohr-release
+go run ./cmd/connectorctl ui-artifact --manifest connectors/bamboohr/connector.yaml \
+  --ui-root connectors/bamboohr/ui/dist \
+  --output /tmp/bamboohr-release/connector-ui.tgz --digest-output /tmp/bamboohr-release/connector-ui.tgz.sha256
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/bamboohr/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/bamboohr/go \
-  --version v0.23.0 --tag connectors/bamboohr/go/v0.23.0 \
+  --version v0.24.0 --tag connectors/bamboohr/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
+  --ui-artifact /tmp/bamboohr-release/connector-ui.tgz --ui-digest /tmp/bamboohr-release/connector-ui.tgz.sha256 \
   --output /tmp/bamboohr-release/connector-release.json \
   --digest-output /tmp/bamboohr-release/connector-release.json.sha256
 dexcli dev \
