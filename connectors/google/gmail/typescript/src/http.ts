@@ -20,6 +20,8 @@ export interface GmailClientSettings {
   /** Maximum complete response bytes. */ readonly maxResponseBytes: number;
   /** Maximum encoded MIME message bytes. */ readonly maxMessageBytes: number;
   /** Address policy for the configured endpoint. */ readonly addressPolicy: AddressPolicy;
+  /** Delay between Trigger polls in milliseconds. */ readonly pollIntervalMs: number;
+  /** Recent inbox messages inspected per Trigger poll. */ readonly pollPageSize: number;
 }
 
 /** Apply and validate the Gmail manifest's transport defaults. */
@@ -30,9 +32,11 @@ export function gmailClientSettings(config: Config = {}): GmailClientSettings {
   if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1 || !Number.isSafeInteger(maxMessageBytes) || maxMessageBytes < 1) {
     throw new TypeError('Gmail response and message limits must be positive integers');
   }
-  if (config.pollIntervalMs !== undefined && (!Number.isSafeInteger(config.pollIntervalMs) || config.pollIntervalMs < 1000)) throw new TypeError('Gmail poll interval is invalid');
-  if (config.pollPageSize !== undefined && (!Number.isSafeInteger(config.pollPageSize) || config.pollPageSize < 1 || config.pollPageSize > 100)) throw new TypeError('Gmail poll page size is invalid');
-  return Object.freeze({ endpoint, maxResponseBytes, maxMessageBytes, addressPolicy: endpoint.startsWith('http://') ? 'privateNetworkHTTP' : 'publicHTTPS' });
+  const pollIntervalMs = config.pollIntervalMs ?? 10_000;
+  const pollPageSize = config.pollPageSize ?? 25;
+  if (!Number.isSafeInteger(pollIntervalMs) || pollIntervalMs < 1000) throw new TypeError('Gmail poll interval is invalid');
+  if (!Number.isSafeInteger(pollPageSize) || pollPageSize < 1 || pollPageSize > 100) throw new TypeError('Gmail poll page size is invalid');
+  return Object.freeze({ endpoint, maxResponseBytes, maxMessageBytes, addressPolicy: endpoint.startsWith('http://') ? 'privateNetworkHTTP' : 'publicHTTPS', pollIntervalMs, pollPageSize });
 }
 
 /** Failure after credential lookup or credential validation. */

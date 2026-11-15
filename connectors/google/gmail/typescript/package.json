@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-google-gmail",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "license": "MIT",
   "description": "Dex Gmail connector for TypeScript",
   "repository": {
@@ -49,14 +49,15 @@
     "typecheck": "npm run build && tsc --noEmit",
     "lint": "eslint src test test-d examples",
     "test": "npm run build && vitest run test/*.test.ts",
-    "test:integration": "npm run build && vitest run examples/gmail-flow/integration.test.ts",
+    "test:integration": "npm run build && vitest run examples/gmail-flow/integration.test.ts examples/thread-reply/integration.test.ts",
     "example:worker": "tsx examples/gmail-flow/main.ts",
     "example:start": "tsx examples/gmail-flow/start.ts",
     "test-d": "tsc -p test-d/tsconfig.json",
-    "check": "npm run typecheck && npm run test-d && npm run lint && npm test"
+    "check": "npm run typecheck && npm run test-d && npm run lint && npm test",
+    "example:thread-reply": "tsx examples/thread-reply/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.9.0",
+    "@superdurable/connectors-sdk": "0.11.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
