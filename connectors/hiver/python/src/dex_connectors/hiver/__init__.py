@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Dex-native Hiver shared inbox connector."""
+"""Dex-native Hiver shared inbox connector: conversation operations and the conversationReceived Trigger."""
 
 from ._generated.config import Config, Credentials
 from .client import Client
@@ -12,6 +12,8 @@ from .models import (
     ConversationAssignee,
     ConversationDetails,
     ConversationMessage,
+    ConversationReceivedEvent,
+    ConversationReceivedTriggerConfiguration,
     CreateSharedDraftInput,
     GetConversationInput,
     Inbox,
@@ -41,8 +43,25 @@ from .steps import (
     new_list_inboxes_step,
     new_update_conversation_step,
 )
+from .triggers import (
+    CONVERSATION_RECEIVED_TRIGGER_DEFINITION,
+    MAX_TRACKED_CONVERSATIONS,
+    UI_INBOX_PICKER_PORT_INBOX_ID,
+    UI_UNIT_INBOX_PICKER,
+    ConversationReceivedTriggerRoute,
+    ProjectConversationReceivedTriggerRoute,
+    decode_conversation_received_event_payload,
+    decode_conversation_received_trigger_configuration,
+    define_conversation_received_trigger_binding,
+    new_conversation_received_trigger,
+    new_conversation_received_trigger_runner,
+    new_project_conversation_received_trigger_runner,
+    validate_conversation_received_trigger_configuration,
+)
 
 __all__ = [
+    "CONVERSATION_RECEIVED_TRIGGER_DEFINITION",
+    "MAX_TRACKED_CONVERSATIONS",
     "AddNoteInput",
     "AddNoteOperation",
     "AddNoteOutput",
@@ -53,6 +72,9 @@ __all__ = [
     "ConversationAssignee",
     "ConversationDetails",
     "ConversationMessage",
+    "ConversationReceivedEvent",
+    "ConversationReceivedTriggerConfiguration",
+    "ConversationReceivedTriggerRoute",
     "CreateSharedDraftInput",
     "CreateSharedDraftOperation",
     "Credentials",
@@ -66,18 +88,28 @@ __all__ = [
     "ListInboxesOperation",
     "ListInboxesOutput",
     "Note",
+    "ProjectConversationReceivedTriggerRoute",
     "SharedDraft",
     "Tag",
+    "UI_INBOX_PICKER_PORT_INBOX_ID",
+    "UI_UNIT_INBOX_PICKER",
     "UpdateConversationInput",
     "UpdateConversationOperation",
     "UpdateConversationOutput",
+    "decode_conversation_received_event_payload",
+    "decode_conversation_received_trigger_configuration",
+    "define_conversation_received_trigger_binding",
     "new_add_note_step",
     "new_connection",
+    "new_conversation_received_trigger",
+    "new_conversation_received_trigger_runner",
     "new_connection_with_operations",
     "new_create_shared_draft_step",
     "new_get_conversation_step",
     "new_list_conversations_step",
     "new_list_inboxes_step",
     "new_project_connection",
+    "new_project_conversation_received_trigger_runner",
     "new_update_conversation_step",
+    "validate_conversation_received_trigger_configuration",
 ]

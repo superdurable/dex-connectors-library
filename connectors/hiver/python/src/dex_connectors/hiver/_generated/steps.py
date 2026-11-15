@@ -245,6 +245,7 @@ def new_add_note_step(
     defect: dex.StepTarget[MutationResult[AddNoteOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[AddNoteOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, AddNoteInput, AddNoteOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Hiver Step connection name must match its connection reference")
@@ -278,6 +279,7 @@ def new_add_note_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -298,6 +300,7 @@ def new_create_shared_draft_step(
     defect: dex.StepTarget[MutationResult[SharedDraft]] | None = None,
     result_attribute: dex.Attribute[MutationResult[SharedDraft]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateSharedDraftInput, SharedDraft]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Hiver Step connection name must match its connection reference")
@@ -331,6 +334,7 @@ def new_create_shared_draft_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
