@@ -46,12 +46,15 @@ export interface Config {
   orgId?: string;
   /** Maximum complete Zoho Desk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or comments are unusually large. An oversized read selects invalidResponse, and an oversized response to createTicket or addComment selects uncertain. */
   maxResponseBytes?: number;
+  /** Non-secret delay between two ticketChanged Trigger polls of Zoho Desk ticket search, as a Go duration of at least 15s such as 30s or 5m; leave it blank to keep the displayed interval. Every poll spends Zoho Desk API credits from the organization's daily allowance, which depends on the Zoho Desk edition and user licences (Setup > Developer Space > API shows the usage), so lengthen it for a small allowance or many bindings, and shorten it only when Flows must start sooner. The value is read when the application starts. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "orgId": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

@@ -68,5 +68,63 @@ export function describeOrganization(organization: ZohoDeskOrganization): string
   return `${organization.companyName}${portal}, orgId ${organization.orgId}${sandbox}`;
 }
 
+/** departmentsCapability is the backend capability every department-list command declares. */
+export const departmentsCapability = "zohodesk.departments-list";
+
+/** departmentPageSize is the limit every department-list command sends; a full page has another after it. */
+export const departmentPageSize = 200;
+
+/** departmentCommandIDs maps each data center's authorization method to its own department-list command. */
+export const departmentCommandIDs: Readonly<Record<string, string>> = {
+  "zoho-us-oauth": "listDepartmentsUS",
+  "zoho-eu-oauth": "listDepartmentsEU",
+  "zoho-in-oauth": "listDepartmentsIN",
+  "zoho-au-oauth": "listDepartmentsAU",
+  "zoho-jp-oauth": "listDepartmentsJP",
+  "zoho-ca-oauth": "listDepartmentsCA",
+  "zoho-sa-oauth": "listDepartmentsSA",
+  "zoho-sg-oauth": "listDepartmentsSG",
+  "zoho-ae-oauth": "listDepartmentsAE",
+};
+
+/** ZohoDeskDepartment is one enabled department of the connection's organization. */
+export interface ZohoDeskDepartment {
+  departmentId: string;
+  name: string;
+}
+
+/** ZohoDeskDepartmentPage is one GET /api/v1/departments page and the from of the next one, or "". */
+export interface ZohoDeskDepartmentPage {
+  departments: ZohoDeskDepartment[];
+  nextFrom: string;
+}
+
+/** isDepartmentID accepts a numeric Zoho Desk department ID, the same rule the Go connector enforces. */
+export function isDepartmentID(value: string): boolean { return organizationIDPattern.test(value.trim()); }
+
+/**
+ * departmentCommandForConnection is the department command of the connection's data center, or undefined
+ * when the host reports no supported authorization method or the connection has no saved numeric orgId.
+ */
+export function departmentCommandForConnection(connection: ConnectorStudioConnection): {commandId: string; orgId: string} | undefined {
+  const [authMethodId] = connection.authMethodIds;
+  const commandId = authMethodId === undefined ? undefined : departmentCommandIDs[authMethodId];
+  const orgId = connection.configuration.orgId;
+  if (commandId === undefined || typeof orgId !== "string" || !isOrganizationID(orgId)) return undefined;
+  return {commandId, orgId: orgId.trim()};
+}
+
+/** parseDepartmentPage keeps the departments with numeric IDs of one page that started at from. */
+export function parseDepartmentPage(value: Record<string, unknown>, from: number): ZohoDeskDepartmentPage {
+  if (!Array.isArray(value.data)) throw new Error("Zoho Desk returned no department list. Enter the department ID below.");
+  const departments = value.data.flatMap((item): ZohoDeskDepartment[] => {
+    if (!record(item)) return [];
+    const departmentId = typeof item.id === "number" ? String(item.id) : text(item.id) ? item.id : "";
+    if (!isDepartmentID(departmentId)) return [];
+    return [{departmentId, name: text(item.name) ? item.name : departmentId}];
+  });
+  return {departments, nextFrom: value.data.length >= departmentPageSize ? String(from + departmentPageSize) : ""};
+}
+
 function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function text(value: unknown): value is string { return typeof value === "string" && value.length > 0; }

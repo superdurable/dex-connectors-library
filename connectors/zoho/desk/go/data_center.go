@@ -40,6 +40,8 @@ type DataCenter struct {
 	DeskURL string
 	// StudioOrganizationsCommandID is the setup command that lists organizations on DeskURL.
 	StudioOrganizationsCommandID string
+	// StudioDepartmentsCommandID is the setup command that lists the organization's departments on DeskURL.
+	StudioDepartmentsCommandID string
 }
 
 // DataCenters returns every data center the connector supports, in the manifest's method order.
@@ -48,15 +50,15 @@ type DataCenter struct {
 // service outside that list, and Zoho Desk documents no United Kingdom host, so neither is offered.
 func DataCenters() []DataCenter {
 	return []DataCenter{
-		{AuthMethodID: USDataCenterAuthMethodID, Name: "United States", AccountsURL: "https://accounts.zoho.com", DeskURL: "https://desk.zoho.com", StudioOrganizationsCommandID: "listOrganizationsUS"},
-		{AuthMethodID: EUDataCenterAuthMethodID, Name: "European Union", AccountsURL: "https://accounts.zoho.eu", DeskURL: "https://desk.zoho.eu", StudioOrganizationsCommandID: "listOrganizationsEU"},
-		{AuthMethodID: INDataCenterAuthMethodID, Name: "India", AccountsURL: "https://accounts.zoho.in", DeskURL: "https://desk.zoho.in", StudioOrganizationsCommandID: "listOrganizationsIN"},
-		{AuthMethodID: AUDataCenterAuthMethodID, Name: "Australia", AccountsURL: "https://accounts.zoho.com.au", DeskURL: "https://desk.zoho.com.au", StudioOrganizationsCommandID: "listOrganizationsAU"},
-		{AuthMethodID: JPDataCenterAuthMethodID, Name: "Japan", AccountsURL: "https://accounts.zoho.jp", DeskURL: "https://desk.zoho.jp", StudioOrganizationsCommandID: "listOrganizationsJP"},
-		{AuthMethodID: CADataCenterAuthMethodID, Name: "Canada", AccountsURL: "https://accounts.zohocloud.ca", DeskURL: "https://desk.zohocloud.ca", StudioOrganizationsCommandID: "listOrganizationsCA"},
-		{AuthMethodID: SADataCenterAuthMethodID, Name: "Saudi Arabia", AccountsURL: "https://accounts.zoho.sa", DeskURL: "https://desk.zoho.sa", StudioOrganizationsCommandID: "listOrganizationsSA"},
-		{AuthMethodID: SGDataCenterAuthMethodID, Name: "Singapore", AccountsURL: "https://accounts.zoho.sg", DeskURL: "https://desk.zoho.sg", StudioOrganizationsCommandID: "listOrganizationsSG"},
-		{AuthMethodID: AEDataCenterAuthMethodID, Name: "United Arab Emirates", AccountsURL: "https://accounts.zoho.ae", DeskURL: "https://desk.zoho.ae", StudioOrganizationsCommandID: "listOrganizationsAE"},
+		{AuthMethodID: USDataCenterAuthMethodID, Name: "United States", AccountsURL: "https://accounts.zoho.com", DeskURL: "https://desk.zoho.com", StudioOrganizationsCommandID: "listOrganizationsUS", StudioDepartmentsCommandID: "listDepartmentsUS"},
+		{AuthMethodID: EUDataCenterAuthMethodID, Name: "European Union", AccountsURL: "https://accounts.zoho.eu", DeskURL: "https://desk.zoho.eu", StudioOrganizationsCommandID: "listOrganizationsEU", StudioDepartmentsCommandID: "listDepartmentsEU"},
+		{AuthMethodID: INDataCenterAuthMethodID, Name: "India", AccountsURL: "https://accounts.zoho.in", DeskURL: "https://desk.zoho.in", StudioOrganizationsCommandID: "listOrganizationsIN", StudioDepartmentsCommandID: "listDepartmentsIN"},
+		{AuthMethodID: AUDataCenterAuthMethodID, Name: "Australia", AccountsURL: "https://accounts.zoho.com.au", DeskURL: "https://desk.zoho.com.au", StudioOrganizationsCommandID: "listOrganizationsAU", StudioDepartmentsCommandID: "listDepartmentsAU"},
+		{AuthMethodID: JPDataCenterAuthMethodID, Name: "Japan", AccountsURL: "https://accounts.zoho.jp", DeskURL: "https://desk.zoho.jp", StudioOrganizationsCommandID: "listOrganizationsJP", StudioDepartmentsCommandID: "listDepartmentsJP"},
+		{AuthMethodID: CADataCenterAuthMethodID, Name: "Canada", AccountsURL: "https://accounts.zohocloud.ca", DeskURL: "https://desk.zohocloud.ca", StudioOrganizationsCommandID: "listOrganizationsCA", StudioDepartmentsCommandID: "listDepartmentsCA"},
+		{AuthMethodID: SADataCenterAuthMethodID, Name: "Saudi Arabia", AccountsURL: "https://accounts.zoho.sa", DeskURL: "https://desk.zoho.sa", StudioOrganizationsCommandID: "listOrganizationsSA", StudioDepartmentsCommandID: "listDepartmentsSA"},
+		{AuthMethodID: SGDataCenterAuthMethodID, Name: "Singapore", AccountsURL: "https://accounts.zoho.sg", DeskURL: "https://desk.zoho.sg", StudioOrganizationsCommandID: "listOrganizationsSG", StudioDepartmentsCommandID: "listDepartmentsSG"},
+		{AuthMethodID: AEDataCenterAuthMethodID, Name: "United Arab Emirates", AccountsURL: "https://accounts.zoho.ae", DeskURL: "https://desk.zoho.ae", StudioOrganizationsCommandID: "listOrganizationsAE", StudioDepartmentsCommandID: "listDepartmentsAE"},
 	}
 }
 
