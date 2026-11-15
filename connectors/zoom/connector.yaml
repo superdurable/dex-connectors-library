@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: zoom
   displayName: Zoom
-  description: List, read, schedule, and reschedule the authorized user's Zoom meetings, and list who joined a past meeting.
+  description: List, read, schedule, and reschedule the authorized user's Zoom meetings, list who joined a past meeting, and receive meetings scheduled, changed, or removed.
   company: Zoom
   categories: [communication, productivity]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: zoom
   languages:
@@ -38,6 +38,12 @@ spec:
         description: Maximum complete Zoom API response in bytes; enter a positive integer only to change the safety limit. A larger meeting or listing selects invalidResponse.
         required: false
         default: 2097152
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: Delay between meetingChanged Trigger polls of the authorized user's Zoom meeting list, as a Go duration of at least 30s such as 1m or 10m; change it only to see meeting changes sooner or to spend fewer requests. Each poll reads every page of up to 300 meetings from List meetings, a Medium API that Zoom limits to 2,000 requests per day on Free accounts, so keep at least 1m there; blank uses the displayed default.
+        required: false
+        default: 2m
   auth:
     refreshable: true
     type: oauth2
@@ -89,6 +95,12 @@ spec:
         storedMissingExpiry: refresh
         scopeSeparators: whitespaceAndComma
         terminalErrorCodes: [invalid_request, invalid_client, invalid_grant, unauthorized_client]
+  triggers:
+    - name: meetingChanged
+      goName: MeetingChanged
+      eventType: MeetingChangedEvent
+      configurationType: MeetingChangedTriggerConfiguration
+      description: Receive each meeting the authorized user schedules, changes, or that leaves Zoom's scheduled list, found by comparing each poll of List meetings with the last; the first run records a baseline and delivers no existing meetings.
   operations:
     - name: listMeetings
       goName: ListMeetings
@@ -215,6 +227,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The patch sets absolute values, so a repeat after an unknown outcome is harmless.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedDefaultAnswer
           branch: updated

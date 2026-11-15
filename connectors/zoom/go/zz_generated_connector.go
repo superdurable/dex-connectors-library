@@ -19,8 +19,9 @@ import (
 const ConnectorID = "zoom"
 
 type Config struct {
-	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 }
 
 type Credentials struct {
@@ -206,6 +207,7 @@ func DefaultConfig() Config {
 	return Config{
 		Endpoint:         "https://api.zoom.us/v2",
 		MaxResponseBytes: 2097152,
+		PollInterval:     time.Duration(120000000000),
 	}
 }
 
@@ -216,6 +218,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
 	}
 	return config
 }
@@ -229,6 +234,9 @@ func (config Config) Validate() error {
 	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
 	}
 	return nil
 }
@@ -258,6 +266,50 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+var MeetingChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "meetingChanged"},
+	Description: "Receive each meeting the authorized user schedules, changes, or that leaves Zoom's scheduled list, found by comparing each poll of List meetings with the last; the first run records a baseline and delivers no existing meetings.",
+}
+
+type MeetingChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=zoom"`
+	triggerName                             struct{} `connector:"triggerName=meetingChanged"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
+}
+
+func DefineMeetingChangedTriggerBinding(config MeetingChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: MeetingChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+	})
+}
+
+type MeetingChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                 `connector:"connectorId=zoom"`
+	triggerName                      struct{}                                 `connector:"triggerName=meetingChanged"`
+	Connection                       Connection                               `connector:"connection"`
+	ConnectionName                   string                                   `connector:"connectionName"`
+	BindingName                      string                                   `connector:"bindingName"`
+	Configuration                    MeetingChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[MeetingChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewMeetingChangedTrigger(config MeetingChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zoom connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: MeetingChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MeetingChangedEvent]{
+		Definition: MeetingChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.meetingChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const ListMeetingsBranchListed sdkgo.BranchID = "listed"
@@ -426,6 +478,8 @@ var CreateMeetingDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateMeetingResult = sdkgo.MutationResult[Meeting]
@@ -445,6 +499,8 @@ type CreateMeetingStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateMeetingResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Meeting]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateMeetingStep[IN any](config CreateMeetingStepConfig[IN]) sdkgo.MutationStep[IN, CreateMeetingInput, Meeting] {
@@ -476,6 +532,7 @@ func NewCreateMeetingStep[IN any](config CreateMeetingStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -497,6 +554,7 @@ var UpdateMeetingDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateMeetingResult = sdkgo.MutationResult[UpdatedMeeting]
