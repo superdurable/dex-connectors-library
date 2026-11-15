@@ -4,7 +4,7 @@
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isIP } from 'node:net';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { CreateCustomerOperation, CreateInvoiceOperation, FindCustomerOperation, GetInvoiceOperation, ListInvoicesOperation, RecordPaymentOperation, SendInvoiceOperation } from './operations.js';
@@ -13,6 +13,8 @@ const productionEndpoint = 'https://quickbooks.api.intuit.com';
 const sandboxEndpoint = 'https://sandbox-quickbooks.api.intuit.com';
 const realmPattern = /^[1-9][0-9]{0,24}$/;
 const transactionPattern = /^[A-Za-z0-9-]{1,64}$/;
+// Keeps an invoiceChanged poll loop well inside QuickBooks's 500 requests per minute per company.
+const minimumPollIntervalMs = 5_000;
 
 /** Injectable sender and clock for deterministic provider verification. */
 export interface QuickBooksClientOptions {
@@ -22,6 +24,12 @@ export interface QuickBooksClientOptions {
   now?: () => Date;
   /** Loopback HTTP endpoint for the connector's runnable example. */
   localProviderURL?: string;
+  /**
+   * Receives the invoiceChanged runner's records: seeds, reseeds, failed polls, rate-limit pauses, and the durable
+   * inboxes newProjectInvoiceTriggerRunner opens. Records carry binding identity and never invoice payloads or
+   * credentials. Omitted uses defaultTriggerLogger. Operation Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
 
 /** One classified provider exchange. */
@@ -54,7 +62,12 @@ interface AttemptBudget { deadline: number; minimumWriteTime: number; }
 /** QuickBooks client with manifest-driven OAuth renewal and company identity validation. */
 export class QuickBooksClient {
   private readonly endpoint: string;
-  private readonly environment: 'production' | 'sandbox';
+  /** The connection's QuickBooks environment, which selects the API host. */
+  readonly environment: 'production' | 'sandbox';
+  /** Delay between invoiceChanged polls in milliseconds, at least 5 seconds; 30 seconds by default. */
+  readonly pollIntervalMs: number;
+  /** Receives the invoiceChanged runner's and durable inboxes' records. */
+  readonly triggerLogger: TriggerLogger;
   private readonly configuredRealmID: string;
   private readonly maxResponseBytes: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -70,6 +83,10 @@ export class QuickBooksClient {
     if (this.configuredRealmID && !realmPattern.test(this.configuredRealmID)) throw new TypeError('QuickBooks realmId must be a company ID');
     this.maxResponseBytes = config.maxResponseBytes || 4_194_304;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('QuickBooks response limit must be positive');
+    // A zero interval keeps the default, as Go's withConfigDefaults does.
+    this.pollIntervalMs = config.pollIntervalMs || 30_000;
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('QuickBooks pollInterval must be at least 5s');
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
     this.endpoint = options.localProviderURL ?? (this.environment === 'sandbox' ? sandboxEndpoint : productionEndpoint);
     if (options.localProviderURL) {
       const target = new URL(options.localProviderURL);
