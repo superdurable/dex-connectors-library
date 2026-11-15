@@ -5,9 +5,11 @@ package main
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -101,20 +103,33 @@ func TestFirstReviewedOperationsCarryTheirRetryClaims(t *testing.T) {
 	for _, testCase := range []struct {
 		directory, operation string
 		agent                map[string]any
+		// tierClaims joins agent once a package's SDK floor carries repeat tiers.
+		tierClaims map[string]any
 	}{
 		{"connectors/stripe", "createRefund", map[string]any{"exposed": true, "approval": "recommended", "retry": "safe",
-			"branches": map[string]any{"providerRejected": "rejected", "uncertain": "unknown", "invalidResponse": "unknown", "defect": "rejected"}}},
+			"branches": map[string]any{"providerRejected": "rejected", "uncertain": "unknown", "invalidResponse": "unknown", "defect": "rejected"}},
+			map[string]any{"repeatOnUnknown": "safe"}},
 		{"connectors/slack", "postThreadReply", map[string]any{"exposed": true, "approval": "recommended",
-			"branches": map[string]any{"providerRejected": "rejected", "uncertain": "unknown", "defect": "rejected"}}},
+			"branches": map[string]any{"providerRejected": "rejected", "uncertain": "unknown", "defect": "rejected"}},
+			map[string]any{"repeatOnUnknown": "limited", "maxSends": float64(3)}},
 	} {
 		for path, contents := range publishedLanguageManifests(t, testCase.directory) {
 			var manifest struct {
 				Factories []map[string]any `json:"factories"`
 			}
 			require.NoError(t, json.Unmarshal(contents, &manifest), path)
+			hasSendCaps, err := hasTypeScriptRepeatOnUnknownSendCaps(filepath.Join("..", "..", testCase.directory, "connector.yaml"))
+			if strings.Contains(filepath.ToSlash(path), "/python/") {
+				hasSendCaps, err = hasPythonRepeatOnUnknownSendCaps(filepath.Join("..", "..", testCase.directory, "connector.yaml"))
+			}
+			require.NoError(t, err, path)
+			expectedAgent := maps.Clone(testCase.agent)
+			if hasSendCaps {
+				maps.Copy(expectedAgent, testCase.tierClaims)
+			}
 			for _, factory := range manifest.Factories {
 				if factory["operationId"] == testCase.operation {
-					require.Equal(t, testCase.agent, factory["agent"], path)
+					require.Equal(t, expectedAgent, factory["agent"], path)
 				}
 			}
 		}
