@@ -243,16 +243,19 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
             _keys(intermediate, {"failureKind", "retryAfterMs", "exchangeCount"}, {"heartbeat"}, scenario["name"])
         if "priorHeartbeat" in scenario:
             prior = _keys(scenario["priorHeartbeat"], {"attempt"},
-                          {"value", "callId", "state", "providerId"}, scenario["name"])
+                          {"value", "callId", "state", "providerId", "sendCount"}, scenario["name"])
             if type(prior["attempt"]) is not int or prior["attempt"] < 1:
                 raise ValueError(f"{scenario['name']}: invalid prior heartbeat attempt")
             if "value" in prior:
                 if set(prior) != {"attempt", "value"} or prior["value"] is None:
                     raise ValueError(f"{scenario['name']}: invalid prior heartbeat value")
             else:
-                _keys(prior, {"callId", "attempt", "state"}, {"providerId"}, scenario["name"])
+                _keys(prior, {"callId", "attempt", "state"}, {"providerId", "sendCount"}, scenario["name"])
                 if prior["callId"] != scenario["callId"]:
                     raise ValueError(f"{scenario['name']}: prior heartbeat Call ID differs")
+                # Like the marker decoders; the Fence rejects a count its attempt could not produce when deciding.
+                if "sendCount" in prior and (type(prior["sendCount"]) is not int or prior["sendCount"] < 0):
+                    raise ValueError(f"{scenario['name']}: invalid prior heartbeat send count")
                 Marker.from_wire(prior)
         if "fixedClock" in scenario:
             if (not isinstance(scenario["fixedClock"], str)
@@ -549,6 +552,8 @@ class PythonOperationAdapter:
                 input_arguments[field.name] = value
             input_value = input_type(**input_arguments)
             call_arguments = {"context": context} if self.with_context else {}
+            if hasattr(operation, "idempotency_key"):
+                call_arguments.update(production_send_cap_arguments(operation.definition()))
             call = sdk.Call(sdk.CallID(scenario["callId"]), self.connection,
                             sdk.OperationRef(self.connector_id, operation_name),
                             sdk.IdempotencyKey(""), **call_arguments)
@@ -560,6 +565,19 @@ class PythonOperationAdapter:
     def _snake_case(value: str) -> str:
         groups = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", value)
         return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", groups).lower()
+
+
+def production_send_cap_arguments(definition: object) -> dict[str, int]:
+    """Return the Call send cap a MutationStep without an override derives, or none for an SDK before 0.10.0."""
+    from dex_connectors.sdk import steps as sdk_steps
+
+    if "max_sends" not in getattr(sdk.Call, "__dataclass_fields__", {}):
+        return {}
+    derive_send_cap = getattr(sdk_steps, "_mutation_send_cap", None)
+    if derive_send_cap is None:
+        raise RuntimeError("SDK Call carries max_sends but MutationStep's send cap derivation is missing")
+    max_sends, _ = derive_send_cap(definition, None)
+    return {"max_sends": max_sends}
 
 
 async def invoke_production_mutation(operation: object, call: sdk.Call, input_value: object,

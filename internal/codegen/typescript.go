@@ -18,8 +18,29 @@ import (
 	"github.com/superdurable/dex-connectors-library/schema"
 )
 
+// TypeScriptGenerateOption selects generated TypeScript surfaces that need a newer
+// @superdurable/connectors-sdk release than the one a connector package may require.
+type TypeScriptGenerateOption interface {
+	applyTypeScriptGenerate(*typeScriptGenerateConfig)
+}
+
+type typeScriptGenerateConfig struct{ hasRepeatOnUnknownSendCaps bool }
+
+type typeScriptRepeatOnUnknownSendCapsOption struct{}
+
+func (typeScriptRepeatOnUnknownSendCapsOption) applyTypeScriptGenerate(config *typeScriptGenerateConfig) {
+	config.hasRepeatOnUnknownSendCaps = true
+}
+
+// WithTypeScriptRepeatOnUnknownSendCaps emits each Mutation definition's repeatOnUnknown
+// and maxSends. Pass it only for a package that requires
+// TypeScriptRepeatOnUnknownMinimumSDKVersion or later.
+func WithTypeScriptRepeatOnUnknownSendCaps() TypeScriptGenerateOption {
+	return typeScriptRepeatOnUnknownSendCapsOption{}
+}
+
 // GenerateTypeScript writes the manifest-backed TypeScript contracts for supported operations.
-func GenerateTypeScript(manifest schema.Manifest, goDirectory string, publishedModelNames ...string) (map[string][]byte, error) {
+func GenerateTypeScript(manifest schema.Manifest, goDirectory string, publishedModelNames []string, options ...TypeScriptGenerateOption) (map[string][]byte, error) {
 	if manifest.Spec.Languages == nil || manifest.Spec.Languages.TypeScript == nil {
 		return nil, nil
 	}
@@ -27,13 +48,17 @@ func GenerateTypeScript(manifest schema.Manifest, goDirectory string, publishedM
 	if err != nil {
 		return nil, err
 	}
-	return GenerateTypeScriptFromPackage(manifest, connectorPackage, publishedModelNames...)
+	return GenerateTypeScriptFromPackage(manifest, connectorPackage, publishedModelNames, options...)
 }
 
 // GenerateTypeScriptFromPackage is GenerateTypeScript for a connector Go package that is already loaded.
-func GenerateTypeScriptFromPackage(manifest schema.Manifest, connectorPackage *gomodel.Package, publishedModelNames ...string) (map[string][]byte, error) {
+func GenerateTypeScriptFromPackage(manifest schema.Manifest, connectorPackage *gomodel.Package, publishedModelNames []string, options ...TypeScriptGenerateOption) (map[string][]byte, error) {
 	if manifest.Spec.Languages == nil || manifest.Spec.Languages.TypeScript == nil {
 		return nil, nil
+	}
+	config := typeScriptGenerateConfig{}
+	for _, option := range options {
+		option.applyTypeScriptGenerate(&config)
 	}
 	selected := make(map[string]bool)
 	for _, name := range manifest.Spec.Languages.TypeScript.Operations {
@@ -53,7 +78,7 @@ func GenerateTypeScriptFromPackage(manifest schema.Manifest, connectorPackage *g
 	}
 	files := make(map[string][]byte)
 	files["models.ts"] = generateTypeScriptModels(manifest, graph.Models)
-	definitions, err := generateTypeScriptDefinitions(manifest, operations)
+	definitions, err := generateTypeScriptDefinitions(manifest, operations, config)
 	if err != nil {
 		return nil, err
 	}
@@ -579,7 +604,7 @@ func typeScriptStringArray(values []string) string {
 	return string(encoded)
 }
 
-func generateTypeScriptDefinitions(manifest schema.Manifest, operations []schema.Operation) ([]byte, error) {
+func generateTypeScriptDefinitions(manifest schema.Manifest, operations []schema.Operation, config typeScriptGenerateConfig) ([]byte, error) {
 	var output bytes.Buffer
 	output.WriteString(typeScriptHeader())
 	if hasOperationKind(operations, "mutation") && hasOperationKind(operations, "query") {
@@ -635,7 +660,14 @@ func generateTypeScriptDefinitions(manifest schema.Manifest, operations []schema
 			}
 			fmt.Fprintf(&output, ", executeRetry: { initialIntervalMs: %d, backoffCoefficient: %s, maximumIntervalMs: %d, maximumAttempts: %d, totalDurationMs: %d }", initial.Milliseconds(), strconv.FormatFloat(retry.BackoffCoefficient, 'f', -1, 64), maximum.Milliseconds(), retry.MaximumAttempts, total.Milliseconds())
 		}
-		output.WriteString(" },\n};\n")
+		output.WriteString(" },\n")
+		if config.hasRepeatOnUnknownSendCaps && operation.Kind == "mutation" {
+			fmt.Fprintf(&output, "  repeatOnUnknown: %s,\n", strconv.Quote(operation.ResolvedRepeatOnUnknown()))
+			if maxSends := operation.ResolvedMaxSends(); maxSends > 0 {
+				fmt.Fprintf(&output, "  maxSends: %d,\n", maxSends)
+			}
+		}
+		output.WriteString("};\n")
 		fmt.Fprintf(&output, "/** Manifest metadata for %s. */\nexport const %sMetadata = { kind: %s, idempotency: %s, authorization: %s } as const;\n\n", operation.Name, operation.GoName, strconv.Quote(operation.Kind), strconv.Quote(operation.Idempotency), strconv.Quote(operation.Authorization))
 	}
 	return output.Bytes(), nil

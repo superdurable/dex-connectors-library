@@ -91,7 +91,9 @@ TypeScript export `./dex-connector.json`.
   value. See
   [Agent tool metadata](manifest-authoring.md#agent-tool-metadata).
 - `agent.repeatOnUnknown` and, for `limited`, `agent.maxSends` carry a
-  Mutation's tier once its Go module requires `sdkgo` v0.37.0. Hosts that do not
+  Mutation's tier once the package requires an SDK that carries it: `sdkgo`
+  v0.37.0 for Go, `dex-connectors-sdk` 0.10.0 for Python, and
+  `@superdurable/connectors-sdk` 0.11.0 for TypeScript. Hosts that do not
   read them fall back to `retry`, so a `limited` or `unsafe` call stays unsafe to
   repeat there. A host may offer a per-tool override of the cap, from 1 to 10.
 - `agent.branches` classifies optional branches. `rejected` means the call
@@ -278,7 +280,16 @@ from the manifest cap to a manifest retry policy that limits attempts, so the ca
 stays reachable; an explicit `StepOptionsOverride.ExecuteRetry` is used as given.
 The value is part of the Step configuration, so every attempt of one Step
 execution sees the same cap. These fields need `sdkgo` v0.37.0; `connectorctl`
-generates them only for a module that requires it.
+generates them only for a module that requires it. Python and TypeScript
+packages are gated on their own SDK requirement, independent of Go: a Python
+package whose runtime `dex-connectors-sdk` floor is 0.10.0 or later gets
+`repeat_on_unknown` on each Mutation definition, `max_sends` on a `limited`
+one, and a `max_sends_override` parameter on a `limited` Mutation's Step
+factory. A TypeScript package whose runtime dependency pins
+`@superdurable/connectors-sdk` 0.11.0 or later gets `repeatOnUnknown` on each
+Mutation definition and `maxSends` on a `limited` one. Its Step factory already
+accepts the SDK's `maxSends`. See
+[manifest authoring](manifest-authoring.md) for the exact requirement forms.
 
 Mutation uncertainty is rare. Use `NewMutationUncertain` only when the request
 may have reached the provider, a read-back cannot confirm the outcome, and the

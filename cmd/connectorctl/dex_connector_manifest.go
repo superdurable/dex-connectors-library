@@ -47,7 +47,7 @@ type dexConnectorAgent struct {
 	Approval string            `json:"approval,omitempty"`
 	Retry    string            `json:"retry,omitempty"`
 	Branches map[string]string `json:"branches,omitempty"`
-	// RepeatOnUnknown is an exposed Mutation's tier once its Go module requires sdkgo v0.37.0 or later.
+	// RepeatOnUnknown is an exposed Mutation's tier once this language package requires an SDK that carries it.
 	RepeatOnUnknown string `json:"repeatOnUnknown,omitempty"`
 	// MaxSends is a limited Mutation's send cap, published with RepeatOnUnknown.
 	MaxSends int32 `json:"maxSends,omitempty"`
@@ -81,19 +81,21 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 	if err != nil {
 		return nil, err
 	}
-	hasSendCaps, err := hasRepeatOnUnknownSendCaps(manifestPath)
-	if err != nil {
-		return nil, err
-	}
 	for _, language := range []struct {
 		name               string
 		packageDeclaration *schema.LanguagePackage
+		hasSendCaps        func(manifestPath string) (bool, error)
 	}{
-		{name: "python", packageDeclaration: manifest.Spec.Languages.Python},
-		{name: "typescript", packageDeclaration: manifest.Spec.Languages.TypeScript},
+		{name: "python", packageDeclaration: manifest.Spec.Languages.Python, hasSendCaps: hasPythonRepeatOnUnknownSendCaps},
+		{name: "typescript", packageDeclaration: manifest.Spec.Languages.TypeScript, hasSendCaps: hasTypeScriptRepeatOnUnknownSendCaps},
 	} {
 		if language.packageDeclaration == nil {
 			continue
+		}
+		// Each package advertises the tier only when its own SDK requirement carries it, whatever Go requires.
+		hasSendCaps, err := language.hasSendCaps(manifestPath)
+		if err != nil {
+			return nil, err
 		}
 		packageManifest := dexConnectorPackageManifest{
 			ConnectorID: manifest.Metadata.Name,

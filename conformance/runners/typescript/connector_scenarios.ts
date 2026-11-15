@@ -192,15 +192,16 @@ export function loadScenarios(url: URL): Scenario[] {
     if (!Array.isArray(intermediate) || (scenario.attempts ?? 1) !== intermediate.length + 1) throw new Error(`${scenario.name}: inconsistent attempts`);
     for (const value of intermediate) record(value, ['failureKind', 'retryAfterMs', 'exchangeCount'], ['heartbeat'], String(scenario.name));
     if ('priorHeartbeat' in scenario) {
-      const prior = record(scenario.priorHeartbeat, ['attempt'], ['value', 'callId', 'state', 'providerId'], String(scenario.name));
+      const prior = record(scenario.priorHeartbeat, ['attempt'], ['value', 'callId', 'state', 'providerId', 'sendCount'], String(scenario.name));
       if (!Number.isInteger(prior.attempt) || Number(prior.attempt) < 1) throw new Error('invalid prior heartbeat attempt');
       if ('value' in prior) {
         if (Object.keys(prior).length !== 2 || prior.value === null) throw new Error('invalid prior heartbeat value');
       } else {
-        record(prior, ['callId', 'attempt', 'state'], ['providerId'], String(scenario.name));
+        record(prior, ['callId', 'attempt', 'state'], ['providerId', 'sendCount'], String(scenario.name));
         if (prior.callId !== scenario.callId) throw new Error('prior heartbeat Call ID differs');
         if (!['notSent', 'claimed', 'canResend'].includes(String(prior.state)) ||
-            ('providerId' in prior && typeof prior.providerId !== 'string')) throw new Error('invalid prior heartbeat');
+            ('providerId' in prior && typeof prior.providerId !== 'string') ||
+            ('sendCount' in prior && (!Number.isInteger(prior.sendCount) || Number(prior.sendCount) < 0))) throw new Error('invalid prior heartbeat');
       }
     }
     if ('fixedClock' in scenario && (typeof scenario.fixedClock !== 'string' ||

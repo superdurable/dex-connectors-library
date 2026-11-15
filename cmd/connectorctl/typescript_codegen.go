@@ -40,7 +40,15 @@ func generatedTypeScriptFiles(manifestPath string, manifest schema.Manifest, goP
 	if err != nil {
 		return nil, err
 	}
-	generated, err := codegen.GenerateTypeScriptFromPackage(manifest, connectorPackage, publishedNames...)
+	hasSendCaps, err := hasTypeScriptRepeatOnUnknownSendCaps(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	var generateOptions []codegen.TypeScriptGenerateOption
+	if hasSendCaps {
+		generateOptions = append(generateOptions, codegen.WithTypeScriptRepeatOnUnknownSendCaps())
+	}
+	generated, err := codegen.GenerateTypeScriptFromPackage(manifest, connectorPackage, publishedNames, generateOptions...)
 	if err != nil {
 		return nil, err
 	}
