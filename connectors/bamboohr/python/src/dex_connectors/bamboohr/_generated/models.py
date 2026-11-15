@@ -366,3 +366,40 @@ class AddEmployeeOutput:
 
 
 setattr(AddEmployeeOutput, '__module__', 'dex_connectors.bamboohr.models')
+
+
+# EmployeeChangedEvent is one employee BambooHR lists as changed after the binding's cursor. BambooHR
+# reports only each employee's latest change, so several edits between two polls arrive as one event
+# whose Action is the latest one: an employee added and then edited before the next poll arrives as
+# Updated. The event carries no field values; read the employee with getEmployee.
+@dataclass(frozen=True, slots=True)
+class EmployeeChangedEvent:
+    # EmployeeID is BambooHR's internal employee ID, a digit string such as 140.
+    employee_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'employeeId'})
+    # Action is BambooHR's change action: Inserted, Updated, or Deleted. A termination is Updated.
+    action: str = _dataclass_field(kw_only=True)
+    # LastChanged is when BambooHR last changed the employee, in UTC with second precision.
+    last_changed: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'lastChanged', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.last_changed, str):
+            object.__setattr__(self, 'last_changed', parse_go_datetime(self.last_changed, 'last_changed'))
+        elif self.last_changed is not None:
+            validate_go_datetime(self.last_changed, 'last_changed')
+
+
+setattr(EmployeeChangedEvent, '__module__', 'dex_connectors.bamboohr.models')
+
+
+# EmployeeChangedTriggerConfiguration is the employeeChanged binding configuration that the
+# changeTypePicker unit saves in Dex Web. Changing ChangeType of a binding that already polled makes its
+# next poll record a new starting point, so changes made in between are not delivered.
+@dataclass(frozen=True, slots=True)
+class EmployeeChangedTriggerConfiguration:
+    # ChangeType keeps one BambooHR change type: EmployeeChangeTypeInserted, EmployeeChangeTypeUpdated, or
+    # EmployeeChangeTypeDeleted. Blank delivers every change. The connector sends it as BambooHR's type
+    # parameter, so BambooHR filters the list.
+    change_type: str | None = _dataclass_field(default=None, metadata={'dex_json_name': 'changeType', 'dex_json_omit_default': True})
+
+
+setattr(EmployeeChangedTriggerConfiguration, '__module__', 'dex_connectors.bamboohr.models')

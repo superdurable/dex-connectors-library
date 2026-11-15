@@ -1,0 +1,732 @@
+{
+ "localNow": "2026-10-13T12:00:00.750Z",
+ "steps": [
+  {
+   "name": "seed at Date header",
+   "seed": true,
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"employees\":[]}"
+   },
+   "query": "since=2026-10-13T11%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "next": "{\"v\":1,\"since\":\"2026-10-13T10:00:00Z\"}",
+   "eventCount": 0
+  },
+  {
+   "name": "seed without Date uses local clock",
+   "seed": true,
+   "response": {
+    "status": 200,
+    "body": "{\"employees\":{}}"
+   },
+   "query": "since=2026-10-13T11%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "next": "{\"v\":1,\"since\":\"2026-10-13T12:00:00Z\"}",
+   "eventCount": 0
+  },
+  {
+   "name": "seed with RFC 850 date and type",
+   "seed": true,
+   "changeType": "inserted",
+   "response": {
+    "status": 200,
+    "date": "Tuesday, 13-Oct-26 10:00:00 GMT",
+    "body": "{\"employees\":[]}"
+   },
+   "query": "since=2026-10-13T11%3A59%3A59Z&type=inserted",
+   "requests": 1,
+   "events": null,
+   "next": "{\"v\":1,\"since\":\"2026-10-13T10:00:00Z\",\"changeType\":\"inserted\"}",
+   "eventCount": 0
+  },
+  {
+   "name": "seed with ANSI C date",
+   "seed": true,
+   "response": {
+    "status": 200,
+    "date": "Tue Oct 13 10:00:00 2026",
+    "body": "{\"employees\":[]}"
+   },
+   "query": "since=2026-10-13T11%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "next": "{\"v\":1,\"since\":\"2026-10-13T10:00:00Z\"}",
+   "eventCount": 0
+  },
+  {
+   "name": "seed with unusable Date",
+   "seed": true,
+   "response": {
+    "status": 200,
+    "date": "yesterday",
+    "body": "{\"employees\":[]}"
+   },
+   "query": "since=2026-10-13T11%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "next": "{\"v\":1,\"since\":\"2026-10-13T12:00:00Z\"}",
+   "eventCount": 0
+  },
+  {
+   "name": "seed invalid body",
+   "seed": true,
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"employees\":null}"
+   },
+   "query": "since=2026-10-13T11%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR returned an invalid change list: employees is not a map of changes",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "seed 401",
+   "seed": true,
+   "response": {
+    "status": 401,
+    "body": "{}"
+   },
+   "query": "since=2026-10-13T11%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR employeeChanged poll: BambooHR rejected the request (HTTP 401)",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "oldest first by numeric id",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"140\":{\"id\":\"140\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:10:00Z\"},\"9\":{\"id\":\"9\",\"action\":\"Inserted\",\"lastChanged\":\"2026-10-13T09:10:00Z\"},\"77\":{\"id\":\"77\",\"action\":\"Deleted\",\"lastChanged\":\"2026-10-13T09:05:00+02:00\"},\"5\":{\"id\":\"5\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:20:00.5Z\"},\"12\":{\"id\":\"12\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T08:59:59Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": [
+    {
+     "id": "employee-9-inserted-1791882600",
+     "occurredAt": "2026-10-13T09:10:00Z",
+     "payload": {
+      "employeeId": "9",
+      "action": "Inserted",
+      "lastChanged": "2026-10-13T09:10:00Z"
+     }
+    },
+    {
+     "id": "employee-140-updated-1791882600",
+     "occurredAt": "2026-10-13T09:10:00Z",
+     "payload": {
+      "employeeId": "140",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:10:00Z"
+     }
+    },
+    {
+     "id": "employee-5-updated-1791883200",
+     "occurredAt": "2026-10-13T09:20:00.5Z",
+     "payload": {
+      "employeeId": "5",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:20:00.5Z"
+     }
+    }
+   ],
+   "next": "{\"v\":1,\"since\":\"2026-10-13T09:20:00.5Z\",\"afterEmployeeId\":\"5\"}",
+   "eventCount": 3
+  },
+  {
+   "name": "same second after employee",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:10:00Z\",\"afterEmployeeId\":\"9\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"140\":{\"id\":\"140\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:10:00Z\"},\"9\":{\"id\":\"9\",\"action\":\"Inserted\",\"lastChanged\":\"2026-10-13T09:10:00Z\"},\"10\":{\"id\":\"10\",\"action\":\"Inserted\",\"lastChanged\":\"2026-10-13T09:10:00Z\"},\"8\":{\"id\":\"8\",\"action\":\"Inserted\",\"lastChanged\":\"2026-10-13T09:10:00Z\"}}}"
+   },
+   "query": "since=2026-10-13T09%3A09%3A59Z",
+   "requests": 1,
+   "events": [
+    {
+     "id": "employee-10-inserted-1791882600",
+     "occurredAt": "2026-10-13T09:10:00Z",
+     "payload": {
+      "employeeId": "10",
+      "action": "Inserted",
+      "lastChanged": "2026-10-13T09:10:00Z"
+     }
+    },
+    {
+     "id": "employee-140-updated-1791882600",
+     "occurredAt": "2026-10-13T09:10:00Z",
+     "payload": {
+      "employeeId": "140",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:10:00Z"
+     }
+    }
+   ],
+   "next": "{\"v\":1,\"since\":\"2026-10-13T09:10:00Z\",\"afterEmployeeId\":\"140\"}",
+   "eventCount": 2
+  },
+  {
+   "name": "settle window holds recent changes",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"1\":{\"id\":\"1\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:59:30Z\"},\"2\":{\"id\":\"2\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:59:31Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": [
+    {
+     "id": "employee-1-updated-1791885570",
+     "occurredAt": "2026-10-13T09:59:30Z",
+     "payload": {
+      "employeeId": "1",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:59:30Z"
+     }
+    }
+   ],
+   "next": "{\"v\":1,\"since\":\"2026-10-13T09:59:30Z\",\"afterEmployeeId\":\"1\"}",
+   "eventCount": 1
+  },
+  {
+   "name": "more than one page",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"7\":{\"id\":\"7\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:01Z\"},\"14\":{\"id\":\"14\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:02Z\"},\"21\":{\"id\":\"21\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:03Z\"},\"28\":{\"id\":\"28\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:04Z\"},\"35\":{\"id\":\"35\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:05Z\"},\"42\":{\"id\":\"42\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:06Z\"},\"49\":{\"id\":\"49\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:07Z\"},\"56\":{\"id\":\"56\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:08Z\"},\"63\":{\"id\":\"63\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:09Z\"},\"70\":{\"id\":\"70\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:10Z\"},\"77\":{\"id\":\"77\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:11Z\"},\"84\":{\"id\":\"84\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:12Z\"},\"91\":{\"id\":\"91\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:13Z\"},\"98\":{\"id\":\"98\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:14Z\"},\"105\":{\"id\":\"105\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:15Z\"},\"112\":{\"id\":\"112\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:16Z\"},\"119\":{\"id\":\"119\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:17Z\"},\"126\":{\"id\":\"126\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:18Z\"},\"133\":{\"id\":\"133\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:19Z\"},\"140\":{\"id\":\"140\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:20Z\"},\"147\":{\"id\":\"147\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:21Z\"},\"154\":{\"id\":\"154\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:22Z\"},\"161\":{\"id\":\"161\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:23Z\"},\"168\":{\"id\":\"168\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:24Z\"},\"175\":{\"id\":\"175\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:25Z\"},\"182\":{\"id\":\"182\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:26Z\"},\"189\":{\"id\":\"189\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:27Z\"},\"196\":{\"id\":\"196\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:28Z\"},\"203\":{\"id\":\"203\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:29Z\"},\"210\":{\"id\":\"210\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:30Z\"},\"217\":{\"id\":\"217\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:31Z\"},\"224\":{\"id\":\"224\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:32Z\"},\"231\":{\"id\":\"231\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:33Z\"},\"238\":{\"id\":\"238\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:34Z\"},\"245\":{\"id\":\"245\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:35Z\"},\"252\":{\"id\":\"252\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:36Z\"},\"259\":{\"id\":\"259\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:37Z\"},\"266\":{\"id\":\"266\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:38Z\"},\"273\":{\"id\":\"273\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:39Z\"},\"280\":{\"id\":\"280\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:40Z\"},\"287\":{\"id\":\"287\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:41Z\"},\"294\":{\"id\":\"294\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:42Z\"},\"301\":{\"id\":\"301\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:43Z\"},\"308\":{\"id\":\"308\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:44Z\"},\"315\":{\"id\":\"315\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:45Z\"},\"322\":{\"id\":\"322\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:46Z\"},\"329\":{\"id\":\"329\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:47Z\"},\"336\":{\"id\":\"336\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:48Z\"},\"343\":{\"id\":\"343\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:49Z\"},\"350\":{\"id\":\"350\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:50Z\"},\"357\":{\"id\":\"357\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:51Z\"},\"364\":{\"id\":\"364\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:52Z\"},\"371\":{\"id\":\"371\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:53Z\"},\"378\":{\"id\":\"378\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:54Z\"},\"385\":{\"id\":\"385\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:55Z\"},\"392\":{\"id\":\"392\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:56Z\"},\"399\":{\"id\":\"399\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:57Z\"},\"406\":{\"id\":\"406\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:58Z\"},\"413\":{\"id\":\"413\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:01:59Z\"},\"420\":{\"id\":\"420\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:00Z\"},\"427\":{\"id\":\"427\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:01Z\"},\"434\":{\"id\":\"434\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:02Z\"},\"441\":{\"id\":\"441\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:03Z\"},\"448\":{\"id\":\"448\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:04Z\"},\"455\":{\"id\":\"455\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:05Z\"},\"462\":{\"id\":\"462\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:06Z\"},\"469\":{\"id\":\"469\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:07Z\"},\"476\":{\"id\":\"476\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:08Z\"},\"483\":{\"id\":\"483\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:09Z\"},\"490\":{\"id\":\"490\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:10Z\"},\"497\":{\"id\":\"497\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:11Z\"},\"504\":{\"id\":\"504\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:12Z\"},\"511\":{\"id\":\"511\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:13Z\"},\"518\":{\"id\":\"518\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:14Z\"},\"525\":{\"id\":\"525\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:15Z\"},\"532\":{\"id\":\"532\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:16Z\"},\"539\":{\"id\":\"539\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:17Z\"},\"546\":{\"id\":\"546\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:18Z\"},\"553\":{\"id\":\"553\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:19Z\"},\"560\":{\"id\":\"560\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:20Z\"},\"567\":{\"id\":\"567\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:21Z\"},\"574\":{\"id\":\"574\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:22Z\"},\"581\":{\"id\":\"581\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:23Z\"},\"588\":{\"id\":\"588\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:24Z\"},\"595\":{\"id\":\"595\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:25Z\"},\"602\":{\"id\":\"602\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:26Z\"},\"609\":{\"id\":\"609\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:27Z\"},\"616\":{\"id\":\"616\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:28Z\"},\"623\":{\"id\":\"623\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:29Z\"},\"630\":{\"id\":\"630\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:30Z\"},\"637\":{\"id\":\"637\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:31Z\"},\"644\":{\"id\":\"644\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:32Z\"},\"651\":{\"id\":\"651\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:33Z\"},\"658\":{\"id\":\"658\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:34Z\"},\"665\":{\"id\":\"665\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:35Z\"},\"672\":{\"id\":\"672\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:36Z\"},\"679\":{\"id\":\"679\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:37Z\"},\"686\":{\"id\":\"686\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:38Z\"},\"693\":{\"id\":\"693\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:39Z\"},\"700\":{\"id\":\"700\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:40Z\"},\"707\":{\"id\":\"707\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:41Z\"},\"714\":{\"id\":\"714\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:42Z\"},\"721\":{\"id\":\"721\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:43Z\"},\"728\":{\"id\":\"728\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:44Z\"},\"735\":{\"id\":\"735\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:45Z\"},\"742\":{\"id\":\"742\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:46Z\"},\"749\":{\"id\":\"749\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:47Z\"},\"756\":{\"id\":\"756\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:48Z\"},\"763\":{\"id\":\"763\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:49Z\"},\"770\":{\"id\":\"770\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:50Z\"},\"777\":{\"id\":\"777\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:51Z\"},\"784\":{\"id\":\"784\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:52Z\"},\"791\":{\"id\":\"791\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:53Z\"},\"798\":{\"id\":\"798\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:54Z\"},\"805\":{\"id\":\"805\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:55Z\"},\"812\":{\"id\":\"812\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:56Z\"},\"819\":{\"id\":\"819\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:57Z\"},\"826\":{\"id\":\"826\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:58Z\"},\"833\":{\"id\":\"833\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:02:59Z\"},\"840\":{\"id\":\"840\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:00Z\"},\"847\":{\"id\":\"847\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:01Z\"},\"854\":{\"id\":\"854\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:02Z\"},\"861\":{\"id\":\"861\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:03Z\"},\"868\":{\"id\":\"868\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:04Z\"},\"875\":{\"id\":\"875\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:05Z\"},\"882\":{\"id\":\"882\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:06Z\"},\"889\":{\"id\":\"889\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:07Z\"},\"896\":{\"id\":\"896\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:08Z\"},\"903\":{\"id\":\"903\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:09Z\"},\"910\":{\"id\":\"910\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:10Z\"},\"917\":{\"id\":\"917\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:11Z\"},\"924\":{\"id\":\"924\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:12Z\"},\"931\":{\"id\":\"931\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:13Z\"},\"938\":{\"id\":\"938\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:14Z\"},\"945\":{\"id\":\"945\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:15Z\"},\"952\":{\"id\":\"952\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:16Z\"},\"959\":{\"id\":\"959\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:17Z\"},\"966\":{\"id\":\"966\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:18Z\"},\"973\":{\"id\":\"973\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:19Z\"},\"980\":{\"id\":\"980\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:20Z\"},\"987\":{\"id\":\"987\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:21Z\"},\"994\":{\"id\":\"994\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:22Z\"},\"1001\":{\"id\":\"1001\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:23Z\"},\"1008\":{\"id\":\"1008\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:24Z\"},\"1015\":{\"id\":\"1015\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:25Z\"},\"1022\":{\"id\":\"1022\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:26Z\"},\"1029\":{\"id\":\"1029\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:27Z\"},\"1036\":{\"id\":\"1036\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:28Z\"},\"1043\":{\"id\":\"1043\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:29Z\"},\"1050\":{\"id\":\"1050\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:30Z\"},\"1057\":{\"id\":\"1057\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:31Z\"},\"1064\":{\"id\":\"1064\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:32Z\"},\"1071\":{\"id\":\"1071\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:33Z\"},\"1078\":{\"id\":\"1078\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:34Z\"},\"1085\":{\"id\":\"1085\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:35Z\"},\"1092\":{\"id\":\"1092\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:36Z\"},\"1099\":{\"id\":\"1099\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:37Z\"},\"1106\":{\"id\":\"1106\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:38Z\"},\"1113\":{\"id\":\"1113\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:39Z\"},\"1120\":{\"id\":\"1120\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:40Z\"},\"1127\":{\"id\":\"1127\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:41Z\"},\"1134\":{\"id\":\"1134\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:42Z\"},\"1141\":{\"id\":\"1141\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:43Z\"},\"1148\":{\"id\":\"1148\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:44Z\"},\"1155\":{\"id\":\"1155\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:45Z\"},\"1162\":{\"id\":\"1162\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:46Z\"},\"1169\":{\"id\":\"1169\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:47Z\"},\"1176\":{\"id\":\"1176\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:48Z\"},\"1183\":{\"id\":\"1183\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:49Z\"},\"1190\":{\"id\":\"1190\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:50Z\"},\"1197\":{\"id\":\"1197\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:51Z\"},\"1204\":{\"id\":\"1204\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:52Z\"},\"1211\":{\"id\":\"1211\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:53Z\"},\"1218\":{\"id\":\"1218\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:54Z\"},\"1225\":{\"id\":\"1225\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:55Z\"},\"1232\":{\"id\":\"1232\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:56Z\"},\"1239\":{\"id\":\"1239\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:57Z\"},\"1246\":{\"id\":\"1246\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:58Z\"},\"1253\":{\"id\":\"1253\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:03:59Z\"},\"1260\":{\"id\":\"1260\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:00Z\"},\"1267\":{\"id\":\"1267\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:01Z\"},\"1274\":{\"id\":\"1274\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:02Z\"},\"1281\":{\"id\":\"1281\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:03Z\"},\"1288\":{\"id\":\"1288\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:04Z\"},\"1295\":{\"id\":\"1295\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:05Z\"},\"1302\":{\"id\":\"1302\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:06Z\"},\"1309\":{\"id\":\"1309\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:07Z\"},\"1316\":{\"id\":\"1316\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:08Z\"},\"1323\":{\"id\":\"1323\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:09Z\"},\"1330\":{\"id\":\"1330\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:10Z\"},\"1337\":{\"id\":\"1337\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:11Z\"},\"1344\":{\"id\":\"1344\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:12Z\"},\"1351\":{\"id\":\"1351\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:13Z\"},\"1358\":{\"id\":\"1358\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:14Z\"},\"1365\":{\"id\":\"1365\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:15Z\"},\"1372\":{\"id\":\"1372\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:16Z\"},\"1379\":{\"id\":\"1379\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:17Z\"},\"1386\":{\"id\":\"1386\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:18Z\"},\"1393\":{\"id\":\"1393\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:19Z\"},\"1400\":{\"id\":\"1400\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:20Z\"},\"1407\":{\"id\":\"1407\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:21Z\"},\"1414\":{\"id\":\"1414\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:22Z\"},\"1421\":{\"id\":\"1421\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:23Z\"},\"1428\":{\"id\":\"1428\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:24Z\"},\"1435\":{\"id\":\"1435\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:25Z\"},\"1442\":{\"id\":\"1442\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:26Z\"},\"1449\":{\"id\":\"1449\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:27Z\"},\"1456\":{\"id\":\"1456\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:28Z\"},\"1463\":{\"id\":\"1463\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:29Z\"},\"1470\":{\"id\":\"1470\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:30Z\"},\"1477\":{\"id\":\"1477\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:31Z\"},\"1484\":{\"id\":\"1484\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:32Z\"},\"1491\":{\"id\":\"1491\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:33Z\"},\"1498\":{\"id\":\"1498\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:34Z\"},\"1505\":{\"id\":\"1505\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:35Z\"},\"1512\":{\"id\":\"1512\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:36Z\"},\"1519\":{\"id\":\"1519\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:37Z\"},\"1526\":{\"id\":\"1526\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:38Z\"},\"1533\":{\"id\":\"1533\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:39Z\"},\"1540\":{\"id\":\"1540\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:40Z\"},\"1547\":{\"id\":\"1547\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:41Z\"},\"1554\":{\"id\":\"1554\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:42Z\"},\"1561\":{\"id\":\"1561\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:43Z\"},\"1568\":{\"id\":\"1568\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:44Z\"},\"1575\":{\"id\":\"1575\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:45Z\"},\"1582\":{\"id\":\"1582\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:46Z\"},\"1589\":{\"id\":\"1589\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:47Z\"},\"1596\":{\"id\":\"1596\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:48Z\"},\"1603\":{\"id\":\"1603\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:49Z\"},\"1610\":{\"id\":\"1610\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:50Z\"},\"1617\":{\"id\":\"1617\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:51Z\"},\"1624\":{\"id\":\"1624\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:52Z\"},\"1631\":{\"id\":\"1631\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:53Z\"},\"1638\":{\"id\":\"1638\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:54Z\"},\"1645\":{\"id\":\"1645\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:55Z\"},\"1652\":{\"id\":\"1652\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:56Z\"},\"1659\":{\"id\":\"1659\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:57Z\"},\"1666\":{\"id\":\"1666\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:58Z\"},\"1673\":{\"id\":\"1673\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:04:59Z\"},\"1680\":{\"id\":\"1680\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:00Z\"},\"1687\":{\"id\":\"1687\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:01Z\"},\"1694\":{\"id\":\"1694\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:02Z\"},\"1701\":{\"id\":\"1701\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:03Z\"},\"1708\":{\"id\":\"1708\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:04Z\"},\"1715\":{\"id\":\"1715\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:05Z\"},\"1722\":{\"id\":\"1722\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:06Z\"},\"1729\":{\"id\":\"1729\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:07Z\"},\"1736\":{\"id\":\"1736\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:08Z\"},\"1743\":{\"id\":\"1743\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:09Z\"},\"1750\":{\"id\":\"1750\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:10Z\"},\"1757\":{\"id\":\"1757\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:11Z\"},\"1764\":{\"id\":\"1764\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:12Z\"},\"1771\":{\"id\":\"1771\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:13Z\"},\"1778\":{\"id\":\"1778\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:14Z\"},\"1785\":{\"id\":\"1785\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:15Z\"},\"1792\":{\"id\":\"1792\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:16Z\"},\"1799\":{\"id\":\"1799\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:17Z\"},\"1806\":{\"id\":\"1806\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:18Z\"},\"1813\":{\"id\":\"1813\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:19Z\"},\"1820\":{\"id\":\"1820\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:20Z\"},\"1827\":{\"id\":\"1827\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:21Z\"},\"1834\":{\"id\":\"1834\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:22Z\"},\"1841\":{\"id\":\"1841\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:23Z\"},\"1848\":{\"id\":\"1848\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:24Z\"},\"1855\":{\"id\":\"1855\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:25Z\"},\"1862\":{\"id\":\"1862\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:26Z\"},\"1869\":{\"id\":\"1869\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:27Z\"},\"1876\":{\"id\":\"1876\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:28Z\"},\"1883\":{\"id\":\"1883\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:29Z\"},\"1890\":{\"id\":\"1890\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:30Z\"},\"1897\":{\"id\":\"1897\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:31Z\"},\"1904\":{\"id\":\"1904\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:32Z\"},\"1911\":{\"id\":\"1911\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:33Z\"},\"1918\":{\"id\":\"1918\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:34Z\"},\"1925\":{\"id\":\"1925\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:35Z\"},\"1932\":{\"id\":\"1932\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:36Z\"},\"1939\":{\"id\":\"1939\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:37Z\"},\"1946\":{\"id\":\"1946\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:38Z\"},\"1953\":{\"id\":\"1953\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:39Z\"},\"1960\":{\"id\":\"1960\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:40Z\"},\"1967\":{\"id\":\"1967\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:41Z\"},\"1974\":{\"id\":\"1974\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:42Z\"},\"1981\":{\"id\":\"1981\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:43Z\"},\"1988\":{\"id\":\"1988\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:44Z\"},\"1995\":{\"id\":\"1995\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:45Z\"},\"2002\":{\"id\":\"2002\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:46Z\"},\"2009\":{\"id\":\"2009\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:47Z\"},\"2016\":{\"id\":\"2016\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:48Z\"},\"2023\":{\"id\":\"2023\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:49Z\"},\"2030\":{\"id\":\"2030\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:50Z\"},\"2037\":{\"id\":\"2037\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:51Z\"},\"2044\":{\"id\":\"2044\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:52Z\"},\"2051\":{\"id\":\"2051\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:53Z\"},\"2058\":{\"id\":\"2058\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:54Z\"},\"2065\":{\"id\":\"2065\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:55Z\"},\"2072\":{\"id\":\"2072\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:56Z\"},\"2079\":{\"id\":\"2079\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:57Z\"},\"2086\":{\"id\":\"2086\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:58Z\"},\"2093\":{\"id\":\"2093\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:05:59Z\"},\"2100\":{\"id\":\"2100\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:00Z\"},\"2107\":{\"id\":\"2107\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:01Z\"},\"2114\":{\"id\":\"2114\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:02Z\"},\"2121\":{\"id\":\"2121\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:03Z\"},\"2128\":{\"id\":\"2128\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:04Z\"},\"2135\":{\"id\":\"2135\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:05Z\"},\"2142\":{\"id\":\"2142\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:06Z\"},\"2149\":{\"id\":\"2149\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:07Z\"},\"2156\":{\"id\":\"2156\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:08Z\"},\"2163\":{\"id\":\"2163\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:09Z\"},\"2170\":{\"id\":\"2170\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:10Z\"},\"2177\":{\"id\":\"2177\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:11Z\"},\"2184\":{\"id\":\"2184\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:12Z\"},\"2191\":{\"id\":\"2191\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:13Z\"},\"2198\":{\"id\":\"2198\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:14Z\"},\"2205\":{\"id\":\"2205\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:15Z\"},\"2212\":{\"id\":\"2212\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:16Z\"},\"2219\":{\"id\":\"2219\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:17Z\"},\"2226\":{\"id\":\"2226\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:18Z\"},\"2233\":{\"id\":\"2233\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:19Z\"},\"2240\":{\"id\":\"2240\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:20Z\"},\"2247\":{\"id\":\"2247\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:21Z\"},\"2254\":{\"id\":\"2254\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:22Z\"},\"2261\":{\"id\":\"2261\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:23Z\"},\"2268\":{\"id\":\"2268\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:24Z\"},\"2275\":{\"id\":\"2275\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:25Z\"},\"2282\":{\"id\":\"2282\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:26Z\"},\"2289\":{\"id\":\"2289\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:27Z\"},\"2296\":{\"id\":\"2296\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:28Z\"},\"2303\":{\"id\":\"2303\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:29Z\"},\"2310\":{\"id\":\"2310\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:30Z\"},\"2317\":{\"id\":\"2317\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:31Z\"},\"2324\":{\"id\":\"2324\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:32Z\"},\"2331\":{\"id\":\"2331\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:33Z\"},\"2338\":{\"id\":\"2338\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:34Z\"},\"2345\":{\"id\":\"2345\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:35Z\"},\"2352\":{\"id\":\"2352\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:36Z\"},\"2359\":{\"id\":\"2359\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:37Z\"},\"2366\":{\"id\":\"2366\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:38Z\"},\"2373\":{\"id\":\"2373\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:39Z\"},\"2380\":{\"id\":\"2380\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:40Z\"},\"2387\":{\"id\":\"2387\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:41Z\"},\"2394\":{\"id\":\"2394\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:42Z\"},\"2401\":{\"id\":\"2401\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:43Z\"},\"2408\":{\"id\":\"2408\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:44Z\"},\"2415\":{\"id\":\"2415\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:45Z\"},\"2422\":{\"id\":\"2422\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:46Z\"},\"2429\":{\"id\":\"2429\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:47Z\"},\"2436\":{\"id\":\"2436\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:48Z\"},\"2443\":{\"id\":\"2443\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:49Z\"},\"2450\":{\"id\":\"2450\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:50Z\"},\"2457\":{\"id\":\"2457\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:51Z\"},\"2464\":{\"id\":\"2464\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:52Z\"},\"2471\":{\"id\":\"2471\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:53Z\"},\"2478\":{\"id\":\"2478\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:54Z\"},\"2485\":{\"id\":\"2485\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:55Z\"},\"2492\":{\"id\":\"2492\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:56Z\"},\"2499\":{\"id\":\"2499\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:57Z\"},\"2506\":{\"id\":\"2506\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:58Z\"},\"2513\":{\"id\":\"2513\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:06:59Z\"},\"2520\":{\"id\":\"2520\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:00Z\"},\"2527\":{\"id\":\"2527\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:01Z\"},\"2534\":{\"id\":\"2534\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:02Z\"},\"2541\":{\"id\":\"2541\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:03Z\"},\"2548\":{\"id\":\"2548\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:04Z\"},\"2555\":{\"id\":\"2555\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:05Z\"},\"2562\":{\"id\":\"2562\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:06Z\"},\"2569\":{\"id\":\"2569\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:07Z\"},\"2576\":{\"id\":\"2576\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:08Z\"},\"2583\":{\"id\":\"2583\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:09Z\"},\"2590\":{\"id\":\"2590\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:10Z\"},\"2597\":{\"id\":\"2597\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:11Z\"},\"2604\":{\"id\":\"2604\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:12Z\"},\"2611\":{\"id\":\"2611\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:13Z\"},\"2618\":{\"id\":\"2618\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:14Z\"},\"2625\":{\"id\":\"2625\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:15Z\"},\"2632\":{\"id\":\"2632\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:16Z\"},\"2639\":{\"id\":\"2639\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:17Z\"},\"2646\":{\"id\":\"2646\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:18Z\"},\"2653\":{\"id\":\"2653\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:19Z\"},\"2660\":{\"id\":\"2660\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:20Z\"},\"2667\":{\"id\":\"2667\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:21Z\"},\"2674\":{\"id\":\"2674\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:22Z\"},\"2681\":{\"id\":\"2681\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:23Z\"},\"2688\":{\"id\":\"2688\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:24Z\"},\"2695\":{\"id\":\"2695\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:25Z\"},\"2702\":{\"id\":\"2702\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:26Z\"},\"2709\":{\"id\":\"2709\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:27Z\"},\"2716\":{\"id\":\"2716\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:28Z\"},\"2723\":{\"id\":\"2723\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:29Z\"},\"2730\":{\"id\":\"2730\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:30Z\"},\"2737\":{\"id\":\"2737\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:31Z\"},\"2744\":{\"id\":\"2744\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:32Z\"},\"2751\":{\"id\":\"2751\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:33Z\"},\"2758\":{\"id\":\"2758\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:34Z\"},\"2765\":{\"id\":\"2765\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:35Z\"},\"2772\":{\"id\":\"2772\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:36Z\"},\"2779\":{\"id\":\"2779\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:37Z\"},\"2786\":{\"id\":\"2786\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:38Z\"},\"2793\":{\"id\":\"2793\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:39Z\"},\"2800\":{\"id\":\"2800\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:40Z\"},\"2807\":{\"id\":\"2807\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:41Z\"},\"2814\":{\"id\":\"2814\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:42Z\"},\"2821\":{\"id\":\"2821\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:43Z\"},\"2828\":{\"id\":\"2828\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:44Z\"},\"2835\":{\"id\":\"2835\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:45Z\"},\"2842\":{\"id\":\"2842\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:46Z\"},\"2849\":{\"id\":\"2849\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:47Z\"},\"2856\":{\"id\":\"2856\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:48Z\"},\"2863\":{\"id\":\"2863\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:49Z\"},\"2870\":{\"id\":\"2870\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:50Z\"},\"2877\":{\"id\":\"2877\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:51Z\"},\"2884\":{\"id\":\"2884\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:52Z\"},\"2891\":{\"id\":\"2891\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:53Z\"},\"2898\":{\"id\":\"2898\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:54Z\"},\"2905\":{\"id\":\"2905\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:55Z\"},\"2912\":{\"id\":\"2912\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:56Z\"},\"2919\":{\"id\":\"2919\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:57Z\"},\"2926\":{\"id\":\"2926\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:58Z\"},\"2933\":{\"id\":\"2933\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:07:59Z\"},\"2940\":{\"id\":\"2940\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:00Z\"},\"2947\":{\"id\":\"2947\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:01Z\"},\"2954\":{\"id\":\"2954\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:02Z\"},\"2961\":{\"id\":\"2961\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:03Z\"},\"2968\":{\"id\":\"2968\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:04Z\"},\"2975\":{\"id\":\"2975\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:05Z\"},\"2982\":{\"id\":\"2982\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:06Z\"},\"2989\":{\"id\":\"2989\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:07Z\"},\"2996\":{\"id\":\"2996\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:08Z\"},\"3003\":{\"id\":\"3003\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:09Z\"},\"3010\":{\"id\":\"3010\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:10Z\"},\"3017\":{\"id\":\"3017\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:11Z\"},\"3024\":{\"id\":\"3024\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:12Z\"},\"3031\":{\"id\":\"3031\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:13Z\"},\"3038\":{\"id\":\"3038\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:14Z\"},\"3045\":{\"id\":\"3045\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:15Z\"},\"3052\":{\"id\":\"3052\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:16Z\"},\"3059\":{\"id\":\"3059\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:17Z\"},\"3066\":{\"id\":\"3066\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:18Z\"},\"3073\":{\"id\":\"3073\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:19Z\"},\"3080\":{\"id\":\"3080\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:20Z\"},\"3087\":{\"id\":\"3087\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:21Z\"},\"3094\":{\"id\":\"3094\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:22Z\"},\"3101\":{\"id\":\"3101\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:23Z\"},\"3108\":{\"id\":\"3108\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:24Z\"},\"3115\":{\"id\":\"3115\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:25Z\"},\"3122\":{\"id\":\"3122\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:26Z\"},\"3129\":{\"id\":\"3129\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:27Z\"},\"3136\":{\"id\":\"3136\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:28Z\"},\"3143\":{\"id\":\"3143\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:29Z\"},\"3150\":{\"id\":\"3150\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:30Z\"},\"3157\":{\"id\":\"3157\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:31Z\"},\"3164\":{\"id\":\"3164\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:32Z\"},\"3171\":{\"id\":\"3171\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:33Z\"},\"3178\":{\"id\":\"3178\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:34Z\"},\"3185\":{\"id\":\"3185\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:35Z\"},\"3192\":{\"id\":\"3192\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:36Z\"},\"3199\":{\"id\":\"3199\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:37Z\"},\"3206\":{\"id\":\"3206\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:38Z\"},\"3213\":{\"id\":\"3213\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:39Z\"},\"3220\":{\"id\":\"3220\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:40Z\"},\"3227\":{\"id\":\"3227\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:41Z\"},\"3234\":{\"id\":\"3234\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:42Z\"},\"3241\":{\"id\":\"3241\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:43Z\"},\"3248\":{\"id\":\"3248\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:44Z\"},\"3255\":{\"id\":\"3255\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:45Z\"},\"3262\":{\"id\":\"3262\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:46Z\"},\"3269\":{\"id\":\"3269\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:47Z\"},\"3276\":{\"id\":\"3276\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:48Z\"},\"3283\":{\"id\":\"3283\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:49Z\"},\"3290\":{\"id\":\"3290\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:50Z\"},\"3297\":{\"id\":\"3297\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:51Z\"},\"3304\":{\"id\":\"3304\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:52Z\"},\"3311\":{\"id\":\"3311\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:53Z\"},\"3318\":{\"id\":\"3318\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:54Z\"},\"3325\":{\"id\":\"3325\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:55Z\"},\"3332\":{\"id\":\"3332\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:56Z\"},\"3339\":{\"id\":\"3339\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:57Z\"},\"3346\":{\"id\":\"3346\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:58Z\"},\"3353\":{\"id\":\"3353\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:08:59Z\"},\"3360\":{\"id\":\"3360\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:00Z\"},\"3367\":{\"id\":\"3367\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:01Z\"},\"3374\":{\"id\":\"3374\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:02Z\"},\"3381\":{\"id\":\"3381\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:03Z\"},\"3388\":{\"id\":\"3388\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:04Z\"},\"3395\":{\"id\":\"3395\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:05Z\"},\"3402\":{\"id\":\"3402\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:06Z\"},\"3409\":{\"id\":\"3409\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:07Z\"},\"3416\":{\"id\":\"3416\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:08Z\"},\"3423\":{\"id\":\"3423\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:09Z\"},\"3430\":{\"id\":\"3430\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:10Z\"},\"3437\":{\"id\":\"3437\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:11Z\"},\"3444\":{\"id\":\"3444\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:12Z\"},\"3451\":{\"id\":\"3451\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:13Z\"},\"3458\":{\"id\":\"3458\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:14Z\"},\"3465\":{\"id\":\"3465\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:15Z\"},\"3472\":{\"id\":\"3472\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:16Z\"},\"3479\":{\"id\":\"3479\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:17Z\"},\"3486\":{\"id\":\"3486\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:18Z\"},\"3493\":{\"id\":\"3493\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:19Z\"},\"3500\":{\"id\":\"3500\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:20Z\"},\"3507\":{\"id\":\"3507\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:21Z\"},\"3514\":{\"id\":\"3514\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:22Z\"},\"3521\":{\"id\":\"3521\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:09:23Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": [
+    {
+     "id": "employee-7-updated-1791882061",
+     "occurredAt": "2026-10-13T09:01:01Z",
+     "payload": {
+      "employeeId": "7",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:01:01Z"
+     }
+    },
+    {
+     "id": "employee-14-updated-1791882062",
+     "occurredAt": "2026-10-13T09:01:02Z",
+     "payload": {
+      "employeeId": "14",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:01:02Z"
+     }
+    },
+    {
+     "id": "employee-21-updated-1791882063",
+     "occurredAt": "2026-10-13T09:01:03Z",
+     "payload": {
+      "employeeId": "21",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:01:03Z"
+     }
+    },
+    {
+     "id": "employee-3493-updated-1791882559",
+     "occurredAt": "2026-10-13T09:09:19Z",
+     "payload": {
+      "employeeId": "3493",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:09:19Z"
+     }
+    },
+    {
+     "id": "employee-3500-updated-1791882560",
+     "occurredAt": "2026-10-13T09:09:20Z",
+     "payload": {
+      "employeeId": "3500",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:09:20Z"
+     }
+    }
+   ],
+   "next": "{\"v\":1,\"since\":\"2026-10-13T09:09:20Z\",\"afterEmployeeId\":\"3500\"}",
+   "hasMore": true,
+   "eventCount": 500,
+   "eventsAbridged": true
+  },
+  {
+   "name": "no changes keeps offset cursor",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T11:00:00.25+02:00\",\"afterEmployeeId\":\"3\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"employees\":[]}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "next": "{\"v\":1,\"since\":\"2026-10-13T11:00:00.25+02:00\",\"afterEmployeeId\":\"3\"}",
+   "eventCount": 0
+  },
+  {
+   "name": "typed cursor and filter",
+   "changeType": "updated",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\",\"changeType\":\"updated\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"44\":{\"id\":\"44\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:30:00Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z&type=updated",
+   "requests": 1,
+   "events": [
+    {
+     "id": "employee-44-updated-1791883800",
+     "occurredAt": "2026-10-13T09:30:00Z",
+     "payload": {
+      "employeeId": "44",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:30:00Z"
+     }
+    }
+   ],
+   "next": "{\"v\":1,\"since\":\"2026-10-13T09:30:00Z\",\"afterEmployeeId\":\"44\",\"changeType\":\"updated\"}",
+   "eventCount": 1
+  },
+  {
+   "name": "case-insensitive duplicate keys",
+   "cursor": "{\"V\":1,\"since\":\"2026-10-13T07:00:00Z\",\"SINCE\":\"2026-10-13T09:00:00Z\",\"afteremployeeid\":null} trailing",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"2\":{\"id\":\"2\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:00:00Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": [
+    {
+     "id": "employee-2-updated-1791882000",
+     "occurredAt": "2026-10-13T09:00:00Z",
+     "payload": {
+      "employeeId": "2",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:00:00Z"
+     }
+    }
+   ],
+   "next": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\",\"afterEmployeeId\":\"2\"}",
+   "eventCount": 1
+  },
+  {
+   "name": "numeric id",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"employees\":{\"33\":{\"id\":33,\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:30:00Z\"},\"34\":{\"action\":\"Inserted\",\"lastChanged\":\"2026-10-13T09:31:00Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": [
+    {
+     "id": "employee-33-updated-1791883800",
+     "occurredAt": "2026-10-13T09:30:00Z",
+     "payload": {
+      "employeeId": "33",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:30:00Z"
+     }
+    },
+    {
+     "id": "employee-34-inserted-1791883860",
+     "occurredAt": "2026-10-13T09:31:00Z",
+     "payload": {
+      "employeeId": "34",
+      "action": "Inserted",
+      "lastChanged": "2026-10-13T09:31:00Z"
+     }
+    }
+   ],
+   "next": "{\"v\":1,\"since\":\"2026-10-13T09:31:00Z\",\"afterEmployeeId\":\"34\"}",
+   "eventCount": 2
+  },
+  {
+   "name": "html in body ignored fields",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"employees\":{\"35\":{\"id\":\"35\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:30:00Z\",\"extra\":\"<b>\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": [
+    {
+     "id": "employee-35-updated-1791883800",
+     "occurredAt": "2026-10-13T09:30:00Z",
+     "payload": {
+      "employeeId": "35",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:30:00Z"
+     }
+    }
+   ],
+   "next": "{\"v\":1,\"since\":\"2026-10-13T09:30:00Z\",\"afterEmployeeId\":\"35\"}",
+   "eventCount": 1
+  },
+  {
+   "name": "mismatched id",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"employees\":{\"35\":{\"id\":\"36\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:30:00Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR returned an invalid change list: a change names an invalid employee ID",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "invalid action",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"35\":{\"id\":\"35\",\"action\":\"Up dated\",\"lastChanged\":\"2026-10-13T09:30:00Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR returned an invalid change list: employee 35 has an invalid action",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "invalid lastChanged",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"35\":{\"id\":\"35\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13 09:30:00\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR returned an invalid change list: employee 35 has an invalid lastChanged",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "go time forms",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"61\":{\"id\":\"61\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T08:00:00.1234567891Z\"},\"62\":{\"id\":\"62\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:30:00,25Z\"},\"63\":{\"id\":\"63\",\"action\":\"Inserted\",\"lastChanged\":\"2026-10-14T09:31:00+24:00\"},\"64\":{\"id\":\"64\",\"action\":\"Inserted\",\"lastChanged\":\"2026-10-13T09:32:00-00:00\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": [
+    {
+     "id": "employee-62-updated-1791883800",
+     "occurredAt": "2026-10-13T09:30:00.25Z",
+     "payload": {
+      "employeeId": "62",
+      "action": "Updated",
+      "lastChanged": "2026-10-13T09:30:00.25Z"
+     }
+    },
+    {
+     "id": "employee-63-inserted-1791883860",
+     "occurredAt": "2026-10-13T09:31:00Z",
+     "payload": {
+      "employeeId": "63",
+      "action": "Inserted",
+      "lastChanged": "2026-10-13T09:31:00Z"
+     }
+    },
+    {
+     "id": "employee-64-inserted-1791883920",
+     "occurredAt": "2026-10-13T09:32:00Z",
+     "payload": {
+      "employeeId": "64",
+      "action": "Inserted",
+      "lastChanged": "2026-10-13T09:32:00Z"
+     }
+    }
+   ],
+   "next": "{\"v\":1,\"since\":\"2026-10-13T09:32:00Z\",\"afterEmployeeId\":\"64\"}",
+   "eventCount": 3
+  },
+  {
+   "name": "lowercase t",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"35\":{\"id\":\"35\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13t09:30:00Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR returned an invalid change list: employee 35 has an invalid lastChanged",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "offset past 24 hours",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"35\":{\"id\":\"35\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:30:00+25:00\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR returned an invalid change list: employee 35 has an invalid lastChanged",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "lowercase cursor t",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13t09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "[]"
+   },
+   "requests": 0,
+   "events": null,
+   "error": "poll cursor is invalid: BambooHR employeeChanged cursor is not decodable",
+   "errorKind": "cursorInvalid",
+   "eventCount": 0
+  },
+  {
+   "name": "zero employee id",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\",\"employees\":{\"0\":{\"id\":\"0\",\"action\":\"Updated\",\"lastChanged\":\"2026-10-13T09:30:00Z\"}}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR returned an invalid change list: a change names an invalid employee ID",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "missing employees",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "{\"latest\":\"x\"}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR returned an invalid change list: the response is not a change list",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "not json",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "<html>"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR returned an invalid change list: the response is not a change list",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "unknown cursor field",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\",\"x\":1}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "[]"
+   },
+   "requests": 0,
+   "events": null,
+   "error": "poll cursor is invalid: BambooHR employeeChanged cursor is not decodable",
+   "errorKind": "cursorInvalid",
+   "eventCount": 0
+  },
+  {
+   "name": "wrong cursor version",
+   "cursor": "{\"v\":2,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "[]"
+   },
+   "requests": 0,
+   "events": null,
+   "error": "poll cursor is invalid: BambooHR employeeChanged cursor is not decodable",
+   "errorKind": "cursorInvalid",
+   "eventCount": 0
+  },
+  {
+   "name": "zero since",
+   "cursor": "{\"v\":1,\"since\":\"0001-01-01T00:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "[]"
+   },
+   "requests": 0,
+   "events": null,
+   "error": "poll cursor is invalid: BambooHR employeeChanged cursor is not decodable",
+   "errorKind": "cursorInvalid",
+   "eventCount": 0
+  },
+  {
+   "name": "bad after id",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\",\"afterEmployeeId\":\"007\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "[]"
+   },
+   "requests": 0,
+   "events": null,
+   "error": "poll cursor is invalid: BambooHR employeeChanged cursor is not decodable",
+   "errorKind": "cursorInvalid",
+   "eventCount": 0
+  },
+  {
+   "name": "bad cursor change type",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\",\"changeType\":\"hired\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "[]"
+   },
+   "requests": 0,
+   "events": null,
+   "error": "poll cursor is invalid: BambooHR employeeChanged cursor is not decodable",
+   "errorKind": "cursorInvalid",
+   "eventCount": 0
+  },
+  {
+   "name": "cursor read with another change type",
+   "changeType": "deleted",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "[]"
+   },
+   "requests": 0,
+   "events": null,
+   "error": "poll cursor is invalid: BambooHR employeeChanged cursor was read with another changeType",
+   "errorKind": "cursorInvalid",
+   "eventCount": 0
+  },
+  {
+   "name": "cursor not json",
+   "cursor": "nope",
+   "response": {
+    "status": 200,
+    "date": "Tue, 13 Oct 2026 10:00:00 GMT",
+    "body": "[]"
+   },
+   "requests": 0,
+   "events": null,
+   "error": "poll cursor is invalid: BambooHR employeeChanged cursor is not decodable",
+   "errorKind": "cursorInvalid",
+   "eventCount": 0
+  },
+  {
+   "name": "400 rejects cursor",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"bad_since\"}}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "poll cursor is invalid: BambooHR rejected the request (HTTP 400) [bad_since]",
+   "errorKind": "cursorInvalid",
+   "eventCount": 0
+  },
+  {
+   "name": "429 with retry after",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 429,
+    "retryAfter": "17",
+    "body": "{}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "provider rate limited the poll: BambooHR rate limited the request (HTTP 429)",
+   "errorKind": "rateLimited",
+   "retryAfterSeconds": 17,
+   "eventCount": 0
+  },
+  {
+   "name": "503",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 503,
+    "body": "{}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "provider rate limited the poll: BambooHR could not complete the request (HTTP 503)",
+   "errorKind": "rateLimited",
+   "eventCount": 0
+  },
+  {
+   "name": "500",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 500,
+    "body": "{}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR employeeChanged poll: BambooHR could not complete the request (HTTP 500)",
+   "errorKind": "failed",
+   "eventCount": 0
+  },
+  {
+   "name": "403",
+   "cursor": "{\"v\":1,\"since\":\"2026-10-13T09:00:00Z\"}",
+   "response": {
+    "status": 403,
+    "body": "{}"
+   },
+   "query": "since=2026-10-13T08%3A59%3A59Z",
+   "requests": 1,
+   "events": null,
+   "error": "BambooHR employeeChanged poll: BambooHR rejected the request (HTTP 403)",
+   "errorKind": "failed",
+   "eventCount": 0
+  }
+ ]
+}

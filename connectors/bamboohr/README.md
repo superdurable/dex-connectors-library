@@ -37,21 +37,28 @@ The module requires Connector Go SDK v0.38.0 for the durable poll Trigger kit
 
 ## Python package
 
-The independent `dex-connector-bamboohr` Python package starts at `v0.1.0` and
-implements all six operations above with the same branch IDs and provider
-request behavior as the Go connector. It includes generated typed inputs,
-outputs, operation-specific Step factories, named project connections, and
-mock outcomes. `addEmployee` uses the Python Connector SDK's single-dispatch
-fence and sync Execute durability. The Python package does not implement the
-`employeeChanged` Trigger.
+The independent `dex-connector-bamboohr` Python package `v0.2.0` implements all
+six operations above with the same branch IDs and provider request behavior as
+the Go connector. It includes generated typed inputs, outputs,
+operation-specific Step factories, named project connections, and mock
+outcomes. `addEmployee` uses the Python Connector SDK's single-dispatch fence
+and sync Execute durability. Install it with `dex-connector-bamboohr==0.2.0`;
+it requires `dex-connectors-sdk` 0.12.0 or newer.
+
+The package also implements the `employeeChanged` Trigger on the Python poll
+Trigger kit at behavior parity with Go: the same settle window, ordering,
+change type filter, event IDs, rate-limit and cursor-reset handling, and a
+cursor document that Go and Python replicas read and write byte for byte. The
+[Python employee-changed example](python/examples/employee_changed/README.md)
+starts one Flow per change and reads inserted and updated employees back.
 
 The [Python employee lookup example](python/examples/get_employee/README.md)
 uses the static `bamboohr` connection name, a Worker entrypoint, and a start
 command. Its real Dex integration test uses an inert BambooHR stand-in and
 checks retry and unwired optional-branch failure. Go-recorded provider
 scenarios are replayed by the Python package. A live BambooHR account has not
-been used for this Python port, so live authorization and provider behavior
-remain unverified.
+been used for this Python port, so live authorization and provider behavior,
+including live polling, remain unverified.
 
 This release has no webhook Triggers, no field or employee pickers, and no
 OAuth; see [Not in this release](#not-in-this-release).
@@ -492,6 +499,9 @@ terminations through `listEmployeeChanges`, but does not write them.
   Trigger example: the `employeeChanged` binding, configured with the
   `changeTypePicker` unit, starts one Flow per changed employee, which reads
   the employee back with `getEmployee`.
+- [`python/examples/employee_changed`](python/examples/employee_changed) is the
+  same Trigger example in Python, with the same binding, configuration unit,
+  and read-back.
 
 ## Verification
 

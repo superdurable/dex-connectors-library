@@ -4,8 +4,9 @@
 
 import base64
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import httpx
@@ -37,6 +38,9 @@ if TYPE_CHECKING:
 _COMPANY_DOMAIN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _ERROR_CODE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
 
+MINIMUM_POLL_INTERVAL = timedelta(seconds=10)
+"""Keeps employeeChanged polling from tripping BambooHR's unpublished throttling."""
+
 
 @dataclass(frozen=True, slots=True)
 class Exchange:
@@ -56,7 +60,13 @@ def bamboohr_failure(operation: str, kind: FailureKind, message: str) -> Failure
 
 
 class Client:
-    """Execute BambooHR API v1 operations with a call-time credential source."""
+    """Execute BambooHR API v1 operations with a call-time credential source.
+
+    `poll_interval` is the employeeChanged Trigger's delay between polls, from
+    `Config.poll_interval_seconds` (zero uses the manifest's one minute). The constructor raises
+    ValueError for an interval under 10 seconds, as Go's New does. clock replaces the local clock, which
+    seeds a Trigger cursor when BambooHR sends no usable Date header; None uses the system clock.
+    """
 
     def __init__(
         self,
@@ -64,6 +74,8 @@ class Client:
         credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
         api_base_url: str | None = None,
+        *,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("BambooHR configuration and credentials are required")
@@ -71,12 +83,25 @@ class Client:
             raise ValueError("BambooHR companyDomain must be lowercase letters, digits, and hyphens")
         if config.max_response_bytes < 1:
             raise ValueError("BambooHR response limit must be positive")
+        poll_interval_seconds = config.poll_interval_seconds or 60
+        if (
+            isinstance(poll_interval_seconds, bool)
+            or not isinstance(poll_interval_seconds, int | float)
+            or not poll_interval_seconds >= MINIMUM_POLL_INTERVAL.total_seconds()
+        ):
+            raise ValueError("BambooHR pollInterval must be at least 10s")
+        self.poll_interval = timedelta(seconds=poll_interval_seconds)
+        self._clock = clock or (lambda: datetime.now(UTC))
         endpoint = validate_base_url(api_base_url or f"https://{config.company_domain}.bamboohr.com/api/v1")
         self.config = config
         self._endpoint = endpoint.rstrip("/")
         self._credentials = credentials
         self._http_client = http_client or new_provider_http_client(9)
         self._owns_http_client = http_client is None
+
+    def now(self) -> datetime:
+        """Return the client's current time, timezone-aware."""
+        return self._clock()
 
     async def aclose(self) -> None:
         """Close the connector-owned HTTP transport after Worker shutdown."""
@@ -219,7 +244,7 @@ class Client:
                 error_code = tokens[0]
                 break
         suffix = f" [{error_code}]" if error_code else ""
-        retry_after = parse_retry_after(headers.get("Retry-After", ""), datetime.now(UTC))
+        retry_after = parse_retry_after(headers.get("Retry-After", ""), self.now())
         if status == 429:
             return Exchange(
                 "rate_limited",
