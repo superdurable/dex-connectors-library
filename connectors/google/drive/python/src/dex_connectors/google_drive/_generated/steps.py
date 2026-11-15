@@ -201,6 +201,7 @@ def new_upload_file_step(
     defect: dex.StepTarget[MutationResult[UploadFileOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UploadFileOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UploadFileInput, UploadFileOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Google Drive Step connection name must match its connection reference")
@@ -234,6 +235,7 @@ def new_upload_file_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

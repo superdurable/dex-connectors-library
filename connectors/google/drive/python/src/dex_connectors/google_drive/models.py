@@ -4,7 +4,9 @@
 
 from ._generated.models import (
     File,
+    FileEvent,
     FileSummary,
+    FileTriggerConfiguration,
     FileUser,
     GetFileInput,
     ReadFileTextInput,
@@ -18,7 +20,9 @@ from ._generated.models import (
 
 __all__ = [
     "File",
+    "FileEvent",
     "FileSummary",
+    "FileTriggerConfiguration",
     "FileUser",
     "GetFileInput",
     "ReadFileTextInput",
