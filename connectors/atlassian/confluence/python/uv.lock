@@ -298,7 +298,7 @@ wheels = [
 
 [[package]]
 name = "dex-connector-atlassian-confluence"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "dex-connectors-sdk" },
@@ -318,7 +318,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dex-connectors-sdk", specifier = "==0.7.0" },
+    { name = "dex-connectors-sdk", specifier = ">=0.12.0,<1" },
     { name = "dex-python-sdk", specifier = ">=1.28.0" },
     { name = "httpx", specifier = ">=0.27" },
 ]
@@ -335,7 +335,7 @@ dev = [
 
 [[package]]
 name = "dex-connectors-sdk"
-version = "0.7.0"
+version = "0.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -345,9 +345,9 @@ dependencies = [
     { name = "httpcore" },
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/39/5e/4c472bd0ee3b44904b012609f74283eeef0ee1ed69721b5efa29470414d2/dex_connectors_sdk-0.7.0.tar.gz", hash = "sha256:e1465e66a5f7f6fd6d9c2c8255fe78de6b6847e9bf3b2cf8f65e06037df0df4e", size = 227375, upload-time = "2026-11-05T16:54:57.229Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/bb/16f57d6258cd5c02cbdae98dfe4ed35e55146c73eb13693eaaf56ca8f34a/dex_connectors_sdk-0.12.0.tar.gz", hash = "sha256:9d0cb7086b9c61712ecbca829c05cfc4f4d45663b077659855d9a4784eafdbd3", size = 374308, upload-time = "2026-11-15T22:17:52.158Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/cd/4fbd34d4ff9d925005601a2002e13e0cb68c10eefc3d19779c067f96880b/dex_connectors_sdk-0.7.0-py3-none-any.whl", hash = "sha256:dbd679f11a06dc101841b9ee229bf004cbe8d3b99b86e1a3da5a4606bfe2f1f4", size = 119827, upload-time = "2026-11-05T16:54:56.058Z" },
+    { url = "https://files.pythonhosted.org/packages/66/41/3d2fd56b92e0b4325eb3eb59a744de6f5a45c6976cc4a0f5a6aa983b83f8/dex_connectors_sdk-0.12.0-py3-none-any.whl", hash = "sha256:b4b6e264187a72ce44e1aab20737882bcde824a3cb170bbd62f6ea7076e13333", size = 204649, upload-time = "2026-11-15T22:17:50.84Z" },
 ]
 
 [[package]]

@@ -1,0 +1,185 @@
+{
+  "generatedBy": "Go net/url Parse and Query().Get, as connectors/atlassian/confluence/go readNextCursor reads _links.next",
+  "cases": [
+    {
+      "nextLink": "/rest/api/content/search?cursor=abc&limit=100",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=&cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=%zz",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=%zz&cursor=ok",
+      "cursor": "ok",
+      "isValid": true
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=a;b",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=a%3Db",
+      "cursor": "a=b",
+      "isValid": true
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=a+b",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/rest/api/content/search?x=1;cursor=abc&cursor=def",
+      "cursor": "def",
+      "isValid": true
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=abc#cursor=x",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=a%2Bb",
+      "cursor": "a+b",
+      "isValid": true
+    },
+    {
+      "nextLink": "/rest/api/content/search?Cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=abc\u0001",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/rest/%zz/search?cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "http://[::1/search?cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/rest/api/content/search?cursor=%C3%A9",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "https://site.atlassian.net/wiki/rest/api/content/search?cursor=abc",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "https://user:pa%zz@site/x?cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "https://site:80a/x?cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "https://si%zzte/x?cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "//site/x?cursor=abc",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "///x?cursor=abc",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "a:b/x?cursor=abc",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "1a:b/x?cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": ":x?cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "mailto:x?cursor=abc",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "/x?cursor=abc#frag%zz",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/x?cursor=abc?",
+      "cursor": "abc?",
+      "isValid": true
+    },
+    {
+      "nextLink": "/x?a=%zz&cursor=abc",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "/x?cursor=abc&cursor=def",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "/x?=1&cursor=abc",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "https://[::1]:443/x?cursor=abc",
+      "cursor": "abc",
+      "isValid": true
+    },
+    {
+      "nextLink": "https://[::1]x/x?cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "https://si te/x?cursor=abc",
+      "cursor": "",
+      "isValid": false
+    },
+    {
+      "nextLink": "/x?cursor=%41BC",
+      "cursor": "ABC",
+      "isValid": true
+    },
+    {
+      "nextLink": "/x?cursor=%2",
+      "cursor": "",
+      "isValid": false
+    }
+  ]
+}

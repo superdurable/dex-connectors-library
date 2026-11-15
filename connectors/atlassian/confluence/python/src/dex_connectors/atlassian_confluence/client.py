@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlencode
@@ -43,6 +43,8 @@ if TYPE_CHECKING:
 
 _CLOUD_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
 _DEFAULT_ENDPOINT = "https://api.atlassian.com"
+# Keeps a pageChanged poll loop from spending the app's Confluence rate-limit quota.
+_MINIMUM_POLL_INTERVAL_SECONDS = 10
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -124,6 +126,13 @@ class Client:
         self.max_response_bytes = config.max_response_bytes or 8_388_608
         if type(self.max_response_bytes) is not int or self.max_response_bytes < 1:
             raise ValueError("Confluence maxResponseBytes must be positive")
+        if config.poll_interval_seconds == 0:
+            # Zero keeps the displayed default, as the Go connector's configuration defaults do.
+            config = replace(config, poll_interval_seconds=Config("").poll_interval_seconds)
+        if config.poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError(f"Confluence pollInterval must be at least {_MINIMUM_POLL_INTERVAL_SECONDS}s")
+        self.poll_interval_seconds: float = config.poll_interval_seconds
+        """Delay between pageChanged polls, in seconds."""
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(20)
         self.owns_http_client = http_client is None

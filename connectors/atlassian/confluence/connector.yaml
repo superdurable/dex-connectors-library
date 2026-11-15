@@ -16,10 +16,10 @@ spec:
       operations: [searchPages, getPage, createPage, updatePage, addComment]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-atlassian-confluence
       operations: [searchPages, getPage, createPage, updatePage, addComment]
-      triggers: []
+      triggers: [pageChanged]
   codegen:
     go:
       package: confluence
