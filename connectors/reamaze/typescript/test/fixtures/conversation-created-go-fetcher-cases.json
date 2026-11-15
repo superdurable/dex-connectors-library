@@ -1,0 +1,1608 @@
+{
+ "cases": [
+  {
+   "name": "seed_then_new_archived",
+   "steps": [
+    {
+     "actions": [
+      {
+       "action": "insertRange",
+       "createdAt": "2026-03-02T09:00:00Z",
+       "prefix": "existing",
+       "count": 40,
+       "spacingMillis": 1000
+      }
+     ],
+     "kind": "seed",
+     "cursorOutSha256": "e1046b3b6c98ea22d8a1e7d2e1fa3efdac18d1e57204b3c06ee3c25ff9bcd412",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "85268eb138977f2eb9645b08c0fa6b1d1ac24e5c60887e5ff88b379545aed628"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ]
+    },
+    {
+     "actions": [
+      {
+       "action": "insert",
+       "slug": "new-billing",
+       "subject": "Double charge \u003c\u0026\u003e",
+       "status": 4,
+       "createdAt": "2026-03-02T09:01:00Z"
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 0,
+     "cursorOutSha256": "fe45fa69f4526fac80112bdc3fe0bcab0867661000a4083277e639e58207e6e4",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "1d38d4d13eee0cbe2094655d0c36d09b1ad03b5ae240e334085e9f76bb964a2b"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0a080fbb2301b03d46b6f0d7254da8280fd1126da777f4ede2015dae1dd519da"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2"
+     ],
+     "changes": [
+      {
+       "id": "reamaze-conversation-b95ed3349434eb371992912c1a62ba29",
+       "occurredAt": "2026-03-02T09:01:00Z",
+       "payload": "{\"brand\":\"acme\",\"conversation\":{\"id\":\"new-billing\",\"subject\":\"Double charge \\u003c\\u0026\\u003e\",\"status\":4,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Double charge \\u003c\\u0026\\u003e\",\"createdAt\":\"2026-03-02T09:01:00Z\"}}",
+       "payloadSortedSha256": "ece4dd9429228e8ead477be89f4cb7bca65dfe5a7378277cfc9ca65f10756dca"
+      }
+     ]
+    },
+    {
+     "kind": "fetch",
+     "cursorInStep": 0,
+     "cursorOutSha256": "fe45fa69f4526fac80112bdc3fe0bcab0867661000a4083277e639e58207e6e4",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "1d38d4d13eee0cbe2094655d0c36d09b1ad03b5ae240e334085e9f76bb964a2b"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0a080fbb2301b03d46b6f0d7254da8280fd1126da777f4ede2015dae1dd519da"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2"
+     ],
+     "changes": [
+      {
+       "id": "reamaze-conversation-b95ed3349434eb371992912c1a62ba29",
+       "occurredAt": "2026-03-02T09:01:00Z",
+       "payload": "{\"brand\":\"acme\",\"conversation\":{\"id\":\"new-billing\",\"subject\":\"Double charge \\u003c\\u0026\\u003e\",\"status\":4,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Double charge \\u003c\\u0026\\u003e\",\"createdAt\":\"2026-03-02T09:01:00Z\"}}",
+       "payloadSortedSha256": "ece4dd9429228e8ead477be89f4cb7bca65dfe5a7378277cfc9ca65f10756dca"
+      }
+     ]
+    },
+    {
+     "kind": "fetch",
+     "cursorInStep": 2,
+     "cursorOutSha256": "fe45fa69f4526fac80112bdc3fe0bcab0867661000a4083277e639e58207e6e4",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "1d38d4d13eee0cbe2094655d0c36d09b1ad03b5ae240e334085e9f76bb964a2b"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0a080fbb2301b03d46b6f0d7254da8280fd1126da777f4ede2015dae1dd519da"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ties_and_late_listed",
+   "channel": "support",
+   "steps": [
+    {
+     "actions": [
+      {
+       "action": "insert",
+       "slug": "existing",
+       "subject": "Existing",
+       "channel": "support",
+       "createdAt": "2026-03-02T09:00:00Z"
+      }
+     ],
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "d46f855b36106c57a83a2f44ef8c5c25cf42ce3cc51a24e935d243bcdd2bcc27"
+      }
+     ],
+     "requests": [
+      "category=support\u0026filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1772442000000,\"floor\":1772441400000,\"seen\":[{\"d\":\"afafb16ac47b9b3d\",\"t\":1772442000000}]}"
+    },
+    {
+     "actions": [
+      {
+       "action": "insert",
+       "slug": "tie-a",
+       "subject": "Tie A",
+       "channel": "support",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "tie-b",
+       "subject": "Tie B",
+       "channel": "support",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "late",
+       "subject": "Late",
+       "channel": "support",
+       "createdAt": "2026-03-02T09:55:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "too-late",
+       "subject": "Too late",
+       "channel": "support",
+       "createdAt": "2026-03-02T09:40:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "elsewhere",
+       "subject": "Sales",
+       "channel": "sales",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "hide",
+       "slug": "tie-b"
+      },
+      {
+       "action": "hide",
+       "slug": "late"
+      },
+      {
+       "action": "hide",
+       "slug": "too-late"
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 0,
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "a95e3a09915e30ab41e02f6c116e69d081e1aa192c8006ceb993016131c5e51c"
+      }
+     ],
+     "requests": [
+      "category=support\u0026filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1772445600000,\"floor\":1772445000000,\"seen\":[{\"d\":\"556b9305242f7766\",\"t\":1772445600000}]}",
+     "changes": [
+      {
+       "id": "reamaze-conversation-96f2af961f2c7306f38e86cedd363414",
+       "occurredAt": "2026-03-02T10:00:00Z",
+       "payload": "{\"brand\":\"acme\",\"channel\":\"support\",\"conversation\":{\"id\":\"tie-a\",\"subject\":\"Tie A\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Tie A\",\"createdAt\":\"2026-03-02T10:00:00Z\"}}",
+       "payloadSortedSha256": "eecfc46726d9ddc7042ac3e12186f2c64923c0b24e71640b4ca878884542f31c"
+      }
+     ]
+    },
+    {
+     "actions": [
+      {
+       "action": "reveal",
+       "slug": "tie-b"
+      },
+      {
+       "action": "reveal",
+       "slug": "late"
+      },
+      {
+       "action": "reveal",
+       "slug": "too-late"
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 1,
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "9ee18e80d32de33d8dad6a8fc190e64ca6583dad22b97445ddb610b193a5d009"
+      }
+     ],
+     "requests": [
+      "category=support\u0026filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1772445600000,\"floor\":1772445000000,\"seen\":[{\"d\":\"556b9305242f7766\",\"t\":1772445600000},{\"d\":\"67499488ad9b1c1a\",\"t\":1772445600000},{\"d\":\"089001a35679a33e\",\"t\":1772445300000}]}",
+     "changes": [
+      {
+       "id": "reamaze-conversation-4a0ced7ba64874767a0060d7de73096b",
+       "occurredAt": "2026-03-02T09:55:00Z",
+       "payload": "{\"brand\":\"acme\",\"channel\":\"support\",\"conversation\":{\"id\":\"late\",\"subject\":\"Late\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Late\",\"createdAt\":\"2026-03-02T09:55:00Z\"}}",
+       "payloadSortedSha256": "03f85c5e44d2697316a74dc9689b2251c2b97a2c6839ac470cb3d03ea7d400ea"
+      },
+      {
+       "id": "reamaze-conversation-55631b02d08281618a7dbd73fd669ad6",
+       "occurredAt": "2026-03-02T10:00:00Z",
+       "payload": "{\"brand\":\"acme\",\"channel\":\"support\",\"conversation\":{\"id\":\"tie-b\",\"subject\":\"Tie B\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Tie B\",\"createdAt\":\"2026-03-02T10:00:00Z\"}}",
+       "payloadSortedSha256": "943dc65c60c0580c4ff1762449f0dd73594f60c8eda9e719a370977166f7d8c7"
+      }
+     ]
+    },
+    {
+     "kind": "fetch",
+     "cursorInStep": 2,
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "9ee18e80d32de33d8dad6a8fc190e64ca6583dad22b97445ddb610b193a5d009"
+      }
+     ],
+     "requests": [
+      "category=support\u0026filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1772445600000,\"floor\":1772445000000,\"seen\":[{\"d\":\"556b9305242f7766\",\"t\":1772445600000},{\"d\":\"67499488ad9b1c1a\",\"t\":1772445600000},{\"d\":\"089001a35679a33e\",\"t\":1772445300000}]}"
+    }
+   ]
+  },
+  {
+   "name": "ascending_walk",
+   "steps": [
+    {
+     "actions": [
+      {
+       "action": "listOldestFirst"
+      },
+      {
+       "action": "insertRange",
+       "createdAt": "2026-03-02T09:00:00Z",
+       "prefix": "existing",
+       "count": 40,
+       "spacingMillis": 1000
+      }
+     ],
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "0d3d3d2a5c90806213fda891bc6a1b09fb80ad72d67fde03db58ea799a7f884c"
+      },
+      {
+       "status": 200,
+       "bodySha256": "66d9cab9fe7448342b8066e5cc7c135d8b7465efb50486d12b71b66458354de2"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":1772442039000,\"floor\":1772442030001,\"seen\":[{\"d\":\"54ee0788268435fb\",\"t\":1772442039000},{\"d\":\"d70ba0be886dd9c4\",\"t\":1772442038000},{\"d\":\"3d6097de69837ed1\",\"t\":1772442037000},{\"d\":\"a256c20f5df9a271\",\"t\":1772442036000},{\"d\":\"2d5b2eb8363fe440\",\"t\":1772442035000},{\"d\":\"e068bd6930359d82\",\"t\":1772442034000},{\"d\":\"4e6cfaa9805c163c\",\"t\":1772442033000},{\"d\":\"52a3e9b75e0a0b96\",\"t\":1772442032000},{\"d\":\"ff2d345d5d213650\",\"t\":1772442031000}]}"
+    },
+    {
+     "actions": [
+      {
+       "action": "insertRange",
+       "createdAt": "2026-03-02T10:00:00Z",
+       "prefix": "new",
+       "count": 25,
+       "spacingMillis": 1000
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 0,
+     "cursorOutSha256": "221bddb730947585d4b9afb0623affde5ba004225f90488b14c3bb7169d78228",
+     "changeCount": 25,
+     "changeIdsSha256": "3aa9a137c76673ab10a30c156b1ae23800e1c7a6708307a5c5d94ceae070c0a1",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "8ef8bf78bcdc80f42aec4c50491c89fe77f00df6930fbb445a056d7d45d4ec54"
+      },
+      {
+       "status": 200,
+       "bodySha256": "1b8e934e7aa8bb1b8c913f4ee6db9cea962922630c6b170f9d62d73039218d34"
+      },
+      {
+       "status": 200,
+       "bodySha256": "165ff1844eadcd02ef615fec623de9176371316b96fe66692131d227dbfd7d8a"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=3",
+      "filter=all\u0026page=2"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "backlog_bound",
+   "steps": [
+    {
+     "actions": [
+      {
+       "action": "insert",
+       "slug": "existing",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T09:00:00Z"
+      }
+     ],
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "d46f855b36106c57a83a2f44ef8c5c25cf42ce3cc51a24e935d243bcdd2bcc27"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":1772442000000,\"floor\":1772441400000,\"seen\":[{\"d\":\"afafb16ac47b9b3d\",\"t\":1772442000000}]}"
+    },
+    {
+     "actions": [
+      {
+       "action": "insertRange",
+       "createdAt": "2026-03-02T10:00:00Z",
+       "prefix": "burst",
+       "count": 600,
+       "spacingMillis": 1000
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 0,
+     "cursorOutSha256": "fdba68c264e2b6d6fd37b2cfccf049b84e6fdc5a27b55fb40cb185262beab8b8",
+     "changeCount": 480,
+     "changeIdsSha256": "2c83ae16c811a4959923173336c3d2b781469238555caad412f866eb3a0b12e6",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "81c0034756da0a02062ddf902b41d7a0d865325aee467f44960c59429d70e3c8"
+      },
+      {
+       "status": 200,
+       "bodySha256": "bee6bfe717014b1ef06b14424b418a4e8d3ff205e6274b3ac0e5a142aff1341b"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0f3b83ad1e5807f443c0e0df57e1286348c90a829c2449b80ff5bd922ad2083f"
+      },
+      {
+       "status": 200,
+       "bodySha256": "8f3ca7fae60a1154d3c1cf4afaf148a4bf0c12b1659aecc6c7af1ee770bd9c9f"
+      },
+      {
+       "status": 200,
+       "bodySha256": "29d2c66d459361b8978c90958fbb071e7ba89eeb367895b51f53ff60652babc5"
+      },
+      {
+       "status": 200,
+       "bodySha256": "7d0a1e959f6526539db46a81fee48efb26f6a6b1ff11cee3155441b06de4d4e5"
+      },
+      {
+       "status": 200,
+       "bodySha256": "bad5766f475e8975f60fc1d1416f650fa6485928becb77af3223bf47588c9dd9"
+      },
+      {
+       "status": 200,
+       "bodySha256": "539151bb90a595ba1e5f24b35c21b335ed5c982828b39f6a98f54cc8f5b661d0"
+      },
+      {
+       "status": 200,
+       "bodySha256": "455368bd65a722a472f8e3b7217a2d2a301bdcd15356e61a18417b6ff50c1613"
+      },
+      {
+       "status": 200,
+       "bodySha256": "85b8c73dcba3df118e7ee0edce5b01af85b84a6254211376e6a084887a111de7"
+      },
+      {
+       "status": 200,
+       "bodySha256": "106ee482aac097cdb0f05c15110d6a0b4669d339b6028599d0947015b9ce2b5b"
+      },
+      {
+       "status": 200,
+       "bodySha256": "ec643944f89972b4876c795862065dc2e75eb30f2aa75d856937da7902b6aa17"
+      },
+      {
+       "status": 200,
+       "bodySha256": "80320568087abd79862a752c7dcac8421295fe5d9d5b882f88fa26e1eed5cb3d"
+      },
+      {
+       "status": 200,
+       "bodySha256": "6ff8f31969615385295fc0e81c165619ebda3d9a24ce8ee3499fecc7380f8b69"
+      },
+      {
+       "status": 200,
+       "bodySha256": "b0cab47f620f88c9b22d6a696b3e889cf082574005281597802ca16e40e24e9a"
+      },
+      {
+       "status": 200,
+       "bodySha256": "f0ab9a65d85fe005ca9b77f3b860c3e03f5b381f821bf7dec809ee389f689113"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2",
+      "filter=all\u0026page=3",
+      "filter=all\u0026page=4",
+      "filter=all\u0026page=5",
+      "filter=all\u0026page=6",
+      "filter=all\u0026page=7",
+      "filter=all\u0026page=8",
+      "filter=all\u0026page=9",
+      "filter=all\u0026page=10",
+      "filter=all\u0026page=11",
+      "filter=all\u0026page=12",
+      "filter=all\u0026page=13",
+      "filter=all\u0026page=14",
+      "filter=all\u0026page=15",
+      "filter=all\u0026page=16"
+     ]
+    },
+    {
+     "kind": "fetch",
+     "cursorInStep": 1,
+     "cursorOutSha256": "fdba68c264e2b6d6fd37b2cfccf049b84e6fdc5a27b55fb40cb185262beab8b8",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "81c0034756da0a02062ddf902b41d7a0d865325aee467f44960c59429d70e3c8"
+      },
+      {
+       "status": 200,
+       "bodySha256": "bee6bfe717014b1ef06b14424b418a4e8d3ff205e6274b3ac0e5a142aff1341b"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0f3b83ad1e5807f443c0e0df57e1286348c90a829c2449b80ff5bd922ad2083f"
+      },
+      {
+       "status": 200,
+       "bodySha256": "8f3ca7fae60a1154d3c1cf4afaf148a4bf0c12b1659aecc6c7af1ee770bd9c9f"
+      },
+      {
+       "status": 200,
+       "bodySha256": "29d2c66d459361b8978c90958fbb071e7ba89eeb367895b51f53ff60652babc5"
+      },
+      {
+       "status": 200,
+       "bodySha256": "7d0a1e959f6526539db46a81fee48efb26f6a6b1ff11cee3155441b06de4d4e5"
+      },
+      {
+       "status": 200,
+       "bodySha256": "bad5766f475e8975f60fc1d1416f650fa6485928becb77af3223bf47588c9dd9"
+      },
+      {
+       "status": 200,
+       "bodySha256": "539151bb90a595ba1e5f24b35c21b335ed5c982828b39f6a98f54cc8f5b661d0"
+      },
+      {
+       "status": 200,
+       "bodySha256": "455368bd65a722a472f8e3b7217a2d2a301bdcd15356e61a18417b6ff50c1613"
+      },
+      {
+       "status": 200,
+       "bodySha256": "85b8c73dcba3df118e7ee0edce5b01af85b84a6254211376e6a084887a111de7"
+      },
+      {
+       "status": 200,
+       "bodySha256": "106ee482aac097cdb0f05c15110d6a0b4669d339b6028599d0947015b9ce2b5b"
+      },
+      {
+       "status": 200,
+       "bodySha256": "ec643944f89972b4876c795862065dc2e75eb30f2aa75d856937da7902b6aa17"
+      },
+      {
+       "status": 200,
+       "bodySha256": "80320568087abd79862a752c7dcac8421295fe5d9d5b882f88fa26e1eed5cb3d"
+      },
+      {
+       "status": 200,
+       "bodySha256": "6ff8f31969615385295fc0e81c165619ebda3d9a24ce8ee3499fecc7380f8b69"
+      },
+      {
+       "status": 200,
+       "bodySha256": "b0cab47f620f88c9b22d6a696b3e889cf082574005281597802ca16e40e24e9a"
+      },
+      {
+       "status": 200,
+       "bodySha256": "f0ab9a65d85fe005ca9b77f3b860c3e03f5b381f821bf7dec809ee389f689113"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2",
+      "filter=all\u0026page=3",
+      "filter=all\u0026page=4",
+      "filter=all\u0026page=5",
+      "filter=all\u0026page=6",
+      "filter=all\u0026page=7",
+      "filter=all\u0026page=8",
+      "filter=all\u0026page=9",
+      "filter=all\u0026page=10",
+      "filter=all\u0026page=11",
+      "filter=all\u0026page=12",
+      "filter=all\u0026page=13",
+      "filter=all\u0026page=14",
+      "filter=all\u0026page=15",
+      "filter=all\u0026page=16"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "seed_excludes_ties_on_unread_page",
+   "steps": [
+    {
+     "actions": [
+      {
+       "action": "insert",
+       "slug": "existing-0",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-1",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-2",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-3",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-4",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-5",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-6",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-7",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-8",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-9",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-10",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-11",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-12",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-13",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-14",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-15",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-16",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-17",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-18",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-19",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-20",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-21",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-22",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-23",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-24",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-25",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-26",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-27",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-28",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-29",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-30",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:01Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-31",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:02Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-32",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:03Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-33",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:04Z"
+      },
+      {
+       "action": "insert",
+       "slug": "existing-34",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T10:00:05Z"
+      }
+     ],
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "009d627ffd0f0c7bff15c09eb72346bbc43be7d0daf445ce1bc3df386220745f"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":1772445605000,\"floor\":1772445600001,\"seen\":[{\"d\":\"e068bd6930359d82\",\"t\":1772445605000},{\"d\":\"4e6cfaa9805c163c\",\"t\":1772445604000},{\"d\":\"52a3e9b75e0a0b96\",\"t\":1772445603000},{\"d\":\"ff2d345d5d213650\",\"t\":1772445602000},{\"d\":\"fc688ee33c933921\",\"t\":1772445601000}]}"
+    },
+    {
+     "kind": "fetch",
+     "cursorInStep": 0,
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "009d627ffd0f0c7bff15c09eb72346bbc43be7d0daf445ce1bc3df386220745f"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":1772445605000,\"floor\":1772445600001,\"seen\":[{\"d\":\"e068bd6930359d82\",\"t\":1772445605000},{\"d\":\"4e6cfaa9805c163c\",\"t\":1772445604000},{\"d\":\"52a3e9b75e0a0b96\",\"t\":1772445603000},{\"d\":\"ff2d345d5d213650\",\"t\":1772445602000},{\"d\":\"fc688ee33c933921\",\"t\":1772445601000}]}"
+    }
+   ]
+  },
+  {
+   "name": "ties_at_floor_across_page_edge",
+   "steps": [
+    {
+     "actions": [
+      {
+       "action": "insert",
+       "slug": "existing",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T09:00:00Z"
+      }
+     ],
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "d46f855b36106c57a83a2f44ef8c5c25cf42ce3cc51a24e935d243bcdd2bcc27"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":1772442000000,\"floor\":1772441400000,\"seen\":[{\"d\":\"afafb16ac47b9b3d\",\"t\":1772442000000}]}"
+    },
+    {
+     "actions": [
+      {
+       "action": "insertRange",
+       "createdAt": "2026-03-02T09:59:32Z",
+       "prefix": "recent",
+       "count": 29,
+       "spacingMillis": 1000
+      },
+      {
+       "action": "insert",
+       "slug": "at-floor-a",
+       "subject": "At floor",
+       "createdAt": "2026-03-02T09:50:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "at-floor-b",
+       "subject": "At floor",
+       "createdAt": "2026-03-02T09:50:00Z"
+      },
+      {
+       "action": "hide",
+       "slug": "at-floor-b"
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 0,
+     "cursorOutSha256": "f326083112d4c9c862a9a76731341edf621e91172ab64d3846c2b2f3babc74cd",
+     "changeCount": 30,
+     "changeIdsSha256": "4d3f2f7499064f710dadad8de92bf705f40595ca06be285f3055d1c4fc741297",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "2b7ab6e8be5dbff58b1b9104709076707cfdec044eae3bb9d29c81fc843998eb"
+      },
+      {
+       "status": 200,
+       "bodySha256": "8fefed317c901b8628c4bacfe54a383df15f54a17ec85fcaf9db05b871808dbb"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2"
+     ]
+    },
+    {
+     "actions": [
+      {
+       "action": "reveal",
+       "slug": "at-floor-b"
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 1,
+     "cursorOutSha256": "5d4cd83648909fa28a87fb81fbe875e8c785d1537c1f850727b603b8963e8157",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "75171256bc3129237cab04273d9198af90adeb29893f1fa5b7839579f5424368"
+      },
+      {
+       "status": 200,
+       "bodySha256": "696ece13f9a4d6f97d51fc6b1e8a506e66304bb4c8ecd993431f7d443bb625d9"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2"
+     ],
+     "changes": [
+      {
+       "id": "reamaze-conversation-1b0392a2766d426040f036dfa7973f73",
+       "occurredAt": "2026-03-02T09:50:00Z",
+       "payload": "{\"brand\":\"acme\",\"conversation\":{\"id\":\"at-floor-b\",\"subject\":\"At floor\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of At floor\",\"createdAt\":\"2026-03-02T09:50:00Z\"}}",
+       "payloadSortedSha256": "27034f44f4a0e9521667436cfdbc7b7c0888be3079c88e98a2f2c441fef65253"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "rate_limited",
+   "steps": [
+    {
+     "actions": [
+      {
+       "action": "rateLimitNextList",
+       "retryAfter": "7"
+      }
+     ],
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 429,
+       "retryAfter": "7",
+       "bodySha256": "cf4b16c5aebeecd72e4af8454abab74cd950f1715a1800cccd9ef15b7d2bee17"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "error": "rateLimited",
+     "retryAfterMillis": 7000
+    },
+    {
+     "actions": [
+      {
+       "action": "rateLimitNextList"
+      }
+     ],
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 429,
+       "bodySha256": "cf4b16c5aebeecd72e4af8454abab74cd950f1715a1800cccd9ef15b7d2bee17"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "error": "rateLimited",
+     "retryAfterMillis": 60000
+    },
+    {
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "531eeb0297782a9b825a5f5f08765ceabb89e7418c30b368fc2a1b129c002002"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":0,\"floor\":0,\"seen\":[]}"
+    },
+    {
+     "actions": [
+      {
+       "action": "rateLimitNextList",
+       "retryAfter": "3"
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 2,
+     "responses": [
+      {
+       "status": 429,
+       "retryAfter": "3",
+       "bodySha256": "cf4b16c5aebeecd72e4af8454abab74cd950f1715a1800cccd9ef15b7d2bee17"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "error": "rateLimited",
+     "retryAfterMillis": 3000
+    }
+   ]
+  },
+  {
+   "name": "unauthorized",
+   "token": "mismatch",
+   "steps": [
+    {
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 401,
+       "bodySha256": "3341bff062d83e3afeb943f83bbb079f5b45cc050e796ec282dde50b5906cb31"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "error": "failed"
+    }
+   ]
+  },
+  {
+   "name": "cursor_decoding",
+   "channel": "support",
+   "steps": [
+    {
+     "actions": [
+      {
+       "action": "insert",
+       "slug": "existing",
+       "subject": "Existing",
+       "channel": "support",
+       "createdAt": "2026-03-02T09:00:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "newer",
+       "subject": "Newer",
+       "channel": "support",
+       "createdAt": "2026-03-02T09:01:00Z"
+      }
+     ],
+     "kind": "fetch",
+     "cursorIn": "not json",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "null",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "[]",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"watermark\":1}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"other\",\"channel\":\"support\",\"watermark\":1,\"floor\":0,\"seen\":[]}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"sales\",\"watermark\":1,\"floor\":0,\"seen\":[]}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"watermark\":1,\"floor\":0,\"seen\":[]}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":\"1\"}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1.5}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"support\",\"seen\":[{\"d\":1}]}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"support\",\"seen\":{}}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1} x",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"Brand\":\"acme\",\"CHANNEL\":\"support\",\"Watermark\":1772442000000,\"floor\":null,\"seen\":null,\"extra\":{\"a\":[1]}}",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "05d543069f4af9121581f3daa0be6fe4877b61328d66e75a01da347dbe59097c"
+      }
+     ],
+     "requests": [
+      "category=support\u0026filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1772442060000,\"floor\":1772441460000,\"seen\":[{\"d\":\"804f51f71254c408\",\"t\":1772442060000},{\"d\":\"afafb16ac47b9b3d\",\"t\":1772442000000}]}",
+     "changes": [
+      {
+       "id": "reamaze-conversation-e7f1083c243995eee8820ad2d33c58e6",
+       "occurredAt": "2026-03-02T09:00:00Z",
+       "payload": "{\"brand\":\"acme\",\"channel\":\"support\",\"conversation\":{\"id\":\"existing\",\"subject\":\"Existing\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Existing\",\"createdAt\":\"2026-03-02T09:00:00Z\"}}",
+       "payloadSortedSha256": "93c6671f450a1832e330b07435c9e3e272790666ae20a2ee32a318741f9ad624"
+      },
+      {
+       "id": "reamaze-conversation-703ec2ff35629a1123ba410177afa5ad",
+       "occurredAt": "2026-03-02T09:01:00Z",
+       "payload": "{\"brand\":\"acme\",\"channel\":\"support\",\"conversation\":{\"id\":\"newer\",\"subject\":\"Newer\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Newer\",\"createdAt\":\"2026-03-02T09:01:00Z\"}}",
+       "payloadSortedSha256": "7814a2d6514d1b679aa698b80577c423092c09db7ba4f124be1231d9f6f8e3fd"
+      }
+     ]
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":0,\"floor\":0,\"seen\":[null,{\"d\":\"afafb16ac47b9b3d\",\"t\":1772442000000},{\"d\":\"ab\",\"t\":1}]}",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "05d543069f4af9121581f3daa0be6fe4877b61328d66e75a01da347dbe59097c"
+      }
+     ],
+     "requests": [
+      "category=support\u0026filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1772442060000,\"floor\":1772441460000,\"seen\":[{\"d\":\"804f51f71254c408\",\"t\":1772442060000},{\"d\":\"afafb16ac47b9b3d\",\"t\":1772442000000}]}",
+     "changes": [
+      {
+       "id": "reamaze-conversation-703ec2ff35629a1123ba410177afa5ad",
+       "occurredAt": "2026-03-02T09:01:00Z",
+       "payload": "{\"brand\":\"acme\",\"channel\":\"support\",\"conversation\":{\"id\":\"newer\",\"subject\":\"Newer\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Newer\",\"createdAt\":\"2026-03-02T09:01:00Z\"}}",
+       "payloadSortedSha256": "7814a2d6514d1b679aa698b80577c423092c09db7ba4f124be1231d9f6f8e3fd"
+      }
+     ]
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":-5,\"floor\":-9,\"seen\":[]}",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "05d543069f4af9121581f3daa0be6fe4877b61328d66e75a01da347dbe59097c"
+      }
+     ],
+     "requests": [
+      "category=support\u0026filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1772442060000,\"floor\":1772441460000,\"seen\":[{\"d\":\"804f51f71254c408\",\"t\":1772442060000},{\"d\":\"afafb16ac47b9b3d\",\"t\":1772442000000}]}",
+     "changes": [
+      {
+       "id": "reamaze-conversation-e7f1083c243995eee8820ad2d33c58e6",
+       "occurredAt": "2026-03-02T09:00:00Z",
+       "payload": "{\"brand\":\"acme\",\"channel\":\"support\",\"conversation\":{\"id\":\"existing\",\"subject\":\"Existing\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Existing\",\"createdAt\":\"2026-03-02T09:00:00Z\"}}",
+       "payloadSortedSha256": "93c6671f450a1832e330b07435c9e3e272790666ae20a2ee32a318741f9ad624"
+      },
+      {
+       "id": "reamaze-conversation-703ec2ff35629a1123ba410177afa5ad",
+       "occurredAt": "2026-03-02T09:01:00Z",
+       "payload": "{\"brand\":\"acme\",\"channel\":\"support\",\"conversation\":{\"id\":\"newer\",\"subject\":\"Newer\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Newer\",\"createdAt\":\"2026-03-02T09:01:00Z\"}}",
+       "payloadSortedSha256": "7814a2d6514d1b679aa698b80577c423092c09db7ba4f124be1231d9f6f8e3fd"
+      }
+     ]
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1e3}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":9223372036854775808}",
+     "responses": [],
+     "requests": [],
+     "error": "cursorInvalid"
+    },
+    {
+     "kind": "fetch",
+     "cursorIn": "{\"brand\":\"acme\",\"channel\":\"support\",\"floor\":1772442030000,\"seen\":[{\"d\":\"zz\",\"t\":1772445600000}]}",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "05d543069f4af9121581f3daa0be6fe4877b61328d66e75a01da347dbe59097c"
+      }
+     ],
+     "requests": [
+      "category=support\u0026filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"channel\":\"support\",\"watermark\":1772442060000,\"floor\":1772442030000,\"seen\":[{\"d\":\"zz\",\"t\":1772445600000},{\"d\":\"804f51f71254c408\",\"t\":1772442060000}]}",
+     "changes": [
+      {
+       "id": "reamaze-conversation-703ec2ff35629a1123ba410177afa5ad",
+       "occurredAt": "2026-03-02T09:01:00Z",
+       "payload": "{\"brand\":\"acme\",\"channel\":\"support\",\"conversation\":{\"id\":\"newer\",\"subject\":\"Newer\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Newer\",\"createdAt\":\"2026-03-02T09:01:00Z\"}}",
+       "payloadSortedSha256": "7814a2d6514d1b679aa698b80577c423092c09db7ba4f124be1231d9f6f8e3fd"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "seen_trim",
+   "steps": [
+    {
+     "actions": [
+      {
+       "action": "insert",
+       "slug": "existing",
+       "subject": "Existing",
+       "createdAt": "2026-03-02T09:00:00Z"
+      }
+     ],
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "d46f855b36106c57a83a2f44ef8c5c25cf42ce3cc51a24e935d243bcdd2bcc27"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":1772442000000,\"floor\":1772441400000,\"seen\":[{\"d\":\"afafb16ac47b9b3d\",\"t\":1772442000000}]}"
+    },
+    {
+     "actions": [
+      {
+       "action": "insertRange",
+       "createdAt": "2026-03-02T10:00:00Z",
+       "prefix": "first",
+       "count": 450,
+       "spacingMillis": 100
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 0,
+     "cursorOutSha256": "136cfc69bd484d9ec86f573b6795a19e0d84ba7027040bf995401e99a44b2204",
+     "changeCount": 450,
+     "changeIdsSha256": "b0827512350718771578702e431a2b624f390630c1421f6fb5901e9d273732cd",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "29773b662939b24e69c871c418e1aae9e9bd7b7780c2e61624e1113220a29bde"
+      },
+      {
+       "status": 200,
+       "bodySha256": "9cb507dfd3dd0619b8b46dd6729574fadf68f673c914479a31101e8adf0d23b1"
+      },
+      {
+       "status": 200,
+       "bodySha256": "2d1811fa1cc21ff0f27683eff2da1700eecc45df82928362adf30464ca9d4ba6"
+      },
+      {
+       "status": 200,
+       "bodySha256": "d61d51066f47b75d7cd5cc32ca7242b3e79c105a6eac1fa08f2488ab5313b864"
+      },
+      {
+       "status": 200,
+       "bodySha256": "8d456056620ec3b4419c93906d8649f56fa3db542a55b0959853a29c5c30f2af"
+      },
+      {
+       "status": 200,
+       "bodySha256": "ac6bba0d15063ebfdcdf6c03dfbcd9c5791ddb5003bc5ddd75f132c834977e2a"
+      },
+      {
+       "status": 200,
+       "bodySha256": "02879c9b4c68ecfd72c9df819f2adf63afed6a91567d5effe51649585e9454c8"
+      },
+      {
+       "status": 200,
+       "bodySha256": "8472c6a33242920605e2c8c64371eb33b7ebc6b52801350e8f02d5d7c76c7ace"
+      },
+      {
+       "status": 200,
+       "bodySha256": "1bfeb25988a6eea23e4d926b27c6ac0f9257f4d166c146146c7adbca7fd90be2"
+      },
+      {
+       "status": 200,
+       "bodySha256": "9b2ddabba88c9e6192fb92cb3bd148de5eecff728c42ca00a277ee05daf3692c"
+      },
+      {
+       "status": 200,
+       "bodySha256": "61caf23cece214f8671d297367b6ee552a97cded9d1acd77c43cc1d525bf8380"
+      },
+      {
+       "status": 200,
+       "bodySha256": "8772d6025f966f8c62a3fac71b8ef150b6110ca9d9e1bfb15a0f4fa6bcb8502b"
+      },
+      {
+       "status": 200,
+       "bodySha256": "d18d72aea028d15f156729aaa4db3b144a6eede4e246b9ac167f5069cefb68b7"
+      },
+      {
+       "status": 200,
+       "bodySha256": "a62f724fd1a4d3ce1d66ad6fb68bfa1e7aae106287eb681ee9f349cc771a5150"
+      },
+      {
+       "status": 200,
+       "bodySha256": "8b4765ebbc28da5c761e5f5aad98ce31e3c0c70331302c9f85718c25353a398e"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0d5e068cafaff48c73d55bf6e3c99d534ef6b3523c3e532652cc42fcd88b8e5c"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2",
+      "filter=all\u0026page=3",
+      "filter=all\u0026page=4",
+      "filter=all\u0026page=5",
+      "filter=all\u0026page=6",
+      "filter=all\u0026page=7",
+      "filter=all\u0026page=8",
+      "filter=all\u0026page=9",
+      "filter=all\u0026page=10",
+      "filter=all\u0026page=11",
+      "filter=all\u0026page=12",
+      "filter=all\u0026page=13",
+      "filter=all\u0026page=14",
+      "filter=all\u0026page=15",
+      "filter=all\u0026page=16"
+     ]
+    },
+    {
+     "actions": [
+      {
+       "action": "hideRange",
+       "prefix": "first",
+       "count": 450
+      },
+      {
+       "action": "insertRange",
+       "createdAt": "2026-03-02T10:01:00Z",
+       "prefix": "second",
+       "count": 400,
+       "spacingMillis": 100
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 1,
+     "cursorOutSha256": "e94e2339b3e44e9ed791d9aae89d691f178c679538dde939598f2ecb5ac309fa",
+     "changeCount": 400,
+     "changeIdsSha256": "9a9667c353f6a5949f65dc2f13cb143bb3bab51487d85710b804884b42b5f196",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "ae60de345b9e26d4575a46a85f777127f036d515dd02b5d56281e12e008ca330"
+      },
+      {
+       "status": 200,
+       "bodySha256": "3f3e7fdf7f4be5567c6d91976f1e27f060a1453dd3f2b532b20dfea72b21ef1a"
+      },
+      {
+       "status": 200,
+       "bodySha256": "32893a594013e942775bfeb8406e87f9497714c5bde99daa521893183d18bed4"
+      },
+      {
+       "status": 200,
+       "bodySha256": "5ffb499c301817b06406ad1df4db45b0757503e16906aa9e7bccb22094dab234"
+      },
+      {
+       "status": 200,
+       "bodySha256": "a4b2aea57d0c03991c19a58e69da0fddd4012118908540e9173af7834262218f"
+      },
+      {
+       "status": 200,
+       "bodySha256": "45dea0a2dcf23aa4e4ca49a70ac16fa74f35de4b36eeb27a0c8e0d4a9b81e5a0"
+      },
+      {
+       "status": 200,
+       "bodySha256": "fe597a021a563b89191108a61a0286af53f5c1f49469511adcaaf939650a9438"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0aced6db114c6ba195b3d028878bb9b3f75e249e9b1febd94e2e008a07e81bee"
+      },
+      {
+       "status": 200,
+       "bodySha256": "3ade4f3b41d0223ba93e0cd297fbadcc0a5a5c3055f82c7e3f07a25dc105f519"
+      },
+      {
+       "status": 200,
+       "bodySha256": "003b958b8da1dc41e88656eed33f322aa643ab2fb43e3d3add54e9c49c278a9c"
+      },
+      {
+       "status": 200,
+       "bodySha256": "b0ff70bb3bc1fbe090bbe407ff9d9d9d88d782e12c07969bb6c2605246175a78"
+      },
+      {
+       "status": 200,
+       "bodySha256": "a36a57e9c486ad4267a697b603c922a7be05c15d3d6efe3dc6f21559d6acb1e0"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0549ec851c3b435f5c53deafc76e922dbb2dd68e9c27160f60f76afd08a016bc"
+      },
+      {
+       "status": 200,
+       "bodySha256": "28d19285b14c8984b07fdfe6cf8e47f3eb29b203cb4d48067ff46d323b2400b8"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2",
+      "filter=all\u0026page=3",
+      "filter=all\u0026page=4",
+      "filter=all\u0026page=5",
+      "filter=all\u0026page=6",
+      "filter=all\u0026page=7",
+      "filter=all\u0026page=8",
+      "filter=all\u0026page=9",
+      "filter=all\u0026page=10",
+      "filter=all\u0026page=11",
+      "filter=all\u0026page=12",
+      "filter=all\u0026page=13",
+      "filter=all\u0026page=14"
+     ]
+    },
+    {
+     "kind": "fetch",
+     "cursorInStep": 2,
+     "cursorOutSha256": "e94e2339b3e44e9ed791d9aae89d691f178c679538dde939598f2ecb5ac309fa",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "ae60de345b9e26d4575a46a85f777127f036d515dd02b5d56281e12e008ca330"
+      },
+      {
+       "status": 200,
+       "bodySha256": "3f3e7fdf7f4be5567c6d91976f1e27f060a1453dd3f2b532b20dfea72b21ef1a"
+      },
+      {
+       "status": 200,
+       "bodySha256": "32893a594013e942775bfeb8406e87f9497714c5bde99daa521893183d18bed4"
+      },
+      {
+       "status": 200,
+       "bodySha256": "5ffb499c301817b06406ad1df4db45b0757503e16906aa9e7bccb22094dab234"
+      },
+      {
+       "status": 200,
+       "bodySha256": "a4b2aea57d0c03991c19a58e69da0fddd4012118908540e9173af7834262218f"
+      },
+      {
+       "status": 200,
+       "bodySha256": "45dea0a2dcf23aa4e4ca49a70ac16fa74f35de4b36eeb27a0c8e0d4a9b81e5a0"
+      },
+      {
+       "status": 200,
+       "bodySha256": "fe597a021a563b89191108a61a0286af53f5c1f49469511adcaaf939650a9438"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0aced6db114c6ba195b3d028878bb9b3f75e249e9b1febd94e2e008a07e81bee"
+      },
+      {
+       "status": 200,
+       "bodySha256": "3ade4f3b41d0223ba93e0cd297fbadcc0a5a5c3055f82c7e3f07a25dc105f519"
+      },
+      {
+       "status": 200,
+       "bodySha256": "003b958b8da1dc41e88656eed33f322aa643ab2fb43e3d3add54e9c49c278a9c"
+      },
+      {
+       "status": 200,
+       "bodySha256": "b0ff70bb3bc1fbe090bbe407ff9d9d9d88d782e12c07969bb6c2605246175a78"
+      },
+      {
+       "status": 200,
+       "bodySha256": "a36a57e9c486ad4267a697b603c922a7be05c15d3d6efe3dc6f21559d6acb1e0"
+      },
+      {
+       "status": 200,
+       "bodySha256": "0549ec851c3b435f5c53deafc76e922dbb2dd68e9c27160f60f76afd08a016bc"
+      },
+      {
+       "status": 200,
+       "bodySha256": "28d19285b14c8984b07fdfe6cf8e47f3eb29b203cb4d48067ff46d323b2400b8"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1",
+      "filter=all\u0026page=2",
+      "filter=all\u0026page=3",
+      "filter=all\u0026page=4",
+      "filter=all\u0026page=5",
+      "filter=all\u0026page=6",
+      "filter=all\u0026page=7",
+      "filter=all\u0026page=8",
+      "filter=all\u0026page=9",
+      "filter=all\u0026page=10",
+      "filter=all\u0026page=11",
+      "filter=all\u0026page=12",
+      "filter=all\u0026page=13",
+      "filter=all\u0026page=14"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "empty_seed_and_long_body",
+   "steps": [
+    {
+     "kind": "seed",
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "531eeb0297782a9b825a5f5f08765ceabb89e7418c30b368fc2a1b129c002002"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":0,\"floor\":0,\"seen\":[]}"
+    },
+    {
+     "actions": [
+      {
+       "action": "insert",
+       "slug": "long-body",
+       "subject": "Long",
+       "createdAt": "2026-03-02T09:02:03.456789Z",
+       "body": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\u003ctail\u003e"
+      },
+      {
+       "action": "insert",
+       "slug": "same_ms_b",
+       "subject": "Same B",
+       "createdAt": "2026-03-02T09:02:00Z"
+      },
+      {
+       "action": "insert",
+       "slug": "same_ms_a",
+       "subject": "Same A",
+       "createdAt": "2026-03-02T09:02:00Z"
+      }
+     ],
+     "kind": "fetch",
+     "cursorInStep": 0,
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "8b040cfeef3f87da192e92dfe385cca819272c69b91f8f5dc1ba85f3d2d5e6d2"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":1772442123456,\"floor\":1772441523456,\"seen\":[{\"d\":\"5e6cf131f04cb67c\",\"t\":1772442123456},{\"d\":\"8e6ff418ab537e5a\",\"t\":1772442120000},{\"d\":\"b2d73c0f13512e15\",\"t\":1772442120000}]}",
+     "changes": [
+      {
+       "id": "reamaze-conversation-8302356325761ec7e93d3bc5eea0c542",
+       "occurredAt": "2026-03-02T09:02:00Z",
+       "payload": "{\"brand\":\"acme\",\"conversation\":{\"id\":\"same_ms_a\",\"subject\":\"Same A\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Same A\",\"createdAt\":\"2026-03-02T09:02:00Z\"}}",
+       "payloadSortedSha256": "4889dffa14f3360bd75280c77a6508e99e6ce7767e743cfa798e53907e55b701"
+      },
+      {
+       "id": "reamaze-conversation-33926b37cc769319fe566ee484c05feb",
+       "occurredAt": "2026-03-02T09:02:00Z",
+       "payload": "{\"brand\":\"acme\",\"conversation\":{\"id\":\"same_ms_b\",\"subject\":\"Same B\",\"status\":0,\"tags\":[],\"channel\":{\"slug\":\"support\",\"name\":\"Support\",\"type\":1},\"requester\":{\"name\":\"Jane Smith\",\"email\":\"jane@acme.example.com\"},\"firstMessage\":\"Opening message of Same B\",\"createdAt\":\"2026-03-02T09:02:00Z\"}}",
+       "payloadSortedSha256": "0dda034e017ba445d5ba5d0b889ab9b09a690a5b57d1acd0c111f921a1506d2c"
+      },
+      {
+       "id": "reamaze-conversation-2a9e0945aff970beba379c0a1b2a6b49",
+       "occurredAt": "2026-03-02T09:02:03.456Z",
+       "payload": "sha256:84516c94b9ccb8dbace83fc613aad572e4f17ca3c41c892344b90881daa25553",
+       "payloadSortedSha256": "f729475b17e06d9f296cc48b883993302081d6516f07efcaadd3f479a2b404f5"
+      }
+     ]
+    },
+    {
+     "kind": "fetch",
+     "cursorInStep": 1,
+     "responses": [
+      {
+       "status": 200,
+       "bodySha256": "8b040cfeef3f87da192e92dfe385cca819272c69b91f8f5dc1ba85f3d2d5e6d2"
+      }
+     ],
+     "requests": [
+      "filter=all\u0026page=1"
+     ],
+     "cursorOut": "{\"brand\":\"acme\",\"watermark\":1772442123456,\"floor\":1772441523456,\"seen\":[{\"d\":\"5e6cf131f04cb67c\",\"t\":1772442123456},{\"d\":\"8e6ff418ab537e5a\",\"t\":1772442120000},{\"d\":\"b2d73c0f13512e15\",\"t\":1772442120000}]}"
+    }
+   ]
+  }
+ ]
+}

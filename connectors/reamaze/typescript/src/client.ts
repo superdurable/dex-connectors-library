@@ -7,6 +7,11 @@ import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafe
 import type { Config, Credentials } from './generated/models.js';
 import { CreateConversationOperation, FindContactByEmailOperation, GetConversationOperation, ReplyToConversationOperation, SearchConversationsOperation, UpdateConversationOperation } from './operations.js';
 
+/** The manifest's default pollInterval, one minute. */
+const defaultPollIntervalMs = 60_000;
+/** Keeps a conversationCreated poll loop from spending the per-token request limit. */
+export const MinimumPollIntervalMs = 10_000;
+
 /** Sender used for local provider stand-ins. */
 export type ReamazeRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
 /** Optional transport and clock dependencies. */
@@ -24,15 +29,25 @@ export type ReamazeExchange =
 
 /** Authenticated Re:amaze API v1 client. */
 export class ReamazeClient {
+  /** The connection's Re:amaze brand subdomain. */
+  readonly brand: string;
+  /** The conversationCreated Trigger's delay between polls in milliseconds; at least MinimumPollIntervalMs. */
+  readonly pollIntervalMs: number;
   private readonly endpoint: string;
   private readonly maxResponseBytes: number;
   private readonly credentials: CredentialProvider<Credentials>;
   private readonly send: ReamazeRequestSender;
   private readonly now: () => Date;
 
-  /** Validate configuration without contacting Re:amaze. */
+  /**
+   * Validate configuration without contacting Re:amaze. An omitted or zero pollIntervalMs uses the manifest's
+   * one minute; one under 10 seconds throws, as Go's New does.
+   */
   constructor(config: Config, credentials: CredentialProvider<Credentials>, options: ReamazeClientOptions = {}) {
     if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(config.brand)) throw new TypeError('invalid Re:amaze brand');
+    this.brand = config.brand;
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < MinimumPollIntervalMs) throw new TypeError('Re:amaze pollInterval must be at least 10s');
     if (!credentials) throw new TypeError('Re:amaze credential provider is required');
     this.endpoint = validateBaseURL(options.apiBaseURL ?? `https://${config.brand}.reamaze.io/api/v1`);
     this.maxResponseBytes = config.maxResponseBytes ?? 4_194_304;

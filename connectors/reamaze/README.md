@@ -52,7 +52,7 @@ release has no Studio pickers; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-The independent `@superdurable/connector-reamaze` package starts at `v0.1.0` and implements all six operations. Its [TypeScript README](typescript/README.md) documents installation, connection setup, the [runnable search Flow](typescript/examples/search-conversations/), and Go-recorded conformance coverage. The Go connector is at `v0.24.0`. The Python package implements the `conversationCreated` Trigger from `v0.2.0`; the TypeScript package does not.
+The independent `@superdurable/connector-reamaze` package is at `v0.2.0` on `@superdurable/connectors-sdk` `0.12.0` and implements all six operations and, from `v0.2.0`, the `conversationCreated` poll Trigger at parity with Go: the same requests, event IDs, floor, seen-set, backlog, reset, and rate-limit rules, and poll cursor documents that Go and TypeScript replicas read and write byte for byte. Its [TypeScript README](typescript/README.md) documents installation, connection setup, the [runnable search Flow](typescript/examples/search-conversations/), the [new-conversation example](typescript/examples/new-conversation/README.md), and Go-recorded conformance coverage. The Go connector is at `v0.24.0`. The Python package implements the `conversationCreated` Trigger from `v0.2.0` as well.
 
 ## Re:amaze setup
 
@@ -406,8 +406,10 @@ or creates one, reopens and tags it, and adds one internal triage note.
 `conversationCreated` Trigger: each new conversation that is not spam starts
 one Flow, which reads it back with `getConversation` and records an intake
 summary. The Python
-[`new_conversation` example](python/examples/new_conversation/README.md) is its
-port, the `ReamazeNewConversationPython` Flow.
+[`new_conversation` example](python/examples/new_conversation/README.md) and the
+TypeScript [`new-conversation` example](typescript/examples/new-conversation/README.md)
+are its ports, the `ReamazeNewConversationPython` and
+`ReamazeNewConversationTypeScript` Flows.
 
 ## Verification
 
