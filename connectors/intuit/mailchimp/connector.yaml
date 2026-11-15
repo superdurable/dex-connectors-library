@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: mailchimp
   displayName: Mailchimp
-  description: Read, upsert, tag, and list Mailchimp audience contacts without resubscribing anyone who unsubscribed, and send an existing campaign at most once after reading its status.
+  description: Read, upsert, tag, and list Mailchimp audience contacts without resubscribing anyone who unsubscribed, receive each contact added or changed in an audience, and send an existing campaign at most once after reading its status.
   company: Intuit
   categories: [marketing]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: mailchimp
   languages:
@@ -31,6 +31,12 @@ spec:
         description: "Maximum complete Mailchimp Marketing API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when listMembers reads pages of up to 1000 contacts with many merge fields. An oversized read selects invalidResponse, and an oversized campaign read before a send selects invalidResponse without sending."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between memberChanged Trigger polls of each watched audience, as a Go duration of at least 5s such as 45s or 2m. Leave it blank to keep the displayed interval; a shorter interval delivers contact changes sooner and uses more of the 10 simultaneous requests Mailchimp allows each user, a longer one suits large audiences."
+        required: false
+        default: 30s
   auth:
     type: apiKey
     connectionKind: mailchimp-api-key
@@ -48,6 +54,30 @@ spec:
         - In Your API Keys choose Create A Key, give it a name that identifies this Dex connection, choose Generate Key, then Copy Key to Clipboard and paste the whole key, including the -us6 style data-center suffix, into api_key. Mailchimp shows the full key only once.
         - Keys created on or after June 22, 2026 expire one year after creation; generate a new key before then and paste it here. Dex rereads the key before every call, so no restart is needed.
         - To revoke access, return to Profile > Extras > API keys, choose Revoke beside the key, and type REVOKE to confirm. A revoked key cannot be reactivated, and removing the user from the account removes every key that user generated.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    units:
+      - id: audienceIdEntry
+        goName: AudienceIDEntry
+        description: "Enter the ID of one Mailchimp audience, found by signing in at https://login.mailchimp.com/, choosing Audience (and the audience in the Audience drop-down when there are several), then More options > Audience settings, where Audience ID has a copy icon (https://mailchimp.com/help/find-audience-id/); it is 1 to 64 letters and digits such as 57afe96172, is not secret, and is not the audience name. Mailchimp serves audiences only from the API key's data center, so no list can be loaded here; the unit stores the ID, and blank means nothing is watched."
+        outputs:
+          - {name: audienceId, goName: AudienceID, type: string}
+      - id: memberStatusPicker
+        goName: MemberStatusPicker
+        description: "Select the Mailchimp contact statuses, such as subscribed or unsubscribed, a contact must have after its change for the binding to deliver it; the unit stores the status names, and selecting none delivers changed contacts in every status."
+        outputs:
+          - {name: statuses, goName: Statuses, type: stringList}
+  triggers:
+    - name: memberChanged
+      goName: MemberChanged
+      eventType: MemberChangedEvent
+      configurationType: MemberChangedTriggerConfiguration
+      description: Receive each contact added to or changed in one Mailchimp audience, including subscribes, unsubscribes, profile and tag changes, and cleaned addresses, read by polling contacts by last change time; the first run records a baseline and delivers no existing contacts.
   operations:
     - name: getMember
       goName: GetMember
@@ -131,6 +161,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # PUT keyed by the contact's address writes the same absolute values, so a repeat leaves one result.
+        repeatOnUnknown: safe
       mocks:
         - name: upsertedBen
           branch: upserted
@@ -158,6 +190,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Each tag is declared active or inactive, so a repeat leaves the same tags.
+        repeatOnUnknown: safe
       mocks:
         - name: taggedBen
           branch: updated

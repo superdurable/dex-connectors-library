@@ -17,8 +17,16 @@ import (
 
 const ConnectorID = "mailchimp"
 
+const (
+	UIUnitAudienceIDEntry            = "audienceIdEntry"
+	UIAudienceIDEntryPortAudienceID  = "audienceId"
+	UIUnitMemberStatusPicker         = "memberStatusPicker"
+	UIMemberStatusPickerPortStatuses = "statuses"
+)
+
 type Config struct {
-	MaxResponseBytes int64 `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 }
 
 type Credentials struct {
@@ -157,6 +165,7 @@ func (Connection) GoString() string { return "mailchimp.Connection{[REDACTED]}" 
 func DefaultConfig() Config {
 	return Config{
 		MaxResponseBytes: 4194304,
+		PollInterval:     time.Duration(30000000000),
 	}
 }
 
@@ -165,12 +174,18 @@ func withConfigDefaults(config Config) Config {
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
 	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
+	}
 	return config
 }
 
 func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
 	}
 	return nil
 }
@@ -180,6 +195,52 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+var MemberChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "memberChanged"},
+	Description: "Receive each contact added to or changed in one Mailchimp audience, including subscribes, unsubscribes, profile and tag changes, and cleaned addresses, read by polling contacts by last change time; the first run records a baseline and delivers no existing contacts.",
+}
+
+type MemberChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=mailchimp"`
+	triggerName                             struct{}                       `connector:"triggerName=memberChanged"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineMemberChangedTriggerBinding(config MemberChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: MemberChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type MemberChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                `connector:"connectorId=mailchimp"`
+	triggerName                      struct{}                                `connector:"triggerName=memberChanged"`
+	Connection                       Connection                              `connector:"connection"`
+	ConnectionName                   string                                  `connector:"connectionName"`
+	BindingName                      string                                  `connector:"bindingName"`
+	Configuration                    MemberChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[MemberChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewMemberChangedTrigger(config MemberChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("mailchimp connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: MemberChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MemberChangedEvent]{
+		Definition: MemberChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.memberChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const GetMemberBranchFound sdkgo.BranchID = "found"
@@ -212,6 +273,7 @@ type GetMemberStepConfig[IN any] struct {
 	operationID                    struct{}                                  `connector:"operationId=getMember"`
 	StepType                       string                                    `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI            `connector:"configurationUI"`
 	Connection                     Connection                                `connector:"connection"`
 	ConnectionName                 string                                    `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetMemberInput                   `connector:"mapToOperationInput"`
@@ -233,7 +295,8 @@ func NewGetMemberStep[IN any](config GetMemberStepConfig[IN]) sdkgo.QueryStep[IN
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMemberInput, Member]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetMember(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetMember(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetMemberResult] {
 			branches := make([]sdkgo.BranchTarget[GetMemberResult], 0, 5)
@@ -289,6 +352,7 @@ type ListMembersStepConfig[IN any] struct {
 	operationID                    struct{}                                             `connector:"operationId=listMembers"`
 	StepType                       string                                               `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                       `connector:"configurationUI"`
 	Connection                     Connection                                           `connector:"connection"`
 	ConnectionName                 string                                               `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListMembersInput                            `connector:"mapToOperationInput"`
@@ -310,7 +374,8 @@ func NewListMembersStep[IN any](config ListMembersStepConfig[IN]) sdkgo.QuerySte
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMembersInput, ListMembersOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListMembers(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListMembers(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListMembersResult] {
 			branches := make([]sdkgo.BranchTarget[ListMembersResult], 0, 5)
@@ -354,6 +419,7 @@ var UpsertMemberDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertMemberResult = sdkgo.MutationResult[UpsertMemberOutput]
@@ -364,6 +430,7 @@ type UpsertMemberStepConfig[IN any] struct {
 	operationID                       struct{}                                                 `connector:"operationId=upsertMember"`
 	StepType                          string                                                   `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                           `connector:"configurationUI"`
 	Connection                        Connection                                               `connector:"connection"`
 	ConnectionName                    string                                                   `connector:"connectionName"`
 	MapToOperationInput               func(IN) UpsertMemberInput                               `connector:"mapToOperationInput"`
@@ -384,7 +451,8 @@ func NewUpsertMemberStep[IN any](config UpsertMemberStepConfig[IN]) sdkgo.Mutati
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertMemberInput, UpsertMemberOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.UpsertMember(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpsertMember(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpsertMemberResult] {
 			branches := make([]sdkgo.BranchTarget[UpsertMemberResult], 0, 4)
@@ -427,6 +495,7 @@ var UpdateMemberTagsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateMemberTagsResult = sdkgo.MutationResult[UpdateMemberTagsOutput]
@@ -437,6 +506,7 @@ type UpdateMemberTagsStepConfig[IN any] struct {
 	operationID                       struct{}                                                     `connector:"operationId=updateMemberTags"`
 	StepType                          string                                                       `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                               `connector:"configurationUI"`
 	Connection                        Connection                                                   `connector:"connection"`
 	ConnectionName                    string                                                       `connector:"connectionName"`
 	MapToOperationInput               func(IN) UpdateMemberTagsInput                               `connector:"mapToOperationInput"`
@@ -458,7 +528,8 @@ func NewUpdateMemberTagsStep[IN any](config UpdateMemberTagsStepConfig[IN]) sdkg
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateMemberTagsInput, UpdateMemberTagsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.UpdateMemberTags(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpdateMemberTags(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateMemberTagsResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateMemberTagsResult], 0, 5)
@@ -510,6 +581,8 @@ var SendCampaignDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendCampaignResult = sdkgo.MutationResult[SendCampaignOutput]
@@ -520,6 +593,7 @@ type SendCampaignStepConfig[IN any] struct {
 	operationID                       struct{}                                                 `connector:"operationId=sendCampaign"`
 	StepType                          string                                                   `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                           `connector:"configurationUI"`
 	Connection                        Connection                                               `connector:"connection"`
 	ConnectionName                    string                                                   `connector:"connectionName"`
 	MapToOperationInput               func(IN) SendCampaignInput                               `connector:"mapToOperationInput"`
@@ -533,6 +607,8 @@ type SendCampaignStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendCampaignResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendCampaignOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendCampaignStep[IN any](config SendCampaignStepConfig[IN]) sdkgo.MutationStep[IN, SendCampaignInput, SendCampaignOutput] {
@@ -544,7 +620,8 @@ func NewSendCampaignStep[IN any](config SendCampaignStepConfig[IN]) sdkgo.Mutati
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendCampaignInput, SendCampaignOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.SendCampaign(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.SendCampaign(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendCampaignResult] {
 			branches := make([]sdkgo.BranchTarget[SendCampaignResult], 0, 8)
@@ -576,5 +653,6 @@ func NewSendCampaignStep[IN any](config SendCampaignStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

@@ -1,6 +1,6 @@
 # Mailchimp Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go@v0.24.0`. It requires Connector Go SDK `sdkgo` v0.38.0, the release of the durable poll Trigger kit.
 
 The TypeScript package `@superdurable/connector-intuit-mailchimp@0.1.0` implements all five operations with `@superdurable/connectors-sdk@0.1.1`. See its [package README](typescript/README.md) and [runnable get-member Flow](typescript/examples/get-member/README.md). Its provider replay and Dex integration test use local stand-ins; live Mailchimp behavior remains unverified.
 
@@ -28,8 +28,12 @@ operations use a 30-second Execute timeout and the one-hour default retry budget
 `sendCampaign` uses sync durability, a 60-second Execute timeout, and the
 one-hour default retry budget; see [Duplicate safety](#duplicate-safety).
 
-This release has API-key authorization only, no Triggers, and no Studio
-pickers; see [Not in this release](#not-in-this-release).
+The `memberChanged` Trigger delivers each contact added to or changed in one
+audience by polling; see [memberChanged Trigger](#memberchanged-trigger).
+
+This release has API-key authorization only, a webhook Trigger is deferred,
+and the audience ID is typed rather than picked; see
+[Not in this release](#not-in-this-release).
 
 ## Directory
 
@@ -253,6 +257,60 @@ The campaign read before a send maps like a read, because nothing has been
 sent yet. The Receipt carries the Call ID, the subscriber hash, audience ID, or
 campaign ID, and Mailchimp's `X-Request-Id` header when present.
 
+## memberChanged Trigger
+
+`memberChanged` starts one event per contact version added to or changed in
+one audience: a signup, an API or import add, a subscribe or unsubscribe, a
+profile, merge field, tag, or email change, or a cleaned address.
+It polls
+[`GET /lists/{list_id}/members`](https://mailchimp.com/developer/marketing/api/list-members/list-members-info/)
+with `since_last_changed`, `sort_field=last_changed`, `sort_dir=ASC`, and
+`count=250`, using the same API key and the same audience access as
+`listMembers`, so it needs no new permission.
+
+| Behaviour | Detail |
+| --- | --- |
+| Baseline | The first poll reads the most recently changed page (`sort_dir=DESC`, `count=250`), keeps the newest `last_changed` second, and snapshots the contacts changed in that second. Contacts changed before it are never delivered; a contact changed later in that second is. When all 250 contacts share that second, the baseline moves one second later and none of that second is delivered. An empty audience has no baseline, so its first contact is delivered. |
+| Passes | Each poll starts five minutes before the newest change time read so far, never earlier than one second before the baseline, so a change that becomes listable after a later one is still delivered. A keyed snapshot of the 10,000 most recently changed contacts, committed with the cursor, drops versions already delivered. |
+| Pagination | A full page restarts the next request one second before its last change time, because `last_changed` has one-second resolution. A page whose contacts all share one second continues by `offset`, up to one million contacts in that second. Up to 10 pages are read per poll; a longer backlog continues on the next poll. |
+| Event ID | `mailchimp-` followed by a SHA-256 prefix of the audience ID and the listed contact version (subscriber hash, `last_changed`, status, and every other listed field), so a refetch after a crash yields the same ID and starts no second Flow, and two changes in one second that leave different content are both delivered. |
+| Change kind | Mailchimp reports none, so a new contact and an edited one look alike. A contact changed several times between polls is delivered once, in its latest state. Deleted contacts are not listed and are not delivered. |
+| Status filter | The binding's statuses keep only contacts in one of those statuses after the change; selecting none delivers every status. A filtered-out change still moves the cursor. |
+| Rate limits | Mailchimp allows [10 simultaneous requests per user](https://mailchimp.com/developer/marketing/docs/errors/) and answers 429 beyond that. The runner sends one request at a time for all bindings of a connection. A 429, or a 403 without an error document (Mailchimp's throttling), pauses every binding of the connection for `Retry-After` when present, at least one poll interval, and otherwise backs off exponentially. |
+| Cursor reset | A 400 for the poll query, an undecodable cursor, or a cursor saved for another audience records a new baseline, increments the cursor's reset count, and logs `poll cursor invalid; reseeding` at WARN. Changes in the gap are not delivered. A 401, a 403 with an error document, a 404 for the audience, or a 5xx backs off per binding up to 15 minutes. |
+
+The connection's `pollInterval` setting (at least 5 seconds) sets the delay
+between polls. Each binding saves two values:
+
+- `audienceId`, entered with the `audienceIdEntry` unit. In Mailchimp choose
+  **Audience**, pick the audience in the **Audience** drop-down if there are
+  several, then **More options > Audience settings** and copy **Audience ID**,
+  as [Find your audience ID](https://mailchimp.com/help/find-audience-id/)
+  describes. It is 1 to 64 letters and digits, such as `57afe96172`, and is
+  required. Changing it records a new baseline.
+- `statuses`, selected with the `memberStatusPicker` unit.
+
+`mailchimp.NewProjectMemberTriggerRunner` loads the saved bindings and records
+each change in the binding's project Trigger inbox before its cursor commits
+in the binding's project poll cursor, so a restarted or replaced replica
+neither misses nor repeats a change, as
+[`examples/member-change-intake/main.go`](go/examples/member-change-intake/main.go) does:
+
+```go
+triggerRunner, err := mailchimp.NewProjectMemberTriggerRunner(project, memberchangeintake.ConnectionName, mailchimp.ProjectMemberTriggerRunnerConfig{
+	MemberChangedRoutes: []mailchimp.ProjectMemberChangedTriggerRoute{{
+		BindingName: memberchangeintake.MemberChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, memberchangeintake.AcceptEveryMemberChange, memberchangeintake.ResolveFlowID,
+			memberchangeintake.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, mailchimp.WithLogger(logger))
+```
+
+`mailchimp.NewMemberTriggerRunner` takes targets and cursor stores directly.
+The generated `mailchimp.NewMemberChangedTrigger` keeps its cursor in memory,
+so it records a new baseline on every start. `mailchimp.WithLogger` routes the
+runner's records; they carry binding identity and never contact data.
+
 ## Not in this release
 
 ### OAuth 2
@@ -277,7 +335,7 @@ connection would not work through Dex Web:
 Mailchimp's own guidance is to use an API key for code tied to your own
 account, and OAuth for integrations that access other users' accounts.
 
-### Triggers
+### Webhook Trigger
 
 Mailchimp's
 [webhook guide](https://mailchimp.com/developer/marketing/guides/sync-audience-data-webhooks/)
@@ -288,8 +346,8 @@ contact, so a Trigger has no provider-stable event ID to deduplicate on.
 Mailchimp is also widely reported to validate a callback URL with a `GET`
 before it saves a webhook; the developer guide fetched for this release does
 not state it, and `webhooktrigger.Endpoint` answers only `POST`. The connector
-declares no Trigger until both are resolved. Until then, poll with
-`listMembers` and `changedSince`.
+declares no webhook Trigger until both are resolved; the
+[memberChanged Trigger](#memberchanged-trigger) polls instead.
 
 ### Studio pickers
 
@@ -298,7 +356,8 @@ one fixed HTTPS host, and every Mailchimp account has its own
 `https://<dc>.api.mailchimp.com` host, which the iframe cannot learn because it
 never sees the key. Mailchimp publishes no list of data centers to declare one
 command per host. The audience and campaign IDs are therefore operation input,
-with the paths above.
+with the paths above, and the `memberChanged` binding's audience is typed into
+the `audienceIdEntry` unit, which states the Mailchimp menu path.
 
 ## Mocks
 
@@ -335,6 +394,10 @@ upserts and tags the rest, counts the subscribed audience, and waits for a
 person to approve the campaign send through a permissioned Action before it
 sends the campaign at most once.
 
+[`examples/member-change-intake`](go/examples/member-change-intake) starts
+one Flow per contact change through the `memberChanged` Trigger and reads the
+contact back with `getMember`.
+
 ## Python package
 
 [`python/`](python/) contains the `dex-connector-intuit-mailchimp` v0.1.0 package.
@@ -343,7 +406,7 @@ connection bindings, and mocks, plus a handwritten provider client. The
 [`get_member` example](python/examples/get_member/README.md) is a runnable Dex
 Flow with static `mailchimp-audience` connection, a real Worker and Client
 integration test, and Go-recorded provider conformance scenarios. Python has no
-Trigger in this version. See the package README for installation, testing, and
+Trigger in this version, and neither does the TypeScript package. See the package README for installation, testing, and
 live-provider limits.
 
 ## Verification
@@ -375,7 +438,12 @@ invalid key suffixes, the subscriber hash path, `status_if_new` without
 and every status, the dispatch checkpoint and its clearing, replayed attempts,
 Mailchimp problem titles and field names without detail text, `Retry-After`,
 throttling 403s, redirects, and oversized, malformed, and credential-reflecting
-responses.
+responses. The audience fake behind the `memberChanged` tests models
+`since_last_changed`, ascending and descending `last_changed` order, `count`,
+and `offset`, and covers the baseline, the lookback, ties within one second,
+the status filter, 429 with `Retry-After`, throttling 403s, the 400 reset, and
+corrupt or foreign cursors; the example's real Dex tests cover delivery across
+a restart, the 400 reset, and a rate-limit pause.
 
 No live Mailchimp account was used. The following live behavior is
 unverified: whether Mailchimp accepts `Bearer` on every endpoint used; the exact
@@ -386,4 +454,8 @@ whether `fields` returns exactly the documented member and campaign fields;
 whether `POST /actions/send` moves a campaign to `sending` before it answers
 and rejects a second send of a campaign that is sending; whether a 429 or
 throttling 403 is always returned before a send is processed; and the
-Profile > Extras > API keys path and key expiry in the setup guidance.
+Profile > Extras > API keys path and key expiry in the setup guidance; whether
+`since_last_changed` is exclusive and compared at one-second resolution, how
+soon a change becomes listable, whether archived contacts are listed without a
+`status` filter, whether `Retry-After` is ever sent, and the
+Audience > More options > Audience settings path.

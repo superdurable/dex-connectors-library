@@ -11,6 +11,7 @@ from dex_connectors.sdk import SecretString
 class Config:
 
     max_response_bytes: int = 4194304
+    poll_interval_seconds: float = 30
 
 setattr(Config, '__module__', 'dex_connectors.intuit_mailchimp.client')
 

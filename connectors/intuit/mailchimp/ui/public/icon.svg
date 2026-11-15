@@ -1,0 +1,7 @@
+<!-- Copyright (c) 2026 Super Durable -->
+<!-- SPDX-License-Identifier: MIT -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Mailchimp">
+  <rect width="64" height="64" rx="12" fill="#FFE01B"/>
+  <path fill="none" stroke="#241C15" stroke-width="4" stroke-linejoin="round" d="M14 20h36v24H14z"/>
+  <path fill="none" stroke="#241C15" stroke-width="4" stroke-linejoin="round" d="M14 20l18 14 18-14"/>
+</svg>

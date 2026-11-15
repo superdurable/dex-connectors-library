@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go"
 	"gopkg.in/yaml.v3"
 )
 
@@ -34,8 +35,16 @@ type guidanceManifest struct {
 			} `yaml:"guide"`
 			OAuth2 any `yaml:"oauth2"`
 		} `yaml:"auth"`
-		Studio   any   `yaml:"studio"`
-		Triggers []any `yaml:"triggers"`
+		Studio struct {
+			Commands []any `yaml:"commands"`
+			Units    []struct {
+				ID          string `yaml:"id"`
+				Description string `yaml:"description"`
+			} `yaml:"units"`
+		} `yaml:"studio"`
+		Triggers []struct {
+			Name string `yaml:"name"`
+		} `yaml:"triggers"`
 	} `yaml:"spec"`
 }
 
@@ -56,7 +65,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"maxResponseBytes", "api_key"}, names, "a new visible field needs its own guidance review; the data center is derived, never typed")
+	require.Equal(t, []string{"maxResponseBytes", "pollInterval", "api_key"}, names, "a new visible field needs its own guidance review; the data center is derived, never typed")
 
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
@@ -94,13 +103,32 @@ func TestAPIKeyGuideCoversWhereTheKeyIsItsExpiryAndHowToRevokeIt(t *testing.T) {
 	}
 }
 
-// TestManifestDeclaresNoStudioBundleAndNoTriggers records that Studio cannot reach per-data-center hosts.
-func TestManifestDeclaresNoStudioBundleAndNoTriggers(t *testing.T) {
+// TestStudioUnitsGuideManualAudienceEntry records that Studio cannot reach per-data-center hosts, so the
+// audience ID is typed with guidance instead of picked.
+func TestStudioUnitsGuideManualAudienceEntry(t *testing.T) {
 	manifest := readGuidanceManifest(t)
-	require.Nil(t, manifest.Spec.Studio)
-	require.Empty(t, manifest.Spec.Triggers)
-	_, err := os.Stat("../ui")
-	require.True(t, os.IsNotExist(err))
+	require.Empty(t, manifest.Spec.Studio.Commands, "setup commands need a fixed host; Mailchimp's host depends on the key")
+	require.Len(t, manifest.Spec.Studio.Units, 2)
+	audience, statuses := manifest.Spec.Studio.Units[0], manifest.Spec.Studio.Units[1]
+	require.Equal(t, "audienceIdEntry", audience.ID)
+	for _, instruction := range []string{"https://login.mailchimp.com/", "Audience", "More options > Audience settings", "Audience ID", "https://mailchimp.com/help/find-audience-id/", "57afe96172", "not secret", "blank"} {
+		require.Contains(t, audience.Description, instruction)
+	}
+	require.Equal(t, "memberStatusPicker", statuses.ID)
+	require.Contains(t, statuses.Description, "selecting none")
+	require.Len(t, manifest.Spec.Triggers, 1)
+	require.Equal(t, "memberChanged", manifest.Spec.Triggers[0].Name)
+}
+
+// TestStudioStatusPickerListsTheSupportedStatuses keeps ui/src/statuses.ts equal to MemberStatuses.
+func TestStudioStatusPickerListsTheSupportedStatuses(t *testing.T) {
+	contents, err := os.ReadFile("../ui/src/statuses.ts")
+	require.NoError(t, err)
+	var uiStatuses []mailchimp.MemberStatus
+	for _, match := range regexp.MustCompile(`\{status: "([^"]+)"`).FindAllStringSubmatch(string(contents), -1) {
+		uiStatuses = append(uiStatuses, mailchimp.MemberStatus(match[1]))
+	}
+	require.Equal(t, mailchimp.MemberStatuses(), uiStatuses)
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {

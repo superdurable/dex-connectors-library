@@ -84,7 +84,7 @@ mkdir -p /tmp/mailchimp-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intuit/mailchimp/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go \
-  --version v0.23.0 --tag connectors/intuit/mailchimp/go/v0.23.0 \
+  --version v0.24.0 --tag connectors/intuit/mailchimp/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mailchimp-release/connector-release.json \
   --digest-output /tmp/mailchimp-release/connector-release.json.sha256
