@@ -11,10 +11,10 @@ spec:
   provider: google
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-google-spreadsheet
       operations: [getValues, findRow, upsertRow]
-      triggers: []
+      triggers: [rowAdded]
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-google-sheets'

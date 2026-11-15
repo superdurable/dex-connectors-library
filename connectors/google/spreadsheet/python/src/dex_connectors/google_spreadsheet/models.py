@@ -6,5 +6,7 @@ from ._generated.models import FindRowInput as FindRowInput
 from ._generated.models import FindRowOutput as FindRowOutput
 from ._generated.models import GetValuesInput as GetValuesInput
 from ._generated.models import GetValuesOutput as GetValuesOutput
+from ._generated.models import RowAddedEvent as RowAddedEvent
+from ._generated.models import RowAddedTriggerConfiguration as RowAddedTriggerConfiguration
 from ._generated.models import UpsertRowInput as UpsertRowInput
 from ._generated.models import UpsertRowOutput as UpsertRowOutput
