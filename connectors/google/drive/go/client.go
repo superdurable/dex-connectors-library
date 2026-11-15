@@ -2,12 +2,16 @@
 // SPDX-License-Identifier: MIT
 
 // Package drive implements bounded Google Drive operations: name-based file
-// search, file metadata reads, bounded text reads, and duplicate-safe uploads.
+// search, file metadata reads, bounded text reads, and duplicate-safe uploads,
+// plus fileCreated, fileUpdated, and fileTrashed Triggers that share one durable
+// changes.list poller per connection.
 //
 // Applications use the generated operation-specific Step factories, such as
 // NewSearchFilesStep and NewUploadFileStep, with a Connection built by
 // NewProjectConnection or NewConnection. The runnable example in
-// examples/text-copy shows every operation in one Flow.
+// examples/text-copy shows every operation in one Flow, and
+// examples/file-intake starts one Flow per created file with
+// NewProjectFileTriggerRunner.
 package drive
 
 import (
@@ -17,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"net/url"
@@ -26,6 +31,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/pollingtrigger"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -38,6 +44,8 @@ const (
 	readDeadlineMargin    = time.Second
 	// maxSearchPageSize bounds every searchFiles page, so one Result stays small.
 	maxSearchPageSize = 100
+	// maxPollPageSize is the poll Trigger kit's per-page bound, below Drive's documented 1000.
+	maxPollPageSize = pollingtrigger.MaxChangesPerPage
 	// googleMultipartUploadLimitBytes is Google's documented 5 MB multipart upload limit.
 	googleMultipartUploadLimitBytes = 5 << 20
 	// fullFileFields selects every metadata field that File exposes.
@@ -61,6 +69,7 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	now        func() time.Time
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default 25-second HTTP client used for Drive and
@@ -68,6 +77,15 @@ type clientOptions struct {
 // caller retains ownership of the original client and its transport.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithLogger sends the file Trigger runner's records to logger: failed and rate-limited polls, cursor
+// seeds and resets, delivery retries, and the durable inboxes that NewProjectFileTriggerRunner creates.
+// Without this option, or with a nil logger, records go to slog.Default() as of each record. Records
+// carry connector, connection, feed, binding, and event IDs and error messages, never file names, page
+// tokens, or credentials.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
 }
 
 // Client executes authenticated Google Drive requests for connector operations.
@@ -82,6 +100,9 @@ type Client struct {
 	maxTextBytes     int64
 	maxUploadBytes   int64
 	searchPageSize   int
+	pollInterval     time.Duration
+	pollPageSize     int
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -260,6 +281,12 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.SearchPageSize < 1 || config.SearchPageSize > maxSearchPageSize {
 		return nil, fmt.Errorf("Google Drive search page size must be from 1 to %d", maxSearchPageSize)
 	}
+	if config.PollInterval < time.Second {
+		return nil, errors.New("Google Drive poll interval must be at least one second")
+	}
+	if config.PollPageSize < 1 || config.PollPageSize > maxPollPageSize {
+		return nil, fmt.Errorf("Google Drive poll page size must be from 1 to %d", maxPollPageSize)
+	}
 	return &Client{
 		apiBaseURL: endpoint + driveAPIPath, uploadBaseURL: endpoint + driveUploadAPIPath,
 		httpClient:       providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
@@ -267,6 +294,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
 		maxResponseBytes: config.MaxResponseBytes, maxTextBytes: config.MaxTextBytes,
 		maxUploadBytes: config.MaxUploadBytes, searchPageSize: int(config.SearchPageSize),
+		pollInterval: config.PollInterval, pollPageSize: int(config.PollPageSize), logger: dependencies.logger,
 		now: dependencies.now,
 	}, nil
 }
@@ -401,11 +429,17 @@ func (client *Client) sendRead(
 // sendRequest sends request with the resolved credential. After one 401 it
 // forces a single coordinated refresh, updates credential, and sends once more.
 func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, request driveRequest) (driveResponse, error) {
-	var requestContext context.Context = call.Context
-	if stepDeadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+	return client.sendRequestWithContext(call.Context, call, credential, request)
+}
+
+// sendRequestWithContext is sendRequest for a caller outside a Dex Step, such as a Trigger poller,
+// whose Call carries no Step context.
+func (client *Client) sendRequestWithContext(ctx context.Context, call sdkgo.Call, credential *Credentials, request driveRequest) (driveResponse, error) {
+	requestContext := ctx
+	if stepDeadline, hasDeadline := ctx.Deadline(); hasDeadline {
 		var cancel context.CancelFunc
 		margin := min(readDeadlineMargin, max(0, time.Until(stepDeadline)/6))
-		requestContext, cancel = context.WithDeadline(call.Context, stepDeadline.Add(-margin))
+		requestContext, cancel = context.WithDeadline(ctx, stepDeadline.Add(-margin))
 		defer cancel()
 	}
 	for attempt := 0; attempt < 2; attempt++ {

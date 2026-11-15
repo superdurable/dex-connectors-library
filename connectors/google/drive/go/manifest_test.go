@@ -41,7 +41,19 @@ type driveManifest struct {
 				} `yaml:"oauth2"`
 			} `yaml:"methods"`
 		} `yaml:"auth"`
+		Triggers []struct {
+			Name              string `yaml:"name"`
+			EventType         string `yaml:"eventType"`
+			ConfigurationType string `yaml:"configurationType"`
+		} `yaml:"triggers"`
 		Studio struct {
+			Units []struct {
+				ID          string `yaml:"id"`
+				Description string `yaml:"description"`
+				Outputs     []struct {
+					Name string `yaml:"name"`
+				} `yaml:"outputs"`
+			} `yaml:"units"`
 			Commands []struct {
 				ID      string `yaml:"id"`
 				Request struct {
@@ -89,6 +101,7 @@ func TestConfigurationSurfaceGuidesEveryVisibleField(t *testing.T) {
 	defaultByField := map[string]any{
 		"endpoint": defaults.Endpoint, "maxResponseBytes": int(defaults.MaxResponseBytes), "maxTextBytes": int(defaults.MaxTextBytes),
 		"maxUploadBytes": int(defaults.MaxUploadBytes), "searchPageSize": int(defaults.SearchPageSize),
+		"pollInterval": defaults.PollInterval.String(), "pollPageSize": int(defaults.PollPageSize),
 	}
 	require.Len(t, manifest.Spec.Configuration.Fields, len(defaultByField))
 	for _, field := range manifest.Spec.Configuration.Fields {
@@ -128,4 +141,28 @@ func TestFolderPickerCommandListsOnlyNonTrashedFolders(t *testing.T) {
 	require.Equal(t, "allDrives", command.Request.FixedQuery["corpora"])
 	require.Equal(t, "true", command.Request.FixedQuery["supportsAllDrives"])
 	require.Equal(t, "true", command.Request.FixedQuery["includeItemsFromAllDrives"])
+}
+
+// The three file Triggers share one event and configuration shape, so one feed serves them all.
+func TestFileTriggersShareTheChangeFeedShapesAndGuidedUnits(t *testing.T) {
+	manifest := loadDriveManifest(t)
+	var triggerNames []string
+	for _, trigger := range manifest.Spec.Triggers {
+		triggerNames = append(triggerNames, trigger.Name)
+		require.Equal(t, "FileEvent", trigger.EventType, trigger.Name)
+		require.Equal(t, "FileTriggerConfiguration", trigger.ConfigurationType, trigger.Name)
+	}
+	require.Equal(t, []string{fileCreatedTriggerName, fileUpdatedTriggerName, fileTrashedTriggerName}, triggerNames)
+	unitOutputs := map[string][]string{}
+	for _, unit := range manifest.Spec.Studio.Units {
+		require.Contains(t, unit.Description, "blank", unit.ID)
+		for _, output := range unit.Outputs {
+			unitOutputs[unit.ID] = append(unitOutputs[unit.ID], output.Name)
+		}
+		if unit.ID == UIUnitMimeTypePicker {
+			require.Contains(t, unit.Description, "https://developers.google.com/workspace/drive/api/guides/mime-types")
+		}
+	}
+	require.Equal(t, []string{UIFolderPickerPortFolderID, UIFolderPickerPortFolderName}, unitOutputs[UIUnitFolderPicker])
+	require.Equal(t, []string{UIMimeTypePickerPortMimeType}, unitOutputs[UIUnitMimeTypePicker])
 }

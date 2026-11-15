@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-drive
   displayName: Google Drive
-  description: Find Google Drive files by name, read metadata and bounded text, and upload files without creating duplicates on retry.
+  description: Find Google Drive files by name, read metadata and bounded text, upload files without creating duplicates on retry, and start Flows when files are created, updated, or trashed.
   company: Google
   categories: [files-documents]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: google
   languages:
@@ -55,6 +55,18 @@ spec:
         description: Number of files searchFiles requests per page when the Step input leaves pageSize at zero; enter a whole number from 1 to 100 only to change the trade-off that smaller pages return sooner and larger pages need fewer requests.
         required: false
         default: 25
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: Wait between two Google Drive changes.list polls of the file Triggers, as a Go duration of at least 1s such as 15s or 2m; shorten it only when Flows must start sooner, because every poll spends Drive API per-user query quota.
+        required: false
+        default: 30s
+      - name: pollPageSize
+        goName: PollPageSize
+        type: integer
+        description: Number of Drive changes one file Trigger poll requests per changes.list page, a whole number from 1 to 500; lower it only when large pages exceed maxResponseBytes, and raise it only to catch up on bursts in fewer requests.
+        required: false
+        default: 100
   auth:
     refreshable: true
     defaultMethod: google-oauth
@@ -189,6 +201,27 @@ spec:
         outputs:
           - {name: folderId, goName: FolderID, type: string}
           - {name: folderName, goName: FolderName, type: string}
+      - id: mimeTypePicker
+        goName: MimeTypePicker
+        description: Select a Google Workspace or common file type from the list, or enter any exact MIME type from https://developers.google.com/workspace/drive/api/guides/mime-types such as application/pdf; the unit stores one lowercase type/subtype without parameters, and blank matches every file type.
+        outputs:
+          - {name: mimeType, goName: MimeType, type: string}
+  triggers:
+    - name: fileCreated
+      goName: FileCreated
+      eventType: FileEvent
+      configurationType: FileTriggerConfiguration
+      description: Receive a Drive file created after the Trigger first started, optionally only in one folder or of one MIME type.
+    - name: fileUpdated
+      goName: FileUpdated
+      eventType: FileEvent
+      configurationType: FileTriggerConfiguration
+      description: Receive an existing Drive file whose modified time advanced, optionally only in one folder or of one MIME type.
+    - name: fileTrashed
+      goName: FileTrashed
+      eventType: FileEvent
+      configurationType: FileTriggerConfiguration
+      description: Receive a Drive file moved to the trash, optionally only in one folder or of one MIME type.
   operations:
     - name: searchFiles
       goName: SearchFiles

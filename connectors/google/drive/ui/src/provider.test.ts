@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { folderIDFromInput, parseFolderPage } from "./provider.js";
+import { driveMimeTypeOptions, folderIDFromInput, mimeTypeFromInput, parseFolderPage } from "./provider.js";
 
 describe("Google Drive provider responses", () => {
   it("keeps Drive folder identity and pagination in connector-owned code", () => {
@@ -27,5 +27,22 @@ describe("Google Drive provider responses", () => {
     ["", ""],
   ])("reads the folder ID from %j", (input, expected) => {
     expect(folderIDFromInput(input)).toBe(expected);
+  });
+
+  it.each([
+    ["application/pdf", "application/pdf"],
+    ["  application/vnd.google-apps.document ", "application/vnd.google-apps.document"],
+    ["Application/PDF", ""],
+    ["text/plain; charset=utf-8", ""],
+    ["pdf", ""],
+    ["", ""],
+  ])("reads the MIME type from %j", (input, expected) => {
+    expect(mimeTypeFromInput(input)).toBe(expected);
+  });
+
+  it("lists only valid, unique MIME types", () => {
+    const listed = driveMimeTypeOptions.map((option) => option.mimeType);
+    expect(new Set(listed).size).toBe(listed.length);
+    for (const mimeType of listed) expect(mimeTypeFromInput(mimeType)).toBe(mimeType);
   });
 });

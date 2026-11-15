@@ -10,7 +10,7 @@ import {
   type ConnectorStudioConfigurationUnitTarget,
 } from "@superdurable/dex-connectors-react";
 import { useState, type ReactNode } from "react";
-import { folderIDFromInput, type DriveFolder } from "./provider.js";
+import { driveMimeTypeOptions, folderIDFromInput, mimeTypeFromInput, type DriveFolder } from "./provider.js";
 
 export interface DriveUnitProps {
   target: ConnectorStudioConfigurationUnitTarget;
@@ -25,6 +25,7 @@ export interface DriveUnitProps {
 
 export function DriveConfigurationUnit(props: DriveUnitProps) {
   if (props.target.unitId === "folderPicker") return <FolderPickerUnit {...props}/>;
+  if (props.target.unitId === "mimeTypePicker") return <MimeTypePickerUnit {...props}/>;
   const {target} = props;
   return <StudioNotice tone="error">Unsupported Google Drive configuration unit: {target.unitId}</StudioNotice>;
 }
@@ -64,6 +65,30 @@ function FolderPickerUnit({target, busy, folders = [], isFolderListTruncated, lo
     <SaveAction
       disabled={busy || isFolderInputInvalid || (target.required && folderId === "")}
       onSave={() => onSave({folderId, folderName: folderId === "" ? "" : folderName})}
+    />
+  </UnitFrame>;
+}
+
+function MimeTypePickerUnit({target, busy, onSave}: DriveUnitProps) {
+  const [mimeTypeInput, setMimeTypeInput] = useState(stringValue(target.value.mimeType));
+  const mimeType = mimeTypeFromInput(mimeTypeInput);
+  const isMimeTypeInputInvalid = mimeTypeInput.trim() !== "" && mimeType === "";
+  const isListed = driveMimeTypeOptions.some((option) => option.mimeType === mimeType);
+  return <UnitFrame target={target}>
+    <StudioField label="File type">
+      <select onChange={(event) => { if (event.target.value !== "custom") setMimeTypeInput(event.target.value); }} value={isListed || mimeType === "" ? mimeType : "custom"}>
+        <option value="">{target.required ? "Select a file type" : "Any file type"}</option>
+        {driveMimeTypeOptions.map((option) => <option key={option.mimeType} value={option.mimeType}>{option.label}</option>)}
+        {!isListed && mimeType !== "" && <option value="custom">Custom: {mimeType}</option>}
+      </select>
+    </StudioField>
+    <StudioField hint="Enter an exact MIME type from https://developers.google.com/workspace/drive/api/guides/mime-types when the type is not listed, such as application/zip. Leave blank for every file type." label="MIME type">
+      <input onChange={(event) => setMimeTypeInput(event.target.value)} placeholder="application/pdf" type="text" value={mimeTypeInput}/>
+    </StudioField>
+    {isMimeTypeInputInvalid && <StudioNotice tone="error">Enter one lowercase MIME type such as application/pdf, without parameters.</StudioNotice>}
+    <SaveAction
+      disabled={busy || isMimeTypeInputInvalid || (target.required && mimeType === "")}
+      onSave={() => onSave({mimeType})}
     />
   </UnitFrame>;
 }

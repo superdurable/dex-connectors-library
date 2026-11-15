@@ -79,4 +79,49 @@ describe("Google Drive setup", () => {
     const markup = renderToStaticMarkup(<DriveConfigurationUnit loadError="The caller does not have permission" onChooseFolder={() => undefined} onSave={() => undefined} target={folderPickerTarget()}/>);
     expect(markup).toContain('role="alert">The caller does not have permission');
   });
+
+  it("renders the file type picker with Trigger guidance, the MIME type link, and blank semantics", () => {
+    const markup = renderToStaticMarkup(<DriveConfigurationUnit onChooseFolder={() => undefined} onSave={() => undefined} target={mimeTypePickerTarget({value: {mimeType: "application/pdf"}})}/>);
+    expect(markup).toContain("File type");
+    expect(markup).toContain("leave blank to start a Flow for new files of every type, including folders.");
+    expect(markup).toContain('<option value="">Any file type</option>');
+    expect(markup).toContain('<option value="application/pdf" selected="">PDF</option>');
+    expect(markup).toContain('<option value="application/vnd.google-apps.document">Google Docs</option>');
+    expect(markup).toContain("https://developers.google.com/workspace/drive/api/guides/mime-types");
+    expect(markup).toContain("Leave blank for every file type.");
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button">Save');
+    expect(markup).not.toContain("access_token");
+  });
+
+  it("keeps an unlisted MIME type as a custom choice", () => {
+    const markup = renderToStaticMarkup(<DriveConfigurationUnit onChooseFolder={() => undefined} onSave={() => undefined} target={mimeTypePickerTarget({value: {mimeType: "application/zip"}})}/>);
+    expect(markup).toContain('<option value="custom" selected="">Custom: application/zip</option>');
+  });
+
+  it("rejects a MIME type with parameters or capitals", () => {
+    const markup = renderToStaticMarkup(<DriveConfigurationUnit onChooseFolder={() => undefined} onSave={() => undefined} target={mimeTypePickerTarget({value: {mimeType: "Text/Plain; charset=utf-8"}})}/>);
+    expect(markup).toContain('role="alert">Enter one lowercase MIME type such as application/pdf, without parameters.');
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button" disabled="">Save');
+  });
+
+  it("requires a file type only when the Flow marks the unit required", () => {
+    const markup = renderToStaticMarkup(<DriveConfigurationUnit onChooseFolder={() => undefined} onSave={() => undefined} target={mimeTypePickerTarget({required: true})}/>);
+    expect(markup).toContain('<option value="" selected="">Select a file type</option>');
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button" disabled="">Save');
+  });
 });
+
+function mimeTypePickerTarget(overrides: Partial<ConnectorStudioConfigurationUnitTarget> = {}): ConnectorStudioConfigurationUnitTarget {
+  return {
+    kind: "configurationUnit",
+    scope: {kind: "trigger", triggerName: "fileCreated", flowType: "GoogleDriveFileIntake", bindingName: "google-drive-file-intake-new-file"},
+    instanceId: "mimeType",
+    unitId: "mimeTypePicker",
+    label: "File type",
+    description: "Choose the exact file type that starts the intake Flow, such as PDF for scanned invoices; leave blank to start a Flow for new files of every type, including folders.",
+    required: false,
+    bindings: [{port: "mimeType", jsonPointer: "/mimeType"}],
+    value: {},
+    ...overrides,
+  } as ConnectorStudioConfigurationUnitTarget;
+}

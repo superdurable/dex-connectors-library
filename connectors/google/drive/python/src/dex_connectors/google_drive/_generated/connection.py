@@ -228,7 +228,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.google_drive.conne
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"endpoint", "maxResponseBytes", "maxTextBytes", "maxUploadBytes", "searchPageSize"}:
+    if set(value) - {"endpoint", "maxResponseBytes", "maxTextBytes", "maxUploadBytes", "searchPageSize", "pollInterval", "pollPageSize"}:
         raise ValueError("Google Drive configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "endpoint" in value:
@@ -256,4 +256,14 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(search_page_size) is int):
             raise ValueError("Google Drive configuration searchPageSize has an invalid type")
         config_arguments['search_page_size'] = search_page_size
+    if "pollInterval" in value:
+        poll_interval = value["pollInterval"]
+        if not (type(poll_interval) is int):
+            raise ValueError("Google Drive configuration pollInterval has an invalid type")
+        config_arguments['poll_interval_seconds'] = poll_interval / 1_000_000_000
+    if "pollPageSize" in value:
+        poll_page_size = value["pollPageSize"]
+        if not (type(poll_page_size) is int):
+            raise ValueError("Google Drive configuration pollPageSize has an invalid type")
+        config_arguments['poll_page_size'] = poll_page_size
     return Config(**config_arguments)

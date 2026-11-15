@@ -1,6 +1,6 @@
 {
   "connectorId": "google-drive",
-  "releaseTag": "connectors/google/drive/go/v0.24.0",
+  "releaseTag": "connectors/google/drive/go/v0.25.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-drive",
