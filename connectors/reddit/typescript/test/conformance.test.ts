@@ -8,7 +8,10 @@ import { RedditClient } from '../src/client.js';
 import { GetPostInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/reddit/scenarios.json', import.meta.url));
+// listSubredditPosts and searchPosts are Go only; replay just the operations this package implements.
+const typescriptOperations = new Set(['getPost']);
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/reddit/scenarios.json', import.meta.url))
+  .filter(scenario => typescriptOperations.has(scenario.operation));
 const connection = { provider: 'reddit', name: 'reddit' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeReddit, ''));
 

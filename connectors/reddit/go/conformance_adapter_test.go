@@ -24,6 +24,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint, RedditUsername: "example"}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getPost": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPost(), reference),
+		"getPost":            newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPost(), reference),
+		"listSubredditPosts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSubredditPosts(), reference),
+		"searchPosts":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchPosts(), reference),
 	}}
 }

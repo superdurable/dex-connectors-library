@@ -14,7 +14,7 @@ export interface Config {
   redditUsername: string;
   /** Maximum duration of one Reddit request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete Reddit JSON response in bytes. Blank uses the displayed default; increase only when a post has unusually large metadata. */
+  /** Maximum complete Reddit JSON response in bytes, for one post read or one listing or search page. Blank uses the displayed default; increase only when a page of many long or media-heavy posts exceeds it. */
   maxResponseBytes?: number;
 }
 

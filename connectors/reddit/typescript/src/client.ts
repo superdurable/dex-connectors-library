@@ -40,7 +40,7 @@ export class RedditClient {
     this.redditUsername = config.redditUsername;
     this.baseURL = validateBaseURL(config.baseUrl || 'https://oauth.reddit.com');
     this.timeoutMs = config.timeoutMs || 15_000;
-    this.maxResponseBytes = config.maxResponseBytes || 1_048_576;
+    this.maxResponseBytes = config.maxResponseBytes || 8_388_608;
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0)
       throw new TypeError('Reddit request limits are invalid');
     this.refreshDriver = options.refreshDriver ?? new ManifestCredentialRefreshDriver<Credentials>({
