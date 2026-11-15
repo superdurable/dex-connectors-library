@@ -9,6 +9,10 @@ import type { Config, Credentials, CredentialSource } from './generated/models.j
 import { ListMeetingsOperation, GetMeetingOperation, CreateMeetingOperation, UpdateMeetingOperation, ListPastMeetingParticipantsOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.zoom.us/v2';
+/** The manifest's default pollInterval, two minutes. */
+const defaultPollIntervalMs = 120_000;
+/** Keeps one meetingChanged binding under Zoom's Free-plan Medium daily limit. */
+export const MinimumPollIntervalMs = 30_000;
 
 /** Replace the provider transport or clock for deterministic tests. */
 export interface ZoomClientOptions {
@@ -25,19 +29,30 @@ export type ZoomExchange =
 export class ZoomClient {
   readonly endpoint: string;
   readonly maxResponseBytes: number;
+  /** The meetingChanged Trigger's delay between polls in milliseconds; at least MinimumPollIntervalMs. */
+  readonly pollIntervalMs: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly now: () => Date;
-  private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Zoom', auth: Authorization, credentialFields: CredentialFields });
+  /** The generated OAuth refresh policy every credential resolution uses, including Trigger polls. */
+  readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Zoom', auth: Authorization, credentialFields: CredentialFields });
 
-  /** Validate connection settings before a Step resolves credentials. */
+  /**
+   * Validate connection settings before a Step resolves credentials. An omitted or zero pollIntervalMs uses
+   * the manifest's two minutes; one under 30 seconds throws, as Go's New does.
+   */
   constructor(config: Config, readonly credentials: CredentialSource, options: ZoomClientOptions = {}) {
     if (!credentials) throw new TypeError('Zoom credential provider is required');
     this.endpoint = validateBaseURL(config.endpoint || defaultEndpoint);
     this.maxResponseBytes = config.maxResponseBytes || 2_097_152;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('Zoom maxResponseBytes must be positive');
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < MinimumPollIntervalMs) throw new TypeError('Zoom pollInterval must be at least 30s');
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
   }
+
+  /** The client clock, used for receipts, Retry-After, and Trigger observation times. */
+  currentTime(): Date { return this.now(); }
 
   /** Bind the meeting list query. */ listMeetings() { return new ListMeetingsOperation(this); }
   /** Bind the meeting detail query. */ getMeeting() { return new GetMeetingOperation(this); }
