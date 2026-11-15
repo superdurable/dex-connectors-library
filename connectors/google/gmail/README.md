@@ -178,6 +178,10 @@ uses that header for Sent Mail read-back:
   `Message-ID`, so an unknown outcome can deliver up to three copies when Sent
   Mail indexing lags an accepted send. An application changes one Step's cap
   with the factory's `MaxSends` field, from 1 (never resend) to 10.
+- Dex agent hosts honor the cap from Dex Agents 0.6.12. Enable these tools with
+  a cap above 1 only after no Worker older than 0.6.12 runs that session Flow
+  type, and do not roll back below 0.6.12 while a bounded call is open. A cap of
+  1 is safe on any Worker.
 
 The Go send result marshals an empty recipient list as JSON `[]` on every
 terminal branch, including an early read-back and a provider rejection.

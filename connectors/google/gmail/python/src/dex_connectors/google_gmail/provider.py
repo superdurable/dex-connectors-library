@@ -390,6 +390,9 @@ class GmailProvider:
         return credential
 
     def _validate_credentials(self, credential: Credentials) -> None:
+        # A credential source may return malformed fields; they are invalid material, not a transient failure.
+        if not isinstance(credential.primary_email, str) or not isinstance(credential.auth_method_id, str):
+            raise ValueError("Gmail credential fields are invalid")
         if not is_header_safe_credential(credential.access_token.reveal()):
             raise ValueError("Gmail access token is invalid")
         if parse_mailbox(credential.primary_email).lower() != credential.primary_email.strip().lower():
