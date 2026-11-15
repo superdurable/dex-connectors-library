@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -47,6 +50,8 @@ CREATE_ENVELOPE_FROM_TEMPLATE_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=3900)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 GET_ENVELOPE_DEFINITION = QueryDefinition(
@@ -96,6 +101,8 @@ VOID_ENVELOPE_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 0, timedelta(seconds=3900)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 DOWNLOAD_COMBINED_DOCUMENT_DEFINITION = QueryDefinition(
@@ -114,4 +121,9 @@ DOWNLOAD_COMBINED_DOCUMENT_DEFINITION = QueryDefinition(
         heartbeat_timeout=timedelta(seconds=30),
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 0, timedelta(seconds=3900)),
     ),
+)
+
+ENVELOPE_EVENT_RECEIVED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="envelopeEventReceived"),
+    description="Receive an HMAC-verified DocuSign Connect envelope-completed, envelope-declined, or envelope-voided event in the JSON SIM format, with the envelope ID and event name as its event ID and the envelope's text custom fields for correlation.",
 )

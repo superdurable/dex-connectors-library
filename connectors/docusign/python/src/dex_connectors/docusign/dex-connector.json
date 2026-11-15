@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-docusign",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -368,6 +368,16 @@
           "envelopeId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_envelope_event_received_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "envelopeEventReceived",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]
