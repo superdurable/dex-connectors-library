@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: quickbooks
   displayName: QuickBooks Online
-  description: "Find or create QuickBooks Online customers, raise invoices with exact decimal amounts, list and read them page by page, email them, and record payments against them, with every write sent under a QuickBooks requestid derived from the Step."
+  description: "Find or create QuickBooks Online customers, raise invoices with exact decimal amounts, list and read them page by page, email them, record payments against them, and receive each invoice created or changed in the company, with every write sent under a QuickBooks requestid derived from the Step."
   company: Intuit
   categories: [finance-payments]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: quickbooks
   languages:
@@ -43,6 +43,12 @@ spec:
         description: "Largest complete QuickBooks API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of lines. An oversized read selects invalidResponse; an oversized accepted write is confirmed by ID when possible, otherwise it selects uncertain."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Non-secret delay between invoiceChanged Trigger polls of the company's invoices, as a Go duration of at least 5s such as 15s or 2m. Each poll sends one QuickBooks query, or up to ten while catching up, and QuickBooks allows 500 requests per minute per company across this connection's Steps and Triggers, so a shorter interval delivers changes sooner and uses more of that limit. Blank uses the displayed interval."
+        required: false
+        default: 30s
   auth:
     refreshable: true
     type: oauth2
@@ -107,6 +113,12 @@ spec:
             credentialMappings:
               - {credential: access_token, source: access_token}
               - {credential: refresh_token, source: refresh_token}
+  triggers:
+    - name: invoiceChanged
+      goName: InvoiceChanged
+      eventType: InvoiceChangedEvent
+      configurationType: InvoiceChangedTriggerConfiguration
+      description: "Receive each invoice created or changed in the connected QuickBooks company, including payments, emails, and voids that update it, read by polling invoices by MetaData.LastUpdatedTime; the first run records a baseline and delivers no existing invoices, and deleted invoices are not reported."
   operations:
     - name: findCustomer
       goName: FindCustomer

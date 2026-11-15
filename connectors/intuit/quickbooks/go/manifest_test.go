@@ -39,8 +39,13 @@ type guidanceManifest struct {
 				CredentialMappings      []map[string]string `yaml:"credentialMappings"`
 			} `yaml:"oauth2"`
 		} `yaml:"auth"`
-		Studio     any   `yaml:"studio"`
-		Triggers   []any `yaml:"triggers"`
+		Studio   any `yaml:"studio"`
+		Triggers []struct {
+			Name              string `yaml:"name"`
+			EventType         string `yaml:"eventType"`
+			ConfigurationType string `yaml:"configurationType"`
+			Description       string `yaml:"description"`
+		} `yaml:"triggers"`
 		Operations []struct {
 			Name          string `yaml:"name"`
 			Kind          string `yaml:"kind"`
@@ -69,7 +74,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"environment", "realmId", "maxResponseBytes", "client_id", "client_secret", "access_token", "refresh_token", "id_token"},
+	require.Equal(t, []string{"environment", "realmId", "maxResponseBytes", "pollInterval", "client_id", "client_secret", "access_token", "refresh_token", "id_token"},
 		names, "a new visible field needs its own guidance review")
 
 	for index, field := range visibleFields {
@@ -95,6 +100,10 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 				require.Equal(t, []string{string(EnvironmentProduction), string(EnvironmentSandbox)}, field.Enum)
 				require.Contains(t, field.Description, "https://"+productionAPIHost)
 				require.Contains(t, field.Description, "https://"+sandboxAPIHost)
+			case field.Name == "pollInterval":
+				require.Equal(t, "duration", field.Type)
+				require.Contains(t, field.Description, "at least 5s", "the client rejects a shorter interval")
+				require.Contains(t, field.Description, "500 requests per minute per company")
 			case field.Name == "realmId":
 				require.False(t, field.Required, "the ID token names the company; realmId is only a fallback")
 				require.Contains(t, field.Description, "Settings > Subscriptions and billing")
@@ -149,11 +158,18 @@ func TestEveryOperationNeedsAnAuthorizedConnectionAndEveryWriteIsKeyed(t *testin
 	}
 }
 
-// No Triggers: one QuickBooks webhook request can batch several companies' changes; webhooktrigger decodes one.
-func TestManifestDeclaresNoStudioBundleOrTriggers(t *testing.T) {
+// invoiceChanged is a poll Trigger with no binding fields, so the connector ships no Studio bundle. Webhook
+// Triggers wait: one QuickBooks webhook request can batch several companies' changes; webhooktrigger decodes one.
+func TestManifestDeclaresOnlyTheInvoiceChangedPollTriggerAndNoStudioBundle(t *testing.T) {
 	manifest := readGuidanceManifest(t)
 	require.Nil(t, manifest.Spec.Studio)
-	require.Empty(t, manifest.Spec.Triggers)
+	require.Len(t, manifest.Spec.Triggers, 1)
+	trigger := manifest.Spec.Triggers[0]
+	require.Equal(t, InvoiceChangedTriggerDefinition.Trigger.TriggerName, trigger.Name)
+	require.Equal(t, "InvoiceChangedEvent", trigger.EventType)
+	require.Equal(t, "InvoiceChangedTriggerConfiguration", trigger.ConfigurationType)
+	require.Contains(t, trigger.Description, "baseline")
+	require.Contains(t, trigger.Description, "deleted invoices are not reported")
 	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err))
 }

@@ -25,9 +25,10 @@ const (
 )
 
 type Config struct {
-	Environment      Environment `json:"environment,omitempty" yaml:"environment,omitempty"`
-	RealmID          string      `json:"realmId,omitempty" yaml:"realmId,omitempty"`
-	MaxResponseBytes int64       `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	Environment      Environment   `json:"environment,omitempty" yaml:"environment,omitempty"`
+	RealmID          string        `json:"realmId,omitempty" yaml:"realmId,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 }
 
 type Credentials struct {
@@ -226,6 +227,7 @@ func DefaultConfig() Config {
 	return Config{
 		Environment:      Environment("production"),
 		MaxResponseBytes: 4194304,
+		PollInterval:     time.Duration(30000000000),
 	}
 }
 
@@ -236,6 +238,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
 	}
 	return config
 }
@@ -248,6 +253,9 @@ func (config Config) Validate() error {
 	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
 	}
 	return nil
 }
@@ -277,6 +285,50 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+var InvoiceChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "invoiceChanged"},
+	Description: "Receive each invoice created or changed in the connected QuickBooks company, including payments, emails, and voids that update it, read by polling invoices by MetaData.LastUpdatedTime; the first run records a baseline and delivers no existing invoices, and deleted invoices are not reported.",
+}
+
+type InvoiceChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=quickbooks"`
+	triggerName                             struct{} `connector:"triggerName=invoiceChanged"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
+}
+
+func DefineInvoiceChangedTriggerBinding(config InvoiceChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: InvoiceChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+	})
+}
+
+type InvoiceChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                 `connector:"connectorId=quickbooks"`
+	triggerName                      struct{}                                 `connector:"triggerName=invoiceChanged"`
+	Connection                       Connection                               `connector:"connection"`
+	ConnectionName                   string                                   `connector:"connectionName"`
+	BindingName                      string                                   `connector:"bindingName"`
+	Configuration                    InvoiceChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[InvoiceChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewInvoiceChangedTrigger(config InvoiceChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("quickbooks connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: InvoiceChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[InvoiceChangedEvent]{
+		Definition: InvoiceChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.invoiceChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const FindCustomerBranchFound sdkgo.BranchID = "found"
@@ -382,6 +434,8 @@ var CreateCustomerDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateCustomerResult = sdkgo.MutationResult[CreateCustomerOutput]
@@ -402,6 +456,8 @@ type CreateCustomerStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateCustomerResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateCustomerOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateCustomerStep[IN any](config CreateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, CreateCustomerInput, CreateCustomerOutput] {
@@ -436,6 +492,7 @@ func NewCreateCustomerStep[IN any](config CreateCustomerStepConfig[IN]) sdkgo.Mu
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -457,6 +514,8 @@ var CreateInvoiceDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateInvoiceResult = sdkgo.MutationResult[CreateInvoiceOutput]
@@ -476,6 +535,8 @@ type CreateInvoiceStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateInvoiceResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateInvoiceOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateInvoiceStep[IN any](config CreateInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, CreateInvoiceInput, CreateInvoiceOutput] {
@@ -507,6 +568,7 @@ func NewCreateInvoiceStep[IN any](config CreateInvoiceStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -676,6 +738,8 @@ var SendInvoiceDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendInvoiceResult = sdkgo.MutationResult[Invoice]
@@ -695,6 +759,8 @@ type SendInvoiceStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendInvoiceResult]               `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Invoice]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendInvoiceStep[IN any](config SendInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, SendInvoiceInput, Invoice] {
@@ -726,6 +792,7 @@ func NewSendInvoiceStep[IN any](config SendInvoiceStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -747,6 +814,8 @@ var RecordPaymentDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type RecordPaymentResult = sdkgo.MutationResult[Payment]
@@ -766,6 +835,8 @@ type RecordPaymentStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[RecordPaymentResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Payment]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewRecordPaymentStep[IN any](config RecordPaymentStepConfig[IN]) sdkgo.MutationStep[IN, RecordPaymentInput, Payment] {
@@ -797,5 +868,6 @@ func NewRecordPaymentStep[IN any](config RecordPaymentStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

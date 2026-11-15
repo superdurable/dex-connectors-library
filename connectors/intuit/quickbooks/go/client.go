@@ -9,6 +9,10 @@
 // Every amount is a Decimal, an exact base-10 string that never passes through floating point,
 // and every value keeps QuickBooks's own vocabulary, such as EmailStatus NeedToSend.
 //
+// The invoiceChanged Trigger polls the company's invoices by MetaData.LastUpdatedTime with a durable
+// cursor and delivers each created or changed invoice version once; NewProjectInvoiceTriggerRunner
+// records changes in the project's Trigger inbox before the cursor moves.
+//
 // Every mutation sends the requestid query parameter derived from the Dex Call ID, so a retried
 // or re-dispatched attempt of one Step execution requests QuickBooks's original response.
 // Key retention and replay on the invoice-send endpoint remain unverified.
@@ -25,7 +29,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -63,6 +69,10 @@ const (
 	requestDeadlineMargin = 500 * time.Millisecond
 
 	intuitTransactionIDHeader = "intuit_tid"
+
+	// minimumPollInterval keeps an invoiceChanged poll loop well inside QuickBooks's 500 requests per
+	// minute per company, which operation Steps on the same company share.
+	minimumPollInterval = 5 * time.Second
 )
 
 var (
@@ -80,6 +90,7 @@ type clientOptions struct {
 	httpClient       *http.Client
 	localProviderURL string
 	now              func() time.Time
+	logger           *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 20 seconds per request.
@@ -105,6 +116,14 @@ func WithClock(now func() time.Time) Option {
 	return func(options *clientOptions) { options.now = now }
 }
 
+// WithLogger sends the invoiceChanged Trigger runner's records to logger: seeds, reseeds, failed polls,
+// rate-limit pauses, and the durable inboxes NewProjectInvoiceTriggerRunner opens. Records carry binding
+// identity and never invoice payloads or credentials. Without this option, or with a nil logger, records
+// go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated QuickBooks Online Accounting API requests for connector
 // operations. A Client is safe for concurrent use by several Steps.
 type Client struct {
@@ -115,6 +134,8 @@ type Client struct {
 	environment       Environment
 	configuredRealmID string
 	maxResponseBytes  int64
+	pollInterval      time.Duration
+	logger            *slog.Logger
 	now               func() time.Time
 }
 
@@ -134,6 +155,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	}
 	if config.MaxResponseBytes < 1 {
 		return nil, errors.New("QuickBooks response limit must be positive")
+	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("QuickBooks pollInterval must be at least %s", minimumPollInterval)
 	}
 	configuredRealmID := strings.TrimSpace(config.RealmID)
 	if configuredRealmID != "" && !realmIDPattern.MatchString(configuredRealmID) {
@@ -169,7 +193,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	return &Client{
 		httpClient: httpClient, credentials: credentials, refreshDriver: refreshDriver,
 		apiBaseURL: "https://" + apiHost + "/v3/company/", environment: config.Environment, configuredRealmID: configuredRealmID,
-		maxResponseBytes: config.MaxResponseBytes, now: dependencies.now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval, logger: dependencies.logger, now: dependencies.now,
 	}, nil
 }
 
@@ -204,19 +228,25 @@ func (client *Client) RecordPayment() RecordPaymentOperation {
 	return RecordPaymentOperation{client: client}
 }
 
-// exchange sends one request and resends once after a 401, which QuickBooks answers before running anything.
+// exchange sends one request under the Step context of call.
 func (client *Client) exchange(call sdkgo.Call, operation string, request quickbooksRequest) quickbooksExchange {
-	credentials, realmID, failedResolution := client.resolveCredentials(call, operation)
+	return client.exchangeWithContext(call.Context, call, operation, request)
+}
+
+// exchangeWithContext sends one request and resends once after a 401, which QuickBooks answers before
+// running anything. Trigger pollers pass their own ctx because their calls have no Dex Step context.
+func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, operation string, request quickbooksRequest) quickbooksExchange {
+	credentials, realmID, failedResolution := client.resolveCredentials(ctx, call, operation)
 	if failedResolution != nil {
 		return *failedResolution
 	}
-	result := client.send(call, credentials, realmID, operation, request)
+	result := client.send(ctx, call, credentials, realmID, operation, request)
 	if result.response.statusCode == http.StatusUnauthorized && client.canRefreshAfterRejection() {
-		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
 		// A refused or failed refresh keeps the 401; projects refresh after a rejection only once recorded expiry passed.
 		if err == nil && validateResolvedCredentials(replacement) == nil {
 			if replacementRealmID, realmErr := resolveRealmID(replacement, client.configuredRealmID); realmErr == nil && replacementRealmID == realmID {
-				result = client.send(call, replacement, realmID, operation, request)
+				result = client.send(ctx, call, replacement, realmID, operation, request)
 			}
 		}
 	}
@@ -226,8 +256,8 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request quickb
 }
 
 // resolveCredentials separates a revoked grant from a transient token failure and a broken connection.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, string, *quickbooksExchange) {
-	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, string, *quickbooksExchange) {
+	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	switch {
 	case sdkgo.IsReauthorizationRequired(err):
 		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRejected,
@@ -253,19 +283,19 @@ func (client *Client) canRefreshAfterRejection() bool {
 }
 
 // send performs one HTTP exchange and classifies it without deciding retry policy.
-func (client *Client) send(call sdkgo.Call, credentials Credentials, realmID string, operation string, request quickbooksRequest) quickbooksExchange {
-	httpRequest, err := client.buildRequest(call, credentials, realmID, request)
+func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Credentials, realmID string, operation string, request quickbooksRequest) quickbooksExchange {
+	httpRequest, err := client.buildRequest(ctx, call, credentials, realmID, request)
 	if err != nil {
 		return quickbooksExchange{outcome: exchangeDefect, failure: quickbooksFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
-	deadline, hasDeadline := call.Context.Deadline()
+	deadline, hasDeadline := ctx.Deadline()
 	if request.isMutation {
 		if request.attemptBudget.minimumWriteTime <= 0 || request.attemptBudget.deadline.Sub(client.now()) < request.attemptBudget.minimumWriteTime {
 			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks write was not sent because too little attempt time remains")}
 		}
 		deadline, hasDeadline = request.attemptBudget.deadline, true
 	}
-	if call.Context.Err() != nil {
+	if ctx.Err() != nil {
 		return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request; no request was sent")}
 	}
 	if hasDeadline {
@@ -298,7 +328,7 @@ func (client *Client) newAttemptBudget(stepContext context.Context, executeTimeo
 }
 
 // buildRequest addresses the company's realm, pins the minor version, and adds a mutation's requestid.
-func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, realmID string, request quickbooksRequest) (*http.Request, error) {
+func (client *Client) buildRequest(ctx context.Context, call sdkgo.Call, credentials Credentials, realmID string, request quickbooksRequest) (*http.Request, error) {
 	query := url.Values{}
 	for name, values := range request.query {
 		query[name] = values
@@ -323,7 +353,7 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, rea
 		body, contentType = http.NoBody, "application/octet-stream"
 	}
 	target := client.apiBaseURL + realmID + request.path + "?" + query.Encode()
-	httpRequest, err := http.NewRequestWithContext(call.Context, request.method, target, body)
+	httpRequest, err := http.NewRequestWithContext(ctx, request.method, target, body)
 	if err != nil {
 		return nil, errRequestNotBuilt
 	}
