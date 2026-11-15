@@ -1,6 +1,6 @@
 {
   "connectorId": "google-calendar",
-  "releaseTag": "connectors/google/calendar/go/v0.24.0",
+  "releaseTag": "connectors/google/calendar/go/v0.25.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-calendar",

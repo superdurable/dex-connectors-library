@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-calendar
   displayName: Google Calendar
-  description: List and read events in a bounded window, create and update events idempotently, and query free/busy intervals in Google Calendar.
+  description: List and read events in a bounded window, create and update events idempotently, query free/busy intervals, and receive created, updated, and cancelled events in Google Calendar.
   company: Google
   categories: [productivity]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: google
   languages:
@@ -37,6 +37,12 @@ spec:
         description: Maximum complete Google Calendar API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: Delay between eventChanged Trigger polls of Google Calendar incremental sync, as a Go duration of at least 5s such as 15s or 2m; shorter intervals deliver changes sooner and use more Calendar API quota.
+        required: false
+        default: 30s
   auth:
     refreshable: true
     defaultMethod: google-oauth
@@ -165,6 +171,12 @@ spec:
         outputs:
           - {name: calendarId, goName: CalendarID, type: string}
           - {name: calendarName, goName: CalendarName, type: string}
+  triggers:
+    - name: eventChanged
+      goName: EventChanged
+      eventType: EventChangedEvent
+      configurationType: EventChangedTriggerConfiguration
+      description: Receive each event created, updated, or cancelled on one calendar, read through Google Calendar incremental sync; the first run records a baseline and delivers no existing events.
   operations:
     - name: listEvents
       goName: ListEvents
@@ -303,6 +315,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A stable client event ID (createEvent) or an ETag-guarded patch (updateEvent) makes a repeat harmless.
+        repeatOnUnknown: safe
       mocks:
         - name: holdCreated
           branch: created
@@ -343,6 +357,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A stable client event ID (createEvent) or an ETag-guarded patch (updateEvent) makes a repeat harmless.
+        repeatOnUnknown: safe
       mocks:
         - name: attendeesInvited
           branch: updated

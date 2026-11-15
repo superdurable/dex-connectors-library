@@ -28,7 +28,8 @@ export function parseCalendarPage(value: Record<string, unknown>): {calendars: C
 
 /**
  * minimumAccessRole is the least calendarList access an operation needs: event writes need
- * writer, event reads need reader, and free/busy needs only freeBusyReader.
+ * writer, event reads need reader, and free/busy needs only freeBusyReader. A Trigger binding
+ * reads events through incremental sync, so it needs reader.
  */
 export function minimumAccessRole(target: ConnectorStudioConfigurationUnitTarget): CalendarAccessRole {
   if (target.scope.kind !== "operation") return "reader";

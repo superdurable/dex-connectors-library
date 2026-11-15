@@ -11,10 +11,12 @@ package calendar
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -31,12 +33,24 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 }
+
+// minimumPollInterval keeps an eventChanged poll loop from spending the Calendar API quota.
+const minimumPollInterval = 5 * time.Second
 
 // WithHTTPClient overrides the default 25-second HTTP client; the caller retains ownership.
 // The client is shared by operation requests and credential refresh.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithLogger sends the eventChanged Trigger runner's records to logger: seeds, reseeds after an expired
+// sync token, failed polls, rate-limit pauses, and the durable inboxes NewProjectEventTriggerRunner opens.
+// Records carry binding identity and never event payloads or credentials. Without this option, or with a
+// nil logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
 }
 
 // Client executes authenticated Google Calendar requests for connector operations.
@@ -47,6 +61,8 @@ type Client struct {
 	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -150,10 +166,13 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.MaxResponseBytes < 1 {
 		return nil, fmt.Errorf("Google Calendar response limit must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Google Calendar pollInterval must be at least %s", minimumPollInterval)
+	}
 	return &Client{
 		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
 		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
-		maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
@@ -218,8 +237,14 @@ func (client *Client) readEvent(call sdkgo.Call, credentials *Credentials, opera
 	return eventReadResult{outcome: eventReadFound, response: response, event: event}
 }
 
-// send issues one authenticated request. After a 401 it refreshes once, updates credentials, and retries once.
+// send issues one authenticated request under the Step context of call.
 func (client *Client) send(call sdkgo.Call, credentials *Credentials, request providerRequest) (providerResponse, error) {
+	return client.sendWithContext(call.Context, call, credentials, request)
+}
+
+// sendWithContext issues one authenticated request. After a 401 it refreshes once, updates credentials, and
+// retries once. Trigger pollers pass their own ctx because their calls have no Dex Step context.
+func (client *Client) sendWithContext(ctx context.Context, call sdkgo.Call, credentials *Credentials, request providerRequest) (providerResponse, error) {
 	var encodedPayload []byte
 	if request.payload != nil {
 		encoded, err := json.Marshal(request.payload)
@@ -234,7 +259,7 @@ func (client *Client) send(call sdkgo.Call, credentials *Credentials, request pr
 		if encodedPayload != nil {
 			body = bytes.NewReader(encodedPayload)
 		}
-		httpRequest, err := http.NewRequestWithContext(call.Context, request.method, target, body)
+		httpRequest, err := http.NewRequestWithContext(ctx, request.method, target, body)
 		if err != nil {
 			return providerResponse{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 		}
@@ -267,7 +292,7 @@ func (client *Client) send(call sdkgo.Call, credentials *Credentials, request pr
 		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
 			return result, nil
 		}
-		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
 		if refreshErr != nil || validateResolvedCredentials(replacement) != nil {
 			return result, nil
 		}
