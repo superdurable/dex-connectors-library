@@ -1,6 +1,6 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.26.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.27.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
