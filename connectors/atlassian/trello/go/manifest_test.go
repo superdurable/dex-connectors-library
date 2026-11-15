@@ -47,7 +47,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"endpoint", "maxResponseBytes", "api_key", "token"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"endpoint", "maxResponseBytes", "pollInterval", "api_key", "token"}, names, "a new visible field needs its own guidance review")
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
 			require.GreaterOrEqual(t, len(field.Description), 120, "a label-length description is not guidance")
@@ -85,13 +85,22 @@ func TestKeyAndTokenIsTheOnlyMethodAndItsGuideNamesThePortalPath(t *testing.T) {
 	}
 }
 
-// TestNoStudioPickerIsDeclared records why board and list IDs are guided input: Trello answers both list
-// endpoints with a top-level JSON array, which Dex Web rejects, and a Studio command cannot send Trello's
-// key and token.
-func TestNoStudioPickerIsDeclared(t *testing.T) {
-	require.Empty(t, readGuidanceManifest(t).Spec.Studio)
-	_, err := os.Stat("../ui")
-	require.True(t, os.IsNotExist(err), "a connector without Studio units ships no UI bundle")
+// TestStudioDeclaresOnlyTheBoardInputUnit records why the cardChanged board is guided input rather than a
+// picker: Trello answers its board listings with a top-level JSON array, which Dex Web rejects, and a
+// Studio command cannot send Trello's key and token together.
+func TestStudioDeclaresOnlyTheBoardInputUnit(t *testing.T) {
+	studio := readGuidanceManifest(t).Spec.Studio
+	require.NotContains(t, studio, "commands", "no read-only setup command can call Trello")
+	units, ok := studio["units"].([]any)
+	require.True(t, ok)
+	require.Len(t, units, 1)
+	unit := units[0].(map[string]any)
+	require.Equal(t, "boardInput", unit["id"])
+	for _, guidance := range []string{"https://trello.com/b/", "short link", "24-character board ID"} {
+		require.Contains(t, unit["description"], guidance)
+	}
+	_, err := os.Stat("../ui/src/units.tsx")
+	require.NoError(t, err, "the boardInput unit ships in the connector's Studio bundle")
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {

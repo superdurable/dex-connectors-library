@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: trello
   displayName: Trello
-  description: List and read Trello cards on a board or list with open, closed, and due-date filters, create cards and comments without silent duplicates, and move, archive, reopen, reschedule, or relabel cards.
+  description: List and read Trello cards on a board or list with open, closed, and due-date filters, create cards and comments without silent duplicates, move, archive, reopen, reschedule, or relabel cards, and receive each card created, changed, commented, or deleted on a board.
   company: Atlassian
   categories: [project-management]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: trello
   languages:
@@ -35,6 +35,12 @@ spec:
         description: "Maximum complete Trello API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createCard or addComment selects uncertain."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between cardChanged Trigger polls of each watched board's action history, as a Go duration of at least 10s such as 45s or 2m. Leave blank to keep the displayed interval; a shorter interval delivers card changes sooner and spends more of the token's Trello rate limit of 100 requests per 10 seconds, which operation Steps on the same connection share."
+        required: false
+        default: 30s
   auth:
     type: apiKey
     connectionKind: trello-api-key-token
@@ -57,6 +63,25 @@ spec:
         - Open the app, select the Trello Auth tab, choose Generate a new API Key, and paste the API key into api_key. This connection does not use the secret shown on the same tab.
         - "Open https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&key= with your API key appended, check that it asks for read and write access, choose Allow, and paste the token from the page that follows into token. Use expiration=30days instead of never to force a monthly rotation."
         - To revoke the token, open https://trello.com/u/your-username/account, find the app under Applications, and choose Revoke; then authorize again and paste the new token here. Trello answers a revoked or expired token with HTTP 401.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    units:
+      - id: boardInput
+        goName: BoardInput
+        description: "Paste a Trello board link, such as https://trello.com/b/AbCd1234/support-queue, or a board ID; the unit stores the board's 8-character short link from a link, or the 24-character board ID, and accepts nothing else. The board is required: Save stays disabled while the field is blank, and a binding without a saved board stops the Worker at start. Saving a different board makes the binding's next poll record a new baseline, so that board's earlier actions are not delivered."
+        outputs:
+          - {name: boardId, goName: BoardID, type: string}
+  triggers:
+    - name: cardChanged
+      goName: CardChanged
+      eventType: CardChangedEvent
+      configurationType: CardChangedTriggerConfiguration
+      description: "Receive each card created, copied, updated (moved, renamed, archived, rescheduled, and other field changes), commented on, moved in from another board, or deleted on one board, read by polling the board's action history; the first run records a baseline and delivers no earlier actions."
   operations:
     - name: listCards
       goName: ListCards
@@ -187,6 +212,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every change is an absolute value, so a repeated update leaves the same card.
+        repeatOnUnknown: safe
       mocks:
         - name: approvedRequestUpdated
           branch: updated

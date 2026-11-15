@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -39,6 +40,8 @@ const (
 	requestTimeout = 20 * time.Second
 	// rateLimitWindow is Trello's rate-limit window; a 429 without Retry-After waits one window.
 	rateLimitWindow = 10 * time.Second
+	// minimumPollInterval keeps cardChanged polls well inside the token's 100 requests per 10 seconds.
+	minimumPollInterval = 10 * time.Second
 )
 
 // requestIDHeader is the request ID header Trello returns on every response, observed but not documented.
@@ -55,6 +58,7 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 }
 
 // WithHTTPClient replaces the HTTP client used for Trello API requests. The caller keeps ownership of client
@@ -64,6 +68,14 @@ func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
+// WithLogger sends the cardChanged Trigger runner's records to logger: seeds, reseeds, failed polls,
+// rate-limit pauses, and the durable inboxes NewProjectCardTriggerRunner opens. Records carry binding
+// identity and never card content or credentials. Without this option, or with a nil logger, records go
+// to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Trello REST requests for one connection. It is safe for concurrent use by
 // several Steps.
 type Client struct {
@@ -71,6 +83,8 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -163,6 +177,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes < 1 {
 		return nil, fmt.Errorf("Trello maxResponseBytes must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Trello pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
@@ -177,7 +194,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		endpoint:         endpoint,
 		httpClient:       providerhttp.NewProviderHTTPClient(dependencies.httpClient, requestTimeout),
 		credentials:      credentials,
-		maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
