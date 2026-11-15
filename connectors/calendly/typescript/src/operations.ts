@@ -19,7 +19,8 @@ const zeroCancellation = (uri: string): ScheduledEventCancellation => ({ schedul
 const zeroLink = (uri: string): SchedulingLink => ({ bookingUrl: '', eventTypeUri: uri });
 const zeroSubscription = (): WebhookSubscription => ({ uri: '', callbackUrl: '', state: '', events: [], scope: '', organizationUri: '', wasCreated: false });
 
-function parseResourceURI(uri: string, collection: string, noun: string): string {
+/** @internal Shared with the inviteeEventReceived webhook decoder. */
+export function parseResourceURI(uri: string, collection: string, noun: string): string {
   const prefix = `${base}/${collection}/`;
   const id = uri.startsWith(prefix) ? uri.slice(prefix.length) : '';
   if (!resourceId.test(id)) throw new TypeError(`${noun} URI must look like ${prefix}<id>`);
@@ -43,12 +44,14 @@ function isPlainEmailAddress(value: string): boolean {
   return domain.split('.').every(part => part && atom.test(part));
 }
 
-function parseObject(value: unknown): Record<string, unknown> {
+/** @internal Shared with the inviteeEventReceived webhook decoder. */
+export function parseObject(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid Calendly response');
   return value as Record<string, unknown>;
 }
 
-function stringField(record: Record<string, unknown>, name: string): string {
+/** @internal Shared with the inviteeEventReceived webhook decoder. */
+export function stringField(record: Record<string, unknown>, name: string): string {
   const value = record[name];
   if (value === undefined || value === null) return '';
   if (typeof value !== 'string') throw new TypeError('invalid Calendly string field');
@@ -85,7 +88,12 @@ function arrayField(record: Record<string, unknown>, name: string): unknown[] {
 
 function parseBody(exchange: CalendlyExchange): Record<string, unknown> {
   if (exchange.kind !== 'response') throw new TypeError('missing Calendly response');
-  return parseObject(JSON.parse(Buffer.from(exchange.response.body).toString('utf8'), (key, value: unknown, context?: { source?: string }) => { if (key === 'position' && typeof value === 'number' && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid Calendly integer'); return value; }));
+  return parseObject(parseCalendlyJSON(exchange.response.body));
+}
+
+/** @internal Parse a Calendly JSON body, rejecting a fractional answer position as Go's int decoding does. */
+export function parseCalendlyJSON(body: Uint8Array): unknown {
+  return JSON.parse(Buffer.from(body).toString('utf8'), (key, value: unknown, context?: { source?: string }) => { if (key === 'position' && typeof value === 'number' && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid Calendly integer'); return value; });
 }
 
 function responseResource(exchange: CalendlyExchange): Record<string, unknown> { return parseObject(parseBody(exchange).resource); }
@@ -97,7 +105,8 @@ function paginationToken(response: Record<string, unknown>): string {
   return token;
 }
 
-function rfc3339(value: string, optional = false): string {
+/** @internal Shared with the inviteeEventReceived webhook decoder. */
+export function rfc3339(value: string, optional = false): string {
   if (optional && !value) return '';
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
   if (!match) throw new TypeError('invalid Calendly timestamp');
@@ -135,7 +144,8 @@ function decodeCancellation(value: unknown): Cancellation {
   return { ...(stringField(record, 'canceled_by') ? { canceledBy: stringField(record, 'canceled_by') } : {}), ...(stringField(record, 'reason') ? { reason: stringField(record, 'reason') } : {}), ...(stringField(record, 'canceler_type') ? { cancelerType: stringField(record, 'canceler_type') } : {}), ...(optionalTimestamp(record, 'created_at') ? { createdAt: optionalTimestamp(record, 'created_at') } : {}) };
 }
 
-function decodeEvent(value: unknown): ScheduledEvent {
+/** @internal Shared with the inviteeEventReceived webhook decoder. */
+export function decodeEvent(value: unknown): ScheduledEvent {
   const record = parseObject(value);
   const uri = stringField(record, 'uri'); parseResourceURI(uri, 'scheduled_events', 'scheduled event');
   const status = stringField(record, 'status');
@@ -154,7 +164,8 @@ function decodeEvent(value: unknown): ScheduledEvent {
     ...(hosts.length ? { hosts } : {}), ...(record.cancellation != null ? { cancellation: decodeCancellation(record.cancellation) } : {}), ...(optionalTimestamp(record, 'created_at') ? { createdAt: optionalTimestamp(record, 'created_at') } : {}), ...(optionalTimestamp(record, 'updated_at') ? { updatedAt: optionalTimestamp(record, 'updated_at') } : {}) };
 }
 
-function decodeInvitee(value: unknown, expectedEventURI: string): Invitee {
+/** @internal Shared with the inviteeEventReceived webhook decoder. */
+export function decodeInvitee(value: unknown, expectedEventURI: string): Invitee {
   const record = parseObject(value);
   const uri = stringField(record, 'uri');
   const match = /^https:\/\/api\.calendly\.com\/scheduled_events\/([A-Za-z0-9_-]{1,64})\/invitees\/([A-Za-z0-9_-]{1,64})$/.exec(uri);

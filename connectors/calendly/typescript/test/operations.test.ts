@@ -24,7 +24,7 @@ function response(status: number, document: unknown): ProviderResponse {
 }
 
 describe('Calendly operation edge cases', () => {
-  it('validates every manifest connection limit, including the Go-only webhook settings', () => {
+  it('validates every manifest connection limit, including the webhook settings', () => {
     const provider = new StaticCredentialProvider([[connection, credentials]]);
     expect(() => new CalendlyClient({ maxResponseBytes: -1 }, provider)).toThrow();
     expect(() => new CalendlyClient({ webhookMaxBodyBytes: -1 }, provider)).toThrow();

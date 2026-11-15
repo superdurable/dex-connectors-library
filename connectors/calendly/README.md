@@ -2,7 +2,7 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/calendly/go@v0.24.0`.
 
-The TypeScript package `@superdurable/connector-calendly` v0.1.0 implements all six operations. Its [runnable scheduled-event Flow](typescript/examples/scheduled-event/README.md) reads one event through a Dex Worker and Client. The `inviteeEventReceived` Trigger remains Go-only. See the [TypeScript package README](typescript/README.md) for setup and verification.
+The TypeScript package `@superdurable/connector-calendly` v0.2.0 implements all six operations and, from 0.2.0, the `inviteeEventReceived` Trigger at parity with Go. Its [runnable scheduled-event Flow](typescript/examples/scheduled-event/README.md) reads one event through a Dex Worker and Client, and its [invitee-recorder example](typescript/examples/invitee-recorder/README.md) starts one Flow per signed booking. See the [TypeScript package README](typescript/README.md) for setup and verification.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/calendly`.
 
@@ -13,15 +13,15 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/calendly`.
 The Calendly connector connects a Dex application to the
 [Calendly API v2](https://developer.calendly.com/api-docs):
 
-| Name | Kind | What it does | Happy branch |
-| --- | --- | --- | --- |
-| `listScheduledEvents` | Query | One page of scheduled events that start inside a required window, for a user, an organization, or the connected user | `listed` |
-| `getScheduledEvent` | Query | One scheduled event by URI | `found` |
-| `listEventInvitees` | Query | One page, 1 to 100 invitees, of a scheduled event | `listed` |
-| `cancelScheduledEvent` | Mutation | Cancels a scheduled event; an already-canceled event is `canceled` too | `canceled` |
-| `createSchedulingLink` | Mutation | One single-use booking link for an event type | `created` |
-| `createWebhookSubscription` | Mutation | Subscribes a callback URL to invitee webhooks, reusing an existing subscription | `subscribed` |
-| `inviteeEventReceived` | Trigger | A signed `invitee.created` or `invitee.canceled` webhook | |
+| Name | Kind | What it does | Happy branch | Languages |
+| --- | --- | --- | --- | --- |
+| `listScheduledEvents` | Query | One page of scheduled events that start inside a required window, for a user, an organization, or the connected user | `listed` | Go, TypeScript, Python |
+| `getScheduledEvent` | Query | One scheduled event by URI | `found` | Go, TypeScript, Python |
+| `listEventInvitees` | Query | One page, 1 to 100 invitees, of a scheduled event | `listed` | Go, TypeScript, Python |
+| `cancelScheduledEvent` | Mutation | Cancels a scheduled event; an already-canceled event is `canceled` too | `canceled` | Go, TypeScript, Python |
+| `createSchedulingLink` | Mutation | One single-use booking link for an event type | `created` | Go, TypeScript, Python |
+| `createWebhookSubscription` | Mutation | Subscribes a callback URL to invitee webhooks, reusing an existing subscription | `subscribed` | Go, TypeScript, Python |
+| `inviteeEventReceived` | Trigger | A signed `invitee.created` or `invitee.canceled` webhook | | Go, TypeScript |
 
 Every other branch is optional: `notFound`, `providerRejected`,
 `invalidResponse`, and `defect`; `createSchedulingLink` has `uncertain` in
@@ -96,9 +96,9 @@ accepted provider call and verify the next attempt:
 
 | Mutation | Durability | Why a repeat is safe | Observed after a repeated Execute |
 | --- | --- | --- | --- |
-| `cancelScheduledEvent` | async | Calendly answers `403` for an event that is already canceled. A `403` reads the event back; a canceled event selects `canceled` with `alreadyCanceled`, whatever the message. A lost answer or a `5xx` returns Retry. | two POSTs, `canceled` |
-| `createWebhookSubscription` | async | It lists the scope's subscriptions before creating, reuses one with the same callback URL, and treats Calendly's documented `409` as "list again". | two lists, one create, one subscription |
-| `createSchedulingLink` | sync | The single-dispatch fence checkpoints its claim before POST. A `429`, `503`, or traced connection failure before a socket is obtained permits only the next attempt to resend. An accepted response saves its booking URL, but a later replay or lost answer selects `uncertain` because Calendly offers no link read-back. | one POST for a slow provider; two for a `503` then success |
+| `cancelScheduledEvent` | async | Calendly answers `403` for an event that is already canceled. A `403` reads the event back; a canceled event selects `canceled` with `alreadyCanceled`, whatever the message. A lost answer or a `5xx` returns Retry. | two POSTs, `canceled` | Go, TypeScript, Python |
+| `createWebhookSubscription` | async | It lists the scope's subscriptions before creating, reuses one with the same callback URL, and treats Calendly's documented `409` as "list again". | two lists, one create, one subscription | Go, TypeScript, Python |
+| `createSchedulingLink` | sync | The single-dispatch fence checkpoints its claim before POST. A `429`, `503`, or traced connection failure before a socket is obtained permits only the next attempt to resend. An accepted response saves its booking URL, but a later replay or lost answer selects `uncertain` because Calendly offers no link read-back. | one POST for a slow provider; two for a `503` then success | Go, TypeScript, Python |
 
 The fence requires sync durability; applications must not override this Step to
 async. Its request deadline remains inside the Execute attempt with time to
@@ -250,4 +250,4 @@ an accepted provider call.
 
 ## Python
 
-The Python `dex-connector-calendly` package implements the six Calendly operations with generated OAuth wiring and a [runnable scheduled event lookup](python/examples/scheduled_event/README.md). The signed invitee webhook Trigger remains Go-only. The Python example uses the static `calendly-scheduling` connection name.
+The Python `dex-connector-calendly` package implements the six Calendly operations with generated OAuth wiring and a [runnable scheduled event lookup](python/examples/scheduled_event/README.md). The signed invitee webhook Trigger is available in Go and TypeScript, not Python. The Python example uses the static `calendly-scheduling` connection name.
