@@ -35,6 +35,7 @@ from dex_connectors.sdk import (
     QueryStep,
     QueryStepConfig,
     Receipt,
+    RepeatOnUnknown,
     StepAnnotations,
     StepDefaults,
 )
@@ -345,24 +346,44 @@ class ScriptedMutation:
 class FencedMutation(ScriptedMutation):
     """Model a possibly accepted write with read-back unavailable on retry."""
 
-    def __init__(self, *, request_seconds: float = 0, lose_response: bool = False) -> None:
+    def __init__(
+        self, *, request_seconds: float = 0, lose_response: bool = False,
+        limited_max_sends: int = 0,
+    ) -> None:
         super().__init__("success")
         self.request_seconds = request_seconds
         self.lose_response = lose_response
+        self.limited_max_sends = limited_max_sends
         self.provider_sends = 0
         self.read_backs = 0
+        self.inconclusive_read_backs = 0
+        self.call_max_sends: list[int] = []
         self.retry_marker: Marker | None = None
+
+    def definition(self) -> MutationDefinition:
+        """Declare a limited repeat-on-unknown tier when a manifest send cap is set."""
+        definition = super().definition()
+        if not self.limited_max_sends:
+            return definition
+        return MutationDefinition(
+            definition.operation, definition.branches, definition.step_defaults,
+            RepeatOnUnknown.LIMITED, self.limited_max_sends,
+        )
 
     async def invoke(self, call: Call, input: str) -> MutationAttempt[str]:
         """Fence the request before credentials and keep an ambiguous send closed."""
         self.calls += 1
-        fence = Fence(call, timedelta(seconds=30))
+        self.call_max_sends.append(call.max_sends)
+        fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
         decision = await fence.decide()
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
             self.read_backs += 1
             self.retry_marker = decision.marker
             return MutationAttempt.uncertain(input, UNCERTAIN_FAILURE, Receipt())
-        if decision.kind != DecisionKind.SEND_ALLOWED:
+        if decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED:
+            # The inert provider has no read-back, which counts as inconclusive.
+            self.inconclusive_read_backs += 1
+        elif decision.kind != DecisionKind.SEND_ALLOWED:
             raise RuntimeError("single-dispatch checkpoint is untrusted")
 
         async def send(deadline: object) -> str:
@@ -475,6 +496,7 @@ class MutationFlow(dex.Flow[str]):
 def mutation_flow(
     name: str, operation: ScriptedMutation,
     *, wire_uncertain: bool = False, max_attempts: int = 3,
+    max_sends_override: int | None = None,
 ) -> tuple[MutationFlow, MutationTerminal]:
     """Construct an instance-addressed write Step with explicit retry budget."""
     success = MutationTerminal("Success")
@@ -492,6 +514,7 @@ def mutation_flow(
         "CreateItem", str, StepAnnotations("sample", "Sample", "Create one sample item."),
         operation, CONNECTION, lambda value: value, targets,
         step_options_override=dex.StepOptions(execute_retry=retry),
+        max_sends_override=max_sends_override,
     ))
     return MutationFlow(name, step, [success, uncertain]), uncertain
 
@@ -514,7 +537,28 @@ async def test_uncertain_route_and_single_dispatch_after_lost_response() -> None
     assert lost.retry_marker is not None
     assert lost.retry_marker.state == State.CLAIMED
     assert lost.retry_marker.attempt == 1
+    assert lost.retry_marker.send_count == 0
     assert lost_sink.observed[0].branch == "uncertain"
+
+
+@pytest.mark.asyncio
+async def test_bounded_resend_stops_at_step_send_cap_after_lost_responses() -> None:
+    """Persisted sendCount bounds resends to the Step override across Dex retries."""
+    lost = FencedMutation(lose_response=True, limited_max_sends=2)
+    flow, sink = mutation_flow(
+        "MutationBoundedResend", lost, wire_uncertain=True, max_attempts=5, max_sends_override=3,
+    )
+    result = await run_flow(flow)
+    assert result.status == dex.FlowStatus.COMPLETED
+    assert lost.call_max_sends == [3, 3, 3, 3]
+    assert lost.provider_sends == 3
+    assert lost.inconclusive_read_backs == 2
+    assert lost.read_backs == 1
+    assert lost.retry_marker is not None
+    assert lost.retry_marker.state == State.CLAIMED
+    assert lost.retry_marker.attempt == 3
+    assert lost.retry_marker.send_count == 3
+    assert sink.observed[0].branch == "uncertain"
 
 
 @pytest.mark.asyncio

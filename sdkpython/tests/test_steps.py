@@ -3,6 +3,8 @@
 """Dex registration and connector Step factory validation."""
 
 from datetime import timedelta
+from types import SimpleNamespace
+from typing import cast
 
 import dex
 import pytest
@@ -29,7 +31,9 @@ from dex_connectors.sdk import (
     QueryStep,
     QueryStepConfig,
     Receipt,
+    RepeatOnUnknown,
     RetryError,
+    RetryPolicy,
     StepAnnotations,
     StepDefaults,
     raise_dex_retry,
@@ -167,6 +171,115 @@ def test_step_factory_truncates_retry_after_to_dex_seconds(
             raise_dex_retry(retry)
         assert raised_after.value.after_seconds == expected_whole_seconds
         assert raised_after.value.cause is retry
+
+
+class TieredMutation(ExampleMutation):
+    """Mutation declaring a repeat-on-unknown tier and recording each Call's send cap."""
+
+    def __init__(
+        self, repeat_on_unknown: RepeatOnUnknown | None, max_sends: int = 0,
+        execute_retry: RetryPolicy | None = None,
+    ) -> None:
+        self.repeat_on_unknown = repeat_on_unknown
+        self.max_sends = max_sends
+        self.execute_retry = execute_retry
+        self.call_max_sends: list[int] = []
+
+    def definition(self) -> MutationDefinition:
+        """Declare the tier, manifest send cap, and optional retry policy."""
+        return MutationDefinition(
+            OPERATION, BRANCHES,
+            StepDefaults(timedelta(seconds=10), 1, execute_retry=self.execute_retry),
+            self.repeat_on_unknown, self.max_sends,
+        )
+
+    async def invoke(self, call: Call, input: str) -> MutationAttempt[str]:
+        """Record the cap this attempt would pass to its Fence."""
+        self.call_max_sends.append(call.max_sends)
+        return MutationAttempt.branch_result("success", input, Receipt())
+
+
+def _tiered_step(
+    mutation: TieredMutation, max_sends_override: int | None = None,
+    step_options_override: dex.StepOptions | None = None,
+) -> MutationStep[str, str, str]:
+    return MutationStep(MutationStepConfig(
+        "MutationItem", str, ANNOTATIONS, mutation, CONNECTION,
+        lambda value: value, {"success": MutationSink()},
+        step_options_override=step_options_override,
+        max_sends_override=max_sends_override,
+    ))
+
+
+def _limited_retry(maximum_attempts: int) -> RetryPolicy:
+    return RetryPolicy(
+        timedelta(seconds=1), 2.0, timedelta(minutes=5), maximum_attempts, timedelta(minutes=10)
+    )
+
+
+def test_mutation_definition_validates_repeat_on_unknown_tier() -> None:
+    """Only a limited Mutation carries a 2..10 send cap."""
+    MutationDefinition(OPERATION, BRANCHES, StepDefaults(timedelta(seconds=1), 1)).validate()
+    MutationDefinition(
+        OPERATION, BRANCHES, StepDefaults(timedelta(seconds=1), 1), RepeatOnUnknown.LIMITED, 3
+    ).validate()
+    for repeat_on_unknown, max_sends in (
+        (RepeatOnUnknown.LIMITED, 0), (RepeatOnUnknown.LIMITED, 1), (RepeatOnUnknown.LIMITED, 11),
+        (RepeatOnUnknown.SAFE, 3), (RepeatOnUnknown.UNSAFE, 2), (None, 3),
+    ):
+        with pytest.raises(ValueError, match="maxSends"):
+            MutationDefinition(
+                OPERATION, BRANCHES, StepDefaults(timedelta(seconds=1), 1),
+                repeat_on_unknown, max_sends,
+            ).validate()
+    wire = MutationDefinition(
+        OPERATION, BRANCHES, StepDefaults(timedelta(seconds=1), 1), RepeatOnUnknown.LIMITED, 3
+    ).to_wire()
+    assert set(wire) == {"operation", "branches", "stepDefaults"}
+
+
+def test_max_sends_override_requires_limited_operation_and_valid_range() -> None:
+    """safe, unsafe, and undeclared operations reject the per-Step send cap."""
+    for repeat_on_unknown in (RepeatOnUnknown.SAFE, RepeatOnUnknown.UNSAFE, None):
+        with pytest.raises(ValueError, match="limited"):
+            _tiered_step(TieredMutation(repeat_on_unknown), max_sends_override=2)
+    for invalid in (0, 11, True):
+        with pytest.raises(ValueError, match="max sends"):
+            _tiered_step(TieredMutation(RepeatOnUnknown.LIMITED, 3), max_sends_override=invalid)
+    assert _tiered_step(TieredMutation(RepeatOnUnknown.UNSAFE)).max_sends == 1
+    assert _tiered_step(TieredMutation(None)).max_sends == 1
+    assert _tiered_step(TieredMutation(RepeatOnUnknown.LIMITED, 3)).max_sends == 3
+    assert _tiered_step(TieredMutation(RepeatOnUnknown.LIMITED, 3), 1).max_sends == 1
+    assert _tiered_step(TieredMutation(RepeatOnUnknown.LIMITED, 3), 10).max_sends == 10
+
+
+def test_max_sends_override_widens_limited_execute_attempts() -> None:
+    """A raised cap adds attempts; unlimited attempts and explicit retry stay as given."""
+    def attempts(step: MutationStep[str, str, str]) -> int:
+        retry = step.get_step_options().execute_retry
+        assert retry is not None
+        return retry.maximum_attempts
+
+    limited = TieredMutation(RepeatOnUnknown.LIMITED, 3, _limited_retry(4))
+    assert attempts(_tiered_step(limited)) == 4
+    assert attempts(_tiered_step(limited, 5)) == 6
+    assert attempts(_tiered_step(limited, 2)) == 4
+    unlimited = TieredMutation(RepeatOnUnknown.LIMITED, 3, _limited_retry(0))
+    assert attempts(_tiered_step(unlimited, 10)) == 0
+    assert attempts(_tiered_step(TieredMutation(RepeatOnUnknown.LIMITED, 3), 10)) == 0
+    explicit = dex.RetryPolicy(maximum_attempts=2)
+    assert attempts(_tiered_step(limited, 5, dex.StepOptions(execute_retry=explicit))) == 2
+
+
+@pytest.mark.asyncio
+async def test_mutation_step_passes_send_cap_to_every_call() -> None:
+    """Every attempt of the Step sees the same send cap on its Call."""
+    mutation = TieredMutation(RepeatOnUnknown.LIMITED, 3)
+    step = _tiered_step(mutation, 5)
+    context = SimpleNamespace(flow_id="flow-1", step_execution_id="step-1")
+    for _ in range(2):
+        await step.execute(cast(dex.AsyncContext, context), "value")
+    assert mutation.call_max_sends == [5, 5]
 
 
 def test_retry_translation_is_public_and_shared_with_step_factories() -> None:
