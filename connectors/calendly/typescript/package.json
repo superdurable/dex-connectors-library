@@ -1,7 +1,7 @@
 {
   "name": "@superdurable/connector-calendly",
-  "version": "0.1.0",
-  "description": "Calendly scheduled event operations for Dex Flows",
+  "version": "0.2.0",
+  "description": "Calendly scheduled event operations and invitee webhook Triggers for Dex Flows",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
@@ -42,11 +42,12 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:event": "npm run build && tsx examples/scheduled-event/main.ts",
-    "example:event:start": "npm run build && tsx examples/scheduled-event/start.ts"
+    "example:event:start": "npm run build && tsx examples/scheduled-event/start.ts",
+    "example:invitees": "npm run build && tsx examples/invitee-recorder/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.11.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

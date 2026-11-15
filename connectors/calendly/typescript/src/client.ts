@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -13,7 +13,8 @@ const apiBaseURL = 'https://api.calendly.com';
 /** Optional transport and clock for deterministic provider tests. */
 export interface CalendlyClientOptions {
   /** Replace the HTTP sender without changing the provider URL. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>;
-  /** Receipt and rate limit clock. */ now?: () => Date;
+  /** Receipt, rate limit, and webhook signature clock. */ now?: () => Date;
+  /** Receives the inviteeEventReceived Trigger records, such as delivery retries and durable inbox replays; omitted uses defaultTriggerLogger. */ logger?: TriggerLogger;
 }
 
 /** One response or secret-safe local failure. */
@@ -32,7 +33,10 @@ export class CalendlyClient {
   readonly maxResponseBytes: number;
   readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   readonly now: () => Date;
-  private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Calendly', auth: Authorization, credentialFields: CredentialFields });
+  /** Largest accepted inviteeEventReceived webhook body, in bytes. */ readonly webhookMaxBodyBytes: number;
+  /** Largest accepted difference between a webhook signature's t= and the clock, in milliseconds. */ readonly webhookSignatureToleranceMs: number;
+  /** Trigger record destination. */ readonly triggerLogger: TriggerLogger;
+  /** @internal Refreshes expiring OAuth credentials, also before a webhook reads its signing key. */ readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Calendly', auth: Authorization, credentialFields: CredentialFields });
 
   /** Validate settings and bind a credential source. */
   constructor(config: Config, readonly credentials: CredentialSource, options: CalendlyClientOptions = {}) {
@@ -41,8 +45,11 @@ export class CalendlyClient {
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('Calendly response limit is invalid');
     if (config.webhookMaxBodyBytes !== undefined && (!Number.isSafeInteger(config.webhookMaxBodyBytes) || config.webhookMaxBodyBytes < 0)) throw new TypeError('Calendly webhook body limit is invalid');
     if (config.webhookSignatureToleranceMs !== undefined && (!Number.isSafeInteger(config.webhookSignatureToleranceMs) || config.webhookSignatureToleranceMs < 0)) throw new TypeError('Calendly webhook signature tolerance is invalid');
+    this.webhookMaxBodyBytes = config.webhookMaxBodyBytes || 1_048_576;
+    this.webhookSignatureToleranceMs = config.webhookSignatureToleranceMs || 180_000;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
   }
 
   /** Bind the scheduled event listing Query. */ listScheduledEvents() { return new ListScheduledEventsOperation(this); }
