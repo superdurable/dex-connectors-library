@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import GetMessageInput, Message, SendMessageInput
+from ..models import GetMessageInput, Message, MessageReceivedEvent, MessageReceivedTriggerConfiguration, SendMessageInput
 from .definitions import CONNECTOR_ID, PROVIDER, ACCEPTED, DEFECT, FOUND, GET_MESSAGE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEND_MESSAGE_DEFINITION, UNCERTAIN
 
 def send_message_accepted(value: Message, failure: Failure | None = None) -> Case[Message]:

@@ -363,7 +363,12 @@ behavior are unverified.
 
 ## Python
 
-The `python/` package publishes `dex-connector-twilio-messaging` v0.1.0 with `sendMessage` and `getMessage` Steps. Its [runnable example](python/examples/text_message_delivery) sends one message through a static `twilio-messaging` connection, then reads its status. The send uses the Dex single-dispatch fence; an uncertain outcome must be reconciled before sending again. Configure the Twilio Account SID, sender, and selected credential method through Dex Web Connections. Live Twilio behavior requires a user-controlled account and has not been verified by local replay.
+The `python/` package publishes `dex-connector-twilio-messaging` v0.2.0 with `sendMessage` and `getMessage` Steps and the `messageReceived` Trigger on the Python poll Trigger kit (`dex-connectors-sdk>=0.12.0`). Its cursor documents match Go's byte for byte, so Go and Python replicas share a binding's cursor and inbox. Its [runnable delivery example](python/examples/text_message_delivery) sends one message through a static `twilio-messaging` connection, then reads its status, and its [inbound message example](python/examples/message_received/README.md) starts one Flow per inbound message from the `inbound-messages` binding. The send uses the Dex single-dispatch fence; an uncertain outcome must be reconciled before sending again. Configure the Twilio Account SID, sender, and selected credential method through Dex Web Connections. Live Twilio behavior requires a user-controlled account and has not been verified by local replay.
+
+| Capability | Kind | Languages |
+| --- | --- | --- |
+| `sendMessage`, `getMessage` | Operations | Go, TypeScript, Python |
+| `messageReceived` | Trigger | Go, Python |
 
 ## TypeScript package
 
