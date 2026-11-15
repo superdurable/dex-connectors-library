@@ -7,7 +7,9 @@
 // nothing twice, and createTicket and addNote create a ticket or add one internal
 // note or public email reply. Gorgias documents no idempotency key, so those two
 // resend only after Gorgias provably did not apply a request and otherwise look the
-// write up by the external ID they set.
+// write up by the external ID they set. The ticketChanged poll Trigger starts a
+// Flow for each ticket event in the account's event log; see
+// NewProjectTicketTriggerRunner.
 //
 // The connector authenticates with a Gorgias user's email address and API key over
 // HTTP Basic and sends every request to https://{domain}.gorgias.com/api. Statuses
@@ -16,9 +18,11 @@ package gorgias
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -44,6 +48,10 @@ const (
 	apiCallLimitHeader = "X-Gorgias-Account-Api-Call-Limit"
 
 	maximumReportedErrorFields = 5
+
+	// minimumPollInterval keeps a ticketChanged poll loop from spending the account's 40 requests per
+	// 20 seconds on empty polls.
+	minimumPollInterval = 10 * time.Second
 )
 
 var (
@@ -62,6 +70,7 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	apiBaseURL string
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 8 seconds per request.
@@ -78,6 +87,14 @@ func WithAPIBaseURL(baseURL string) Option {
 	return func(options *clientOptions) { options.apiBaseURL = baseURL }
 }
 
+// WithLogger sends the ticketChanged Trigger runner's records to logger: seeds, reseeds after a rejected
+// cursor, failed polls, rate-limit pauses, and the durable inboxes NewProjectTicketTriggerRunner opens.
+// Records carry binding identity and never event contents, cursors, or credentials. Without this option, or
+// with a nil logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Gorgias REST API requests for connector operations.
 // A Client is safe for concurrent use by several Steps.
 type Client struct {
@@ -85,6 +102,8 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -142,6 +161,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.MaxResponseBytes < 1 {
 		return nil, errors.New("Gorgias response limit must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Gorgias pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, errors.New("Gorgias credential provider is required")
 	}
@@ -163,7 +185,8 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	return &Client{
 		apiBaseURL:  apiBaseURL,
 		httpClient:  providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
-		credentials: credentials, maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		credentials: credentials, maxResponseBytes: config.MaxResponseBytes,
+		pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
@@ -202,9 +225,15 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	return credentials, nil
 }
 
-// exchange sends one authenticated request and classifies its response without deciding retry policy.
+// exchange sends one authenticated request under the Step context of call.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request gorgiasRequest) gorgiasExchange {
-	httpRequest, err := client.buildRequest(call, credentials, request)
+	return client.exchangeWithContext(call.Context, credentials, operation, request)
+}
+
+// exchangeWithContext sends one authenticated request and classifies its response without deciding retry
+// policy. Trigger pollers pass their own ctx because their calls have no Dex Step context.
+func (client *Client) exchangeWithContext(ctx context.Context, credentials Credentials, operation string, request gorgiasRequest) gorgiasExchange {
+	httpRequest, err := client.buildRequest(ctx, credentials, request)
 	if err != nil {
 		return gorgiasExchange{outcome: exchangeDefect, failure: gorgiasFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
@@ -240,7 +269,7 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 	return client.classifyFailureStatus(response, credentials, operation)
 }
 
-func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, request gorgiasRequest) (*http.Request, error) {
+func (client *Client) buildRequest(ctx context.Context, credentials Credentials, request gorgiasRequest) (*http.Request, error) {
 	target := client.apiBaseURL + request.path
 	if len(request.query) != 0 {
 		target += "?" + request.query.Encode()
@@ -252,9 +281,9 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 		if encodeErr != nil {
 			return nil, errGorgiasRequestNotBuilt
 		}
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, bytes.NewReader(encoded))
+		httpRequest, err = http.NewRequestWithContext(ctx, request.method, target, bytes.NewReader(encoded))
 	} else {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, nil)
+		httpRequest, err = http.NewRequestWithContext(ctx, request.method, target, nil)
 	}
 	if err != nil {
 		return nil, errGorgiasRequestNotBuilt

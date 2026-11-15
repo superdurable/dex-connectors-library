@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: gorgias
   displayName: Gorgias
-  description: "Search, read, create, and update Gorgias tickets, find customers by email, and add internal notes or public email replies, keeping Gorgias's own open and closed statuses and priorities; a retried create or message first looks for the earlier write by its external ID."
+  description: "Search, read, create, and update Gorgias tickets, find customers by email, add internal notes or public email replies, and start Flows from ticket events such as created, updated, or closed, keeping Gorgias's own open and closed statuses and priorities; a retried create or message first looks for the earlier write by its external ID."
   company: Gorgias
   categories: [customer-support, ecommerce]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: gorgias
   languages:
@@ -36,6 +36,12 @@ spec:
         description: "Maximum complete Gorgias API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket messages carry unusually large HTML bodies. An oversized response selects invalidResponse, or is reconciled and may select uncertain for a write."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between ticketChanged Trigger polls of Gorgias's event log, GET /api/events, as a Go duration of at least 10s such as 30s or 2m. Leave blank to keep the displayed interval. A quiet poll makes one request, and every request counts against the account's limit of 40 API-key requests per 20-second window that the connector's Steps and other integrations share; lower it only when ticket events must start Flows sooner. Takes effect when the Worker restarts."
+        required: false
+        default: 1m
   auth:
     type: apiKey
     connectionKind: gorgias-api-key
@@ -58,6 +64,12 @@ spec:
         - "Copy the Username, the email address of your Gorgias user, into email; the connector acts as that user, so internal notes and replies are authored by it and its role limits which tickets it can read and change."
         - "Under Password (API Key) select Create API Key and copy the key, shown once, into api_key; it grants the same access as that user."
         - "To revoke access, reset the API key on the same page; resetting invalidates the old key immediately, so paste the new key here. Public Gorgias apps must use OAuth2 instead, which this connector does not offer."
+  triggers:
+    - name: ticketChanged
+      goName: TicketChanged
+      eventType: TicketChangedEvent
+      configurationType: TicketChangedTriggerConfiguration
+      description: "Receive each Gorgias ticket event, such as ticket-created, ticket-updated, or ticket-closed, recorded after the binding first started, read by polling the account's event log in creation order; the first run records a baseline and delivers no earlier events."
   operations:
     - name: searchTickets
       goName: SearchTickets

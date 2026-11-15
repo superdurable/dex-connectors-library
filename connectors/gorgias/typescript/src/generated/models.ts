@@ -46,12 +46,15 @@ export interface Config {
   domain: string;
   /** Maximum complete Gorgias API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket messages carry unusually large HTML bodies. An oversized response selects invalidResponse, or is reconciled and may select uncertain for a write. */
   maxResponseBytes?: number;
+  /** Delay between ticketChanged Trigger polls of Gorgias's event log, GET /api/events, as a Go duration of at least 10s such as 30s or 2m. Leave blank to keep the displayed interval. A quiet poll makes one request, and every request counts against the account's limit of 40 API-key requests per 20-second window that the connector's Steps and other integrations share; lower it only when ticket events must start Flows sooner. Takes effect when the Worker restarts. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "domain": z.string(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */
