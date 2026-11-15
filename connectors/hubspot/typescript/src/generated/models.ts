@@ -46,12 +46,15 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete HubSpot API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;
+  /** Delay between crmObjectChanged Trigger polls of HubSpot CRM search, as a Go duration of at least 5s such as 15s or 2m; leave it blank for the default interval. Shorter intervals deliver changes sooner and use more of the account's search limit of five requests per second and its daily API limit. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

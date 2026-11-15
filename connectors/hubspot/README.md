@@ -1,6 +1,6 @@
 # HubSpot Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/hubspot`.
 
@@ -19,6 +19,12 @@ deal that belongs to them, and move that deal forward.
 | `getObject` | Query | `GET /crm/objects/2026-09/{objectType}/{recordId}` | `found` |
 | `upsertObject` | Mutation | `POST /crm/objects/2026-09/{objectType}/batch/upsert` with one input | `upserted` |
 | `updateObject` | Mutation | `PATCH /crm/objects/2026-09/{objectType}/{recordId}` | `updated` |
+
+It also exposes one Trigger:
+
+- `crmObjectChanged` delivers each contact, company, or deal of one object
+  type that is created or changed, read by polling CRM search on the
+  last-modified date. See [crmObjectChanged Trigger](#crmobjectchanged-trigger).
 
 `ObjectType` is `contacts`, `companies`, or `deals`. Record IDs are decimal
 strings. Only the record ID, returned property values, timestamps, archived
@@ -149,11 +155,100 @@ uses asynchronous Execute durability, a 30-second Execute timeout, and unlimited
 the example's real-Dex test loses accepted provider answers and proves that the
 retried upsert and update converge on one record.
 
+## crmObjectChanged Trigger
+
+`crmObjectChanged` polls one object type through
+[CRM search](https://developers.hubspot.com/docs/api/crm/search) and delivers
+one `hubspot.CRMObjectChangedEvent` per created or changed record. It is built
+on the Connector SDK's durable poll Trigger kit
+([`sdkgo/pollingtrigger`](../../sdkgo/README.md#polling-triggers), sdkgo
+v0.38.0). It needs no HubSpot webhook setup, no public URL, and no scope beyond
+the `crm.objects.<type>.read` scopes the authorization guide already lists.
+
+- **Baseline.** The first poll of a binding reads the newest last-modified
+  date of the object type (one search sorted descending, limit 1). Records
+  modified at or before it are never delivered. An object type with no records
+  delivers every later record.
+- **Changes.** Each later poll sends `POST /crm/objects/2026-09/{objectType}/search`
+  filtered on the last-modified property `GTE` the cursor, sorted ascending by
+  it, 100 records per page, with the configured properties plus `createdate`
+  and the last-modified property. The property is `lastmodifieddate` for
+  contacts and `hs_lastmodifieddate` for companies and deals. Several edits
+  between two polls arrive as one change with the record's latest values.
+- **Cursor.** The cursor holds the baseline time, the newest delivered
+  modification time, the next search anchor, and the delivered version of each
+  record modified in the last two minutes. HubSpot says new and updated records
+  can take a few moments to appear in search, so a caught-up poll re-reads that
+  window and skips the versions it already delivered. The cursor keeps at most
+  1,500 such versions; after a larger burst, such as an import, the re-read
+  starts after the oldest version it had to drop, so a record of that burst
+  indexed more than a few moments late can be missed. A full page moves the
+  anchor to the page's newest time instead of paging by offset, because an edit
+  during paging would shift offsets and skip a record. Only when more than a
+  page of records share one millisecond does the cursor page with `after`.
+  HubSpot reaches at most 10,000 results per query and answers 400 past that;
+  a rejected paging offset, an undecodable cursor, or a cursor for another
+  object type records a new baseline and logs a WARN
+  `poll cursor invalid; reseeding` record. Changes in the gap are not delivered.
+- **Change kind.** HubSpot reports no change type. `created` means HubSpot
+  created the record after the newest change an earlier poll observed, so no
+  earlier delivery or baseline included it. Every other change is `updated`,
+  including a record that appeared in search only after the indexing delay.
+- **Not reported.** CRM search returns no deleted, archived, or merged-away
+  records, so the Trigger cannot report them.
+- **Rate limits.** HubSpot limits search to five requests per second per
+  account, and every search counts toward the account's daily limit. One
+  runner sends one request at a time. A 429, or a 423 during a high-volume
+  sync, pauses every binding of the connection for `Retry-After` or
+  `X-HubSpot-RateLimit-Interval-Milliseconds`, at least one poll interval. An
+  exhausted daily limit (`policyName: DAILY`) backs off exponentially up to 15
+  minutes. Other failures back off per binding. None of them moves the cursor.
+- **Delivery.** Delivery is at least once. The Trigger event ID is a hash of
+  the object type, record ID, and last-modified millisecond, so a refetch yields
+  the same ID and a Flow target keyed by it starts one Flow per record version.
+- **Poll interval.** The connection's `pollInterval` setting is the delay
+  between polls, at least 5 seconds.
+
+`hubspot.NewProjectCRMObjectTriggerRunner` is the durable path. It loads each
+binding's saved object type, records every change in the binding's project
+Trigger inbox, and commits the cursor in the binding's project poll cursor only
+after that, so a restarted or replaced replica neither misses nor repeats a
+change. From
+[`examples/crm-object-changed/main.go`](go/examples/crm-object-changed/main.go):
+
+```go
+triggerRunner, err := hubspot.NewProjectCRMObjectTriggerRunner(project, crmobjectchanged.ConnectionName, hubspot.ProjectCRMObjectTriggerRunnerConfig{
+	CRMObjectChangedRoutes: []hubspot.ProjectCRMObjectChangedTriggerRoute{{
+		BindingName: crmobjectchanged.CRMObjectChangedTriggerBinding, Properties: crmobjectchanged.DeliveredProperties,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, crmobjectchanged.AcceptEveryCRMObjectChange, crmobjectchanged.ResolveFlowID,
+			crmobjectchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, hubspot.WithLogger(logger))
+```
+
+`hubspot.NewCRMObjectTriggerRunner` takes the targets and cursor stores
+directly. A route without a cursor store keeps the cursor in memory. The
+generated `hubspot.NewCRMObjectChangedTrigger` factory always does, because it
+receives no project storage. Such a binding records a new baseline on every
+process start, so changes made while the process is stopped are lost. Use them
+only for tests and demonstrations.
+
+The binding configuration is `hubspot.CRMObjectChangedTriggerConfiguration`:
+the `objectTypePicker` unit saves `objectType`, which is required. The
+application sets `Properties` in code; empty returns HubSpot's default search
+properties. Changing the object type of a binding that already polled makes
+its next poll record a new baseline. Restart the Worker after saving.
+
+HubSpot webhooks would deliver changes sooner, but a private app's webhook
+subscriptions can only be set in HubSpot's app settings, and a public app's
+subscription API needs a developer API key this connector does not hold, so
+they are not implemented.
+
 ## Studio units
 
 | Unit | Output | Source |
 | --- | --- | --- |
-| `objectTypePicker` | `objectType` | the fixed `contacts`, `companies`, and `deals` names |
+| `objectTypePicker` | `objectType` | the fixed `contacts`, `companies`, and `deals` names; also the `crmObjectChanged` binding's picker |
 | `ownerPicker` | `ownerId` | `GET /crm/owners/2026-09`, paged with `after` |
 | `dealStagePicker` | `pipelineId`, `stageId` | `GET /crm/pipelines/2026-09/deals` |
 
@@ -227,6 +322,11 @@ contact by email, searches the contact's open deal in the configured pipeline,
 moves it to the configured stage, and reads it back. It composes the
 `ownerPicker` and `dealStagePicker` units.
 
+[`examples/crm-object-changed`](go/examples/crm-object-changed) starts one Flow
+per created or changed record of the picked object type through the
+`crmObjectChanged` Trigger and reads the record back. It composes the
+`objectTypePicker` unit on its Trigger binding.
+
 ## Verification
 
 ```bash
@@ -234,6 +334,8 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
   GOWORK=off go test -tags=integration ./examples/lead-qualification/flow/... -count=1 -v
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
+  GOWORK=off go test -tags=integration ./examples/crm-object-changed/... -count=1 -v
 (cd ui && npm ci && npm test && npm run build)
 ```
 

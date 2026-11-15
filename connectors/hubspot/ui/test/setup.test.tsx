@@ -62,6 +62,23 @@ describe("HubSpot configuration units", () => {
     expect(renderUnit({unitId: "objectTypePicker", value: {objectType: "tickets"}})).toContain("The saved object type is not supported");
   });
 
+  it("renders the crmObjectChanged Trigger binding's required object type picker", () => {
+    const triggerScope = {kind: "trigger" as const, triggerName: "crmObjectChanged", bindingName: "crm-object-changes", flowType: "HubSpotCRMObjectChange"};
+    const description = "Choose whether created and changed contacts, companies, or deals start this Flow; the unit saves HubSpot's object name. It cannot be blank.";
+    const markup = renderUnit({
+      scope: triggerScope, unitId: "objectTypePicker", label: "Watched object type", required: true, description,
+      bindings: [{port: "objectType", jsonPointer: "/objectType"}], value: {},
+    });
+    expect(markup).toContain("Watched object type");
+    expect(markup).toContain("It cannot be blank.");
+    expect(markup).toContain("Select an object type");
+    expect(markup).not.toContain("No object type");
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Save/);
+    const saved = renderUnit({scope: triggerScope, unitId: "objectTypePicker", label: "Watched object type", required: true, description, value: {objectType: "contacts"}});
+    expect(saved).toContain(`<option value="contacts" selected="">`);
+    expect(saved).not.toMatch(/<button[^>]*disabled=""[^>]*>Save/);
+  });
+
   it("renders loaded owners, the numeric fallback, and blank owner semantics", () => {
     const markup = renderUnit({
       unitId: "ownerPicker", label: "Lead owner",

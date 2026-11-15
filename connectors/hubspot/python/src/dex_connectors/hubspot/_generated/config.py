@@ -12,6 +12,7 @@ class Config:
 
     endpoint: str = "https://api.hubapi.com"
     max_response_bytes: int = 1048576
+    poll_interval_seconds: float = 30
 
 setattr(Config, '__module__', 'dex_connectors.hubspot.client')
 

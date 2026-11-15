@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: hubspot
   displayName: HubSpot
-  description: Search, read, upsert, and update HubSpot CRM contacts, companies, and deals.
+  description: Search, read, upsert, and update HubSpot CRM contacts, companies, and deals, and receive each created or changed record.
   company: HubSpot
   categories: [crm-sales, marketing]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: hubspot
   languages:
@@ -37,6 +37,12 @@ spec:
         description: Maximum complete HubSpot API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 1048576
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: Delay between crmObjectChanged Trigger polls of HubSpot CRM search, as a Go duration of at least 5s such as 15s or 2m; leave it blank for the default interval. Shorter intervals deliver changes sooner and use more of the account's search limit of five requests per second and its daily API limit.
+        required: false
+        default: 30s
   auth:
     refreshable: true
     defaultMethod: private-app-token
@@ -152,6 +158,12 @@ spec:
         outputs:
           - {name: pipelineId, goName: PipelineID, type: string}
           - {name: stageId, goName: StageID, type: string}
+  triggers:
+    - name: crmObjectChanged
+      goName: CRMObjectChanged
+      eventType: CRMObjectChangedEvent
+      configurationType: CRMObjectChangedTriggerConfiguration
+      description: Receive each HubSpot contact, company, or deal of one object type that is created or changed, read by polling CRM search on the last-modified date; the first run records a baseline and delivers no existing records.
   operations:
     - name: searchObjects
       goName: SearchObjects
