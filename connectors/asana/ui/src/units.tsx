@@ -71,29 +71,36 @@ function ProjectPickerUnit({target, workspaces, projects, sections, busy, loadEr
   const projectName = nameFor(projects, trimmedProjectId) || (trimmedProjectId === stringValue(target.value.projectId) ? stringValue(target.value.projectName) : "");
   const sectionName = nameFor(sections, trimmedSectionId) || (trimmedSectionId === stringValue(target.value.sectionId) ? stringValue(target.value.sectionName) : "");
   const chooseProject = (id: string) => { setProjectId(id); setSectionId(""); };
+  // A Trigger binding watches a whole project's event stream, so it has no section to choose.
+  const isTriggerScope = target.scope.kind === "trigger";
+  const projectHint = isTriggerScope
+    ? "Project gid of the watched project, from the list above or from the project's Asana web address after /project/. " + gidHint + " Required: the Trigger has no project to watch without it."
+    : "Project gid, from the list above or from the project's Asana web address. " + gidHint + " Leave it blank to use each Start Flow input's projectId.";
   return <StudioSurface label={target.label}>
     <StudioHeader description={target.description} title={target.label}/>
     {loadError && <StudioNotice tone="error">{loadError}</StudioNotice>}
     <div className="studio-actions">
       <StudioButton disabled={busy} onClick={onLoadWorkspaces}>Choose workspace</StudioButton>
       <StudioButton disabled={busy || !isAsanaGID(trimmedWorkspaceId)} onClick={() => onLoadProjects(trimmedWorkspaceId)}>Choose project</StudioButton>
-      <StudioButton disabled={busy || trimmedProjectId === "" || !isProjectValid} onClick={() => onLoadSections(trimmedProjectId)}>Choose section</StudioButton>
+      {!isTriggerScope && <StudioButton disabled={busy || trimmedProjectId === "" || !isProjectValid} onClick={() => onLoadSections(trimmedProjectId)}>Choose section</StudioButton>}
     </div>
     <ResourceSelect label="Workspace" list={workspaces} onChoose={setWorkspaceId} placeholder="Select a workspace" value={trimmedWorkspaceId}/>
     <ResourceSelect label="Project" list={projects} onChoose={chooseProject} placeholder="Select a project" value={trimmedProjectId}/>
-    <ResourceSelect label="Section" list={sections} onChoose={setSectionId} placeholder="No section: keep Asana's default" value={trimmedSectionId}/>
-    {projectName && <p className="studio-muted"><strong>Project:</strong> {projectName}{sectionName ? ` › ${sectionName}` : ""}</p>}
-    <StudioField hint={"Project gid, from the list above or from the project's Asana web address. " + gidHint + " Leave it blank to use each Start Flow input's projectId."} label="Project gid">
+    {!isTriggerScope && <ResourceSelect label="Section" list={sections} onChoose={setSectionId} placeholder="No section: keep Asana's default" value={trimmedSectionId}/>}
+    {projectName && <p className="studio-muted"><strong>Project:</strong> {projectName}{!isTriggerScope && sectionName ? ` › ${sectionName}` : ""}</p>}
+    <StudioField hint={projectHint} label="Project gid">
       <input onChange={(event) => chooseProject(event.target.value)} placeholder="1201000000000001" type="text" value={projectId}/>
     </StudioField>
     {!isProjectValid && <StudioNotice tone="error">The project gid must be digits only; a project name is not accepted.</StudioNotice>}
-    <StudioField hint={"Optional section gid in that project, from the list above. Leave it blank to keep Asana's default section for new tasks and leave a reused task's sections unchanged."} label="Section gid">
+    {!isTriggerScope && <StudioField hint={"Optional section gid in that project, from the list above. Leave it blank to keep Asana's default section for new tasks and leave a reused task's sections unchanged."} label="Section gid">
       <input onChange={(event) => setSectionId(event.target.value)} placeholder="1201000000000101" type="text" value={sectionId}/>
-    </StudioField>
+    </StudioField>}
     {!isSectionValid && <StudioNotice tone="error">The section gid must be digits only.</StudioNotice>}
     <SaveAction
-      disabled={busy || !isProjectValid || !isSectionValid || (trimmedSectionId !== "" && trimmedProjectId === "") || (target.required && trimmedProjectId === "")}
-      onSave={() => onSave({workspaceId: trimmedWorkspaceId, projectId: trimmedProjectId, projectName, sectionId: trimmedSectionId, sectionName})}
+      disabled={busy || !isProjectValid || (!isTriggerScope && !isSectionValid) || (!isTriggerScope && trimmedSectionId !== "" && trimmedProjectId === "") || ((target.required || isTriggerScope) && trimmedProjectId === "")}
+      onSave={() => onSave(isTriggerScope
+        ? {workspaceId: trimmedWorkspaceId, projectId: trimmedProjectId, projectName}
+        : {workspaceId: trimmedWorkspaceId, projectId: trimmedProjectId, projectName, sectionId: trimmedSectionId, sectionName})}
     />
   </StudioSurface>;
 }

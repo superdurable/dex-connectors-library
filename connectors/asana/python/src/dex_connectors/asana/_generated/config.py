@@ -12,6 +12,7 @@ class Config:
 
     endpoint: str = "https://app.asana.com/api/1.0"
     max_response_bytes: int = 4194304
+    poll_interval_seconds: float = 30
 
 setattr(Config, '__module__', 'dex_connectors.asana.client')
 

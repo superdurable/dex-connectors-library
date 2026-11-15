@@ -2,7 +2,7 @@
 
 TypeScript: install `@superdurable/connector-asana@0.1.1`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/asana/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/asana/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/asana`.
 
@@ -33,11 +33,12 @@ such as `Asana rejected the task with HTTP 400`, because Asana's messages are
 free text that can repeat task content. Related users carry a gid and a display
 name, never an email address.
 
-No Trigger ships in this release. Asana webhooks start with an `X-Hook-Secret`
-handshake: Asana sends a test `POST` and requires the receiver to echo the
-header back. `sdkgo/webhooktrigger` has no handshake hook yet, and Asana also
-refuses `localhost` webhook targets. Until both are solved, poll with
-`listTasks` and `ModifiedSince`.
+It also exposes one Go Trigger:
+
+- `taskChanged` delivers each task, subtasks included, added to, changed in,
+  removed from, deleted from, or restored to one project, read through the
+  Asana Events API. See [taskChanged Trigger](#taskchanged-trigger). The
+  Python and TypeScript packages do not implement it.
 
 ## Authentication
 
@@ -262,13 +263,98 @@ never receives:
 | Unit | Outputs | Commands |
 | --- | --- | --- |
 | `workspacePicker` | `workspaceId`, `workspaceName` | `listWorkspaces`: `GET /workspaces` |
-| `projectPicker` | `workspaceId`, `projectId`, `projectName`, `sectionId`, `sectionName` | `listWorkspaces`, then `listProjects`: `GET /projects?workspace=&archived=false`, then `listSections`: `GET /projects/{projectId}/sections` |
+| `projectPicker` | `workspaceId`, `projectId`, `projectName`, `sectionId`, `sectionName`; a Trigger binding hides the section and saves the first three | `listWorkspaces`, then `listProjects`: `GET /projects?workspace=&archived=false`, then `listSections`: `GET /projects/{projectId}/sections` |
 
 Each command asks for 100 entries and only `name`, and the bundle follows
 Asana's `next_page.offset` through at most 20 pages. Asana answers all three
 with a JSON object, as Dex Web requires. When a list cannot load, each unit
 offers manual entry of the gid. Use `workspacePicker` on a `createTask` Step
 that creates tasks in a workspace without a project.
+
+## taskChanged Trigger
+
+`taskChanged` polls one project's
+[event stream](https://developers.asana.com/reference/getevents),
+`GET /events?resource=<project gid>&sync=<token>`, and delivers one
+`asana.TaskChangedEvent` per task event. It is built on the Connector SDK's
+durable poll Trigger kit
+([`sdkgo/pollingtrigger`](../../sdkgo/README.md#polling-triggers), sdkgo v0.38.0).
+It uses the same personal access token as the operations; no new permission is
+needed, and the token's user must be able to see the project.
+
+- **Baseline.** The first poll of a binding sends no sync token. Asana answers
+  `412 Precondition Failed` with a fresh token, which becomes the cursor, so
+  existing tasks are never delivered.
+- **Events.** Each later poll sends the stored token. Asana returns at most 100
+  events, a new `sync` token, and `has_more`; the binding follows `has_more`
+  through at most 10 pages per poll and continues on the next. Asana bubbles
+  task and subtask events up to the project. Story (comment), section, and
+  project events are dropped.
+- **Payload.** An event names the task (gid and name), the `action` (`added`,
+  `changed`, `removed`, `deleted`, or `undeleted`), for `changed` the
+  `ChangedField` (such as `completed`, `assignee`, `due_on`, or `name`) and
+  `ChangeAction`, for `added` and `removed` the `Parent` project, section, or
+  task, the user who made the change, and `OccurredAt`. A move between
+  sections arrives as `removed` from one section and `added` to another. Asana
+  events carry no task state, so read the task with `getTask` when a Flow needs
+  it. The changed value itself is not delivered, because a `notes` or
+  custom-field value is free text.
+- **Expired token.** Asana keeps events for 24 hours, and a token can expire
+  sooner under load. A `412` for a stored token records a new baseline from the
+  fresh token in the response and logs a WARN `poll cursor invalid; reseeding`
+  record. Events between the last poll and the new baseline are not delivered.
+- **Rate limits.** Asana allows 150 requests a minute on free domains and 1,500
+  on paid ones, per user, plus a cost-based quota. A 429 pauses every binding of
+  the connection for `Retry-After` seconds, or backs off exponentially without
+  it. Other failures, such as a 403 or 404 for a project the user cannot see,
+  back off per binding. None of them moves the cursor.
+- **Delivery.** Asana designs its own stream for at most once delivery: it
+  can drop a small number of events. From the stream onward delivery is at least
+  once. Asana events have no ID, so the Trigger event ID hashes the requested
+  sync token, the project, task gid, action, `created_at`, user, parent, and
+  changed field and value gids, plus an ordinal among identical events of that
+  page, so identical events on two pages stay distinct. Asana returns the
+  same events for a re-requested token, so a refetch yields the same IDs and a
+  Flow target keyed by them starts one Flow per event. Reconcile with
+  `listTasks` and `ModifiedSince` when a missed event matters.
+- **Poll interval.** The connection's `pollInterval` setting is the delay
+  between polls of each binding, at least 5 seconds. Every poll is one request
+  against the user's quota.
+
+`asana.NewProjectTaskTriggerRunner` is the durable path. It loads each
+binding's saved project, records every event in the binding's project Trigger
+inbox, and commits the sync token in the binding's project poll cursor only
+after that, so a restarted or replaced replica neither misses nor repeats an
+event. From [`examples/task-changed/main.go`](go/examples/task-changed/main.go):
+
+```go
+triggerRunner, err := asana.NewProjectTaskTriggerRunner(project, taskchanged.ConnectionName, asana.ProjectTaskTriggerRunnerConfig{
+	TaskChangedRoutes: []asana.ProjectTaskChangedTriggerRoute{{
+		BindingName: taskchanged.TaskChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, taskchanged.AcceptEveryTaskChange, taskchanged.ResolveFlowID,
+			taskchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, asana.WithLogger(logger))
+```
+
+`asana.NewTaskTriggerRunner` takes the targets and cursor stores directly. A
+route without a cursor store keeps the sync token in memory. The generated
+`asana.NewTaskChangedTrigger` factory always does, because it receives no
+project storage. Such a binding records a new baseline on every process start,
+so events made while the process is stopped are lost. Use them only for tests
+and demonstrations. Under `dexcli dev`, the poll cursor also stays in process
+memory; hosted project storage keeps it.
+
+The binding configuration is `asana.TaskChangedTriggerConfiguration`. The
+`projectPicker` unit saves `workspaceId`, `projectId`, and `projectName`; in a
+Trigger binding it hides the section field, because the stream covers the whole
+project. A project is required: `NewProjectTaskTriggerRunner` refuses a binding
+without one. Changing the project of a binding that already polled records a
+new baseline for the new project. Restart the Worker after saving.
+
+Asana webhooks would push the same events, but they start with an
+`X-Hook-Secret` handshake that `sdkgo/webhooktrigger` cannot answer yet, and
+Asana refuses `localhost` targets, so this release polls.
 
 ## Example
 
@@ -277,6 +363,11 @@ approved request into a task: it pages through the project's incomplete tasks
 for one that already carries the request ID, creates the task once, assigns it
 and moves it to the picked section, and comments with the approval. It uses all
 five operations and composes the `projectPicker` unit.
+
+[`examples/task-changed`](go/examples/task-changed) is a runnable Trigger
+example: the `taskChanged` binding starts one `AsanaTaskChange` Flow per task
+event, which reads the task back with `asana.NewGetTaskStep` and records it. A
+deleted task completes without a read.
 
 ## Python package
 
@@ -321,6 +412,12 @@ go run ./cmd/connectorctl generate --check connectors/asana/connector.yaml
 (cd connectors/asana/ui && npm ci && npm test && npm run build)
 ```
 
+The `taskChanged` real-Dex tests run against a local stand-in for the Asana
+Events API: the baseline starts no Flow, each task event starts exactly one
+Flow, comment stories start none, events made while the Trigger process is
+stopped arrive after a restart whose first poll answers 429, and an expired
+sync token records a new baseline without delivering the gap.
+
 The deterministic fakes cover every branch above, request bodies and query
 parameters, offset paging, notes truncation, custom field encoding, rate limits
 with `Retry-After`, redirects, oversized and malformed responses, token
@@ -335,5 +432,7 @@ omits; `completed_since=now` and `modified_since` on `GET /tasks`; creating a
 task in a section through `memberships`, which the reference marks both
 create-only and read-only; `addTask` for a section of another project; the
 status of an expired offset; 429 and 5xx behavior under load; task and story
-read-back after a lost Step result; and the three
-Studio commands through Dex Web.
+read-back after a lost Step result; the three
+Studio commands through Dex Web; and the Events API's 412 baseline, sync token
+expiry, `has_more` paging, event shapes with the requested `opt_fields`, and
+whether Asana orders events within one page.
