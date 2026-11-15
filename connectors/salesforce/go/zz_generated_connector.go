@@ -18,10 +18,12 @@ import (
 const ConnectorID = "salesforce"
 
 const (
-	UIUnitSObjectPicker            = "sObjectPicker"
-	UISObjectPickerPortSObjectType = "sObjectType"
-	UIUnitFieldNameInput           = "fieldNameInput"
-	UIFieldNameInputPortFieldName  = "fieldName"
+	UIUnitSObjectPicker             = "sObjectPicker"
+	UISObjectPickerPortSObjectType  = "sObjectType"
+	UIUnitFieldNameInput            = "fieldNameInput"
+	UIFieldNameInputPortFieldName   = "fieldName"
+	UIUnitFieldNamesInput           = "fieldNamesInput"
+	UIFieldNamesInputPortFieldNames = "fieldNames"
 )
 
 type JWTLoginEnvironment string
@@ -32,9 +34,11 @@ const (
 )
 
 type Config struct {
-	APIVersion       string `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
-	QueryBatchSize   int64  `json:"queryBatchSize,omitempty" yaml:"queryBatchSize,omitempty"`
+	APIVersion       string        `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	QueryBatchSize   int64         `json:"queryBatchSize,omitempty" yaml:"queryBatchSize,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
+	PollPageSize     int64         `json:"pollPageSize,omitempty" yaml:"pollPageSize,omitempty"`
 }
 
 type Credentials struct {
@@ -246,6 +250,8 @@ func DefaultConfig() Config {
 		APIVersion:       "v62.0",
 		MaxResponseBytes: 1048576,
 		QueryBatchSize:   200,
+		PollInterval:     time.Duration(30000000000),
+		PollPageSize:     200,
 	}
 }
 
@@ -260,6 +266,12 @@ func withConfigDefaults(config Config) Config {
 	if config.QueryBatchSize == 0 {
 		config.QueryBatchSize = defaults.QueryBatchSize
 	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
+	}
+	if config.PollPageSize == 0 {
+		config.PollPageSize = defaults.PollPageSize
+	}
 	return config
 }
 
@@ -269,6 +281,12 @@ func (config Config) Validate() error {
 	}
 	if config.QueryBatchSize < 0 {
 		return fmt.Errorf("configuration queryBatchSize cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
+	}
+	if config.PollPageSize < 0 {
+		return fmt.Errorf("configuration pollPageSize cannot be negative")
 	}
 	return nil
 }
@@ -358,6 +376,52 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
+}
+
+var RecordModifiedPolledTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "recordModifiedPolled"},
+	Description: "Receive each record of one object that was created or modified after the Trigger first started, read by polling SOQL on SystemModstamp and Id; the first run records a baseline and delivers no existing records, and deletions are not delivered.",
+}
+
+type RecordModifiedPolledTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=salesforce"`
+	triggerName                             struct{}                       `connector:"triggerName=recordModifiedPolled"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineRecordModifiedPolledTriggerBinding(config RecordModifiedPolledTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: RecordModifiedPolledTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type RecordModifiedPolledTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                 `connector:"connectorId=salesforce"`
+	triggerName                      struct{}                                 `connector:"triggerName=recordModifiedPolled"`
+	Connection                       Connection                               `connector:"connection"`
+	ConnectionName                   string                                   `connector:"connectionName"`
+	BindingName                      string                                   `connector:"bindingName"`
+	Configuration                    RecordModifiedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[RecordModifiedEvent] `connector:"triggerTarget"`
+}
+
+func NewRecordModifiedPolledTrigger(config RecordModifiedPolledTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("salesforce connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: RecordModifiedPolledTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[RecordModifiedEvent]{
+		Definition: RecordModifiedPolledTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.recordModifiedPolledTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const QueryRecordsBranchFound sdkgo.BranchID = "found"
@@ -544,6 +608,7 @@ var UpsertRecordByExternalIDDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpsertRecordByExternalIDResult = sdkgo.MutationResult[UpsertRecordByExternalIDOutput]
@@ -623,6 +688,7 @@ var UpdateRecordDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateRecordResult = sdkgo.MutationResult[UpdateRecordOutput]

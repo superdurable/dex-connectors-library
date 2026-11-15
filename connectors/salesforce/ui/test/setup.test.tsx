@@ -31,6 +31,16 @@ function externalIDFieldTarget(overrides: Partial<ConnectorStudioConfigurationUn
   });
 }
 
+function deliveredFieldsTarget(overrides: Partial<ConnectorStudioConfigurationUnitTarget> = {}): ConnectorStudioConfigurationUnitTarget {
+  return unitTarget({
+    scope: {kind: "trigger", triggerName: "recordModifiedPolled", bindingName: "record-changes", flowType: "SalesforceRecordChange"},
+    instanceId: "deliveredFields", unitId: "fieldNamesInput", label: "Delivered fields",
+    description: "Enter the field API names each delivered change carries and the Flow reads back, such as Name and StageName. Blank delivers only Id, CreatedDate, LastModifiedDate, and SystemModstamp.",
+    bindings: [{port: "fieldNames", jsonPointer: "/fieldNames"}],
+    ...overrides,
+  });
+}
+
 const noop = () => undefined;
 
 describe("Salesforce setup", () => {
@@ -95,5 +105,33 @@ describe("Salesforce setup", () => {
     expect(optional).toContain('class="studio-button studio-button-primary" type="button">Save');
     const invalid = renderToStaticMarkup(<SalesforceConfigurationUnit onSave={noop} target={externalIDFieldTarget({value: {fieldName: "Account.Name"}})}/>);
     expect(invalid).toContain('role="alert">Enter a field API name such as Email or ERP_Id__c, without spaces or relationship dots.');
+  });
+
+  it("renders the Trigger object picker as required", () => {
+    const markup = renderToStaticMarkup(<SalesforceConfigurationUnit onSave={noop} target={unitTarget({
+      scope: {kind: "trigger", triggerName: "recordModifiedPolled", bindingName: "record-changes", flowType: "SalesforceRecordChange"},
+      instanceId: "watchedObject", label: "Watched object", required: true,
+    })}/>);
+    expect(markup).toContain('<option value="" selected="">Select an object</option>');
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button" disabled="">Save');
+  });
+
+  it("renders the delivered field list with guidance, the saved names, and blank semantics", () => {
+    const markup = renderToStaticMarkup(<SalesforceConfigurationUnit onSave={noop} target={deliveredFieldsTarget({value: {fieldNames: ["Name", "StageName"]}})}/>);
+    expect(markup).toContain("Delivered fields");
+    expect(markup).toContain("Field API names");
+    expect(markup).toContain("Setup &gt; Object Manager &gt; the object &gt; Fields &amp; Relationships");
+    expect(markup).toContain("Leave blank to deliver only Id, CreatedDate, LastModifiedDate, and SystemModstamp.");
+    expect(markup).toContain(">Name, StageName</textarea>");
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button">Save');
+    expect(markup).not.toContain('role="alert"');
+    const blank = renderToStaticMarkup(<SalesforceConfigurationUnit onSave={noop} target={deliveredFieldsTarget()}/>);
+    expect(blank).toContain('class="studio-button studio-button-primary" type="button">Save');
+  });
+
+  it("rejects a delivered field that is not an API name", () => {
+    const markup = renderToStaticMarkup(<SalesforceConfigurationUnit onSave={noop} target={deliveredFieldsTarget({value: {fieldNames: ["Account.Name"]}})}/>);
+    expect(markup).toContain('role="alert">Account.Name is not a field API name such as StageName or ERP_Id__c.');
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button" disabled="">Save');
   });
 });

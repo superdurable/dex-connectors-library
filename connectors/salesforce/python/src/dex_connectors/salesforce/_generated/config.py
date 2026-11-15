@@ -13,6 +13,8 @@ class Config:
     api_version: str = "v62.0"
     max_response_bytes: int = 1048576
     query_batch_size: int = 200
+    poll_interval_seconds: float = 30
+    poll_page_size: int = 200
 
 setattr(Config, '__module__', 'dex_connectors.salesforce.client')
 

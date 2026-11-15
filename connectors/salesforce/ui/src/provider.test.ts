@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { isSalesforceAPIName, standardSObjects } from "./provider.js";
+import { fieldNamesFromInput, isSalesforceAPIName, maxTriggerFieldNames, standardSObjects } from "./provider.js";
 
 describe("Salesforce API names", () => {
   it.each([
@@ -25,5 +25,19 @@ describe("Salesforce API names", () => {
     expect(new Set(apiNames).size).toBe(apiNames.length);
     expect(apiNames.every(isSalesforceAPIName)).toBe(true);
     expect(apiNames).toContain("Contact");
+  });
+});
+
+describe("Trigger field name lists", () => {
+  it("splits commas and line breaks and drops blanks", () => {
+    expect(fieldNamesFromInput(" Name, StageName\nERP_Id__c,, ")).toEqual({fieldNames: ["Name", "StageName", "ERP_Id__c"]});
+    expect(fieldNamesFromInput("")).toEqual({fieldNames: []});
+  });
+
+  it("reports invalid, repeated, and too many names", () => {
+    expect(fieldNamesFromInput("Name, Account.Name").problem).toContain("Account.Name is not a field API name");
+    expect(fieldNamesFromInput("Email, email").problem).toBe("email is listed twice.");
+    const tooMany = Array.from({length: maxTriggerFieldNames + 1}, (_, index) => `Field${index}__c`).join(",");
+    expect(fieldNamesFromInput(tooMany).problem).toBe(`Enter at most ${maxTriggerFieldNames} field API names.`);
   });
 });

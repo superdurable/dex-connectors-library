@@ -280,7 +280,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.salesforce.connect
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"apiVersion", "maxResponseBytes", "queryBatchSize"}:
+    if set(value) - {"apiVersion", "maxResponseBytes", "queryBatchSize", "pollInterval", "pollPageSize"}:
         raise ValueError("Salesforce configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "apiVersion" in value:
@@ -298,4 +298,14 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(query_batch_size) is int):
             raise ValueError("Salesforce configuration queryBatchSize has an invalid type")
         config_arguments['query_batch_size'] = query_batch_size
+    if "pollInterval" in value:
+        poll_interval = value["pollInterval"]
+        if not (type(poll_interval) is int):
+            raise ValueError("Salesforce configuration pollInterval has an invalid type")
+        config_arguments['poll_interval_seconds'] = poll_interval / 1_000_000_000
+    if "pollPageSize" in value:
+        poll_page_size = value["pollPageSize"]
+        if not (type(poll_page_size) is int):
+            raise ValueError("Salesforce configuration pollPageSize has an invalid type")
+        config_arguments['poll_page_size'] = poll_page_size
     return Config(**config_arguments)

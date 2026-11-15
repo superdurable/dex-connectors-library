@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -103,10 +104,17 @@ func TestConfigurationSurfaceGuidesEveryVisibleField(t *testing.T) {
 	defaults := DefaultConfig()
 	defaultByField := map[string]any{
 		"apiVersion": defaults.APIVersion, "maxResponseBytes": int(defaults.MaxResponseBytes), "queryBatchSize": int(defaults.QueryBatchSize),
+		"pollInterval": defaults.PollInterval.String(), "pollPageSize": int(defaults.PollPageSize),
 	}
 	require.Len(t, manifest.Spec.Configuration.Fields, len(defaultByField))
 	for _, field := range manifest.Spec.Configuration.Fields {
-		require.Equal(t, defaultByField[field.Name], field.Default, field.Name)
+		if field.Type == "duration" {
+			parsed, err := time.ParseDuration(fmt.Sprint(field.Default))
+			require.NoError(t, err, field.Name)
+			require.Equal(t, defaultByField[field.Name], parsed.String(), field.Name)
+		} else {
+			require.Equal(t, defaultByField[field.Name], field.Default, field.Name)
+		}
 		require.NotContains(t, field.Description, fmt.Sprint(field.Default), "%s repeats its displayed default", field.Name)
 		require.Contains(t, field.Description, "only", "%s explains when an override is useful", field.Name)
 	}
@@ -149,6 +157,8 @@ func TestStudioUnitsNeedNoProviderCommand(t *testing.T) {
 	}
 	require.Contains(t, units[UIUnitSObjectPicker], "Setup > Object Manager")
 	require.Contains(t, units[UIUnitFieldNameInput], "Fields & Relationships")
+	require.Contains(t, units[UIUnitFieldNamesInput], "Fields & Relationships")
+	require.Contains(t, units[UIUnitFieldNamesInput], "SystemModstamp")
 	for _, description := range units {
 		require.Contains(t, description, "blank")
 	}

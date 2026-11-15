@@ -1,6 +1,6 @@
 # Salesforce Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/salesforce/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/salesforce/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/salesforce`.
 
@@ -21,11 +21,14 @@ Step factories:
   keyed by an External ID field value, which is the create a retried Step needs.
 - `salesforce.NewUpdateRecordStep` updates the named fields of one record by ID.
 
+The `recordModifiedPolled` Trigger starts a Flow for each record of one object
+that is created or modified, read by polling SOQL with a durable cursor. See
+[Polling Trigger: recordModifiedPolled](#polling-trigger-recordmodifiedpolled).
+
 Every request uses REST API `v62.0` unless the connection overrides
 `apiVersion`, and runs with the object, field, and sharing access of the
-authorized user. The connector never deletes records. This release has no
-Triggers: Change Data Capture and Platform Events need a streaming
-subscription design that is still open.
+authorized user. The connector never deletes records. Change Data Capture and
+Platform Event Triggers need a Pub/Sub API streaming design that is still open.
 
 ## Mocks
 
@@ -265,14 +268,88 @@ credentials that cannot be used select `defect` before any request. Only each
 operation's happy-path branch is required; every other branch is optional and
 fails the Flow when unwired.
 
+## Polling Trigger: recordModifiedPolled
+
+`recordModifiedPolled` watches one object, such as Opportunity or
+`Invoice__c`, through the REST query resource
+(`GET /services/data/vNN.0/query`) with the connection's existing `api`
+scope. Each poll sends
+
+```text
+SELECT Id, CreatedDate, LastModifiedDate, SystemModstamp, <fields> FROM <object>
+WHERE SystemModstamp <= <horizon>
+  AND (SystemModstamp > <cursor stamp> OR (SystemModstamp = <cursor stamp> AND Id > '<cursor id>'))
+ORDER BY SystemModstamp ASC, Id ASC LIMIT <pollPageSize>
+```
+
+and delivers each returned record as one `RecordModifiedEvent`: the object, the
+record ID, the record with the system fields and the binding's extra fields,
+its `SystemModstamp`, and a derived `changeKind`. `created` means
+`LastModifiedDate` still equals `CreatedDate`; everything else is `updated`,
+including system changes such as roll-up summary recalculations, which move
+`SystemModstamp` but not `LastModifiedDate`.
+
+- **Durable cursor.** The cursor is the `(SystemModstamp, Id)` of the last
+  delivered record, kept by the Connector SDK poll Trigger kit in the binding's
+  project poll cursor and committed only after the binding's Trigger inbox
+  recorded every change before it. `Id` breaks ties, so a bulk load of
+  thousands of records stamped in the same second pages through in
+  `pollPageSize` steps without repeating or skipping one.
+- **Baseline.** The first poll records the newest existing record as the
+  cursor and delivers nothing. Changing the binding's object makes the stored
+  cursor invalid, and the next poll records a new baseline with a WARN record;
+  changing only the field list keeps the cursor.
+- **Settle delay.** A poll never reads records stamped within the last 15
+  seconds, so a transaction that commits shortly after its stamp is not
+  skipped. The 15 seconds count on the earlier of the Worker's clock and
+  Salesforce's clock, read from each response's `Date` header, so a Worker
+  clock running ahead of Salesforce cannot shorten them. Flows start 15
+  seconds to one `pollInterval` after a change. A transaction that commits
+  more than 15 seconds after it stamped a record, such as a long Bulk API
+  batch, can commit behind the cursor, and that change is not delivered until
+  the record changes again.
+- **At least once.** A record changed several times between polls arrives once,
+  in its latest state. Each event ID is a hash of the object, record ID, and
+  `SystemModstamp`, so a refetch after a crash yields the same Flow ID.
+- **Limits.** Every poll costs one request from the org's 24-hour API
+  allocation, plus one per extra page while a backlog remains, at most ten per
+  poll. `REQUEST_LIMIT_EXCEEDED` or 429 pauses every binding of the connection
+  for `Retry-After`, or backs off exponentially to 15 minutes without it. Other
+  failures, such as `INVALID_TYPE` for an object the user cannot read, back
+  off per binding.
+- **Not delivered.** Deleted records, and records the authorized user cannot
+  see through sharing, are never delivered. SOQL dateTime literals have
+  whole-second precision, so a page whose `SystemModstamp` carries nonzero
+  milliseconds fails the poll rather than risk a loop.
+
+The connection fields `pollInterval` (at least 5s) and `pollPageSize` (1 to
+500) tune the loop. The runnable example wires the Trigger to a Dex Flow with
+the project's durable inbox and cursor:
+
+```go
+triggerRunner, err := salesforce.NewProjectRecordTriggerRunner(project, recordchanges.ConnectionName, salesforce.ProjectRecordTriggerRunnerConfig{
+	RecordModifiedPolledRoutes: []salesforce.ProjectRecordModifiedPolledTriggerRoute{{
+		BindingName: recordchanges.RecordModifiedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, recordchanges.AcceptEveryRecordChange, recordchanges.ResolveFlowID,
+			recordchanges.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, salesforce.WithLogger(logger))
+```
+
+`NewRecordTriggerRunner` takes explicit routes, cursors, and targets instead,
+and the generated `NewRecordModifiedPolledTrigger` keeps its cursor in memory,
+so it records a new baseline on every start.
+
 ## Studio units
 
-The manifest declares two configuration units and no Studio command:
+The manifest declares three configuration units and no Studio command:
 
 - `sObjectPicker` stores an object API name. It lists standard CRM objects and
   accepts a custom object's API name from Setup > Object Manager.
 - `fieldNameInput` stores one validated field API name, such as an External ID
   field.
+- `fieldNamesInput` stores up to 50 validated field API names that a
+  `recordModifiedPolled` binding reads with each record.
 
 Studio commands only reach fixed HTTPS hosts, while every org answers on its
 own instance URL, so the units cannot list an org's objects or fields with
@@ -286,6 +363,10 @@ these units from the shared `@superdurable/dex-connectors-react` components.
 [`examples/record-sync`](go/examples/record-sync) is a runnable Dex Web
 **Start Flow** example that matches a record by a field value, links the one
 match to an external ID or creates the record by that ID, and reads it back.
+
+[`examples/record-changes`](go/examples/record-changes) is started by the
+`recordModifiedPolled` Trigger: each created or modified record starts one
+Flow, which reads the record back, or records that it was deleted first.
 
 The [Python record lookup](python/examples/record_lookup) is a runnable Dex Worker
 using the static `salesforce-crm` connection. Its real Dex integration test
