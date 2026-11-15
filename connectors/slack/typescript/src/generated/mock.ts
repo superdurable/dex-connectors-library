@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { ListChannelsInput, Channel, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, Message, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, ListChannelMessagesInput, ChannelMessage, ListChannelMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
-import { ListChannelsInputSchema, ChannelSchema, ListChannelsOutputSchema, GetWorkspaceIdentityInputSchema, GetWorkspaceIdentityOutputSchema, ListThreadMessagesInputSchema, MessageSchema, ListThreadMessagesOutputSchema, GetThreadReplyInputSchema, GetThreadReplyOutputSchema, ListChannelMessagesInputSchema, ChannelMessageSchema, ListChannelMessagesOutputSchema, PostChannelMessageInputSchema, PostMessageOutputSchema, PostThreadReplyInputSchema } from './models.js';
-import { ProviderID, ConnectorID, ListChannelsDefinition, GetWorkspaceIdentityDefinition, ListThreadMessagesDefinition, GetThreadReplyDefinition, ListChannelMessagesDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './definitions.js';
+import type { ListChannelsInput, Channel, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, Message, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, ListChannelMessagesInput, ChannelMessage, ListChannelMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput, MessageButton, PostButtonMessageInput } from './models.js';
+import { ListChannelsInputSchema, ChannelSchema, ListChannelsOutputSchema, GetWorkspaceIdentityInputSchema, GetWorkspaceIdentityOutputSchema, ListThreadMessagesInputSchema, MessageSchema, ListThreadMessagesOutputSchema, GetThreadReplyInputSchema, GetThreadReplyOutputSchema, ListChannelMessagesInputSchema, ChannelMessageSchema, ListChannelMessagesOutputSchema, PostChannelMessageInputSchema, PostMessageOutputSchema, PostThreadReplyInputSchema, MessageButtonSchema, PostButtonMessageInputSchema } from './models.js';
+import { ProviderID, ConnectorID, ListChannelsDefinition, GetWorkspaceIdentityDefinition, ListThreadMessagesDefinition, GetThreadReplyDefinition, ListChannelMessagesDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition, PostButtonMessageDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for ListChannelsInput in scripted cases. */
@@ -89,6 +89,17 @@ export const emptyPostThreadReplyInput: PostThreadReplyInput = PostThreadReplyIn
   "channelId": '',
   "threadTimestamp": '',
   "text": '',
+});
+/** Go zero value for MessageButton in scripted cases. */
+export const emptyMessageButton: MessageButton = MessageButtonSchema.parse({
+  "actionId": '',
+  "text": '',
+});
+/** Go zero value for PostButtonMessageInput in scripted cases. */
+export const emptyPostButtonMessageInput: PostButtonMessageInput = PostButtonMessageInputSchema.parse({
+  "channelId": '',
+  "text": '',
+  "buttons": [],
 });
 
 /** Script the listed branch. */
@@ -329,6 +340,39 @@ export function postThreadReplyMissingReplyText(): Case<PostMessageOutput> {
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "postThreadReply", message: "The thread reply text is required." });
 }
 
+/** Script the sent branch. */
+export function postButtonMessageSent(value: PostMessageOutput, failure?: Failure): Case<PostMessageOutput> { return branchCase("sent", value, failure); }
+/** Script the providerRejected branch. */
+export function postButtonMessageProviderRejected(value: PostMessageOutput, failure?: Failure): Case<PostMessageOutput> { return branchCase("providerRejected", value, failure); }
+/** Script the defect branch. */
+export function postButtonMessageDefect(value: PostMessageOutput, failure?: Failure): Case<PostMessageOutput> { return branchCase("defect", value, failure); }
+/** Script a safe retry of postButtonMessage. */
+export function postButtonMessageRetry(failure: Failure, retryAfterMs = 0): Case<PostMessageOutput> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain postButtonMessage attempt. */
+export function postButtonMessageUncertain(value: PostMessageOutput, failure: Failure): Case<PostMessageOutput> { return uncertainCase(value, failure); }
+/** Manifest scenario buttonMessageSent for postButtonMessage. */
+export function postButtonMessageButtonMessageSent(): Case<PostMessageOutput> {
+  const value = PostMessageOutputSchema.parse({"message":{"channelId":"C0123456789","text":"Approve order 1042?","threadTimestamp":"1710000000.000100","timestamp":"1710000012.000700","userId":"U0BOT123456"}});
+  return branchCase("sent", value);
+}
+/** Default postButtonMessage scenario. */
+export function postButtonMessageDefault(): Case<PostMessageOutput> { return postButtonMessageButtonMessageSent(); }
+/** Manifest scenario buttonMessageRejected for postButtonMessage. */
+export function postButtonMessageButtonMessageRejected(): Case<PostMessageOutput> {
+  const value = emptyPostMessageOutput;
+  return branchCase("providerRejected", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "postButtonMessage", message: "Slack rejected the button message because the bot cannot write to the channel." });
+}
+/** Manifest scenario buttonMessageOutcomeUnknown for postButtonMessage. */
+export function postButtonMessageButtonMessageOutcomeUnknown(): Case<PostMessageOutput> {
+  const value = emptyPostMessageOutput;
+  return uncertainCase(value, { kind: "TRANSPORT", provider: ConnectorID, operation: "postButtonMessage", message: "The connection closed before Slack confirmed the button message." });
+}
+/** Manifest scenario duplicateButtonActionID for postButtonMessage. */
+export function postButtonMessageDuplicateButtonActionID(): Case<PostMessageOutput> {
+  const value = emptyPostMessageOutput;
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "postButtonMessage", message: "Each button action ID must be unique." });
+}
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #listChannels: MockQuery<ListChannelsInput, ListChannelsOutput>;
@@ -338,6 +382,7 @@ export class GeneratedMock implements Operations {
   readonly #listChannelMessages: MockQuery<ListChannelMessagesInput, ListChannelMessagesOutput>;
   readonly #postChannelMessage: MockMutation<PostChannelMessageInput, PostMessageOutput>;
   readonly #postThreadReply: MockMutation<PostThreadReplyInput, PostMessageOutput>;
+  readonly #postButtonMessage: MockMutation<PostButtonMessageInput, PostMessageOutput>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
@@ -348,6 +393,7 @@ export class GeneratedMock implements Operations {
     this.#listChannelMessages = newQuery<ListChannelMessagesInput, ListChannelMessagesOutput>(ListChannelMessagesDefinition).default(listChannelMessagesDefault());
     this.#postChannelMessage = newMutation<PostChannelMessageInput, PostMessageOutput>(PostChannelMessageDefinition).default(postChannelMessageDefault());
     this.#postThreadReply = newMutation<PostThreadReplyInput, PostMessageOutput>(PostThreadReplyDefinition).default(postThreadReplyDefault());
+    this.#postButtonMessage = newMutation<PostButtonMessageInput, PostMessageOutput>(PostButtonMessageDefinition).default(postButtonMessageDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
@@ -359,6 +405,7 @@ export class GeneratedMock implements Operations {
   listChannelMessages(): MockQuery<ListChannelMessagesInput, ListChannelMessagesOutput> { return this.#listChannelMessages; }
   postChannelMessage(): MockMutation<PostChannelMessageInput, PostMessageOutput> { return this.#postChannelMessage; }
   postThreadReply(): MockMutation<PostThreadReplyInput, PostMessageOutput> { return this.#postThreadReply; }
+  postButtonMessage(): MockMutation<PostButtonMessageInput, PostMessageOutput> { return this.#postButtonMessage; }
   assertNoFailures(): void {
     this.#listChannels.assertNoFailures();
     this.#getWorkspaceIdentity.assertNoFailures();
@@ -367,5 +414,6 @@ export class GeneratedMock implements Operations {
     this.#listChannelMessages.assertNoFailures();
     this.#postChannelMessage.assertNoFailures();
     this.#postThreadReply.assertNoFailures();
+    this.#postButtonMessage.assertNoFailures();
   }
 }

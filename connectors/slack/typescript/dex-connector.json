@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-slack",
-    "version": "0.6.0"
+    "version": "0.7.0"
   },
   "factories": [
     {
@@ -359,7 +359,9 @@
           "defect": "rejected",
           "providerRejected": "rejected",
           "uncertain": "unknown"
-        }
+        },
+        "repeatOnUnknown": "limited",
+        "maxSends": 3
       },
       "fields": {
         "stepType": "stepType",
@@ -422,7 +424,9 @@
           "defect": "rejected",
           "providerRejected": "rejected",
           "uncertain": "unknown"
-        }
+        },
+        "repeatOnUnknown": "limited",
+        "maxSends": 3
       },
       "fields": {
         "stepType": "stepType",
@@ -478,6 +482,111 @@
       }
     },
     {
+      "name": "newPostButtonMessageStep",
+      "kind": "mutation",
+      "operationId": "postButtonMessage",
+      "inputType": "PostButtonMessageInput",
+      "description": "Post one message with Block Kit buttons to a Slack channel, or as a reply when threadTimestamp is set. Clicks reach the buttonClicked Trigger. Synchronous durability preserves the shared single-dispatch fence after retry or Worker loss.",
+      "agent": {
+        "exposed": false
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "sent",
+          "field": "sent",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "$defs": {
+          "MessageButton": {
+            "additionalProperties": false,
+            "description": "MessageButton is one Block Kit button in a message that postButtonMessage posts.",
+            "properties": {
+              "actionId": {
+                "description": "ActionID identifies the button in the buttonClicked Trigger's ButtonClickEvent.ActionID and in its ActionIDs filter. It is required, unique within the message, and at most 255 characters.",
+                "type": "string"
+              },
+              "style": {
+                "description": "Style is ButtonStylePrimary, ButtonStyleDanger, or empty for Slack's default style.",
+                "enum": [
+                  "danger",
+                  "primary"
+                ],
+                "type": "string"
+              },
+              "text": {
+                "description": "Text is the required plain-text button label, at most 75 characters; Slack may truncate it near 30.",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value is returned unchanged in ButtonClickEvent.Value, such as an order ID, at most 2000 characters. Empty sends no value. Like message text, every member who can see the message can read it, and a click delivers it to the Flow and records it in the durable inbox, so it must never be a secret or token.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "actionId",
+              "text"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "PostButtonMessageInput contains the provider request fields for post button message.",
+        "properties": {
+          "buttons": {
+            "description": "Buttons are the 1 through 25 buttons shown below the text, in order.",
+            "items": {
+              "$ref": "#/$defs/MessageButton"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "channelId": {
+            "description": "ChannelID is the Slack channel identifier.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the required Slack mrkdwn message shown above the buttons and used in notifications, at most 3000 characters and the connection's maxMessageCharacters.",
+            "type": "string"
+          },
+          "threadTimestamp": {
+            "description": "ThreadTimestamp is the parent message timestamp to reply in that thread; empty posts a top-level message.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "buttons",
+          "channelId",
+          "text"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "defineChannelThreadCreatedTriggerBinding",
       "kind": "trigger",
       "triggerName": "channelThreadCreated",
@@ -491,6 +600,16 @@
       "name": "defineThreadReplyCreatedTriggerBinding",
       "kind": "trigger",
       "triggerName": "threadReplyCreated",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
+      }
+    },
+    {
+      "name": "defineButtonClickedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "buttonClicked",
       "fields": {
         "connectionName": "connectionName",
         "bindingName": "bindingName",

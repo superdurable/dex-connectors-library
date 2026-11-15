@@ -266,6 +266,32 @@ export interface PostThreadReplyInput {
   /** Text specifies text for post thread reply input. */
   "text": string;
 }
+/** MessageButton is one Block Kit button in a message that postButtonMessage posts. */
+export interface MessageButton {
+  /** ActionID identifies the button in the buttonClicked Trigger's ButtonClickEvent.ActionID and in its
+   * ActionIDs filter. It is required, unique within the message, and at most 255 characters. */
+  "actionId": string;
+  /** Text is the required plain-text button label, at most 75 characters; Slack may truncate it near 30. */
+  "text": string;
+  /** Value is returned unchanged in ButtonClickEvent.Value, such as an order ID, at most 2000 characters.
+   * Empty sends no value. Like message text, every member who can see the message can read it, and a click
+   * delivers it to the Flow and records it in the durable inbox, so it must never be a secret or token. */
+  "value"?: string | undefined;
+  /** Style is ButtonStylePrimary, ButtonStyleDanger, or empty for Slack's default style. */
+  "style"?: "danger" | "primary" | (string & {}) | undefined;
+}
+/** PostButtonMessageInput contains the provider request fields for post button message. */
+export interface PostButtonMessageInput {
+  /** ChannelID is the Slack channel identifier. */
+  "channelId": string;
+  /** ThreadTimestamp is the parent message timestamp to reply in that thread; empty posts a top-level message. */
+  "threadTimestamp"?: string | undefined;
+  /** Text is the required Slack mrkdwn message shown above the buttons and used in notifications, at most
+   * 3000 characters and the connection's maxMessageCharacters. */
+  "text": string;
+  /** Buttons are the 1 through 25 buttons shown below the text, in order. */
+  "buttons": Array<MessageButton> | null;
+}
 
 /** Runtime validator for ListChannelsInput. */
 export const ListChannelsInputSchema = z.strictObject({
@@ -386,3 +412,19 @@ export const PostThreadReplyInputSchema = z.strictObject({
   "threadTimestamp": z.string(),
   "text": z.string(),
 }) satisfies z.ZodType<PostThreadReplyInput>;
+
+/** Runtime validator for MessageButton. */
+export const MessageButtonSchema = z.strictObject({
+  "actionId": z.string(),
+  "text": z.string(),
+  "value": z.string().optional(),
+  "style": z.string().optional(),
+}) satisfies z.ZodType<MessageButton>;
+
+/** Runtime validator for PostButtonMessageInput. */
+export const PostButtonMessageInputSchema = z.strictObject({
+  "channelId": z.string(),
+  "threadTimestamp": z.string().optional(),
+  "text": z.string(),
+  "buttons": z.array(MessageButtonSchema).nullable(),
+}) satisfies z.ZodType<PostButtonMessageInput>;

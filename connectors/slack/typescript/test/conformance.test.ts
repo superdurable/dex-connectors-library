@@ -6,12 +6,12 @@ import { RetryError, runMutation, SecretString, type Call, type Mutation } from 
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type HeartbeatContext, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { SlackClient } from '../src/client.js';
-import { GetThreadReplyInputSchema, GetWorkspaceIdentityInputSchema, ListChannelMessagesInputSchema, ListChannelsInputSchema, ListThreadMessagesInputSchema, PostChannelMessageInputSchema, PostThreadReplyInputSchema } from '../src/generated/models.js';
+import { GetThreadReplyInputSchema, GetWorkspaceIdentityInputSchema, ListChannelMessagesInputSchema, ListChannelsInputSchema, ListThreadMessagesInputSchema, PostButtonMessageInputSchema, PostChannelMessageInputSchema, PostThreadReplyInputSchema } from '../src/generated/models.js';
 
-// postButtonMessage is Go only; replay just the operations this package implements.
+// The package implements every Go operation; replay only those it lists, as Python does.
 const typescriptOperations = new Set([
   'listChannels', 'getWorkspaceIdentity', 'listThreadMessages', 'getThreadReply', 'listChannelMessages',
-  'postChannelMessage', 'postThreadReply',
+  'postChannelMessage', 'postThreadReply', 'postButtonMessage',
 ]);
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/slack/scenarios.json', import.meta.url))
   .filter(scenario => typescriptOperations.has(scenario.operation));
@@ -39,5 +39,6 @@ async function invokeSlack(scenario: Scenario, recorder: ExchangeRecorder, conte
   if (scenario.operation === 'listChannelMessages') return client.listChannelMessages().invoke(call, ListChannelMessagesInputSchema.parse(scenario.input));
   if (scenario.operation === 'postChannelMessage') return productionMutation(client.postChannelMessage(), call, PostChannelMessageInputSchema.parse(scenario.input), scenario.idempotencyKey!);
   if (scenario.operation === 'postThreadReply') return productionMutation(client.postThreadReply(), call, PostThreadReplyInputSchema.parse(scenario.input), scenario.idempotencyKey!);
+  if (scenario.operation === 'postButtonMessage') return productionMutation(client.postButtonMessage(), call, PostButtonMessageInputSchema.parse(scenario.input), scenario.idempotencyKey!);
   throw new Error(`unknown Slack operation ${scenario.operation}`);
 }

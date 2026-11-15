@@ -7,7 +7,7 @@ import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, 
 import { MaxSlackSocketMessageBytes, dialSlackSocket, type SlackSocketDialer } from './socket_mode.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
-import { GetThreadReplyOperation, GetWorkspaceIdentityOperation, ListChannelMessagesOperation, ListChannelsOperation, ListThreadMessagesOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
+import { GetThreadReplyOperation, GetWorkspaceIdentityOperation, ListChannelMessagesOperation, ListChannelsOperation, ListThreadMessagesOperation, PostButtonMessageOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
 
 /** One Slack request exchange, including a status when body decoding failed. */
 export interface SlackExchange {
@@ -116,6 +116,7 @@ export class SlackClient {
   /** Bind the list channel messages Query. */ listChannelMessages(): ListChannelMessagesOperation { return new ListChannelMessagesOperation(this); }
   /** Bind the post channel message Mutation. */ postChannelMessage(): PostChannelMessageOperation { return new PostChannelMessageOperation(this); }
   /** Bind the post thread reply Mutation. */ postThreadReply(): PostThreadReplyOperation { return new PostThreadReplyOperation(this); }
+  /** Bind the post button message Mutation. */ postButtonMessage(): PostButtonMessageOperation { return new PostButtonMessageOperation(this); }
 
   /** Resolve the required bot or user token and classify missing credentials. */
   async resolveToken(call: Call, kind: 'bot' | 'user'): Promise<{ token?: string; terminal: boolean }> {
@@ -138,7 +139,7 @@ export class SlackClient {
   }
 
   /** Make one Slack HTTP request with Go-compatible body and status handling. */
-  async request(method: 'GET' | 'POST', path: string, token: string, query?: URLSearchParams, payload?: Record<string, string>, signal?: AbortSignal, form?: URLSearchParams): Promise<SlackExchange> {
+  async request(method: 'GET' | 'POST', path: string, token: string, query?: URLSearchParams, payload?: Record<string, unknown>, signal?: AbortSignal, form?: URLSearchParams): Promise<SlackExchange> {
     const queryString = query ? encodeGoQuery(query) : '';
     const url = `${this.endpoint}/${path}${queryString ? `?${queryString}` : ''}`;
     const headers: Record<string, string> = { Authorization: `Bearer ${token}` };

@@ -7,9 +7,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
 This module finds Slack channels, identifies the connected workspace, reads
 recent channel history, reads and writes Slack channel threads, and receives Slack Events
 API messages through Socket Mode, or from a host that relays them for a shared
-connection (see [Relayed events](#relayed-events)). In Go it also posts
-messages with Block Kit buttons and receives their clicks through Socket Mode
-(see [Buttons](#buttons)). It supports public and private channels, not direct
+connection (see [Relayed events](#relayed-events)). In Go and TypeScript it
+also posts messages with Block Kit buttons and receives their clicks through
+Socket Mode (see [Buttons](#buttons)). It supports public and private channels, not direct
 messages.
 
 ## Agent tools
@@ -37,11 +37,12 @@ the same tools for host tests.
 
 ## TypeScript package
 
-`@superdurable/connector-slack@0.6.0` implements the channel discovery,
-channel history and thread reads, and message post operations for TypeScript Dex Flows, and from 0.6.0 the
-`channelThreadCreated` and `threadReplyCreated` Triggers through Socket Mode or a host's relay, at parity
-with Go. `buttonClicked` remains Go-only. The [runnable thread approval example](typescript/examples/thread-approval/README.md)
-starts a Flow from a root message and approves it from a reply. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
+`@superdurable/connector-slack@0.7.0` implements every Go operation and Trigger for TypeScript Dex Flows:
+the channel discovery, channel history and thread reads, and message post operations; from 0.6.0 the
+`channelThreadCreated` and `threadReplyCreated` Triggers through Socket Mode or a host's relay; and from 0.7.0
+`postButtonMessage` and the `buttonClicked` Trigger through Socket Mode. The [runnable thread approval example](typescript/examples/thread-approval/README.md)
+starts a Flow from a root message and approves it from a reply, and the
+[runnable button approval example](typescript/examples/button-approval/README.md) decides it from a button click. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
 uses the static `slack-thread-reader` connection name, and the
 [channel history example](typescript/examples/list-channel-messages/README.md)
 uses `slack-channel-history-reader`; both obtain OAuth bot and user tokens
@@ -195,7 +196,7 @@ runner's context closes the socket at once.
 
 ## Buttons
 
-`PostButtonMessage` (Go only) posts one message whose text appears in a Block
+`PostButtonMessage` posts one message whose text appears in a Block
 Kit section above 1 through 25 buttons, as a top-level message or, with
 `threadTimestamp`, as a thread reply. Each `MessageButton` has a required
 `ActionID`, unique in the message and at most 255 characters; a required
@@ -244,6 +245,11 @@ never carry the button value.
 Clicks reach only Socket Mode: a relaying host forwards Events API messages,
 not interactive payloads. On a connection without an `app_token`, `Run` of a
 runner with button routes returns an error.
+
+The TypeScript package implements `postButtonMessage` and `buttonClicked` from
+0.7.0 with the same validation, event, durable-inbox, and relayed-mode rules;
+see the [TypeScript README](typescript/README.md#buttons) and
+[`typescript/examples/button-approval`](typescript/examples/button-approval).
 
 ## Relayed events
 
@@ -390,7 +396,7 @@ no `binding`. Their runner records go to `slog.Default()`, so call
 - `GetThreadReply` reads one reply by timestamp.
 - `PostChannelMessage` creates a top-level channel message.
 - `PostThreadReply` replies to an existing thread.
-- `PostButtonMessage` (Go only) posts a message with buttons; see
+- `PostButtonMessage` posts a message with buttons; see
   [Buttons](#buttons).
 
 Every query classifies the HTTP status before decoding the body, because Slack

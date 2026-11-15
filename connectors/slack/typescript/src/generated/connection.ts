@@ -5,7 +5,7 @@
 import { ConnectionRefSchema, type ConnectionRef, type Mutation, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { newRefreshingCredentialProvider, type CredentialDecoder, type CredentialEncoder, type SharedCredentialDecoder } from '@superdurable/connectors-sdk/projectconfig';
-import type { ListChannelsInput, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, ListChannelMessagesInput, ListChannelMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
+import type { ListChannelsInput, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, ListChannelMessagesInput, ListChannelMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput, PostButtonMessageInput } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
@@ -24,6 +24,8 @@ export interface Operations {
   postChannelMessage(): Mutation<PostChannelMessageInput, PostMessageOutput>;
   /** Invoke postThreadReply through this connection. */
   postThreadReply(): Mutation<PostThreadReplyInput, PostMessageOutput>;
+  /** Invoke postButtonMessage through this connection. */
+  postButtonMessage(): Mutation<PostButtonMessageInput, PostMessageOutput>;
 }
 
 /** Named connector connection kept outside Flow state. */
