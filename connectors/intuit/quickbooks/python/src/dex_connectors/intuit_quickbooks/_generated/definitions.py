@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -67,6 +70,8 @@ CREATE_CUSTOMER_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 CREATE_INVOICE_DEFINITION = MutationDefinition(
@@ -82,6 +87,8 @@ CREATE_INVOICE_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 GET_INVOICE_DEFINITION = QueryDefinition(
@@ -128,6 +135,8 @@ SEND_INVOICE_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 RECORD_PAYMENT_DEFINITION = MutationDefinition(
@@ -143,4 +152,11 @@ RECORD_PAYMENT_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
+)
+
+INVOICE_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="invoiceChanged"),
+    description="Receive each invoice created or changed in the connected QuickBooks company, including payments, emails, and voids that update it, read by polling invoices by MetaData.LastUpdatedTime; the first run records a baseline and delivers no existing invoices, and deleted invoices are not reported.",
 )

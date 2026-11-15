@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import CreateCustomerInput, CreateCustomerOutput, CreateInvoiceInput, CreateInvoiceOutput, Customer, FindCustomerInput, FindCustomerOutput, GetInvoiceInput, Invoice, InvoiceLine, InvoiceLineInput, InvoicePage, ListInvoicesInput, Payment, PaymentApplication, RecordPaymentInput, SendInvoiceInput
+from ..models import CreateCustomerInput, CreateCustomerOutput, CreateInvoiceInput, CreateInvoiceOutput, Customer, FindCustomerInput, FindCustomerOutput, GetInvoiceInput, Invoice, InvoiceChangedEvent, InvoiceChangedTriggerConfiguration, InvoiceLine, InvoiceLineInput, InvoicePage, ListInvoicesInput, Payment, PaymentApplication, RecordPaymentInput, SendInvoiceInput
 from .definitions import CONNECTOR_ID, AMBIGUOUS, CREATED, CREATE_CUSTOMER_DEFINITION, CREATE_INVOICE_DEFINITION, DEFECT, FIND_CUSTOMER_DEFINITION, FOUND, GET_INVOICE_DEFINITION, INVALID_RESPONSE, LISTED, LIST_INVOICES_DEFINITION, NAME_CONFLICT, NOT_FOUND, PROVIDER_REJECTED, RECORDED, RECORD_PAYMENT_DEFINITION, SEND_INVOICE_DEFINITION, SENT, UNCERTAIN
 
 def find_customer_found(value: FindCustomerOutput, failure: Failure | None = None) -> Case[FindCustomerOutput]:
