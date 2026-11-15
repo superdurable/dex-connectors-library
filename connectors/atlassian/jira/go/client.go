@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -48,6 +49,9 @@ const (
 	traceIDHeader           = "Atl-Traceid"
 	maximumRejectedFieldIDs = 20
 	maximumSafeTokenBytes   = 128
+
+	// minimumPollInterval keeps an issueChanged poll loop from spending the app's hourly rate-limit points.
+	minimumPollInterval = 5 * time.Second
 )
 
 var (
@@ -61,6 +65,7 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 }
 
 // WithHTTPClient replaces the HTTP client used for Jira and Atlassian token
@@ -72,6 +77,14 @@ func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
+// WithLogger sends the issueChanged Trigger runner's records to logger: seeds, reseeds, failed polls,
+// rate-limit pauses, and the durable inboxes NewProjectIssueTriggerRunner opens. Records carry binding
+// identity and never issue payloads or credentials. Without this option, or with a nil logger, records go
+// to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Jira Cloud REST requests for one connection.
 // It is safe for concurrent use by several Steps.
 type Client struct {
@@ -81,6 +94,8 @@ type Client struct {
 	credentials       CredentialSource
 	refreshDriver     sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes  int64
+	pollInterval      time.Duration
+	logger            *slog.Logger
 	now               func() time.Time
 
 	siteMutex       sync.Mutex
@@ -210,6 +225,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.MaxResponseBytes < 1 {
 		return nil, fmt.Errorf("Jira maxResponseBytes must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Jira pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
@@ -225,7 +243,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		httpClient:       providerhttp.NewProviderHTTPClient(dependencies.httpClient, requestTimeout),
 		credentials:      credentials,
 		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
-		maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 

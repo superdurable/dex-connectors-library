@@ -66,7 +66,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"cloudId", "endpoint", "maxResponseBytes", "oauth_client_id", "oauth_client_secret", "access_token", "refresh_token"}, names,
+	require.Equal(t, []string{"cloudId", "endpoint", "maxResponseBytes", "pollInterval", "oauth_client_id", "oauth_client_secret", "access_token", "refresh_token"}, names,
 		"a new visible field needs its own guidance review")
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
@@ -90,6 +90,8 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	require.Contains(t, fieldDescriptions["oauth_client_id"], "https://developer.atlassian.com/console/myapps/")
 	require.Contains(t, fieldDescriptions["oauth_client_secret"], "https://developer.atlassian.com/console/myapps/")
 	require.Contains(t, fieldDescriptions["access_token"], "never enter it manually")
+	require.Contains(t, fieldDescriptions["pollInterval"], "at least 5s")
+	require.Contains(t, fieldDescriptions["pollInterval"], "rate-limit points")
 }
 
 func TestOAuthSetupNamesTheAppPageCallbackScopesAndConsent(t *testing.T) {

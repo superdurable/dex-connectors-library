@@ -46,6 +46,8 @@ describe("Jira provider responses", () => {
   it("lists create-permitted projects only for createIssue", () => {
     expect(projectAction(pickerTarget("createIssue"))).toBe("create");
     expect(projectAction(pickerTarget("searchIssues"))).toBe("browse");
+    expect(projectAction({...pickerTarget("searchIssues"),
+      scope: {kind: "trigger", triggerName: "issueChanged", bindingName: "project-issue-changes", flowType: "JiraIssueChange"}})).toBe("browse");
   });
 
   it("reads the connection's cloudId only when it is a valid site ID", () => {
