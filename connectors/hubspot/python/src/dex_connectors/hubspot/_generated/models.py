@@ -204,3 +204,45 @@ class UpdateObjectInput:
 
 
 setattr(UpdateObjectInput, '__module__', 'dex_connectors.hubspot.models')
+
+
+# CRMObjectChangedEvent is one created or changed HubSpot CRM record read through CRM search. Several
+# edits made between two polls arrive as one change carrying the record's latest values. Deleted,
+# archived, and merged-away records are not reported, because CRM search does not return them.
+@dataclass(frozen=True, slots=True)
+class CRMObjectChangedEvent:
+    # ObjectType is the watched object type.
+    object_type: str = _dataclass_field(metadata={'dex_json_name': 'objectType'})
+    # ChangeKind is the derived change kind; see CRMObjectChangeKind.
+    change_kind: str = _dataclass_field(metadata={'dex_json_name': 'changeKind'})
+    # ModifiedAt is the record's last-modified date, lastmodifieddate for contacts and
+    # hs_lastmodifieddate otherwise, in UTC with millisecond precision.
+    modified_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'modifiedAt', 'dex_json_format': 'rfc3339'})
+    # Object is the record as CRM search returned it, with the configured properties.
+    object: CRMObject = _dataclass_field(kw_only=True)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.modified_at, str):
+            object.__setattr__(self, 'modified_at', parse_go_datetime(self.modified_at, 'modified_at'))
+        elif self.modified_at is not None:
+            validate_go_datetime(self.modified_at, 'modified_at')
+
+
+setattr(CRMObjectChangedEvent, '__module__', 'dex_connectors.hubspot.models')
+
+
+# CRMObjectChangedTriggerConfiguration is the crmObjectChanged binding configuration that the object type
+# picker saves in Dex Web. Changing the object type of a binding that already polled makes its next poll
+# record a new baseline for the new object type.
+@dataclass(frozen=True, slots=True)
+class CRMObjectChangedTriggerConfiguration:
+    # ObjectType is the watched object type, contacts, companies, or deals, saved by the object type
+    # picker. It is required.
+    object_type: str = _dataclass_field(metadata={'dex_json_name': 'objectType'})
+    # Properties lists internal property names, such as email or dealstage, to return on each delivered
+    # record, at most MaximumTriggerProperties. Empty returns HubSpot's default search properties. The
+    # Dex Web picker does not set it; an application sets it in code.
+    properties: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+
+
+setattr(CRMObjectChangedTriggerConfiguration, '__module__', 'dex_connectors.hubspot.models')
