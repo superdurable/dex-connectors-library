@@ -19,8 +19,25 @@ export type HiverExchange = { kind: 'success'; response: ProviderResponse } | { 
 /** One HTTP request's payload. */
 export interface HiverRequest { method: string; path: string; query?: URLSearchParams; json?: unknown; form?: ReadonlyArray<readonly [string, string]>; correlationCallId?: string }
 
-/** Hiver v1 client with connection-wide request spacing. */
+/** Hiver's largest list page, which every conversationReceived poll request asks for. */
+export const MaximumPageSize = 100;
+/** The fewest pages one conversationReceived poll reads: the list's first page plus one sweep page. */
+export const MinimumPollPagesPerPoll = 2;
+/** The most pages one conversationReceived poll reads, keeping it within the poll kit's 500 events per page. */
+export const MaximumPollPagesPerPoll = 5;
+const defaultPollIntervalMs = 300_000;
+const defaultPollPagesPerPoll = 3;
+
+/**
+ * Hiver v1 client with connection-wide request spacing. pollIntervalMs and pollPagesPerPoll configure the
+ * conversationReceived Trigger: the delay between polls of each binding and the list pages one poll reads.
+ * Omitted or zero values keep the manifest defaults of five minutes and three pages.
+ */
 export class HiverClient {
+  /** The conversationReceived Trigger's delay between polls in milliseconds; at least 1000. */
+  readonly pollIntervalMs: number;
+  /** Pages of 100 conversations one conversationReceived poll reads, from 2 to 5. */
+  readonly pollPagesPerPoll: number;
   private readonly baseURL: string;
   private readonly credentials: CredentialProvider<Credentials>;
   private readonly send: HiverRequestSender;
@@ -43,7 +60,16 @@ export class HiverClient {
     this.intervalMs = config.requestIntervalMilliseconds || 1000;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('Hiver response limit must be positive');
     if (!Number.isSafeInteger(this.intervalMs) || this.intervalMs < 1 || this.intervalMs > 60_000) throw new TypeError('Hiver request interval must be between 1 and 60000 milliseconds');
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < 1000) throw new TypeError('Hiver pollInterval must be at least one second');
+    this.pollPagesPerPoll = config.pollPagesPerPoll || defaultPollPagesPerPoll;
+    if (!Number.isSafeInteger(this.pollPagesPerPoll) || this.pollPagesPerPoll < MinimumPollPagesPerPoll || this.pollPagesPerPoll > MaximumPollPagesPerPoll) {
+      throw new TypeError(`Hiver pollPagesPerPoll must be from ${MinimumPollPagesPerPoll} to ${MaximumPollPagesPerPoll}`);
+    }
   }
+
+  /** The client clock, used for receipts, Retry-After, and Trigger observation times. */
+  currentTime(): Date { return this.now(); }
 
   /** Bind listInboxes. */ listInboxes(): ListInboxesOperation { return new ListInboxesOperation(this); }
   /** Bind listConversations. */ listConversations(): ListConversationsOperation { return new ListConversationsOperation(this); }

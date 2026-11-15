@@ -4,16 +4,31 @@
 import { SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
-import { HiverClient } from './client.js';
+import { HiverClient, type HiverClientOptions } from './client.js';
 import { newProjectConnection as bindProjectConnection } from './generated/connection.js';
 import type { Config, Credentials } from './generated/models.js';
 
-/** Open one static Hiver connection from a Dex project. */
-export function newProjectConnection(project: LoadedProject, connectionName: string) {
+/**
+ * Open one static Hiver connection from a Dex project. options optionally overrides the client's base URL,
+ * HTTP sender, or clock, for example to point a local verification run at a Hiver stand-in. The stored
+ * pollInterval is Go duration nanoseconds, as Dex Web saves it.
+ */
+export function newProjectConnection(project: LoadedProject, connectionName: string, options: HiverClientOptions = {}) {
   return bindProjectConnection(project, connectionName, (loadedProject, name) => {
     const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'hiver' && entry.connectionName === name);
     if (!selected) throw new TypeError('Hiver project connection is not configured');
-    const config = z.object({ maxResponseBytes: z.number().int().optional(), requestIntervalMilliseconds: z.number().int().optional() }).parse(selected.configuration) as Config;
+    // Go decodes these settings strictly, and its time.Duration pollInterval only as integer nanoseconds.
+    const stored = z.strictObject({
+      maxResponseBytes: z.number().int().optional(), requestIntervalMilliseconds: z.number().int().optional(),
+      pollInterval: z.number().int().safe().optional(), pollPagesPerPoll: z.number().int().optional(),
+    }).parse(selected.configuration);
+    const pollIntervalMs = stored.pollInterval ? stored.pollInterval / 1_000_000 : undefined;
+    const config: Config = {
+      ...(stored.maxResponseBytes !== undefined ? { maxResponseBytes: stored.maxResponseBytes } : {}),
+      ...(stored.requestIntervalMilliseconds !== undefined ? { requestIntervalMilliseconds: stored.requestIntervalMilliseconds } : {}),
+      ...(pollIntervalMs !== undefined ? { pollIntervalMs } : {}),
+      ...(stored.pollPagesPerPoll !== undefined ? { pollPagesPerPoll: stored.pollPagesPerPoll } : {}),
+    } as Config;
     const credentials: CredentialProvider<Credentials> = {
       async resolve(call: Call, signal?: AbortSignal): Promise<Credentials> {
         void call;
@@ -22,6 +37,6 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
         return { apiKey: new SecretString(decoded.api_key) };
       },
     };
-    return new HiverClient(config, credentials);
+    return new HiverClient(config, credentials, options);
   });
 }

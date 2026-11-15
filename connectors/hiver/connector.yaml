@@ -16,10 +16,10 @@ spec:
       operations: [listInboxes, listConversations, getConversation, updateConversation, addNote, createSharedDraft]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-hiver"
       operations: [listInboxes, listConversations, getConversation, updateConversation, addNote, createSharedDraft]
-      triggers: []
+      triggers: [conversationReceived]
   codegen:
     go:
       package: hiver
