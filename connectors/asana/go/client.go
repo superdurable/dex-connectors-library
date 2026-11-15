@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -37,6 +38,8 @@ const (
 	attemptDeadlineMargin = time.Second
 	// requestTimeout bounds one exchange, so a hung write selects uncertain before Dex times the Step out.
 	requestTimeout = 20 * time.Second
+	// minimumPollInterval keeps taskChanged polls from spending the Asana user's per-minute request quota.
+	minimumPollInterval = 5 * time.Second
 )
 
 // Option configures Client construction.
@@ -44,6 +47,7 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 }
 
 // WithHTTPClient replaces the HTTP client used for Asana API requests. The caller keeps ownership of client
@@ -53,6 +57,14 @@ func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
+// WithLogger sends the taskChanged Trigger runner's records to logger: seeds, reseeds after an expired
+// sync token, failed polls, rate-limit pauses, and the durable inboxes NewProjectTaskTriggerRunner opens.
+// Records carry binding identity and never event payloads or credentials. Without this option, or with a
+// nil logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Asana REST requests for one connection. It is safe for concurrent use by
 // several Steps.
 type Client struct {
@@ -60,6 +72,8 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -158,6 +172,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes < 1 {
 		return nil, fmt.Errorf("Asana maxResponseBytes must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Asana pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
@@ -172,7 +189,8 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		endpoint:         endpoint,
 		httpClient:       providerhttp.NewProviderHTTPClient(dependencies.httpClient, requestTimeout),
 		credentials:      credentials,
-		maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval,
+		logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 

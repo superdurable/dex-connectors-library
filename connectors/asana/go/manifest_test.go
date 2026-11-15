@@ -69,7 +69,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"endpoint", "maxResponseBytes", "access_token"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"endpoint", "maxResponseBytes", "pollInterval", "access_token"}, names, "a new visible field needs its own guidance review")
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
 			require.GreaterOrEqual(t, len(field.Description), 120, "a label-length description is not guidance")

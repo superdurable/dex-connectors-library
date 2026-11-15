@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: asana
   displayName: Asana
-  description: List and read Asana tasks by project or section, create tasks and comments without silent duplicates, and complete, assign, reschedule, or move tasks between sections.
+  description: List and read Asana tasks by project or section, create tasks and comments without silent duplicates, complete, assign, reschedule, or move tasks between sections, and receive each task added, changed, removed, or deleted in a project.
   company: Asana
   categories: [project-management]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   languages:
     python:
@@ -35,6 +35,12 @@ spec:
         description: "Maximum complete Asana API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createTask or addComment selects uncertain."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between taskChanged Trigger polls of the Asana Events API for each watched project; leave blank to keep the displayed interval, or enter a Go duration of at least 5s such as 15s or 2m. Shorter intervals deliver task changes sooner and spend more of the Asana user's per-minute request quota (150 requests on free domains, 1,500 on paid); Asana keeps a project's event stream for only 24 hours, so an interval near that length loses changes."
+        required: false
+        default: 30s
   auth:
     type: apiKey
     connectionKind: asana-personal-access-token
@@ -105,6 +111,12 @@ spec:
           - {name: projectName, goName: ProjectName, type: string}
           - {name: sectionId, goName: SectionID, type: string}
           - {name: sectionName, goName: SectionName, type: string}
+  triggers:
+    - name: taskChanged
+      goName: TaskChanged
+      eventType: TaskChangedEvent
+      configurationType: TaskChangedTriggerConfiguration
+      description: "Receive each task, including subtasks, added to, changed in, removed from, deleted from, or restored to one Asana project, read through the Asana Events API; the first run records a baseline and delivers no existing tasks."
   operations:
     - name: listTasks
       goName: ListTasks
@@ -213,6 +225,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every change is an absolute value, so a repeated update leaves the same task.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedDefaultAnswer
           branch: updated

@@ -46,12 +46,15 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete Asana API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createTask or addComment selects uncertain. */
   maxResponseBytes?: number;
+  /** Delay between taskChanged Trigger polls of the Asana Events API for each watched project; leave blank to keep the displayed interval, or enter a Go duration of at least 5s such as 15s or 2m. Shorter intervals deliver task changes sooner and spend more of the Asana user's per-minute request quota (150 requests on free domains, 1,500 on paid); Asana keeps a project's event stream for only 24 hours, so an interval near that length loses changes. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

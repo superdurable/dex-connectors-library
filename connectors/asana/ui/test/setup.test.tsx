@@ -80,6 +80,27 @@ describe("Asana setup", () => {
     expect(empty).toContain("Asana returned no workspace for this choice.");
   });
 
+  it("hides the section for a taskChanged Trigger binding and requires a project", () => {
+    const triggerTarget: ConnectorStudioConfigurationUnitTarget = {
+      ...projectTarget,
+      scope: {kind: "trigger", triggerName: "taskChanged", bindingName: "project-task-changes", flowType: "AsanaTaskChange"},
+      instanceId: "watchedProject", label: "Watched project", required: true,
+      description: "Choose the workspace, then the Asana project whose tasks start this Flow.",
+      bindings: [{port: "workspaceId", jsonPointer: "/workspaceId"}, {port: "projectId", jsonPointer: "/projectId"}, {port: "projectName", jsonPointer: "/projectName"}],
+    };
+    const markup = renderToStaticMarkup(<AsanaConfigurationUnit {...noLoads} sections={{resources: [{id: "1201000000000101", name: "Approved"}], isTruncated: false}} target={triggerTarget}/>);
+    expect(markup).toContain("Choose the workspace, then the Asana project whose tasks start this Flow.");
+    expect(markup).toContain("<strong>Project:</strong> Facilities</p>");
+    expect(markup).toContain("after /project/");
+    expect(markup).toContain("Required: the Trigger has no project to watch without it.");
+    expect(markup).not.toContain("Section gid");
+    expect(markup).not.toContain("Choose section");
+    expect(markup).not.toContain("Start Flow input");
+    expect(markup).toContain('class="studio-button studio-button-primary" type="button">Save');
+    const blank = renderToStaticMarkup(<AsanaConfigurationUnit {...noLoads} target={{...triggerTarget, required: false, value: {}}}/>);
+    expect(blank).toContain('class="studio-button studio-button-primary" type="button" disabled="">Save');
+  });
+
   it("rejects an unknown unit", () => {
     expect(renderToStaticMarkup(<AsanaConfigurationUnit {...noLoads} target={{...projectTarget, unitId: "tagPicker"}}/>)).toContain("Unsupported Asana configuration unit: tagPicker");
   });
