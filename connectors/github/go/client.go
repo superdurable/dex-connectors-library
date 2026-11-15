@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package github provides bounded, authenticated GitHub profile and public repository queries.
+// Package github provides bounded, authenticated GitHub profile, public repository, and issue operations.
 package github
 
 import (
@@ -314,6 +314,16 @@ func (client *Client) ListCommits() ListCommitsOperation {
 // ListReleases returns the bounded repository releases query operation.
 func (client *Client) ListReleases() ListReleasesOperation {
 	return ListReleasesOperation{client: client}
+}
+
+// ListIssues returns the bounded repository issue query operation.
+func (client *Client) ListIssues() ListIssuesOperation {
+	return ListIssuesOperation{client: client}
+}
+
+// CreateIssue returns the fenced issue creation Mutation bound to this client.
+func (client *Client) CreateIssue() CreateIssueOperation {
+	return CreateIssueOperation{client: client}
 }
 
 // Definition returns the immutable connector operation definition.
@@ -629,13 +639,26 @@ func decodeJSON(body []byte, destination any) error {
 }
 
 func hasRequiredScopes(header http.Header) bool {
+	return hasExactGrantedScopes(header, githubPublicOAuthScopes)
+}
+
+// hasExactGrantedScopes reports whether GitHub's X-OAuth-Scopes header lists exactly the required scopes.
+func hasExactGrantedScopes(header http.Header, requiredScopes []string) bool {
 	scopes := map[string]bool{}
 	for _, scope := range strings.Split(header.Get("X-OAuth-Scopes"), ",") {
 		if scope = strings.TrimSpace(scope); scope != "" {
 			scopes[scope] = true
 		}
 	}
-	return len(scopes) == 2 && scopes["read:user"] && scopes["user:email"]
+	if len(scopes) != len(requiredScopes) {
+		return false
+	}
+	for _, scope := range requiredScopes {
+		if !scopes[scope] {
+			return false
+		}
+	}
+	return true
 }
 
 func primaryVerifiedEmail(emails []githubEmail) string {

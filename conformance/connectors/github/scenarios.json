@@ -5998,6 +5998,2211 @@
       "input": {},
       "name": "getAuthenticatedProfile-refresh-after-rejection",
       "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "body": "[{\"id\": 2876543212, \"node_id\": \"I_kwDOAbCdEs6rdm12\", \"number\": 12, \"title\": \"Crash on save\", \"body\": \"Steps to reproduce the crash\", \"state\": \"open\", \"state_reason\": null, \"html_url\": \"https://github.com/octocat/hello-world/issues/12\", \"user\": {\"login\": \"mona\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [{\"login\": \"hubot\", \"id\": 2}], \"comments\": 0, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-07T10:15:00Z\", \"closed_at\": null}, {\"number\": 11, \"title\": \"A pull request\", \"state\": \"open\", \"pull_request\": {\"url\": \"https://api.github.com/repos/octocat/hello-world/pulls/11\"}}, {\"id\": 2876543209, \"node_id\": \"I_kwDOAbCdEs6rdm09\", \"number\": 9, \"title\": \"Slow startup\", \"body\": null, \"state\": \"closed\", \"state_reason\": \"completed\", \"html_url\": \"https://github.com/octocat/hello-world/issues/9\", \"user\": {\"login\": \"octocat\", \"id\": 583231}, \"labels\": [], \"assignees\": [], \"comments\": 0, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-07T10:15:00Z\", \"closed_at\": \"2026-03-08T16:00:00Z\"}]",
+          "headers": {
+            "Link": "\u003chttps://api.github.com/repositories/1/issues?page=3\u003e; rel=\"next\"",
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "creator": [
+              "octocat"
+            ],
+            "direction": [
+              "desc"
+            ],
+            "labels": [
+              "bug,needs-triage"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "3"
+            ],
+            "since": [
+              "2026-03-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "issues": [
+            {
+              "assignees": [
+                "hubot"
+              ],
+              "authorLogin": "mona",
+              "body": "Steps to rep",
+              "bodyTruncated": true,
+              "comments": 0,
+              "createdAt": "2026-03-07T10:15:00Z",
+              "labels": [
+                "bug"
+              ],
+              "nodeId": "I_kwDOAbCdEs6rdm12",
+              "number": 12,
+              "state": "open",
+              "title": "Crash on save",
+              "updatedAt": "2026-03-07T10:15:00Z",
+              "url": "https://github.com/octocat/hello-world/issues/12"
+            },
+            {
+              "authorLogin": "octocat",
+              "bodyTruncated": false,
+              "closedAt": "2026-03-08T16:00:00Z",
+              "comments": 0,
+              "createdAt": "2026-03-07T10:15:00Z",
+              "nodeId": "I_kwDOAbCdEs6rdm09",
+              "number": 9,
+              "state": "closed",
+              "stateReason": "completed",
+              "title": "Slow startup",
+              "updatedAt": "2026-03-07T10:15:00Z",
+              "url": "https://github.com/octocat/hello-world/issues/9"
+            }
+          ],
+          "nextPage": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "creator": "octocat",
+        "labels": [
+          "bug",
+          "needs-triage"
+        ],
+        "maxBodyCharacters": 12,
+        "owner": "octocat",
+        "page": 2,
+        "pageSize": 3,
+        "repository": "hello-world",
+        "state": "all",
+        "updatedSince": "2026-03-01T00:00:00Z"
+      },
+      "name": "listIssues-listed",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "issues": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world"
+      },
+      "name": "listIssues-listed-repository-method",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world"
+      },
+      "name": "listIssues-429",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world"
+      },
+      "name": "listIssues-502",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world"
+      },
+      "name": "listIssues-transport",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email, repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "issues": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world"
+      },
+      "name": "listIssues-insufficient-scope",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Bad credentials\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "issues": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world"
+      },
+      "name": "listIssues-authorization-revoked",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Not Found\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "issues": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world"
+      },
+      "name": "listIssues-not-found",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Issues are disabled for this repo\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 410
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "issues": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world"
+      },
+      "name": "listIssues-provider-rejected",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"not a list\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "open"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "issues": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world"
+      },
+      "name": "listIssues-invalid-response",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "78f13f6b-bec6-5462-ae1f-db6ab7998b46",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issues": [],
+          "nextPage": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "Open"
+      },
+      "name": "listIssues-defect",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "{\"id\": 2876543242, \"node_id\": \"I_kwDOAbCdEs6rdm42\", \"number\": 42, \"title\": \"Crash when saving an empty draft\", \"body\": \"Steps to reproduce:\\n1. Open a new draft.\\n2. Save it.\\n\\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e\", \"state\": \"open\", \"state_reason\": null, \"html_url\": \"https://github.com/octocat/hello-world/issues/42\", \"user\": {\"login\": \"octocat\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [{\"login\": \"hubot\", \"id\": 2}], \"comments\": 0, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-07T10:15:00Z\", \"closed_at\": null}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "providerId": "42",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "assignees": [
+            "hubot"
+          ],
+          "createdAt": "2026-03-07T10:15:00Z",
+          "id": 2876543242,
+          "labels": [
+            "bug"
+          ],
+          "nodeId": "I_kwDOAbCdEs6rdm42",
+          "number": 42,
+          "owner": "octocat",
+          "repository": "hello-world",
+          "state": "open",
+          "title": "Crash when saving an empty draft",
+          "url": "https://github.com/octocat/hello-world/issues/42"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-created",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-429",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-503",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"You have exceeded a secondary rate limit and have been temporarily blocked from content creation.\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-secondary-rate-limit",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-transport",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"login\": \"octocat\", \"id\": 583231}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[{\"id\": 2876543243, \"node_id\": \"I_kwDOAbCdEs6rdm43\", \"number\": 43, \"title\": \"Unrelated\", \"body\": \"Another account\", \"state\": \"open\", \"state_reason\": null, \"html_url\": \"https://github.com/octocat/hello-world/issues/43\", \"user\": {\"login\": \"hubot\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [{\"login\": \"hubot\", \"id\": 2}], \"comments\": 0, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-07T10:15:00Z\", \"closed_at\": null}, {\"id\": 2876543242, \"node_id\": \"I_kwDOAbCdEs6rdm42\", \"number\": 42, \"title\": \"Crash when saving an empty draft\", \"body\": \"Steps to reproduce:\\n1. Open a new draft.\\n2. Save it.\\n\\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e\", \"state\": \"open\", \"state_reason\": null, \"html_url\": \"https://github.com/octocat/hello-world/issues/42\", \"user\": {\"login\": \"octocat\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [{\"login\": \"hubot\", \"id\": 2}], \"comments\": 0, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-07T10:15:00Z\", \"closed_at\": null}]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "creator": [
+              "octocat"
+            ],
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "assignees": [
+            "hubot"
+          ],
+          "createdAt": "2026-03-07T10:15:00Z",
+          "id": 2876543242,
+          "labels": [
+            "bug"
+          ],
+          "nodeId": "I_kwDOAbCdEs6rdm42",
+          "number": 42,
+          "owner": "octocat",
+          "repository": "hello-world",
+          "state": "open",
+          "title": "Crash when saving an empty draft",
+          "url": "https://github.com/octocat/hello-world/issues/42"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-502-read-back-found",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"login\": \"octocat\", \"id\": 583231}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "creator": [
+              "octocat"
+            ],
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-after-send-read-back-missing",
+      "operation": "createIssue"
+    },
+    {
+      "attempts": 2,
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"login\": \"octocat\", \"id\": 583231}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "creator": [
+              "octocat"
+            ],
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"login\": \"octocat\", \"id\": 583231}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "creator": [
+              "octocat"
+            ],
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": 2876543242, \"node_id\": \"I_kwDOAbCdEs6rdm42\", \"number\": 42, \"title\": \"Crash when saving an empty draft\", \"body\": \"Steps to reproduce:\\n1. Open a new draft.\\n2. Save it.\\n\\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e\", \"state\": \"open\", \"state_reason\": null, \"html_url\": \"https://github.com/octocat/hello-world/issues/42\", \"user\": {\"login\": \"octocat\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [{\"login\": \"hubot\", \"id\": 2}], \"comments\": 0, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-07T10:15:00Z\", \"closed_at\": null}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "providerId": "42",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "assignees": [
+            "hubot"
+          ],
+          "createdAt": "2026-03-07T10:15:00Z",
+          "id": 2876543242,
+          "labels": [
+            "bug"
+          ],
+          "nodeId": "I_kwDOAbCdEs6rdm42",
+          "number": 42,
+          "owner": "octocat",
+          "repository": "hello-world",
+          "state": "open",
+          "title": "Crash when saving an empty draft",
+          "url": "https://github.com/octocat/hello-world/issues/42"
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createIssue-resend-after-read-back",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "{\"id\": 2876543242, \"node_id\": \"I_kwDOAbCdEs6rdm42\", \"number\": 42, \"title\": \"Crash when saving an empty draft\", \"body\": \"Steps to reproduce:\\n1. Open a new draft.\\n2. Save it.\\n\\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e\", \"state\": \"open\", \"state_reason\": null, \"html_url\": \"https://github.com/octocat/hello-world/issues/42\", \"user\": {\"login\": \"octocat\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [{\"login\": \"hubot\", \"id\": 2}], \"comments\": 0, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-07T10:15:00Z\", \"closed_at\": null}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "assignees": [
+            "hubot"
+          ],
+          "createdAt": "2026-03-07T10:15:00Z",
+          "id": 2876543242,
+          "labels": [
+            "bug"
+          ],
+          "nodeId": "I_kwDOAbCdEs6rdm42",
+          "number": 42,
+          "owner": "octocat",
+          "repository": "hello-world",
+          "state": "open",
+          "title": "Crash when saving an empty draft",
+          "url": "https://github.com/octocat/hello-world/issues/42"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-saved-number-read-back",
+      "operation": "createIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "providerId": "42",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "{\"login\": \"octocat\", \"id\": 583231}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/issues",
+          "query": {
+            "creator": [
+              "octocat"
+            ],
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "30"
+            ],
+            "sort": [
+              "created"
+            ],
+            "state": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "owner": "octocat",
+          "repository": "hello-world",
+          "title": "Crash when saving an empty draft"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-uncertain",
+      "operation": "createIssue",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "state": "notSent"
+        },
+        "output": {
+          "owner": "octocat",
+          "repository": "hello-world",
+          "title": "Crash when saving an empty draft"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-insufficient-scope-public-method",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Repository was archived so is read-only.\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "owner": "octocat",
+          "repository": "hello-world",
+          "title": "Crash when saving an empty draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-insufficient-scope",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Bad credentials\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "owner": "octocat",
+          "repository": "hello-world",
+          "title": "Crash when saving an empty draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-authorization-revoked",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Not Found\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "owner": "octocat",
+          "repository": "hello-world",
+          "title": "Crash when saving an empty draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-not-found",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Validation Failed\",\"errors\":[{\"resource\":\"Issue\",\"field\":\"assignees\",\"code\":\"invalid\"}]}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/repos/octocat/hello-world/issues",
+          "requestBody": {
+            "assignees": [
+              "hubot"
+            ],
+            "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.\n\n\u003c!-- dex-connector-call: 56fd1cabcca66f3675335077d870dc199a98cd1bb76591c150f584fe24d8306a --\u003e",
+            "labels": [
+              "bug"
+            ],
+            "title": "Crash when saving an empty draft"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "owner": "octocat",
+          "repository": "hello-world",
+          "title": "Crash when saving an empty draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "assignees": [
+          "hubot"
+        ],
+        "body": "Steps to reproduce:\n1. Open a new draft.\n2. Save it.",
+        "labels": [
+          "bug"
+        ],
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": "Crash when saving an empty draft"
+      },
+      "name": "createIssue-provider-rejected",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "owner": "octocat",
+          "repository": "hello-world",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8f014eab-9116-5e00-9eb0-008374ce7d9e",
+      "input": {
+        "owner": "octocat",
+        "repository": "hello-world",
+        "title": " "
+      },
+      "name": "createIssue-defect",
+      "operation": "createIssue"
     }
   ],
   "schemaVersion": 1

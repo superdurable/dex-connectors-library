@@ -327,6 +327,27 @@ class NativeWireExemptionTest(unittest.TestCase):
             self.assertEqual(connector_conformance.email_ci_matrix(["conformance/exemptions.yaml"]), [])
 
 
+class ApplicableMutationRunnersTest(unittest.TestCase):
+    """Run a mutation only through runners that implement its scenario's operation."""
+
+    commands = {"go": (["go"], Path("go")), "python": (["pytest"], Path(".")), "typescript": (["vitest"], Path("ts"))}
+    implemented = {"go": frozenset({"readItem", "createItem"}), "python": frozenset({"readItem"}),
+                   "typescript": frozenset({"readItem"})}
+
+    def runners(self, mutation: str, operation: str) -> list[str]:
+        return sorted(connector_conformance.applicable_mutation_runners(self.commands, self.implemented, mutation, operation))
+
+    def test_every_runner_of_an_implemented_operation_must_fail(self) -> None:
+        self.assertEqual(self.runners("random-idempotency-key", "readItem"), ["go", "python", "typescript"])
+
+    def test_go_only_operation_selects_only_go(self) -> None:
+        self.assertEqual(self.runners("random-idempotency-key", "createItem"), ["go"])
+
+    def test_port_only_mutation_skips_go(self) -> None:
+        self.assertEqual(self.runners("extra-heartbeat", "readItem"), ["python", "typescript"])
+        self.assertEqual(self.runners("extra-heartbeat", "createItem"), [])
+
+
 class CoverageValidationTest(unittest.TestCase):
     def test_optional_clock_requires_rfc3339_timestamp(self) -> None:
         cases = json.loads((Path(__file__).resolve().parents[1] / "conformance/runners/clock_cases.json").read_text())

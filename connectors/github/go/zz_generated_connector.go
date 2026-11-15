@@ -31,6 +31,7 @@ type Config struct {
 }
 
 type Credentials struct {
+	AuthMethodID      string
 	OAuthClientID     string
 	OAuthClientSecret sdkgo.SecretString
 	AccessToken       sdkgo.SecretString
@@ -55,6 +56,8 @@ type Operations interface {
 	ListPullRequestFiles() sdkgo.Query[ListPullRequestFilesInput, PullRequestFilePage]
 	ListReleases() sdkgo.Query[ListReleasesInput, ReleasePage]
 	ListCommits() sdkgo.Query[ListCommitsInput, CommitPage]
+	ListIssues() sdkgo.Query[ListIssuesInput, IssuePage]
+	CreateIssue() sdkgo.Mutation[CreateIssueInput, CreatedIssue]
 }
 
 type clientOperations struct{ client *Client }
@@ -76,6 +79,12 @@ func (operations clientOperations) ListReleases() sdkgo.Query[ListReleasesInput,
 }
 func (operations clientOperations) ListCommits() sdkgo.Query[ListCommitsInput, CommitPage] {
 	return operations.client.ListCommits()
+}
+func (operations clientOperations) ListIssues() sdkgo.Query[ListIssuesInput, IssuePage] {
+	return operations.client.ListIssues()
+}
+func (operations clientOperations) CreateIssue() sdkgo.Mutation[CreateIssueInput, CreatedIssue] {
+	return operations.client.CreateIssue()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -152,6 +161,7 @@ func (credentials *Credentials) UnmarshalSharedCredential(contents []byte) error
 
 func decodeCredentialFields(contents json.RawMessage) (Credentials, error) {
 	var fields struct {
+		AuthMethodID      string `json:"auth_method"`
 		OAuthClientID     string `json:"oauth_client_id"`
 		OAuthClientSecret string `json:"oauth_client_secret"`
 		AccessToken       string `json:"access_token"`
@@ -160,7 +170,12 @@ func decodeCredentialFields(contents json.RawMessage) (Credentials, error) {
 	if err := projectconfig.DecodeCredentials(contents, &fields); err != nil {
 		return Credentials{}, err
 	}
+	// Credentials saved before the connector declared auth methods carry no auth_method; they use the default method.
+	if fields.AuthMethodID == "" {
+		fields.AuthMethodID = "github-oauth"
+	}
 	credentials := Credentials{
+		AuthMethodID:      fields.AuthMethodID,
 		OAuthClientID:     fields.OAuthClientID,
 		OAuthClientSecret: sdkgo.NewSecretString(fields.OAuthClientSecret),
 		AccessToken:       sdkgo.NewSecretString(fields.AccessToken),
@@ -171,11 +186,13 @@ func decodeCredentialFields(contents json.RawMessage) (Credentials, error) {
 
 func encodeCredentials(credentials Credentials) (json.RawMessage, error) {
 	fields := struct {
+		AuthMethodID      string `json:"auth_method"`
 		OAuthClientID     string `json:"oauth_client_id,omitempty"`
 		OAuthClientSecret string `json:"oauth_client_secret,omitempty"`
 		AccessToken       string `json:"access_token,omitempty"`
 		RefreshToken      string `json:"refresh_token,omitempty"`
 	}{
+		AuthMethodID:      credentials.AuthMethodID,
 		OAuthClientID:     credentials.OAuthClientID,
 		OAuthClientSecret: credentials.OAuthClientSecret.Reveal(),
 		AccessToken:       credentials.AccessToken.Reveal(),
@@ -291,25 +308,52 @@ func (config Config) Validate() error {
 }
 
 func (credentials Credentials) Validate() error {
-	if credentials.OAuthClientID == "" {
-		return fmt.Errorf("credential oauth_client_id is required")
-	}
-	if credentials.OAuthClientSecret.Reveal() == "" {
-		return fmt.Errorf("credential oauth_client_secret is required")
-	}
-	if credentials.AccessToken.Reveal() == "" {
-		return fmt.Errorf("credential access_token is required")
+	switch credentials.AuthMethodID {
+	case "github-oauth":
+		if credentials.OAuthClientID == "" {
+			return fmt.Errorf("credential oauth_client_id is required")
+		}
+		if credentials.OAuthClientSecret.Reveal() == "" {
+			return fmt.Errorf("credential oauth_client_secret is required")
+		}
+		if credentials.AccessToken.Reveal() == "" {
+			return fmt.Errorf("credential access_token is required")
+		}
+	case "github-oauth-repository":
+		if credentials.OAuthClientID == "" {
+			return fmt.Errorf("credential oauth_client_id is required")
+		}
+		if credentials.OAuthClientSecret.Reveal() == "" {
+			return fmt.Errorf("credential oauth_client_secret is required")
+		}
+		if credentials.AccessToken.Reveal() == "" {
+			return fmt.Errorf("credential access_token is required")
+		}
+	default:
+		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
 }
 
 // validateSharedCredential is Validate without the host-kept fields; it requires the access token a host mints.
 func (credentials Credentials) validateSharedCredential() error {
-	if credentials.OAuthClientID == "" {
-		return fmt.Errorf("credential oauth_client_id is required")
-	}
-	if credentials.AccessToken.Reveal() == "" {
-		return fmt.Errorf("credential access_token is required")
+	switch credentials.AuthMethodID {
+	case "github-oauth":
+		if credentials.OAuthClientID == "" {
+			return fmt.Errorf("credential oauth_client_id is required")
+		}
+		if credentials.AccessToken.Reveal() == "" {
+			return fmt.Errorf("credential access_token is required")
+		}
+	case "github-oauth-repository":
+		if credentials.OAuthClientID == "" {
+			return fmt.Errorf("credential oauth_client_id is required")
+		}
+		if credentials.AccessToken.Reveal() == "" {
+			return fmt.Errorf("credential access_token is required")
+		}
+	default:
+		return fmt.Errorf("credential auth_method is invalid")
 	}
 	return nil
 }
@@ -851,5 +895,188 @@ func NewListCommitsStep[IN any](config ListCommitsStepConfig[IN]) sdkgo.QuerySte
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListIssuesBranchListed sdkgo.BranchID = "listed"
+const ListIssuesBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const ListIssuesBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const ListIssuesBranchNotFound sdkgo.BranchID = "notFound"
+const ListIssuesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListIssuesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListIssuesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListIssuesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listIssues"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListIssuesBranchListed, Description: "One bounded page of issues was loaded, possibly empty."},
+		{ID: ListIssuesBranchInsufficientScope, Description: "The OAuth grant does not match the scopes of the connection's authorization method.", Optional: true},
+		{ID: ListIssuesBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked.", Optional: true},
+		{ID: ListIssuesBranchNotFound, Description: "The repository was not found or the connection cannot read it, such as a private repository on a github-oauth connection.", Optional: true},
+		{ID: ListIssuesBranchProviderRejected, Description: "GitHub conclusively rejected the issue query, such as a repository with issues disabled.", Optional: true},
+		{ID: ListIssuesBranchInvalidResponse, Description: "GitHub returned an invalid or oversized issue response.", Optional: true},
+		{ID: ListIssuesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListIssuesResult = sdkgo.QueryResult[IssuePage]
+
+type ListIssuesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=github"`
+	operationID                    struct{}                                     `connector:"operationId=listIssues"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListIssuesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListIssuesResult]               `connector:"branch=listed"`
+	InsufficientScope              sdkgo.Target[ListIssuesResult]               `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked           sdkgo.Target[ListIssuesResult]               `connector:"branch=authorizationRevoked,optional"`
+	NotFound                       sdkgo.Target[ListIssuesResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListIssuesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListIssuesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListIssuesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[IssuePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListIssuesStep[IN any](config ListIssuesStepConfig[IN]) sdkgo.QueryStep[IN, ListIssuesInput, IssuePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListIssuesInput, IssuePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListIssues(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListIssuesResult] {
+			branches := make([]sdkgo.BranchTarget[ListIssuesResult], 0, 7)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListIssuesBranchListed))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(ListIssuesBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(ListIssuesBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListIssuesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListIssuesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListIssuesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListIssuesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateIssueBranchCreated sdkgo.BranchID = "created"
+const CreateIssueBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const CreateIssueBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const CreateIssueBranchNotFound sdkgo.BranchID = "notFound"
+const CreateIssueBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateIssueBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateIssueBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateIssueDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createIssue"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateIssueBranchCreated, Description: "GitHub created the issue, or an earlier attempt of this Step already had and read-back found it."},
+		{ID: CreateIssueBranchInsufficientScope, Description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; nothing was created.", Optional: true},
+		{ID: CreateIssueBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked; nothing was created.", Optional: true},
+		{ID: CreateIssueBranchNotFound, Description: "The repository was not found or the connection cannot reach it; nothing was created.", Optional: true},
+		{ID: CreateIssueBranchProviderRejected, Description: "GitHub conclusively rejected the issue, such as a repository with issues disabled or an invalid assignee; nothing was created.", Optional: true},
+		{ID: CreateIssueBranchUncertain, Description: "The issue may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested repository and title for reconciliation.", Optional: true},
+		{ID: CreateIssueBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateIssueResult = sdkgo.MutationResult[CreatedIssue]
+
+type CreateIssueStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=github"`
+	operationID                       struct{}                                           `connector:"operationId=createIssue"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateIssueInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateIssueResult]                    `connector:"branch=created"`
+	InsufficientScope                 sdkgo.Target[CreateIssueResult]                    `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked              sdkgo.Target[CreateIssueResult]                    `connector:"branch=authorizationRevoked,optional"`
+	NotFound                          sdkgo.Target[CreateIssueResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateIssueResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateIssueResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateIssueResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedIssue]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateIssueStep[IN any](config CreateIssueStepConfig[IN]) sdkgo.MutationStep[IN, CreateIssueInput, CreatedIssue] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateIssueInput, CreatedIssue]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateIssue(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateIssueResult] {
+			branches := make([]sdkgo.BranchTarget[CreateIssueResult], 0, 7)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateIssueBranchCreated))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(CreateIssueBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(CreateIssueBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateIssueBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateIssueBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateIssueBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateIssueBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

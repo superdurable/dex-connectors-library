@@ -77,6 +77,8 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
+  /** Selected authorization method. */
+  authMethodId?: string;
   /** Secret GitHub OAuth access token produced automatically after authorization and refreshed before expiry when GitHub returns expiration metadata; do not copy or enter a personal access token here. */
   accessToken: SecretString;
   /** Non-secret OAuth App client ID copied from https://github.com/settings/developers after opening OAuth Apps > the selected app; blank means authorization and refresh cannot start. */
@@ -87,44 +89,73 @@ export interface Credentials {
   refreshToken?: SecretString;
 }
 
-/** Decode private credential fields for the connector. */
+/** Decode private credential fields for the selected authorization method. */
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set<string>(["access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
   if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
   if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
-  const credentials = {} as Credentials;
-  if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
-  credentials.oauthClientId = (fields["oauth_client_id"] ?? '') as string;
-  if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
-  credentials.oauthClientSecret = new SecretString((fields["oauth_client_secret"] ?? '') as string);
-  if (!fields["access_token"]) throw new TypeError("credential access_token is required");
-  credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
-  credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  const selectedMethod = fields['auth_method'] ?? '';
+  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  const method = selectedMethod || "github-oauth";
+  const credentials = { authMethodId: method } as Credentials;
+  if (method === "github-oauth") {
+    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
+    if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
+    if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  } else if (method === "github-oauth-repository") {
+    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
+    if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
+    if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  } else {
+    throw new TypeError('credential auth_method is invalid');
+  }
   return credentials;
 }
 
-/** Decode shared credential fields for the connector. */
+/** Decode shared credential fields for the selected authorization method. */
 export function decodeSharedCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set<string>(["access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "oauth_client_id", "oauth_client_secret", "refresh_token"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
   if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
   if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
-  const credentials = {} as Credentials;
-  if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
-  credentials.oauthClientId = (fields["oauth_client_id"] ?? '') as string;
-  credentials.oauthClientSecret = new SecretString((fields["oauth_client_secret"] ?? '') as string);
-  if (!fields["access_token"]) throw new TypeError("credential access_token is required");
-  credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
-  credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  const selectedMethod = fields['auth_method'] ?? '';
+  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  const method = selectedMethod || "github-oauth";
+  const credentials = { authMethodId: method } as Credentials;
+  if (method === "github-oauth") {
+    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
+    if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  } else if (method === "github-oauth-repository") {
+    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
+    if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.refreshToken = new SecretString((fields["refresh_token"] ?? '') as string);
+  } else {
+    throw new TypeError('credential auth_method is invalid');
+  }
   return credentials;
 }
 

@@ -8,7 +8,12 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { GitHubClient } from '../src/client.js';
 import type { Credentials, GetAuthenticatedProfileInput, ListPublicRepositoriesInput, ListMergedPullRequestsInput, ListPullRequestFilesInput, ListReleasesInput, ListCommitsInput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/github/scenarios.json', import.meta.url));
+// listIssues and createIssue are Go only; replay just the operations this package implements.
+const typescriptOperations = new Set([
+  'getAuthenticatedProfile', 'listPublicRepositories', 'listMergedPullRequests', 'listPullRequestFiles', 'listReleases', 'listCommits',
+]);
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/github/scenarios.json', import.meta.url))
+  .filter(scenario => typescriptOperations.has(scenario.operation));
 const connection = { provider: 'github', name: 'signup' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGitHub));

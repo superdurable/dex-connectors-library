@@ -53,7 +53,12 @@ def test_provider_time_rejects_unrepresentable_nanoseconds() -> None:
 def test_reject_non_loopback_plain_http() -> None:
     """Reject an insecure provider endpoint before constructing transport."""
     connection = ConnectionRef("github", "github")
-    credentials = Credentials("client", SecretString("secret"), SecretString("token"), SecretString(""))
+    credentials = Credentials(
+        oauth_client_id="client",
+        oauth_client_secret=SecretString("secret"),
+        access_token=SecretString("token"),
+        refresh_token=SecretString(""),
+    )
     with pytest.raises(ValueError, match="HTTPS or loopback"):
         Client(Config(base_url="http://api.github.com"), StaticCredentialProvider({connection: credentials}))
 
@@ -62,7 +67,12 @@ def test_reject_non_loopback_plain_http() -> None:
 async def test_request_uses_configured_timeout() -> None:
     """Honor the manifest timeout even with an injected HTTP client."""
     connection = ConnectionRef("github", "github")
-    credentials = Credentials("client", SecretString("secret"), SecretString("token"), SecretString(""))
+    credentials = Credentials(
+        oauth_client_id="client",
+        oauth_client_secret=SecretString("secret"),
+        access_token=SecretString("token"),
+        refresh_token=SecretString(""),
+    )
     observed: list[float] = []
 
     def answer(request: httpx.Request) -> httpx.Response:

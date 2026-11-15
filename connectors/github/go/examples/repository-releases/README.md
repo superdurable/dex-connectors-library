@@ -58,7 +58,7 @@ settings or new form fields. Credentials remain in the private configuration
 store and are resolved by the official adapter on each actual call.
 
 For a strict definition, copy this Flow into a clean consumer module requiring
-`github.com/superdurable/dex-connectors-library/connectors/github/go@v0.24.0`, run
+`github.com/superdurable/dex-connectors-library/connectors/github/go@v0.25.0`, run
 `go mod tidy`, then:
 
 ```sh

@@ -24,6 +24,8 @@ type Mock struct {
 	listPullRequestFiles    *connectormock.Query[github.ListPullRequestFilesInput, github.PullRequestFilePage]
 	listReleases            *connectormock.Query[github.ListReleasesInput, github.ReleasePage]
 	listCommits             *connectormock.Query[github.ListCommitsInput, github.CommitPage]
+	listIssues              *connectormock.Query[github.ListIssuesInput, github.IssuePage]
+	createIssue             *connectormock.Mutation[github.CreateIssueInput, github.CreatedIssue]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -37,6 +39,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		listPullRequestFiles:    connectormock.NewQuery[github.ListPullRequestFilesInput, github.PullRequestFilePage](t, github.ListPullRequestFilesDefinition),
 		listReleases:            connectormock.NewQuery[github.ListReleasesInput, github.ReleasePage](t, github.ListReleasesDefinition),
 		listCommits:             connectormock.NewQuery[github.ListCommitsInput, github.CommitPage](t, github.ListCommitsDefinition),
+		listIssues:              connectormock.NewQuery[github.ListIssuesInput, github.IssuePage](t, github.ListIssuesDefinition),
+		createIssue:             connectormock.NewMutation[github.CreateIssueInput, github.CreatedIssue](t, github.CreateIssueDefinition),
 	}
 	mock.getAuthenticatedProfile.Default(GetAuthenticatedProfileDefault())
 	mock.listPublicRepositories.Default(ListPublicRepositoriesDefault())
@@ -44,6 +48,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listPullRequestFiles.Default(ListPullRequestFilesDefault())
 	mock.listReleases.Default(ListReleasesDefault())
 	mock.listCommits.Default(ListCommitsDefault())
+	mock.listIssues.Default(ListIssuesDefault())
+	mock.createIssue.Default(CreateIssueDefault())
 	connection, err := github.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "github", Name: connectionName})
 	if err != nil {
 		t.Fatalf("github mock connection: %v", err)
@@ -85,6 +91,16 @@ func (mock *Mock) ListCommits() *connectormock.Query[github.ListCommitsInput, gi
 	return mock.listCommits
 }
 
+// ListIssues returns the listIssues script.
+func (mock *Mock) ListIssues() *connectormock.Query[github.ListIssuesInput, github.IssuePage] {
+	return mock.listIssues
+}
+
+// CreateIssue returns the createIssue script.
+func (mock *Mock) CreateIssue() *connectormock.Mutation[github.CreateIssueInput, github.CreatedIssue] {
+	return mock.createIssue
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetAuthenticatedProfile() sdkgo.Query[github.GetAuthenticatedProfileInput, github.AuthenticatedProfile] {
@@ -104,6 +120,12 @@ func (operations mockOperations) ListReleases() sdkgo.Query[github.ListReleasesI
 }
 func (operations mockOperations) ListCommits() sdkgo.Query[github.ListCommitsInput, github.CommitPage] {
 	return operations.mock.listCommits
+}
+func (operations mockOperations) ListIssues() sdkgo.Query[github.ListIssuesInput, github.IssuePage] {
+	return operations.mock.listIssues
+}
+func (operations mockOperations) CreateIssue() sdkgo.Mutation[github.CreateIssueInput, github.CreatedIssue] {
+	return operations.mock.createIssue
 }
 
 // GetAuthenticatedProfileProfileLoaded selects the profileLoaded branch: The authenticated profile and primary verified email were loaded.
@@ -717,4 +739,199 @@ func ListCommitsDefectFailure() connectormock.Case[github.CommitPage] {
 // ListCommitsDefault is the manifest default, threePagesNewestFirst, which New installs.
 func ListCommitsDefault() connectormock.Case[github.CommitPage] {
 	return ListCommitsThreePagesNewestFirst()
+}
+
+// ListIssuesListed selects the listed branch: One bounded page of issues was loaded, possibly empty.
+func ListIssuesListed(value github.IssuePage, failure *sdkgo.Failure) connectormock.Case[github.IssuePage] {
+	return connectormock.Branch(github.ListIssuesBranchListed, value, failure)
+}
+
+// ListIssuesInsufficientScope selects the insufficientScope branch: The OAuth grant does not match the scopes of the connection's authorization method.
+func ListIssuesInsufficientScope(value github.IssuePage, failure *sdkgo.Failure) connectormock.Case[github.IssuePage] {
+	return connectormock.Branch(github.ListIssuesBranchInsufficientScope, value, failure)
+}
+
+// ListIssuesAuthorizationRevoked selects the authorizationRevoked branch: The OAuth grant is invalid or revoked.
+func ListIssuesAuthorizationRevoked(value github.IssuePage, failure *sdkgo.Failure) connectormock.Case[github.IssuePage] {
+	return connectormock.Branch(github.ListIssuesBranchAuthorizationRevoked, value, failure)
+}
+
+// ListIssuesNotFound selects the notFound branch: The repository was not found or the connection cannot read it, such as a private repository on a github-oauth connection.
+func ListIssuesNotFound(value github.IssuePage, failure *sdkgo.Failure) connectormock.Case[github.IssuePage] {
+	return connectormock.Branch(github.ListIssuesBranchNotFound, value, failure)
+}
+
+// ListIssuesProviderRejected selects the providerRejected branch: GitHub conclusively rejected the issue query, such as a repository with issues disabled.
+func ListIssuesProviderRejected(value github.IssuePage, failure *sdkgo.Failure) connectormock.Case[github.IssuePage] {
+	return connectormock.Branch(github.ListIssuesBranchProviderRejected, value, failure)
+}
+
+// ListIssuesInvalidResponse selects the invalidResponse branch: GitHub returned an invalid or oversized issue response.
+func ListIssuesInvalidResponse(value github.IssuePage, failure *sdkgo.Failure) connectormock.Case[github.IssuePage] {
+	return connectormock.Branch(github.ListIssuesBranchInvalidResponse, value, failure)
+}
+
+// ListIssuesDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func ListIssuesDefect(value github.IssuePage, failure *sdkgo.Failure) connectormock.Case[github.IssuePage] {
+	return connectormock.Branch(github.ListIssuesBranchDefect, value, failure)
+}
+
+// ListIssuesRetry asks Dex to retry the listIssues Step, after the delay when it is positive.
+func ListIssuesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[github.IssuePage] {
+	return connectormock.Retry[github.IssuePage](failure, after)
+}
+
+// ListIssuesThreePagesNewestFirst is the manifest mock threePagesNewestFirst: Three pages of open and closed issues newest created first, with an issue repeated across a page boundary as a new issue shifts the pages, a truncated body, and an issue without labels or assignees.
+func ListIssuesThreePagesNewestFirst() connectormock.Case[github.IssuePage] {
+	pages := []github.IssuePage{
+		connectormock.MustDecodeOutput[github.IssuePage](`{"issues":[{"number":12,"nodeId":"I_kwDOAbCdEs4AAAAM","title":"Crash when saving an empty draft","body":"Steps to reproduce: open a new draft and save it.","bodyTruncated":false,"state":"open","url":"https://github.com/octocat/hello-world/issues/12","authorLogin":"octocat","labels":["bug","needs-triage"],"assignees":["hubot"],"comments":2,"createdAt":"2026-03-06T10:00:00Z","updatedAt":"2026-03-06T11:30:00Z"},{"number":11,"nodeId":"I_kwDOAbCdEs4AAAAL","title":"Document the export format","bodyTruncated":false,"state":"open","url":"https://github.com/octocat/hello-world/issues/11","authorLogin":"hubot","labels":["docs"],"comments":0,"createdAt":"2026-03-05T09:00:00Z","updatedAt":"2026-03-05T09:00:00Z"}],"nextPage":2}`),
+		connectormock.MustDecodeOutput[github.IssuePage](`{"issues":[{"number":11,"nodeId":"I_kwDOAbCdEs4AAAAL","title":"Document the export format","bodyTruncated":false,"state":"open","url":"https://github.com/octocat/hello-world/issues/11","authorLogin":"hubot","labels":["docs"],"comments":0,"createdAt":"2026-03-05T09:00:00Z","updatedAt":"2026-03-05T09:00:00Z"},{"number":9,"nodeId":"I_kwDOAbCdEs4AAAAJ","title":"Slow startup on large projects","body":"A long profile of the startup path","bodyTruncated":true,"state":"closed","stateReason":"completed","url":"https://github.com/octocat/hello-world/issues/9","authorLogin":"octocat","labels":["bug","performance"],"comments":7,"createdAt":"2026-03-01T08:00:00Z","updatedAt":"2026-03-04T16:00:00Z","closedAt":"2026-03-04T16:00:00Z"}],"nextPage":3}`),
+		connectormock.MustDecodeOutput[github.IssuePage](`{"issues":[{"number":3,"nodeId":"I_kwDOAbCdEs4AAAAD","title":"Add a dark theme","bodyTruncated":false,"state":"closed","stateReason":"not_planned","url":"https://github.com/octocat/hello-world/issues/3","authorLogin":"octocat","comments":1,"createdAt":"2026-02-10T12:00:00Z","updatedAt":"2026-02-12T12:00:00Z","closedAt":"2026-02-12T12:00:00Z"}],"nextPage":0}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[github.ListIssuesInput]("page", "nextPage", pages)
+	return connectormock.Paged(github.ListIssuesBranchListed, pageNumber, pages...)
+}
+
+// ListIssuesNoIssues is the manifest mock noIssues: No issue matches the filters.
+func ListIssuesNoIssues() connectormock.Case[github.IssuePage] {
+	value := connectormock.MustDecodeOutput[github.IssuePage](`{"issues":[],"nextPage":0}`)
+	return connectormock.Branch(github.ListIssuesBranchListed, value, nil)
+}
+
+// ListIssuesRateLimited is the manifest mock rateLimited: GitHub's rate limit throttles the listing once.
+func ListIssuesRateLimited() connectormock.Case[github.IssuePage] {
+	return connectormock.Retry[github.IssuePage](sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "GitHub rate limit was reached."}, time.Duration(1000000000))
+}
+
+// ListIssuesInsufficientScopeFailure is the manifest mock insufficientScopeFailure: The OAuth grant does not match the scopes of the connection's authorization method.
+func ListIssuesInsufficientScopeFailure() connectormock.Case[github.IssuePage] {
+	var value github.IssuePage
+	return connectormock.Branch(github.ListIssuesBranchInsufficientScope, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "The OAuth grant does not match the scopes of the connection's authorization method."})
+}
+
+// ListIssuesAuthorizationRevokedFailure is the manifest mock authorizationRevokedFailure: The OAuth grant is invalid or revoked.
+func ListIssuesAuthorizationRevokedFailure() connectormock.Case[github.IssuePage] {
+	var value github.IssuePage
+	return connectormock.Branch(github.ListIssuesBranchAuthorizationRevoked, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "The OAuth grant is invalid or revoked."})
+}
+
+// ListIssuesNotFoundFailure is the manifest mock notFoundFailure: The repository was not found or the connection cannot read it.
+func ListIssuesNotFoundFailure() connectormock.Case[github.IssuePage] {
+	var value github.IssuePage
+	return connectormock.Branch(github.ListIssuesBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The repository was not found or the connection cannot read it."})
+}
+
+// ListIssuesProviderRejectedFailure is the manifest mock providerRejectedFailure: GitHub conclusively rejected the issue query.
+func ListIssuesProviderRejectedFailure() connectormock.Case[github.IssuePage] {
+	var value github.IssuePage
+	return connectormock.Branch(github.ListIssuesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "GitHub conclusively rejected the issue query."})
+}
+
+// ListIssuesInvalidResponseFailure is the manifest mock invalidResponseFailure: GitHub returned an invalid or oversized issue response.
+func ListIssuesInvalidResponseFailure() connectormock.Case[github.IssuePage] {
+	var value github.IssuePage
+	return connectormock.Branch(github.ListIssuesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "GitHub returned an invalid or oversized issue response."})
+}
+
+// ListIssuesDefectFailure is the manifest mock defectFailure: Local input, connection configuration, or connector definition is invalid.
+func ListIssuesDefectFailure() connectormock.Case[github.IssuePage] {
+	var value github.IssuePage
+	return connectormock.Branch(github.ListIssuesBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Local input, connection configuration, or connector definition is invalid."})
+}
+
+// ListIssuesDefault is the manifest default, threePagesNewestFirst, which New installs.
+func ListIssuesDefault() connectormock.Case[github.IssuePage] {
+	return ListIssuesThreePagesNewestFirst()
+}
+
+// CreateIssueCreated selects the created branch: GitHub created the issue, or an earlier attempt of this Step already had and read-back found it.
+func CreateIssueCreated(value github.CreatedIssue, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssue] {
+	return connectormock.Branch(github.CreateIssueBranchCreated, value, failure)
+}
+
+// CreateIssueInsufficientScope selects the insufficientScope branch: The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; nothing was created.
+func CreateIssueInsufficientScope(value github.CreatedIssue, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssue] {
+	return connectormock.Branch(github.CreateIssueBranchInsufficientScope, value, failure)
+}
+
+// CreateIssueAuthorizationRevoked selects the authorizationRevoked branch: The OAuth grant is invalid or revoked; nothing was created.
+func CreateIssueAuthorizationRevoked(value github.CreatedIssue, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssue] {
+	return connectormock.Branch(github.CreateIssueBranchAuthorizationRevoked, value, failure)
+}
+
+// CreateIssueNotFound selects the notFound branch: The repository was not found or the connection cannot reach it; nothing was created.
+func CreateIssueNotFound(value github.CreatedIssue, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssue] {
+	return connectormock.Branch(github.CreateIssueBranchNotFound, value, failure)
+}
+
+// CreateIssueProviderRejected selects the providerRejected branch: GitHub conclusively rejected the issue, such as a repository with issues disabled or an invalid assignee; nothing was created.
+func CreateIssueProviderRejected(value github.CreatedIssue, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssue] {
+	return connectormock.Branch(github.CreateIssueBranchProviderRejected, value, failure)
+}
+
+// CreateIssueUncertain returns an uncertain createIssue outcome.
+func CreateIssueUncertain(value github.CreatedIssue, failure sdkgo.Failure) connectormock.Case[github.CreatedIssue] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateIssueDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func CreateIssueDefect(value github.CreatedIssue, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssue] {
+	return connectormock.Branch(github.CreateIssueBranchDefect, value, failure)
+}
+
+// CreateIssueRetry asks Dex to retry the createIssue Step, after the delay when it is positive.
+func CreateIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[github.CreatedIssue] {
+	return connectormock.Retry[github.CreatedIssue](failure, after)
+}
+
+// CreateIssueBugReportCreated is the manifest mock bugReportCreated: GitHub creates a labeled, assigned bug report issue.
+func CreateIssueBugReportCreated() connectormock.Case[github.CreatedIssue] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft","number":42,"id":2876543210,"nodeId":"I_kwDOAbCdEs6rdmCq","url":"https://github.com/octocat/hello-world/issues/42","state":"open","createdAt":"2026-03-07T10:15:00Z","labels":["bug"],"assignees":["octocat"]}`)
+	return connectormock.Branch(github.CreateIssueBranchCreated, value, nil)
+}
+
+// CreateIssueRateLimited is the manifest mock rateLimited: GitHub's secondary rate limit refuses the write once, so it is sent again after the delay.
+func CreateIssueRateLimited() connectormock.Case[github.CreatedIssue] {
+	return connectormock.Retry[github.CreatedIssue](sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "GitHub rate limit was reached."}, time.Duration(1000000000))
+}
+
+// CreateIssueInsufficientScopeFailure is the manifest mock insufficientScopeFailure: The connection does not use the github-oauth-repository method.
+func CreateIssueInsufficientScopeFailure() connectormock.Case[github.CreatedIssue] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"}`)
+	return connectormock.Branch(github.CreateIssueBranchInsufficientScope, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "The connection does not use the github-oauth-repository method."})
+}
+
+// CreateIssueAuthorizationRevokedFailure is the manifest mock authorizationRevokedFailure: The OAuth grant is invalid or revoked.
+func CreateIssueAuthorizationRevokedFailure() connectormock.Case[github.CreatedIssue] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"}`)
+	return connectormock.Branch(github.CreateIssueBranchAuthorizationRevoked, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "The OAuth grant is invalid or revoked."})
+}
+
+// CreateIssueNotFoundFailure is the manifest mock notFoundFailure: The repository was not found or the connection cannot reach it.
+func CreateIssueNotFoundFailure() connectormock.Case[github.CreatedIssue] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"missing-repository","title":"Crash when saving an empty draft"}`)
+	return connectormock.Branch(github.CreateIssueBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The repository was not found or the connection cannot reach it."})
+}
+
+// CreateIssueIssuesDisabledRejection is the manifest mock issuesDisabledRejection: GitHub rejects the issue because the repository has issues disabled.
+func CreateIssueIssuesDisabledRejection() connectormock.Case[github.CreatedIssue] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"}`)
+	return connectormock.Branch(github.CreateIssueBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "GitHub rejected the issue with HTTP 410."})
+}
+
+// CreateIssueCreateOutcomeUnknown is the manifest mock createOutcomeUnknown: Every possible send ended without a confirmed issue, so read-back could not find the marked issue.
+func CreateIssueCreateOutcomeUnknown() connectormock.Case[github.CreatedIssue] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"}`)
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "GitHub issue creation outcome is unknown."})
+}
+
+// CreateIssueDefectFailure is the manifest mock defectFailure: The issue title is empty, so no request is sent.
+func CreateIssueDefectFailure() connectormock.Case[github.CreatedIssue] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world"}`)
+	return connectormock.Branch(github.CreateIssueBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "GitHub issue title is required."})
+}
+
+// CreateIssueDefault is the manifest default, bugReportCreated, which New installs.
+func CreateIssueDefault() connectormock.Case[github.CreatedIssue] {
+	return CreateIssueBugReportCreated()
 }

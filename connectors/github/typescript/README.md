@@ -1,8 +1,8 @@
 # GitHub Connector for TypeScript
 
-`@superdurable/connector-github` provides Dex Query operations for an authenticated profile, public repositories, merged pull requests, pull request files, releases, and commits. The generated Step factories and connection bindings use the same connector and branch IDs as the Go module.
+`@superdurable/connector-github` provides Dex Query operations for an authenticated profile, public repositories, merged pull requests, pull request files, releases, and commits. The generated Step factories and connection bindings use the same connector and branch IDs as the Go module. The Go-only `listIssues` and `createIssue` operations, and the `github-oauth-repository` authorization method they use, are not implemented in this package; its conformance test replays only the six Queries.
 
-The OAuth connection requests `read:user`, `user:email`, and `offline_access`. Dex stores the access and rotating refresh tokens in the named project connection. The package uses manifest-generated credential decoders and refresh declarations. GitHub Enterprise Server may return a non-expiring access token without refresh material.
+The OAuth connection requests `read:user`, `user:email`, and `offline_access`. Dex stores the access and rotating refresh tokens in the named project connection. The package uses manifest-generated credential decoders and refresh declarations. Decoded `Credentials` carry an optional `authMethodId`; a credential stored without a method decodes as `github-oauth`. GitHub Enterprise Server may return a non-expiring access token without refresh material.
 
 Use `newProjectConnection(project, ConnectionName)` in a Worker after loading its Dex project. The [repository releases example](examples/repository-releases/README.md) is a runnable Flow with a static connection name and a persisted release page. Its optional failure branches are intentionally unwired, so an authorization or provider rejection fails the Flow.
 

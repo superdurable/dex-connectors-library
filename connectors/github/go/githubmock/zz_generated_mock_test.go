@@ -92,6 +92,50 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[github.CommitPage](`{"commits":[],"nextPage":0}`)
 			return err
 		}},
+		{name: "listIssues/threePagesNewestFirst/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.IssuePage](`{"issues":[{"number":12,"nodeId":"I_kwDOAbCdEs4AAAAM","title":"Crash when saving an empty draft","body":"Steps to reproduce: open a new draft and save it.","bodyTruncated":false,"state":"open","url":"https://github.com/octocat/hello-world/issues/12","authorLogin":"octocat","labels":["bug","needs-triage"],"assignees":["hubot"],"comments":2,"createdAt":"2026-03-06T10:00:00Z","updatedAt":"2026-03-06T11:30:00Z"},{"number":11,"nodeId":"I_kwDOAbCdEs4AAAAL","title":"Document the export format","bodyTruncated":false,"state":"open","url":"https://github.com/octocat/hello-world/issues/11","authorLogin":"hubot","labels":["docs"],"comments":0,"createdAt":"2026-03-05T09:00:00Z","updatedAt":"2026-03-05T09:00:00Z"}],"nextPage":2}`)
+			return err
+		}},
+		{name: "listIssues/threePagesNewestFirst/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.IssuePage](`{"issues":[{"number":11,"nodeId":"I_kwDOAbCdEs4AAAAL","title":"Document the export format","bodyTruncated":false,"state":"open","url":"https://github.com/octocat/hello-world/issues/11","authorLogin":"hubot","labels":["docs"],"comments":0,"createdAt":"2026-03-05T09:00:00Z","updatedAt":"2026-03-05T09:00:00Z"},{"number":9,"nodeId":"I_kwDOAbCdEs4AAAAJ","title":"Slow startup on large projects","body":"A long profile of the startup path","bodyTruncated":true,"state":"closed","stateReason":"completed","url":"https://github.com/octocat/hello-world/issues/9","authorLogin":"octocat","labels":["bug","performance"],"comments":7,"createdAt":"2026-03-01T08:00:00Z","updatedAt":"2026-03-04T16:00:00Z","closedAt":"2026-03-04T16:00:00Z"}],"nextPage":3}`)
+			return err
+		}},
+		{name: "listIssues/threePagesNewestFirst/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.IssuePage](`{"issues":[{"number":3,"nodeId":"I_kwDOAbCdEs4AAAAD","title":"Add a dark theme","bodyTruncated":false,"state":"closed","stateReason":"not_planned","url":"https://github.com/octocat/hello-world/issues/3","authorLogin":"octocat","comments":1,"createdAt":"2026-02-10T12:00:00Z","updatedAt":"2026-02-12T12:00:00Z","closedAt":"2026-02-12T12:00:00Z"}],"nextPage":0}`)
+			return err
+		}},
+		{name: "listIssues/noIssues/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.IssuePage](`{"issues":[],"nextPage":0}`)
+			return err
+		}},
+		{name: "createIssue/bugReportCreated/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft","number":42,"id":2876543210,"nodeId":"I_kwDOAbCdEs6rdmCq","url":"https://github.com/octocat/hello-world/issues/42","state":"open","createdAt":"2026-03-07T10:15:00Z","labels":["bug"],"assignees":["octocat"]}`)
+			return err
+		}},
+		{name: "createIssue/insufficientScopeFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"}`)
+			return err
+		}},
+		{name: "createIssue/authorizationRevokedFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"}`)
+			return err
+		}},
+		{name: "createIssue/notFoundFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"missing-repository","title":"Crash when saving an empty draft"}`)
+			return err
+		}},
+		{name: "createIssue/issuesDisabledRejection/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"}`)
+			return err
+		}},
+		{name: "createIssue/createOutcomeUnknown/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world","title":"Crash when saving an empty draft"}`)
+			return err
+		}},
+		{name: "createIssue/defectFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -119,5 +163,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListCommits().Definition().Operation.OperationID != "listCommits" {
 		t.Errorf("listCommits mock has another definition")
+	}
+	if mock.ListIssues().Definition().Operation.OperationID != "listIssues" {
+		t.Errorf("listIssues mock has another definition")
+	}
+	if mock.CreateIssue().Definition().Operation.OperationID != "createIssue" {
+		t.Errorf("createIssue mock has another definition")
 	}
 }

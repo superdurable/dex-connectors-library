@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: github
   displayName: GitHub
-  description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes.
+  description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes, and list and create repository issues.
   company: GitHub
   categories: [developer-tools]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: github
   languages:
@@ -81,54 +81,112 @@ spec:
         default: 4000
   auth:
     refreshable: true
-    type: oauth2
-    connectionKind: github-oauth
-    fields:
-      - name: oauth_client_id
-        goName: OAuthClientID
-        type: string
-        description: Non-secret OAuth App client ID copied from https://github.com/settings/developers after opening OAuth Apps > the selected app; blank means authorization and refresh cannot start.
-        required: true
-      - name: oauth_client_secret
-        goName: OAuthClientSecret
-        type: secretString
-        description: Secret copied or regenerated under https://github.com/settings/developers > OAuth Apps > the selected app > Client secrets; store it only in this credential field and blank means authorization and refresh cannot start.
-        required: true
-      - name: access_token
-        goName: AccessToken
-        type: secretString
-        description: Secret GitHub OAuth access token produced automatically after authorization and refreshed before expiry when GitHub returns expiration metadata; do not copy or enter a personal access token here.
-        required: true
-      - name: refresh_token
-        goName: RefreshToken
-        type: secretString
-        description: Secret rotating refresh token returned when GitHub supports the requested offline_access capability; Dex stores each replacement atomically, and blank means the provider issued a non-expiring token or reauthorization is required after an expiring token fails.
-        required: false
-    guide:
-      startURL: https://github.com/settings/developers
-      steps:
-        - Open Settings > Developer settings > OAuth Apps and choose New OAuth App or select the existing app for this Dex connection.
-        - Set Authorization callback URL to the exact Redirect URI shown below, then register or update the OAuth app.
-        - Copy Client ID, generate a new client secret if needed, and paste both below; the client secret is sensitive.
-        - Dex requests offline_access with read:user and user:email so GitHub.com returns an eight-hour access token and rotating refresh token; GitHub Enterprise Server may instead return a non-expiring token without refresh material.
-    oauth2:
-      protocol: oauth2
-      authorizationEndpoint: https://github.com/login/oauth/authorize
-      tokenEndpoint: https://github.com/login/oauth/access_token
-      clientIDCredential: oauth_client_id
-      clientSecretCredential: oauth_client_secret
-      scopes: [read:user, user:email, offline_access]
-      credentialMappings:
-        - {credential: access_token, source: access_token}
-        - {credential: refresh_token, source: refresh_token}
-      pkce: true
-      refresh:
-        tokenExchangeTimeout: 15s
-        requiredScopes: [read:user, user:email]
-        missingExpiry: reject
-        scopeSeparators: whitespaceAndComma
-        exactScopes: true
-        terminalErrorCodes: [bad_refresh_token, incorrect_client_credentials, invalid_client, invalid_grant]
+    defaultMethod: github-oauth
+    methods:
+      - id: github-oauth
+        displayName: GitHub OAuth, public read-only
+        description: "Recommended for profile, public repository, change, release, and issue reads: requests read:user and user:email, so GitHub serves only public repository data. createIssue needs the github-oauth-repository method and selects insufficientScope on this connection without calling GitHub."
+        recommended: true
+        type: oauth2
+        connectionKind: github-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth App client ID copied from https://github.com/settings/developers after opening OAuth Apps > the selected app; blank means authorization and refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret copied or regenerated under https://github.com/settings/developers > OAuth Apps > the selected app > Client secrets; store it only in this credential field and blank means authorization and refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret GitHub OAuth access token produced automatically after authorization and refreshed before expiry when GitHub returns expiration metadata; do not copy or enter a personal access token here.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret rotating refresh token returned when GitHub supports the requested offline_access capability; Dex stores each replacement atomically, and blank means the provider issued a non-expiring token or reauthorization is required after an expiring token fails.
+            required: false
+        guide:
+          startURL: https://github.com/settings/developers
+          steps:
+            - Open Settings > Developer settings > OAuth Apps and choose New OAuth App or select the existing app for this Dex connection.
+            - Set Authorization callback URL to the exact Redirect URI shown below, then register or update the OAuth app.
+            - Copy Client ID, generate a new client secret if needed, and paste both below; the client secret is sensitive.
+            - Dex requests offline_access with read:user and user:email so GitHub.com returns an eight-hour access token and rotating refresh token; GitHub Enterprise Server may instead return a non-expiring token without refresh material.
+        oauth2:
+          protocol: oauth2
+          authorizationEndpoint: https://github.com/login/oauth/authorize
+          tokenEndpoint: https://github.com/login/oauth/access_token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [read:user, user:email, offline_access]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+          refresh:
+            tokenExchangeTimeout: 15s
+            requiredScopes: [read:user, user:email]
+            missingExpiry: reject
+            scopeSeparators: whitespaceAndComma
+            exactScopes: true
+            terminalErrorCodes: [bad_refresh_token, incorrect_client_credentials, invalid_client, invalid_grant]
+      - id: github-oauth-repository
+        displayName: GitHub OAuth, repository issues
+        description: "Required for createIssue, and for listIssues in private repositories: requests the repo scope, GitHub's only OAuth App scope that writes issues in private repositories. repo also reads and writes code and pull requests in every repository the authorizing account can reach, so authorize with an account limited to the repositories the Flows use. The profile, public repository, change, and release queries select insufficientScope on this connection; use a separate github-oauth connection for them."
+        type: oauth2
+        connectionKind: github-repository-oauth
+        fields:
+          - name: oauth_client_id
+            goName: OAuthClientID
+            type: string
+            description: Non-secret OAuth App client ID copied from https://github.com/settings/developers after opening OAuth Apps > the selected app; blank means authorization and refresh cannot start.
+            required: true
+          - name: oauth_client_secret
+            goName: OAuthClientSecret
+            type: secretString
+            description: Secret copied or regenerated under https://github.com/settings/developers > OAuth Apps > the selected app > Client secrets; store it only in this credential field and blank means authorization and refresh cannot start.
+            required: true
+          - name: access_token
+            goName: AccessToken
+            type: secretString
+            description: Secret GitHub OAuth access token produced automatically after authorization and refreshed before expiry when GitHub returns expiration metadata; do not copy or enter a personal access token here.
+            required: true
+          - name: refresh_token
+            goName: RefreshToken
+            type: secretString
+            description: Secret rotating refresh token returned when GitHub supports the requested offline_access capability; Dex stores each replacement atomically, and blank means the provider issued a non-expiring token or reauthorization is required after an expiring token fails.
+            required: false
+        guide:
+          startURL: https://github.com/settings/developers
+          steps:
+            - Open Settings > Developer settings > OAuth Apps and choose New OAuth App or select the existing app for this Dex connection.
+            - Set Authorization callback URL to the exact Redirect URI shown below, then register or update the OAuth app.
+            - Copy Client ID, generate a new client secret if needed, and paste both below; the client secret is sensitive.
+            - Dex requests offline_access with repo, which reads and writes code, issues, and pull requests in every public and private repository the authorizing account can reach; GitHub OAuth Apps have no narrower scope for private repository issues.
+            - Authorize as the account that should author the issues. When an organization restricts OAuth App access, an organization owner approves the app under the organization's Settings > Third-party Access > OAuth app policy before its private repositories are reachable.
+        oauth2:
+          protocol: oauth2
+          authorizationEndpoint: https://github.com/login/oauth/authorize
+          tokenEndpoint: https://github.com/login/oauth/access_token
+          clientIDCredential: oauth_client_id
+          clientSecretCredential: oauth_client_secret
+          scopes: [repo, offline_access]
+          credentialMappings:
+            - {credential: access_token, source: access_token}
+            - {credential: refresh_token, source: refresh_token}
+          pkce: true
+          refresh:
+            tokenExchangeTimeout: 15s
+            requiredScopes: [repo]
+            missingExpiry: reject
+            scopeSeparators: whitespaceAndComma
+            exactScopes: true
+            terminalErrorCodes: [bad_refresh_token, incorrect_client_credentials, invalid_client, invalid_grant]
   operations:
     - name: getAuthenticatedProfile
       goName: GetAuthenticatedProfile
@@ -487,3 +545,125 @@ spec:
           branch: defect
           description: "Local input, connection configuration, or connector definition is invalid."
           failure: {kind: VALIDATION, message: "Local input, connection configuration, or connector definition is invalid."}
+    - name: listIssues
+      goName: ListIssues
+      inputType: ListIssuesInput
+      outputType: IssuePage
+      kind: query
+      description: List one bounded page of a repository's issues, newest created first, filtered by state, labels, creator, and last update. GitHub's issue list reads without the search index's delay, so an issue created a moment ago is listed; pull requests are left out.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "One bounded page of issues was loaded, possibly empty."}
+        - {id: insufficientScope, goName: InsufficientScope, description: The OAuth grant does not match the scopes of the connection's authorization method., optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked., optional: true}
+        - {id: notFound, goName: NotFound, description: "The repository was not found or the connection cannot read it, such as a private repository on a github-oauth connection.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "GitHub conclusively rejected the issue query, such as a repository with issues disabled.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GitHub returned an invalid or oversized issue response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      pagination: {inputField: page, nextField: nextPage}
+      mocks:
+        - name: threePagesNewestFirst
+          branch: listed
+          description: Three pages of open and closed issues newest created first, with an issue repeated across a page boundary as a new issue shifts the pages, a truncated body, and an issue without labels or assignees.
+          default: true
+          pages:
+            - {issues: [{number: 12, nodeId: I_kwDOAbCdEs4AAAAM, title: Crash when saving an empty draft, body: "Steps to reproduce: open a new draft and save it.", bodyTruncated: false, state: open, url: "https://github.com/octocat/hello-world/issues/12", authorLogin: octocat, labels: [bug, needs-triage], assignees: [hubot], comments: 2, createdAt: "2026-03-06T10:00:00Z", updatedAt: "2026-03-06T11:30:00Z"}, {number: 11, nodeId: I_kwDOAbCdEs4AAAAL, title: Document the export format, bodyTruncated: false, state: open, url: "https://github.com/octocat/hello-world/issues/11", authorLogin: hubot, labels: [docs], comments: 0, createdAt: "2026-03-05T09:00:00Z", updatedAt: "2026-03-05T09:00:00Z"}], nextPage: 2}
+            - {issues: [{number: 11, nodeId: I_kwDOAbCdEs4AAAAL, title: Document the export format, bodyTruncated: false, state: open, url: "https://github.com/octocat/hello-world/issues/11", authorLogin: hubot, labels: [docs], comments: 0, createdAt: "2026-03-05T09:00:00Z", updatedAt: "2026-03-05T09:00:00Z"}, {number: 9, nodeId: I_kwDOAbCdEs4AAAAJ, title: Slow startup on large projects, body: A long profile of the startup path, bodyTruncated: true, state: closed, stateReason: completed, url: "https://github.com/octocat/hello-world/issues/9", authorLogin: octocat, labels: [bug, performance], comments: 7, createdAt: "2026-03-01T08:00:00Z", updatedAt: "2026-03-04T16:00:00Z", closedAt: "2026-03-04T16:00:00Z"}], nextPage: 3}
+            - {issues: [{number: 3, nodeId: I_kwDOAbCdEs4AAAAD, title: Add a dark theme, bodyTruncated: false, state: closed, stateReason: not_planned, url: "https://github.com/octocat/hello-world/issues/3", authorLogin: octocat, comments: 1, createdAt: "2026-02-10T12:00:00Z", updatedAt: "2026-02-12T12:00:00Z", closedAt: "2026-02-12T12:00:00Z"}], nextPage: 0}
+        - name: noIssues
+          branch: listed
+          description: No issue matches the filters.
+          output: {issues: [], nextPage: 0}
+        - name: rateLimited
+          description: GitHub's rate limit throttles the listing once.
+          retry: {failure: {kind: RATE_LIMIT, message: GitHub rate limit was reached.}, after: 1s}
+        - name: insufficientScopeFailure
+          branch: insufficientScope
+          description: "The OAuth grant does not match the scopes of the connection's authorization method."
+          failure: {kind: AUTHORIZATION, message: "The OAuth grant does not match the scopes of the connection's authorization method."}
+        - name: authorizationRevokedFailure
+          branch: authorizationRevoked
+          description: "The OAuth grant is invalid or revoked."
+          failure: {kind: AUTHENTICATION, message: "The OAuth grant is invalid or revoked."}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The repository was not found or the connection cannot read it."
+          failure: {kind: NOT_FOUND, message: "The repository was not found or the connection cannot read it."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "GitHub conclusively rejected the issue query."
+          failure: {kind: PROVIDER_REJECTION, message: "GitHub conclusively rejected the issue query."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "GitHub returned an invalid or oversized issue response."
+          failure: {kind: PROTOCOL, message: "GitHub returned an invalid or oversized issue response."}
+        - name: defectFailure
+          branch: defect
+          description: "Local input, connection configuration, or connector definition is invalid."
+          failure: {kind: VALIDATION, message: "Local input, connection configuration, or connector definition is invalid."}
+    - name: createIssue
+      goName: CreateIssue
+      inputType: CreateIssueInput
+      outputType: CreatedIssue
+      kind: mutation
+      description: Create one issue in a public or private repository with a title, Markdown body, labels, and assignees, on a github-oauth-repository connection. GitHub has no idempotency key, so the body carries a hidden marker derived from the Call ID; after an unknown outcome a retry lists the repository's newest issues by the connection's account and returns the marked issue instead of creating another, and resends only while the send cap allows.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "GitHub created the issue, or an earlier attempt of this Step already had and read-back found it."}
+        - {id: insufficientScope, goName: InsufficientScope, description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; nothing was created.", optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked; nothing was created., optional: true}
+        - {id: notFound, goName: NotFound, description: The repository was not found or the connection cannot reach it; nothing was created., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "GitHub conclusively rejected the issue, such as a repository with issues disabled or an invalid assignee; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The issue may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested repository and title for reconciliation.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # GitHub has no idempotency key; the shared fence needs durable sync heartbeats across attempts.
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+        repeatOnUnknown: limited
+        maxSends: 3
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: bugReportCreated
+          branch: created
+          description: GitHub creates a labeled, assigned bug report issue.
+          default: true
+          output: {owner: octocat, repository: hello-world, title: Crash when saving an empty draft, number: 42, id: 2876543210, nodeId: I_kwDOAbCdEs6rdmCq, url: "https://github.com/octocat/hello-world/issues/42", state: open, createdAt: "2026-03-07T10:15:00Z", labels: [bug], assignees: [octocat]}
+        - name: rateLimited
+          description: GitHub's secondary rate limit refuses the write once, so it is sent again after the delay.
+          retry: {failure: {kind: RATE_LIMIT, message: GitHub rate limit was reached.}, after: 1s}
+        - name: insufficientScopeFailure
+          branch: insufficientScope
+          description: "The connection does not use the github-oauth-repository method."
+          output: {owner: octocat, repository: hello-world, title: Crash when saving an empty draft}
+          failure: {kind: AUTHORIZATION, message: "The connection does not use the github-oauth-repository method."}
+        - name: authorizationRevokedFailure
+          branch: authorizationRevoked
+          description: "The OAuth grant is invalid or revoked."
+          output: {owner: octocat, repository: hello-world, title: Crash when saving an empty draft}
+          failure: {kind: AUTHENTICATION, message: "The OAuth grant is invalid or revoked."}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The repository was not found or the connection cannot reach it."
+          output: {owner: octocat, repository: missing-repository, title: Crash when saving an empty draft}
+          failure: {kind: NOT_FOUND, message: "The repository was not found or the connection cannot reach it."}
+        - name: issuesDisabledRejection
+          branch: providerRejected
+          description: "GitHub rejects the issue because the repository has issues disabled."
+          output: {owner: octocat, repository: hello-world, title: Crash when saving an empty draft}
+          failure: {kind: PROVIDER_REJECTION, message: "GitHub rejected the issue with HTTP 410."}
+        - name: createOutcomeUnknown
+          description: Every possible send ended without a confirmed issue, so read-back could not find the marked issue.
+          uncertain: {output: {owner: octocat, repository: hello-world, title: Crash when saving an empty draft}, failure: {kind: AVAILABILITY, message: GitHub issue creation outcome is unknown.}}
+        - name: defectFailure
+          branch: defect
+          description: "The issue title is empty, so no request is sent."
+          output: {owner: octocat, repository: hello-world}
+          failure: {kind: VALIDATION, message: "GitHub issue title is required."}
