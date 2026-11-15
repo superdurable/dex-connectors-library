@@ -367,8 +367,18 @@ The `python/` package publishes `dex-connector-twilio-messaging` v0.1.0 with `se
 
 ## TypeScript package
 
-The first TypeScript release is `@superdurable/connector-twilio-messaging@0.1.0`.
-It implements `sendMessage` and `getMessage` with the same branch and retry
-contract as Go. See [the package README](typescript/README.md) and the
-[runnable Dex example](typescript/examples/text-message-delivery/README.md).
-Live Twilio authorization, sends, and status reads remain unverified.
+The TypeScript package `@superdurable/connector-twilio-messaging@0.2.0`
+implements `sendMessage` and `getMessage` with the same branch and retry
+contract as Go, and the `messageReceived` Trigger on the TypeScript poll
+Trigger kit (`@superdurable/connectors-sdk` 0.12.0). Its cursor documents match
+Go's byte for byte, so Go and TypeScript replicas share a binding's cursor and
+inbox. See [the package README](typescript/README.md), the
+[runnable delivery example](typescript/examples/text-message-delivery/README.md),
+and the [inbound message example](typescript/examples/message-received/README.md).
+Live Twilio authorization, sends, status reads, and Messages listing remain
+unverified.
+
+| Capability | Kind | Languages |
+| --- | --- | --- |
+| `sendMessage`, `getMessage` | Operations | Go, TypeScript, Python |
+| `messageReceived` | Trigger | Go, TypeScript |

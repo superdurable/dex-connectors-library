@@ -15,6 +15,9 @@ const zeroTime = '0001-01-01T00:00:00Z';
 const defaultEndpoint = 'https://api.twilio.com/2010-04-01';
 const defaultMaxResponseBytes = 1_048_576;
 const requestTimeoutMs = 20_000;
+const defaultPollIntervalMs = 30_000;
+/** Keeps a messageReceived poll loop within Twilio's per-account API concurrency. */
+const minimumPollIntervalMs = 5_000;
 const staticCredentialRefresh: CredentialRefreshDriver<Credentials> = {
   refreshRequired: () => false,
   refresh: async () => { throw new Error('Twilio credentials require manual rotation'); },
@@ -46,6 +49,7 @@ export class TwilioClient {
   /** Fully qualified Messages collection URL. */ readonly messagesURL: string;
   /** Optional default sender. */ readonly defaultSender: MessageSender;
   /** Maximum successful response size. */ readonly maxResponseBytes: number;
+  /** Delay between messageReceived polls in milliseconds: pollIntervalMs, 30000 when omitted or zero, at least 5000. */ readonly pollIntervalMs: number;
   private readonly credentials: CredentialProvider<Credentials>;
   private readonly send: TwilioRequestSender;
   private readonly now: () => Date;
@@ -61,6 +65,8 @@ export class TwilioClient {
     this.addressPolicy = 'privateNetworkHTTP';
     this.maxResponseBytes = config.maxResponseBytes || defaultMaxResponseBytes;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('Twilio maxResponseBytes must be positive');
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Twilio pollInterval must be at least 5s');
     this.defaultSender = config.defaultSender?.trim() ? parseSender(config.defaultSender) : { fromAddress: '', messagingServiceSid: '' };
     if (!credentials) throw new TypeError('credential provider is required');
     this.credentials = credentials;
@@ -131,20 +137,19 @@ export class TwilioClient {
 
   /** Decode a safe Twilio Message subset. */
   decodeMessage(body: Uint8Array, authorization: TwilioAuthorization): Message {
-    let resource: Record<string, unknown>;
-    const rawIntegerTokens = new WeakMap<object, Map<string, string>>();
-    const parseWithSource = JSON.parse as (text: string, reviver: (this: Record<string, unknown>, key: string, value: unknown, context: { source?: string }) => unknown) => unknown;
-    try {
-      resource = parseWithSource(Buffer.from(body).toString('utf8'), function (this: Record<string, unknown>, key: string, value: unknown, context: { source?: string }) {
-        if (key === 'error_code' || key === 'num_segments' || key === 'num_media') {
-          let tokens = rawIntegerTokens.get(this);
-          if (!tokens) { tokens = new Map(); rawIntegerTokens.set(this, tokens); }
-          tokens.set(key, context.source ?? '');
-        }
-        return value;
-      }) as Record<string, unknown>;
-    }
+    let parsed: ParsedTwilioJSON;
+    try { parsed = parseTwilioJSON(Buffer.from(body).toString('utf8')); }
     catch { throw new TypeError('Twilio returned an invalid message'); }
+    return this.convertMessageResource(parsed.value, parsed.rawIntegerTokens, authorization);
+  }
+
+  /**
+   * Validate one decoded Message resource of this account and keep its safe view. rawIntegerTokens holds the
+   * source text of numeric count fields from parseTwilioJSON. Throws TypeError for another account, a
+   * malformed field, or a field that reflects the credential.
+   */
+  convertMessageResource(value: unknown, rawIntegerTokens: WeakMap<object, Map<string, string>>, authorization: TwilioAuthorization): Message {
+    const resource = value as Record<string, unknown>;
     if (!resource || typeof resource !== 'object' || Array.isArray(resource)) throw new TypeError('Twilio returned an invalid message');
     const required = (key: string): string => { const value = resource[key]; if (typeof value !== 'string') throw new TypeError('Twilio returned an invalid message'); return value; };
     const optional = (key: string): string => { const value = resource[key]; if (value == null) return ''; if (typeof value !== 'string') throw new TypeError('Twilio returned an invalid message'); return value; };
@@ -184,6 +189,26 @@ export class TwilioClient {
   /** Current receipt time for Retry-After. */ currentTime(): Date { return this.now(); }
 }
 
+/** A parsed Twilio JSON document with the source text of its numeric count fields. */
+export interface ParsedTwilioJSON { value: unknown; rawIntegerTokens: WeakMap<object, Map<string, string>> }
+
+/** Parse Twilio JSON, keeping each count field's source text so 1e2 or 1.0 is refused as Go refuses it. */
+export function parseTwilioJSON(text: string): ParsedTwilioJSON {
+  const rawIntegerTokens = new WeakMap<object, Map<string, string>>();
+  const parseWithSource = JSON.parse as (text: string, reviver: (this: Record<string, unknown>, key: string, value: unknown, context: { source?: string }) => unknown) => unknown;
+  const value = parseWithSource(text, function (this: Record<string, unknown>, key: string, value: unknown, context: { source?: string }) {
+    if (key === 'error_code' || key === 'num_segments' || key === 'num_media') {
+      let tokens = rawIntegerTokens.get(this);
+      if (!tokens) { tokens = new Map(); rawIntegerTokens.set(this, tokens); }
+      tokens.set(key, context.source ?? '');
+    }
+    return value;
+  });
+  return { value, rawIntegerTokens };
+}
+
+/** Whether a value is an E.164 phone number such as +14155550100. */
+export function isE164PhoneNumber(value: string): boolean { return phonePattern.test(value); }
 /** Safe failure without provider content. */
 export function twilioFailure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'twilio', operation, message }; }
 /** Parse a supported sender. */
