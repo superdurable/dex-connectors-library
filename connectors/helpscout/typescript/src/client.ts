@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { resolveCredential, resolveCredentialAfterRejection, ReauthorizationRequiredError, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { resolveCredential, resolveCredentialAfterRejection, ReauthorizationRequiredError, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -14,7 +14,17 @@ const defaultResponseBytes = 4_194_304;
 /** Replace only the network transport and clock for deterministic provider tests. */
 export interface HelpScoutClientOptions {
   /** Caller-owned HTTP sender; production uses the connector SDK sender. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>;
-  /** Clock for receipts and provider Retry-After headers. */ now?: () => Date;
+  /** Clock for receipts, provider Retry-After headers, and webhook receipt times. */ now?: () => Date;
+  /** Receives the conversationEvent endpoint's and durable inboxes' records; omitted uses the SDK's console logger. */ logger?: TriggerLogger;
+}
+
+/** What the conversationEvent webhook endpoint needs from a client. */
+export interface HelpScoutWebhookSettings {
+  /** Host-owned credentials of the connection. */ credentials: CredentialSource;
+  /** Renews the access token of a record project storage refuses as expired. */ refreshDriver: CredentialRefreshDriver<Credentials>;
+  /** Largest accepted webhook body in bytes. */ maxBodyBytes: number;
+  /** Receipt clock. */ now: () => Date;
+  /** Trigger record destination, when the application chose one. */ logger?: TriggerLogger;
 }
 
 /** One response or sanitized transport failure from the Help Scout API. */
@@ -35,6 +45,8 @@ export class HelpScoutClient {
   readonly #send: (request: ProviderRequest) => Promise<ProviderResponse>;
   readonly #now: () => Date;
   readonly #maxResponseBytes: number;
+  readonly #webhookMaxBodyBytes: number;
+  readonly #logger: TriggerLogger | undefined;
 
   /** Validate static settings and bind host-owned credentials. */
   constructor(config: Config, credentials: CredentialSource, options: HelpScoutClientOptions = {}) {
@@ -45,6 +57,13 @@ export class HelpScoutClient {
     this.#send = options.send ?? sendProviderRequest;
     this.#now = options.now ?? (() => new Date());
     this.#maxResponseBytes = limit;
+    this.#webhookMaxBodyBytes = config.webhookMaxBodyBytes || defaultResponseBytes;
+    this.#logger = options.logger;
+  }
+
+  /** Settings of the connection's conversationEvent webhook endpoint. */
+  webhookSettings(): HelpScoutWebhookSettings {
+    return { credentials: this.#credentials, refreshDriver: this.#refreshDriver, maxBodyBytes: this.#webhookMaxBodyBytes, now: this.#now, ...(this.#logger ? { logger: this.#logger } : {}) };
   }
 
   /** Bind the search query. */ searchConversations() { return new SearchConversationsOperation(this); }

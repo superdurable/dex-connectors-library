@@ -1,10 +1,11 @@
 # Help Scout Connector
 
 The TypeScript package `@superdurable/connector-helpscout` implements the five
-conversation and customer operations. Its package version is `0.1.0`; the
-`conversationEvent` webhook Trigger remains Go only. See the
-[TypeScript README](typescript/README.md) and its
-[runnable search example](typescript/examples/search-conversations/README.md).
+conversation and customer operations and, from `0.2.0`, the signed
+`conversationEvent` webhook Trigger at parity with Go. Its package version is
+`0.2.0`. See the [TypeScript README](typescript/README.md), its
+[runnable search example](typescript/examples/search-conversations/README.md),
+and its [new-conversation tagging example](typescript/examples/tag-new-conversations/README.md).
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/helpscout/go@v0.24.0`.
 
@@ -25,6 +26,13 @@ The Help Scout connector connects a Dex application to the
 | `updateConversation` | Mutation | Sets the status or assignee and adds or removes tags; safe to repeat | `updated` |
 | `findCustomerByEmail` | Query | Every customer profile with one email address | `found` |
 | `conversationEvent` | Trigger | A signed conversation webhook, such as `convo.created` or `convo.customer.reply.created` | |
+
+Language support:
+
+| Capability | Go | Python | TypeScript |
+| --- | --- | --- | --- |
+| `searchConversations`, `getConversation`, `replyToConversation`, `updateConversation`, `findCustomerByEmail` | v0.24.0 | 0.1.0 | 0.1.0 |
+| `conversationEvent` Trigger | v0.24.0 | Not available | 0.2.0 |
 
 Every other branch is optional: `notFound`, `providerRejected`,
 `invalidResponse`, and `defect`. `getConversation` adds `merged`;
@@ -379,5 +387,5 @@ The [`python/`](python/) package `dex-connector-helpscout` v0.1.0 implements
 `updateConversation`, and `findCustomerByEmail` with generated client-credentials
 refresh wiring. Its checked-in [conversation search Flow](python/examples/conversation_search/flow.py)
 provides Dex Worker and Client verification. The signed `conversationEvent`
-Trigger remains Go-only. See the [Python README](python/README.md) for
+Trigger is not yet available in Python. See the [Python README](python/README.md) for
 installation, connection setup, and behavior.
