@@ -30,7 +30,13 @@ exposes four operation-specific Dex Step factories:
 
 The Go module also ships the `recordChanged` poll Trigger, which starts a Flow
 for each record created or changed in one picked table; see
-[Triggers](#triggers). The Python and TypeScript packages do not implement it.
+[Triggers](#triggers). The Python package implements it too; the TypeScript
+package does not.
+
+| Capability | Go | Python | TypeScript |
+| --- | --- | --- | --- |
+| `listRecords`, `getRecord`, `upsertRecords`, `updateRecords` | yes | yes | yes |
+| `recordChanged` Trigger | yes | yes | no |
 
 Airtable is a typed table store: fields have types, and linked record fields
 hold the IDs of records in another table of the same base. The connector keeps
@@ -315,6 +321,13 @@ triggerRunner, err := airtable.NewProjectRecordChangedTriggerRunner(project, rec
 instead, and the generated `NewRecordChangedTrigger` keeps its cursor in
 memory, so a restart seeds again. Log records carry the connector, connection,
 Trigger, and binding, never field values, field names, or the token.
+
+The Python package implements `recordChanged` at parity on the Python poll
+Trigger kit: its cursor documents and event IDs match Go's byte for byte, so Go
+and Python replicas can share one binding's cursor and inbox. See the
+[Python README](python/README.md#recordchanged-trigger) and its
+[`record_changed_intake`](python/examples/record_changed_intake/README.md)
+example.
 
 A push Trigger built on Airtable webhooks is not shipped. A webhook sends only
 a ping, after which the receiver lists payloads from a stored cursor; it also
