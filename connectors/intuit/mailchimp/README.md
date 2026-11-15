@@ -2,7 +2,7 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go@v0.24.0`. It requires Connector Go SDK `sdkgo` v0.38.0, the release of the durable poll Trigger kit.
 
-The TypeScript package `@superdurable/connector-intuit-mailchimp@0.1.0` implements all five operations with `@superdurable/connectors-sdk@0.1.1`. See its [package README](typescript/README.md) and [runnable get-member Flow](typescript/examples/get-member/README.md). Its provider replay and Dex integration test use local stand-ins; live Mailchimp behavior remains unverified.
+The TypeScript package `@superdurable/connector-intuit-mailchimp@0.2.0` implements all five operations and the `memberChanged` Trigger with `@superdurable/connectors-sdk@0.12.0`. Its Trigger reads and writes the Go poll cursor document and keyed snapshot byte for byte and yields the same Trigger event IDs, so Go and TypeScript replicas can share one binding. See its [package README](typescript/README.md), the [runnable get-member Flow](typescript/examples/get-member/README.md), and the [runnable member-changed Flow](typescript/examples/member-changed/README.md). Its provider replay and Dex integration tests use local stand-ins; live Mailchimp behavior remains unverified.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp`.
 
@@ -410,8 +410,8 @@ and Python replicas can share one binding. The
 [`get_member` example](python/examples/get_member/README.md) and the
 [`member_changed` example](python/examples/member_changed/README.md) are
 runnable Dex Flows with the static `mailchimp-audience` connection and real
-Worker and Client integration tests. The TypeScript package has no Trigger in
-this version. See the package README for installation, testing, and
+Worker and Client integration tests. The TypeScript package implements the same
+`memberChanged` Trigger. See the package README for installation, testing, and
 live-provider limits.
 
 ## Verification
