@@ -16,10 +16,10 @@ spec:
       operations: [sendMessage, getMessage]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-twilio-messaging'
       operations: [sendMessage, getMessage]
-      triggers: []
+      triggers: [messageReceived]
   codegen:
     go:
       package: messaging
