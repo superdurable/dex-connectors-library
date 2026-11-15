@@ -4,7 +4,7 @@
     "strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true, "noUnusedLocals": true, "noUnusedParameters": true,
     "skipLibCheck": true, "esModuleInterop": true, "declaration": true, "outDir": "dist",
-    "paths": { "@superdurable/connector-stripe": ["./src/index.ts"] }
+    "paths": { "@superdurable/connector-asana": ["./src/index.ts"] }
   },
   "include": ["src", "test", "examples", "eslint.config.js"]
 }

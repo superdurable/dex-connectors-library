@@ -1,6 +1,6 @@
 # Asana Connector
 
-TypeScript: install `@superdurable/connector-asana@0.1.1`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
+TypeScript: install `@superdurable/connector-asana@0.2.0`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations, and its [task-changed example](typescript/examples/task-changed/README.md) covers the `taskChanged` Trigger. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/asana/go@v0.24.0`.
 
@@ -37,12 +37,12 @@ It also exposes one Trigger:
 
 | Trigger | Source | Languages |
 | --- | --- | --- |
-| `taskChanged` | `GET /events?resource=<project gid>&sync=` | Go, Python |
+| `taskChanged` | `GET /events?resource=<project gid>&sync=` | Go, Python, TypeScript |
 
 - `taskChanged` delivers each task, subtasks included, added to, changed in,
   removed from, deleted from, or restored to one project, read through the
   Asana Events API. See [taskChanged Trigger](#taskchanged-trigger). The
-  Python package implements it from 0.2.0; the TypeScript package does not.
+  Python and TypeScript packages implement it from 0.2.0.
 
 ## Authentication
 
