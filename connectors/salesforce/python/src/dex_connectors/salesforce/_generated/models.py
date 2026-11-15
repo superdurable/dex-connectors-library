@@ -3,7 +3,10 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from datetime import UTC, datetime
 from typing import Any
+
+from .timestamps import parse_go_datetime, validate_go_datetime
 
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
@@ -198,3 +201,44 @@ class UpdateRecordOutput:
 
 
 setattr(UpdateRecordOutput, '__module__', 'dex_connectors.salesforce.models')
+
+
+# RecordModifiedEvent is one created or modified record read by polling. A record changed several times
+# between two polls arrives once, in its latest state; a deleted record is not delivered.
+@dataclass(frozen=True, slots=True)
+class RecordModifiedEvent:
+    # SObjectType is the watched object's API name.
+    s_object_type: str = _dataclass_field(default='', metadata={'dex_json_name': 'sObjectType'})
+    # RecordID is the record's 18-character ID.
+    record_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'recordId'})
+    # ChangeKind is the derived change kind; see RecordChangeKind.
+    change_kind: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'changeKind'})
+    # SystemModstamp is the record's SystemModstamp in UTC, the time of the change this event reports.
+    system_modstamp: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'systemModstamp', 'dex_json_format': 'rfc3339'})
+    # Record holds Id, CreatedDate, LastModifiedDate, SystemModstamp, and every configured field as
+    # Salesforce returned them, with the field, object, and sharing access of the authorized user.
+    record: Record = _dataclass_field(default_factory=Record)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.system_modstamp, str):
+            object.__setattr__(self, 'system_modstamp', parse_go_datetime(self.system_modstamp, 'system_modstamp'))
+        elif self.system_modstamp is not None:
+            validate_go_datetime(self.system_modstamp, 'system_modstamp')
+
+
+setattr(RecordModifiedEvent, '__module__', 'dex_connectors.salesforce.models')
+
+
+# RecordModifiedTriggerConfiguration is the recordModifiedPolled binding configuration that the object
+# picker and field list save in Dex Web. Changing the object of a binding that already polled makes its
+# next poll record a new baseline for the new object; changing the field list keeps the cursor.
+@dataclass(frozen=True, slots=True)
+class RecordModifiedTriggerConfiguration:
+    # SObjectType is the watched object's API name, such as Opportunity or Invoice__c; it is required.
+    s_object_type: str = _dataclass_field(default='', metadata={'dex_json_name': 'sObjectType'})
+    # FieldNames lists up to MaxTriggerFieldNames extra field API names, such as StageName, read with each
+    # record. Id, CreatedDate, LastModifiedDate, and SystemModstamp are always read; blank reads only those.
+    field_names: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'fieldNames', 'dex_json_omit_default': True})
+
+
+setattr(RecordModifiedTriggerConfiguration, '__module__', 'dex_connectors.salesforce.models')
