@@ -16,10 +16,10 @@ spec:
       operations: [searchFiles, getFile, readFileText, uploadFile]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-google-drive'
       operations: [searchFiles, getFile, readFileText, uploadFile]
-      triggers: []
+      triggers: [fileCreated, fileUpdated, fileTrashed]
   codegen:
     go:
       package: drive

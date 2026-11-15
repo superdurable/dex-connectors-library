@@ -29,7 +29,7 @@ The connector does not modify, move, share, or delete existing files.
 
 ## TypeScript package
 
-The `@superdurable/connector-google-drive` TypeScript package at `v0.1.0` exposes the same four operations. Its [runnable text-copy Flow](typescript/examples/text-copy/README.md) uses a Dex Worker and the static `google-drive-files` connection. Go-recorded provider conformance scenarios, generated OAuth refresh agreement tests, and a real Dex integration test cover this port with a local Drive stand-in. Live Google authorization and API behavior remain unverified.
+The `@superdurable/connector-google-drive` TypeScript package at `v0.2.0` exposes the same four operations and the `fileCreated`, `fileUpdated`, and `fileTrashed` Triggers at behavior parity with Go; its durable `newProjectFileTriggerRunner` shares the Go connector's cursor document and Trigger inboxes byte for byte, so Go and TypeScript replicas can serve one connection. Its [runnable text-copy Flow](typescript/examples/text-copy/README.md) uses a Dex Worker and the static `google-drive-files` connection, and its [file intake Flow](typescript/examples/file-intake/README.md) starts one Flow per created file. Go-recorded provider conformance scenarios, generated OAuth refresh agreement tests, and a real Dex integration test cover this port with a local Drive stand-in. Live Google authorization, API, and `changes.list` polling behavior remain unverified.
 
 ## Scopes
 

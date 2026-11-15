@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { MaxChangesPerPage } from '@superdurable/connectors-sdk/pollingtrigger';
 import { BodyTooLargeError, isHeaderSafeCredential, MaxErrorBodyBytes, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isRefreshRequired, ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -16,6 +17,13 @@ export interface DriveClientOptions {
   now?: () => Date;
   /** Override the generated refresh driver for controlled credential tests. */
   refreshDriver?: CredentialRefreshDriver<Credentials>;
+  /**
+   * Receives the file Trigger runner's records: failed and rate-limited polls, cursor seeds and resets,
+   * delivery retries, and the durable inboxes newProjectFileTriggerRunner creates. Omitted uses
+   * defaultTriggerLogger. Records carry connector, connection, feed, binding, and event IDs and error
+   * messages, never file names, page tokens, or credentials.
+   */
+  triggerLogger?: TriggerLogger;
 }
 
 /** A classified Drive read failure with its safe receipt. */
@@ -30,6 +38,12 @@ export class DriveClient {
   readonly maxTextBytes: number;
   readonly maxUploadBytes: number;
   readonly searchPageSize: number;
+  /** Wait between two changes.list polls of the file Triggers, in milliseconds; at least 1000. */
+  readonly pollIntervalMs: number;
+  /** Drive changes one file Trigger poll requests per changes.list page, from 1 to 500. */
+  readonly pollPageSize: number;
+  /** Receives the file Trigger records; undefined uses defaultTriggerLogger. */
+  readonly triggerLogger: TriggerLogger | undefined;
   readonly #credentials: CredentialSource;
   readonly #transport: (request: ProviderRequest) => Promise<ProviderResponse>;
   readonly #refreshDriver: CredentialRefreshDriver<Credentials>;
@@ -45,6 +59,12 @@ export class DriveClient {
     this.searchPageSize = config.searchPageSize ?? 25;
     if (![this.maxResponseBytes, this.maxTextBytes, this.maxUploadBytes, this.searchPageSize].every(value => Number.isSafeInteger(value) && value > 0)
       || this.maxUploadBytes > 5_242_880 || this.searchPageSize > 100) throw new TypeError('Google Drive connection limits are invalid');
+    this.pollIntervalMs = config.pollIntervalMs || 30_000;
+    this.pollPageSize = config.pollPageSize || 100;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < 1000) throw new TypeError('Google Drive poll interval must be at least one second');
+    // The poll Trigger kit's per-page bound, below Drive's documented 1000.
+    if (!Number.isSafeInteger(this.pollPageSize) || this.pollPageSize < 1 || this.pollPageSize > MaxChangesPerPage) throw new TypeError(`Google Drive poll page size must be from 1 to ${MaxChangesPerPage}`);
+    this.triggerLogger = options.triggerLogger;
     this.#credentials = credentials;
     this.#transport = options.transport ?? sendProviderRequest;
     this.#now = options.now ?? (() => new Date());
@@ -152,6 +172,9 @@ export class DriveClient {
     return { callId: call.id, ...(call.idempotencyKey ? { idempotencyKey: call.idempotencyKey } : {}), provider: 'google-drive',
       ...(objectId ? { providerObjectId: objectId } : {}), ...(requestId ? { providerRequestId: requestId } : {}), observedAt: this.#now().toISOString() };
   }
+
+  /** Return the injected clock's current time. */
+  now(): Date { return this.#now(); }
 
   /** Parse Retry-After against the injected clock. */
   retryDelay(headers: Record<string, unknown>): number { return parseRetryAfter(header(headers, 'retry-after'), this.#now()); }
