@@ -33,6 +33,10 @@ func TestNewValidatesDomainOptionsAndLimits(t *testing.T) {
 	}
 	_, err := freshdesk.New(freshdesk.Config{Domain: testDomain, MaxResponseBytes: -1}, credentials)
 	require.Error(t, err)
+	_, err = freshdesk.New(freshdesk.Config{Domain: testDomain, PollInterval: 5 * time.Second}, credentials)
+	require.ErrorContains(t, err, "pollInterval must be at least 10s")
+	_, err = freshdesk.New(freshdesk.Config{Domain: testDomain, PollInterval: -time.Second}, credentials)
+	require.Error(t, err)
 	_, err = freshdesk.New(freshdesk.Config{Domain: testDomain}, nil)
 	require.ErrorContains(t, err, "credential provider is required")
 	_, err = freshdesk.New(freshdesk.Config{Domain: testDomain}, credentials, nil)

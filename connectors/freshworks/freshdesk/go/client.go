@@ -5,7 +5,8 @@
 // searchTickets and getTicket read tickets, updateTicket changes ticket fields and
 // tags so that a repeated attempt writes nothing twice, and createTicket and addNote
 // create a ticket or add one note or reply. A 429, 503, or proven unsent request
-// may retry in the next attempt; other dispatched outcomes are never resent.
+// may retry in the next attempt; other dispatched outcomes are never resent. The
+// ticketChanged poll Trigger starts a Flow for each ticket created or updated.
 //
 // The connector authenticates with an agent's API key over HTTP Basic, the key as
 // the user name and X as the password, and sends every request to
@@ -19,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -48,6 +50,9 @@ const (
 	basicAuthenticationPassword = "X"
 
 	maximumReportedErrorDetails = 5
+
+	// minimumPollInterval keeps a ticketChanged poll loop inside Freshdesk's per-minute Tickets List sublimit.
+	minimumPollInterval = 10 * time.Second
 )
 
 var (
@@ -63,6 +68,7 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	apiBaseURL string
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 12 seconds per request.
@@ -79,6 +85,14 @@ func WithAPIBaseURL(baseURL string) Option {
 	return func(options *clientOptions) { options.apiBaseURL = baseURL }
 }
 
+// WithLogger sends the ticketChanged Trigger runner's records to logger: seeds, reseeds after a rejected
+// cursor, failed polls, rate-limit pauses, and the durable inboxes NewProjectTicketTriggerRunner opens.
+// Records carry binding identity and never ticket contents or credentials. Without this option, or with a
+// nil logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Freshdesk API v2 requests for connector operations.
 // A Client is safe for concurrent use by several Steps.
 type Client struct {
@@ -86,6 +100,8 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -150,6 +166,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes < 1 {
 		return nil, errors.New("Freshdesk response limit must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Freshdesk pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, errors.New("Freshdesk credential provider is required")
 	}
@@ -171,7 +190,8 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	return &Client{
 		apiBaseURL:  apiBaseURL,
 		httpClient:  providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
-		credentials: credentials, maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		credentials: credentials, maxResponseBytes: config.MaxResponseBytes,
+		pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
@@ -229,9 +249,14 @@ func newFreshdeskWriteBudget(stepContext context.Context, executeTimeout time.Du
 	return freshdeskWriteBudget{minimumRequestTime: max(available, 0) / 10}
 }
 
-// exchange sends one authenticated request and classifies its response without deciding retry policy.
+// exchange sends one authenticated request under the Step context of call.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request freshdeskRequest, writeBudget ...freshdeskWriteBudget) freshdeskExchange {
-	var requestContext context.Context = call.Context
+	return client.exchangeWithContext(call.Context, credentials, operation, request, writeBudget...)
+}
+
+// exchangeWithContext sends one authenticated request and classifies its response without deciding retry
+// policy. Trigger pollers pass their own ctx because their calls have no Dex Step context.
+func (client *Client) exchangeWithContext(requestContext context.Context, credentials Credentials, operation string, request freshdeskRequest, writeBudget ...freshdeskWriteBudget) freshdeskExchange {
 	if deadline, hasDeadline := requestContext.Deadline(); hasDeadline {
 		minimumRequestTime := minimumOrdinaryRequestTime
 		if len(writeBudget) != 0 {

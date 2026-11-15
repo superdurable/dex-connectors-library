@@ -1,6 +1,6 @@
 # Freshdesk Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk`.
 
@@ -38,7 +38,9 @@ uses a 30-second Execute timeout. Reads and `updateTicket` use the one-hour defa
 `createTicket` and `addNote` use sync durability because Freshdesk has no
 idempotency key; see [Duplicate safety](#duplicate-safety).
 
-This release has no Triggers and no Studio pickers; see
+It also exposes one poll Trigger, [`ticketChanged`](#ticketchanged-trigger),
+which starts a Flow for every ticket created or updated in the helpdesk. This
+release has no Studio pickers and no webhook Trigger; see
 [Not in this release](#not-in-this-release).
 
 ## Freshdesk setup
@@ -64,8 +66,8 @@ documentation specifies. Resetting the key in Freshdesk revokes it and
 disconnects every app that uses it.
 
 Credentials are reread before every provider call, so replacing a key in Dex
-Web takes effect without a restart. The domain and response limit are startup
-configuration.
+Web takes effect without a restart. The domain, response limit, and
+`pollInterval` are startup configuration.
 
 ## Project configuration
 
@@ -277,18 +279,96 @@ token that contains the API key is dropped.
 The Receipt carries the Call ID, the ticket or conversation ID, and
 Freshdesk's `X-Request-Id` header when present.
 
+## ticketChanged Trigger
+
+`ticketChanged` polls Freshdesk's
+[List All Tickets](https://developers.freshdesk.com/api/#list_all_tickets)
+endpoint, `GET /api/v2/tickets`, with `updated_since`, `order_by=updated_at`,
+`order_type=asc`, and `per_page=100`. It needs no Freshdesk setup and no
+permission beyond the connection's API key: it sees every ticket the agent's
+role can read. Each delivery is a `freshdesk.TicketChangedEvent` with
+`ChangeKind` (`created` or `updated`) and the listed `Ticket`. The list omits
+the description unless a request pays extra API credits, so read the ticket
+with `getTicket` for its text, requester, and conversations, as the example
+does.
+
+- **Baseline.** The first poll of a binding records Freshdesk's current time,
+  from the response `Date` header, as the cursor and delivers no existing
+  ticket.
+- **Cursor.** The cursor is the highest `updated_at` read so far. Each poll
+  starts its window one minute earlier (`freshdesk.TicketChangeOverlap`), so a
+  ticket whose update commits a little after its timestamp is still read. The
+  cursor remembers the ID and `updated_at` of each ticket version inside that
+  window, so a version is never delivered twice. Once Freshdesk's clock, from
+  the `Date` header, is more than the overlap and the request timeout past an
+  update, every earlier update has committed, so the window never starts
+  before that point and a quiet helpdesk costs one request per poll. The
+  remembered set holds at most 1,500 versions; a larger burst moves the window
+  start up to the oldest second still remembered instead of redelivering. The
+  Trigger event ID is `freshdesk-ticket-<id>-<updated_at Unix seconds>`, the
+  same on every refetch.
+- **Change kinds.** Freshdesk reports no change type. A ticket created inside
+  the window that the binding never delivered is `created`; any other version
+  is `updated`. Several changes between two polls arrive as one delivery of the
+  latest version. Spam and deleted tickets are not listed, so moving a ticket
+  to spam or trash is not delivered.
+- **Pages.** A poll that reads a full page continues at once, with a new
+  query that starts at the last `updated_at` second read, so a ticket that
+  changes during a backlog cannot shift later tickets past the cursor. Only
+  when more than 100 tickets share that one second does the cursor page by
+  offset through it, up to Freshdesk's 300-page limit; a ticket in that second
+  updated while the paging runs can shift the offsets, which is the one case
+  in which a change can be missed, and tickets past 30,000 in one second are
+  skipped.
+- **Rate limits.** Freshdesk limits API calls per account per minute, with a
+  lower Tickets List sublimit, such as 40 per minute on the Growth plan, and
+  answers 429 with `Retry-After` in seconds. A 429 pauses every binding of the
+  connection for `Retry-After`, or at least the poll interval. Each poll
+  normally makes one request, so the default `pollInterval` of one minute
+  leaves almost all of the quota to other work.
+- **Rejected cursor.** A 400, such as `invalid_value` for `updated_since`, or
+  an undecodable cursor records a new baseline and logs a WARN record; changes
+  between the last commit and the new baseline are not delivered. Other
+  failures back off per binding and retry.
+
+The binding configuration, `freshdesk.TicketChangedTriggerConfiguration`, has
+one optional field. `changeKinds` limits deliveries, for example to
+`["created"]`. Empty delivers both kinds. Skipped changes still move the
+cursor. Freshdesk setup commands cannot send the agent's HTTP Basic API key
+(see [Studio pickers](#studio-pickers)), so the binding has no picker units;
+the configuration is saved under the binding in the project configuration.
+
+`freshdesk.NewProjectTicketTriggerRunner` loads each saved binding and records
+every change in the binding's project Trigger inbox before the cursor commits,
+so a restarted or replaced Worker neither misses nor repeats a change. From
+[`examples/ticket-changed/main.go`](go/examples/ticket-changed/main.go):
+
+```go
+triggerRunner, err := freshdesk.NewProjectTicketTriggerRunner(project, ticketchanged.ConnectionName, freshdesk.ProjectTicketTriggerRunnerConfig{
+	TicketChangedRoutes: []freshdesk.ProjectTicketChangedTriggerRoute{{
+		BindingName: ticketchanged.TicketChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, ticketchanged.AcceptEveryTicketChange, ticketchanged.ResolveFlowID,
+			ticketchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, options...)
+```
+
+`freshdesk.NewTicketTriggerRunner` takes explicit routes and cursor stores.
+The generated `freshdesk.NewTicketChangedTrigger` keeps its cursor in memory,
+so it records a new baseline on every start.
+
 ## Not in this release
 
-### Triggers
+### Webhook Trigger
 
 Freshdesk sends webhooks only from automation rules: an administrator adds a
 **Trigger webhook** action and chooses the URL, method, encoding, content, and
 optional custom headers. Freshdesk documents no request signature, so a
 receiver can authenticate a webhook only by a static shared header value that
 the rule sends in plain configuration, and failed calls are retried every 30
-minutes up to 48 times. The connector declares no Trigger until a signed or
-otherwise verifiable source exists. Until then, poll with `searchTickets` and
-`updatedSinceDate`.
+minutes up to 48 times. The connector declares no webhook Trigger until a
+signed or otherwise verifiable source exists. Use the
+[`ticketChanged`](#ticketchanged-trigger) poll Trigger instead.
 
 ### Studio pickers
 
@@ -311,6 +391,10 @@ read and the write is overwritten for the fields this Step sets.
 **Start Flow** example that uses all five operations: it finds the customer's
 unresolved ticket about an issue or creates one, sets its priority, and adds
 one private triage note.
+
+[`examples/ticket-changed`](go/examples/ticket-changed) starts one Flow per
+ticket created or updated through the `ticketChanged` Trigger, reads the
+ticket back with `getTicket`, and records it.
 
 ## Mocks
 
@@ -356,7 +440,13 @@ oldest-first conversations, escaped HTML bodies, attempt-scoped dispatch and
 retry checkpoints, only-changed-field updates and complete tag lists, Freshdesk error
 codes and field tokens without message text, `Retry-After`, redirects,
 oversized, malformed, and credential-reflecting responses, and invalid
-credentials.
+credentials. The ticket-list fake covers the `ticketChanged` baseline, change
+kinds, the overlap window, a late commit, a bulk update sharing one second
+across three pages, a burst drained while one of its tickets changes again, a
+burst larger than the remembered set and the quiet polls after it, the
+300-page limit, the `changeKinds` filter, 429 with `Retry-After`, and a
+rejected cursor; the example's real-Dex tests cover one Flow per change across
+a Worker restart, a rate limit, and a reseed.
 
 No live Freshdesk account was used. The following live behavior is
 unverified: whether `GET /api/v2/contacts?email=` matches only a contact's
@@ -366,6 +456,10 @@ whether `PUT /api/v2/tickets/{id}` replaces the tag list with the sent list;
 whether `/conversations` is ordered oldest first and sets the `Link` header as
 other list endpoints do; whether 429 responses are always returned before a
 write is applied; whether a 503 always means no write was accepted; the
-`X-Request-Id` header; deadline and checkpoint behavior against a real
+`X-Request-Id` header; whether `updated_since` is inclusive and accepts an
+instant one minute in the past, the order of tickets that share one
+`updated_at` second, whether a 400 is Freshdesk's answer to page 301, whether
+the ticket list's `Date` header tracks Freshdesk's clock, and the Tickets List
+sublimit headers for the `ticketChanged` Trigger; deadline and checkpoint behavior against a real
 Freshdesk account; and the Profile Settings path in
 the setup guidance.

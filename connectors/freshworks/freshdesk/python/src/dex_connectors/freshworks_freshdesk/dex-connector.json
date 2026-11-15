@@ -1,6 +1,6 @@
 {
   "connectorId": "freshdesk",
-  "releaseTag": "connectors/freshworks/freshdesk/go/v0.23.0",
+  "releaseTag": "connectors/freshworks/freshdesk/go/v0.24.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-freshworks-freshdesk",
