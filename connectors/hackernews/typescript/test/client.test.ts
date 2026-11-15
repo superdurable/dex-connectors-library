@@ -26,7 +26,7 @@ describe('HackerNewsClient', () => {
     expect(() => newProjectConnection(project, 'public')).toThrow('timeout');
   });
 
-  it('accepts the Go-only searchBaseUrl setting and rejects unknown settings', () => {
+  it('accepts the searchBaseUrl setting and rejects unknown settings', () => {
     const projectWith = (configuration: Record<string, unknown>) => ({ configuration: { connections: [{
       connectorId: 'hacker-news-daily', connectionName: 'public', provider: 'hacker-news', configuration,
     }] } } as unknown as LoadedProject);

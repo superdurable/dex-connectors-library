@@ -129,6 +129,73 @@ export interface Item {
   /** Dead reports a moderated item. GetItem selects notFound instead of returning it. */
   "dead"?: boolean | undefined;
 }
+/** SearchStoriesInput selects one page of a keyword story search. Every field is optional. */
+export interface SearchStoriesInput {
+  /** Query is the full-text keyword query, at most 512 bytes, matched against story titles, URLs, authors,
+   * and submitted text. Quoted phrases and -excluded words follow the Search API syntax. Empty matches
+   * every story that the other filters allow. */
+  "query"?: string | undefined;
+  /** SortBy is relevance or date. Empty selects relevance; date returns the newest stories first. */
+  "sortBy"?: "date" | "relevance" | (string & {}) | undefined;
+  /** Tags lists story, show_hn, ask_hn, or front_page. A story must carry every listed tag. The story tag
+   * is always applied, so empty searches all stories, including Ask HN and Show HN posts. */
+  "tags"?: Array<"ask_hn" | "front_page" | "show_hn" | "story" | (string & {})> | undefined;
+  /** CreatedAfter keeps stories submitted strictly after this time. Zero sets no lower bound. */
+  "createdAfter"?: string | undefined;
+  /** CreatedBefore keeps stories submitted strictly before this time. Zero sets no upper bound. When both
+   * bounds are set, CreatedBefore must be later than CreatedAfter. */
+  "createdBefore"?: string | undefined;
+  /** MinPoints keeps stories with at least this many points. Zero sets no minimum; negative is invalid. */
+  "minPoints"?: number | undefined;
+  /** Page is the zero-based result page. Zero selects the first page. Page times HitsPerPage must stay
+   * below 1000, because the Search API serves only the first 1000 hits of a query. */
+  "page"?: number | undefined;
+  /** HitsPerPage is the page size from 1 through 100. Zero selects 20. */
+  "hitsPerPage"?: number | undefined;
+}
+/** StorySearchHit is one matching story as the Search API indexed it. Points and CommentCount can lag the
+   * live site. Title, Author, and StoryText are untrusted provider text; escape them before HTML rendering. */
+export interface StorySearchHit {
+  /** ID is the positive Hacker News item ID, which GetItem reads. */
+  "id": number;
+  /** Title is the story title. */
+  "title": string;
+  /** URL is the submitted external URL. It is empty for Ask HN and other text posts. */
+  "url"?: string | undefined;
+  /** DiscussionURL links directly to the story's Hacker News discussion. */
+  "discussionUrl": string;
+  /** Author is the submitter's public username. */
+  "author": string;
+  /** Points is the story score. */
+  "points": number;
+  /** CommentCount is the story's comment count. */
+  "commentCount": number;
+  /** CreatedAt is the UTC submission time, at second precision. */
+  "createdAt": string;
+  /** Tags lists the story, show_hn, ask_hn, and front_page tags that the story carries, in that order. */
+  "tags": Array<"ask_hn" | "front_page" | "show_hn" | "story" | (string & {})> | null;
+  /** StoryText is the submitted text as plain text, at most MaxStoryTextCharacters code points. Paragraphs
+   * are separated by a blank line, and markup is removed. It is empty when the story has no text. */
+  "storyText"?: string | undefined;
+  /** IsStoryTextTruncated reports that StoryText was cut at MaxStoryTextCharacters. */
+  "isStoryTextTruncated"?: boolean | undefined;
+}
+/** StorySearchPage is one page of matching stories in the requested order. */
+export interface StorySearchPage {
+  /** Stories contains at most HitsPerPage stories. It is empty when nothing matches. Successive pages of a
+   * newest-first search can repeat a story when newer stories arrive between reads. */
+  "stories": Array<StorySearchHit> | null;
+  /** Page is the zero-based number of this page. */
+  "page": number;
+  /** Pages counts the readable pages. It stops at the first 1000 hits, so it can cover fewer than TotalHits. */
+  "pages": number;
+  /** TotalHits is the Search API's count of matching stories. It can be an estimate for large result sets. */
+  "totalHits": number;
+  /** HitsPerPage is the page size that this read used. */
+  "hitsPerPage": number;
+  /** NextPage is the zero-based number of the next readable page, or zero when this is the last one. */
+  "nextPage": number;
+}
 
 /** Runtime validator for ListStoryIDsInput. */
 export const ListStoryIDsInputSchema = z.strictObject({
@@ -165,3 +232,40 @@ export const ItemSchema = z.strictObject({
   "deleted": z.boolean().optional(),
   "dead": z.boolean().optional(),
 }) satisfies z.ZodType<Item>;
+
+/** Runtime validator for SearchStoriesInput. */
+export const SearchStoriesInputSchema = z.strictObject({
+  "query": z.string().optional(),
+  "sortBy": z.string().optional(),
+  "tags": z.array(z.string()).optional(),
+  "createdAfter": GoTimeJSONSchema.optional(),
+  "createdBefore": GoTimeJSONSchema.optional(),
+  "minPoints": z.number().int().optional(),
+  "page": z.number().int().optional(),
+  "hitsPerPage": z.number().int().optional(),
+}) satisfies z.ZodType<SearchStoriesInput>;
+
+/** Runtime validator for StorySearchHit. */
+export const StorySearchHitSchema = z.strictObject({
+  "id": z.number().int(),
+  "title": z.string(),
+  "url": z.string().optional(),
+  "discussionUrl": z.string(),
+  "author": z.string(),
+  "points": z.number().int(),
+  "commentCount": z.number().int(),
+  "createdAt": GoTimeJSONSchema,
+  "tags": z.array(z.string()).nullable(),
+  "storyText": z.string().optional(),
+  "isStoryTextTruncated": z.boolean().optional(),
+}) satisfies z.ZodType<StorySearchHit>;
+
+/** Runtime validator for StorySearchPage. */
+export const StorySearchPageSchema = z.strictObject({
+  "stories": z.array(StorySearchHitSchema).nullable(),
+  "page": z.number().int(),
+  "pages": z.number().int(),
+  "totalHits": z.number().int(),
+  "hitsPerPage": z.number().int(),
+  "nextPage": z.number().int(),
+}) satisfies z.ZodType<StorySearchPage>;

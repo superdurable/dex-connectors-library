@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-hackernews",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "license": "MIT",
   "description": "Hacker News connector for Dex TypeScript applications",
   "repository": {
@@ -39,11 +39,14 @@
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "example:top-story": "tsx examples/top-story/worker.ts",
-    "integration:top-story": "tsx examples/top-story/integration.ts"
+    "integration:top-story": "tsx examples/top-story/integration.ts",
+    "example:story-search": "tsx examples/story-search/worker.ts",
+    "integration:story-search": "tsx examples/story-search/integration.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.8.0",
+    "@superdurable/connectors-sdk": "0.11.0",
     "@superdurable/dex": ">=1.28.0",
+    "htmlparser2": "^10.1.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {

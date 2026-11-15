@@ -5,7 +5,7 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { ListStoryIDsInput, StoryIDs, GetItemInput, Item } from './models.js';
+import type { ListStoryIDsInput, StoryIDs, GetItemInput, Item, SearchStoriesInput, StorySearchPage } from './models.js';
 
 /** Configuration for the listStoryIDs connector Step. */
 export interface ListStoryIDsStepConfig<StepInput, OperationInput = ListStoryIDsInput, OperationOutput = StoryIDs> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -60,6 +60,34 @@ export function newGetItemStep<StepInput, OperationInput = GetItemInput, Operati
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getItem(), connection: connection.reference, branches: [
     goToBranch("found", found),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the searchStories connector Step. */
+export interface SearchStoriesStepConfig<StepInput, OperationInput = SearchStoriesInput, OperationOutput = StorySearchPage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ searchStories(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** One page of matching stories was read; it can be empty. */
+  searched: StepTarget<QueryResult<OperationOutput>>;
+  /** Hacker News Search rejected the request. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** Hacker News Search returned malformed or oversized data. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** Local input or connection configuration is invalid. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the searchStories Step from a named connection. */
+export function newSearchStoriesStep<StepInput, OperationInput = SearchStoriesInput, OperationOutput = StorySearchPage>(configuration: SearchStoriesStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, searched, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.searchStories(), connection: connection.reference, branches: [
+    goToBranch("searched", searched),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
