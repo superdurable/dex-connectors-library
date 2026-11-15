@@ -23,6 +23,7 @@ from .models import (
 )
 
 MAXIMUM_OBJECT_BYTES = 4 << 20
+_MAXIMUM_LOCAL_TRIGGER_INBOX_BYTES = 8 << 20
 _KMS_KEY_ARN = re.compile(r"^arn:[a-z0-9-]+:kms:[a-z0-9-]+:[0-9]{12}:key/[a-zA-Z0-9-]+$")
 
 
@@ -84,6 +85,11 @@ def validate_object_key(key: str) -> None:
         raise ValueError("invalid project object key")
 
 
+def _local_object_byte_limit(key: str) -> int:
+    """Allow Go's 8 MiB Trigger inbox outside S3; every other object keeps the 4 MiB bound."""
+    return _MAXIMUM_LOCAL_TRIGGER_INBOX_BYTES if "/trigger-inboxes/" in key else MAXIMUM_OBJECT_BYTES
+
+
 class InMemoryObjectStore:
     """Deterministic versioned store for local Dex Web files and unit tests."""
 
@@ -104,7 +110,7 @@ class InMemoryObjectStore:
     async def create_object(self, key: str, contents: bytes) -> Object:
         """Create a new key under an atomic lock."""
         validate_object_key(key)
-        self._validate_contents(contents)
+        self._validate_contents(key, contents)
         async with self._lock:
             if key in self._objects:
                 raise ObjectConflictError("project object already exists")
@@ -113,7 +119,7 @@ class InMemoryObjectStore:
     async def compare_and_swap_object(self, key: str, expected_etag: str, contents: bytes) -> Object:
         """Append a version only when the current ETag equals the expected token."""
         validate_object_key(key)
-        self._validate_contents(contents)
+        self._validate_contents(key, contents)
         async with self._lock:
             versions = self._objects.get(key, [])
             if not versions or not expected_etag or versions[-1].etag != expected_etag:
@@ -127,8 +133,8 @@ class InMemoryObjectStore:
         return item
 
     @staticmethod
-    def _validate_contents(contents: bytes) -> None:
-        if not contents or len(contents) > MAXIMUM_OBJECT_BYTES:
+    def _validate_contents(key: str, contents: bytes) -> None:
+        if not contents or len(contents) > _local_object_byte_limit(key):
             raise ValueError("project object body is empty or oversized")
 
 
@@ -221,7 +227,8 @@ class S3ObjectStore:
 
     async def _write_object(self, key: str, contents: bytes, etag: str) -> Object:
         validate_object_key(key)
-        InMemoryObjectStore._validate_contents(contents)
+        if not contents or len(contents) > MAXIMUM_OBJECT_BYTES:
+            raise ValueError("project object body is empty or oversized")
         arguments: dict[str, object] = {
             "Bucket": self._bucket,
             "Key": self._prefix + key,

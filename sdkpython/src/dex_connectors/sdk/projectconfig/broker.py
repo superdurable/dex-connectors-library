@@ -4,22 +4,34 @@
 
 import asyncio
 import json
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 
 import httpx
 
 from ..credentials import ReauthorizationRequiredError
+from ..relaysignature import (
+    RelayHeaders,
+    RelaySignatureRefusal,
+    matches_relay_signature,
+    parse_relay_signature,
+)
 from .models import (
     ApplicationSecretRef,
     CredentialBrokerConfiguration,
+    go_canonical_json_bytes,
     require_object,
     validate_broker_endpoint,
 )
 
 MAXIMUM_BROKER_RESPONSE_BYTES = 1 << 20
 MAXIMUM_BROKER_CREDENTIAL_BYTES = 64 << 10
+_MAXIMUM_RELAYED_TRIGGER_REGISTRATION_BYTES = 4096
+_RELAY_TOKEN_RENEWAL_INTERVAL_SECONDS = 30.0
+_BROKER_EXCHANGE_TIMEOUT_SECONDS = 40.0
 
 
 class CredentialBrokerUnavailableError(OSError):
@@ -36,6 +48,30 @@ class ConnectionNotSelectedError(ValueError):
 
 class RejectedCredentialNotRefreshedError(ValueError):
     """Forced read returned the same revision rejected by the provider."""
+
+
+class RelayedTriggerNotRelayedError(ValueError):
+    """The broker does not relay this shared connection's provider events."""
+
+    def __init__(self) -> None:
+        """Create the error with its fixed message."""
+        super().__init__("the credential broker does not relay this connection's events")
+
+
+class RelaySignatureInvalidError(ValueError):
+    """A relayed request's signature is missing, malformed, stale, or does not match the scope token."""
+
+    def __init__(self) -> None:
+        """Create the error with its fixed message."""
+        super().__init__("relayed request signature is missing, invalid or stale")
+
+
+class RelayTokenRenewalDeferredError(CredentialBrokerUnavailableError):
+    """A relay signature mismatch arrived within 30 seconds of the last token reread; retry later."""
+
+    def __init__(self) -> None:
+        """Create the retryable error with its fixed message."""
+        super().__init__("relayed request signature cannot be checked against a renewed scope token yet")
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +98,14 @@ class CredentialBrokerClient:
         read_token: Callable[[ApplicationSecretRef], Awaitable[str]],
         current_token_reference: Callable[[], Awaitable[ApplicationSecretRef]],
         client: httpx.AsyncClient | None = None,
+        *,
+        clock: Callable[[], float] | None = None,
     ) -> None:
+        """Bind the trusted endpoint, scope-token readers, optional HTTP client, and monotonic clock.
+
+        A cached token is used without waiting for a token reread, so a stalled reread never blocks
+        credential reads. A relay signature mismatch rereads the token at most once every 30 seconds.
+        """
         validate_broker_endpoint(configuration.endpoint)
         self._endpoint = configuration.endpoint
         self._token_reference = configuration.token_secret_ref
@@ -72,6 +115,9 @@ class CredentialBrokerClient:
         self._owns_client = client is None
         self._token = ""
         self._token_lock = asyncio.Lock()
+        self._clock = clock if clock is not None else time.monotonic
+        self._last_mismatch_renewal: float | None = None
+        self._mismatch_renewal: asyncio.Task[str | None] | None = None
 
     async def close(self) -> None:
         """Close the internally owned HTTP client after all calls finish."""
@@ -85,16 +131,130 @@ class CredentialBrokerClient:
         request: dict[str, object] = {"sharedConnectionId": shared_connection_id}
         if rejected_revision:
             request["rejectedRevision"] = rejected_revision
-        token = await self._get_token()
-        response = await self._post(token, request)
+        return self._decode(await self._exchange(self._endpoint, request))
+
+    async def register_relayed_trigger(
+        self, shared_connection_id: str, connection_name: str, registration_path: str
+    ) -> None:
+        """Register a shared connection's relayed Trigger route at registration_path on the broker origin.
+
+        Raises ConnectionNotSelectedError, RelayedTriggerNotRelayedError, CredentialBrokerRejectedError for
+        any other answer, CredentialBrokerUnavailableError for a transient failure, and ValueError for an
+        invalid path or an oversized request.
+        """
+        target = self._origin_url(registration_path)
+        request: dict[str, object] = {
+            "sharedConnectionId": shared_connection_id,
+            "connectionName": connection_name,
+        }
+        if len(go_canonical_json_bytes(request)) > _MAXIMUM_RELAYED_TRIGGER_REGISTRATION_BYTES:
+            raise ValueError("relayed Trigger registration request is too large")
+        response = await self._exchange(target, request)
+        if response.status_code in (408, 425, 429) or response.status_code >= 500:
+            raise CredentialBrokerUnavailableError(f"credential broker HTTP {response.status_code}")
+        if response.status_code != 200:
+            raise CredentialBrokerRejectedError(f"credential broker HTTP {response.status_code}")
+        try:
+            answer = json.loads(response.content)
+        except (ValueError, UnicodeDecodeError):
+            raise CredentialBrokerRejectedError("credential broker answer is invalid") from None
+        status = answer.get("status") if isinstance(answer, dict) else None
+        if status == "REGISTERED":
+            return
+        if status == "CONNECTION_NOT_SELECTED":
+            raise ConnectionNotSelectedError("project connection is not selected by this scope")
+        if status == "NOT_RELAYED":
+            raise RelayedTriggerNotRelayedError()
+        raise CredentialBrokerRejectedError("credential broker status is unknown")
+
+    async def verify_relayed_request(self, headers: RelayHeaders, body: bytes, received_at: datetime) -> None:
+        """Verify that the host signed a relayed request with the scope token.
+
+        Only a well-formed, fresh signature that does not match may reread the token, at most once every
+        30 seconds; concurrent requests share one reread. Raises RelaySignatureInvalidError for a refused
+        request, RelayTokenRenewalDeferredError (retryable) for a mismatch inside the reread window, and
+        CredentialBrokerUnavailableError when the token cannot be read.
+        """
+        parsed = parse_relay_signature(headers, received_at)
+        if isinstance(parsed, RelaySignatureRefusal):
+            raise RelaySignatureInvalidError()
+        try:
+            token = await asyncio.wait_for(self._cached_or_read_token(), _BROKER_EXCHANGE_TIMEOUT_SECONDS)
+        except (TimeoutError, Exception):
+            raise CredentialBrokerUnavailableError("credential broker scope token is unavailable") from None
+        if matches_relay_signature(parsed, token, body):
+            return
+        try:
+            renewed = await asyncio.wait_for(
+                self._renew_token_after_mismatch(token), _BROKER_EXCHANGE_TIMEOUT_SECONDS
+            )
+        except RelayTokenRenewalDeferredError:
+            raise
+        except (TimeoutError, Exception):
+            raise CredentialBrokerUnavailableError("credential broker scope token is unavailable") from None
+        if renewed is not None and matches_relay_signature(parsed, renewed, body):
+            return
+        raise RelaySignatureInvalidError()
+
+    async def _renew_token_after_mismatch(self, mismatched: str) -> str | None:
+        if self._token and self._token != mismatched:
+            return self._token
+        if self._mismatch_renewal is not None:
+            return await asyncio.shield(self._mismatch_renewal)
+        now = self._clock()
+        if (
+            self._last_mismatch_renewal is not None
+            and now - self._last_mismatch_renewal < _RELAY_TOKEN_RENEWAL_INTERVAL_SECONDS
+        ):
+            raise RelayTokenRenewalDeferredError()
+        self._last_mismatch_renewal = now
+        renewal = asyncio.ensure_future(self._reread_token_after_mismatch(mismatched))
+        self._mismatch_renewal = renewal
+        renewal.add_done_callback(self._finish_mismatch_renewal)
+        return await asyncio.shield(renewal)
+
+    def _finish_mismatch_renewal(self, renewal: "asyncio.Task[str | None]") -> None:
+        if self._mismatch_renewal is renewal:
+            self._mismatch_renewal = None
+        if not renewal.cancelled():
+            # Every waiter may have timed out, so the outcome is retrieved here.
+            renewal.exception()
+
+    async def _reread_token_after_mismatch(self, mismatched: str) -> str | None:
+        # A rotation is a new secret version, so the current reference is resolved again, as after 401.
+        async with self._token_lock:
+            if self._token and self._token != mismatched:
+                return self._token
+            self._token_reference = await self._current_token_reference()
+            token = await self._read_token(self._token_reference)
+            if not _is_header_safe_token(token):
+                raise CredentialBrokerRejectedError("credential broker scope token is invalid")
+            self._token = token
+            return None if token == mismatched else token
+
+    def _origin_url(self, path: str) -> str:
+        has_query_or_fragment = any(character in path for character in "?#\\")
+        if not path.startswith("/") or path.startswith("//") or has_query_or_fragment:
+            raise ValueError(
+                "credential broker endpoint path must be an absolute path without a query or fragment"
+            )
+        endpoint = urlsplit(self._endpoint)
+        return f"{endpoint.scheme}://{endpoint.netloc}{path}"
+
+    async def _exchange(self, target_url: str, body: dict[str, object]) -> httpx.Response:
+        token = await self._cached_or_read_token()
+        response = await self._post(target_url, token, body)
         if response.status_code == 401:
             renewed = await self._renew_token(token)
             if renewed == token:
                 raise CredentialBrokerRejectedError("credential broker refused scope token")
-            response = await self._post(renewed, request)
-        return self._decode(response)
+            response = await self._post(target_url, renewed, body)
+        return response
 
-    async def _get_token(self) -> str:
+    async def _cached_or_read_token(self) -> str:
+        # A cached token needs no lock, so a slow mismatch reread cannot hold up reads.
+        if self._token:
+            return self._token
         async with self._token_lock:
             if not self._token:
                 self._token = await self._read_token(self._token_reference)
@@ -109,11 +269,11 @@ class CredentialBrokerClient:
             self._token = await self._read_token(self._token_reference)
             return self._token
 
-    async def _post(self, token: str, body: dict[str, object]) -> httpx.Response:
+    async def _post(self, target_url: str, token: str, body: dict[str, object]) -> httpx.Response:
         try:
             async with self._client.stream(
                 "POST",
-                self._endpoint,
+                target_url,
                 json=body,
                 headers={
                     "Authorization": "Bearer " + token,
@@ -178,6 +338,10 @@ class CredentialBrokerClient:
         except (ValueError, AttributeError):
             raise CredentialBrokerRejectedError("credential broker timestamps are invalid") from None
         return BrokerCredential(credential, revision, issued_at, expires_at, datetime.now(UTC))
+
+
+def _is_header_safe_token(token: str) -> bool:
+    return bool(token) and all(0x21 <= ord(character) <= 0x7E for character in token)
 
 
 class SharedConnection:

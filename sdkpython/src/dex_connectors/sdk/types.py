@@ -219,6 +219,18 @@ class Call:
         return result
 
 
+def new_trigger_call(connection: ConnectionRef, operation: OperationRef, call_id: CallID) -> Call:
+    """Create a Call outside a Dex Step, such as a Trigger's credential resolution.
+
+    The operation names the Trigger: its `operation_id` is the Trigger name. The Call has no Dex
+    context, so progress and text writes are no-ops. Raises ValueError for an invalid reference or ID.
+    """
+    connection.validate()
+    operation.validate()
+    call_id.validate()
+    return Call(id=call_id, connection=connection, operation=operation)
+
+
 @dataclass(frozen=True, slots=True)
 class BranchDefinition:
     """Stable operation route; only the happy path is required by default."""

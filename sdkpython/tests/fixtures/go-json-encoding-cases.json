@@ -1,0 +1,22 @@
+[
+  {
+    "name": "sorted map keys",
+    "output": "eyJaIjoidXBwZXIiLCJhIjpbIngiLDIuNV0sImFscGhhIjp7ImEiOm51bGwsImIiOnRydWV9LCJ6ZXRhIjoxLCLDqSI6ImFjY2VudCJ9"
+  },
+  {
+    "name": "floats",
+    "output": "WzFlKzIxLDEuNWUtNywwLjEsLTAsMTAwLDAuMDAwMDAxLDEyMzQ1Njc4OTAxMjM0NTY4MDAwMCwxMDAwMDAwMDAwMDAwMDAwMDAwMDAsLTIuNWUtMTAsNWUtMzI0XQ=="
+  },
+  {
+    "name": "strings",
+    "output": "eyJjb250cm9scyI6IlxiXGZcblxyXHRcdTAwMDFcdTAwMWZ/IiwiZW1vamkiOiLwn5iAIiwiaHRtbCI6Ilx1MDAzY2JcdTAwM2VcdTAwMjZcdTAwM2MvYlx1MDAzZSIsInF1b3RlIjoiXCJcXC8iLCJzZXBhcmF0b3JzIjoiXHUyMDI4XHUyMDI5In0="
+  },
+  {
+    "name": "nested arrays",
+    "output": "W1tdLHt9LFt7IngiOjEsInkiOjJ9XV0="
+  },
+  {
+    "name": "faithful floats",
+    "output": "WzFlKzIzLDFlKzIxLDEuNzk3NjkzMTM0ODYyMzE1N2UrMzA4LDVlLTMyNCwxMjM0NTY3ODkwMTIzNDU2ODAwMDAsMmUrMzAwLDFlKzIyLDAuMSwtMWUrMjNd"
+  }
+]

@@ -15,7 +15,18 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from .broker import CredentialBrokerClient, SharedConnection
+from ..relaysignature import RelayHeaders
+from ._raw_json import InvalidRawJSONError, encode_go_json_value, parse_trigger_payload_json
+from .broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerClient,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    RelayedTriggerNotRelayedError,
+    RelaySignatureInvalidError,
+    RelayTokenRenewalDeferredError,
+    SharedConnection,
+)
 from .connections import ConnectionKey, ConnectionStore, CredentialMaterial
 from .dexweb_store import DexWebObjectStore
 from .models import (
@@ -30,7 +41,30 @@ from .models import (
     SnapshotRef,
     require_object,
 )
-from .storage import ConfigurationStore, InMemoryObjectStore, ObjectStore, S3ObjectStore
+from .storage import (
+    ConfigurationStore,
+    InMemoryObjectStore,
+    ObjectConflictError,
+    ObjectNotFoundError,
+    ObjectStore,
+    S3ObjectStore,
+)
+from .trigger_inbox import (
+    MAXIMUM_PENDING_TRIGGER_EVENTS,
+    MAXIMUM_TRIGGER_INBOX_BYTES,
+    TRIGGER_INBOX_SCHEMA_VERSION,
+    PendingTriggerEvent,
+    TriggerInbox,
+    TriggerInboxFullError,
+    TriggerInboxKey,
+    TriggerJSONPayload,
+    TriggerPayloadDecoder,
+    TriggerPayloadEncoder,
+    decode_trigger_configuration,
+    decode_trigger_event,
+    encode_trigger_event,
+    new_durable_trigger_target,
+)
 
 LOCAL_CONNECTIONS_FILE_ENVIRONMENT = "DEX_CONNECTOR_CONFIG_FILE"
 
@@ -82,6 +116,58 @@ class LoadedProject:
 
     async def _read_secret(self, reference: ApplicationSecretRef, name: str) -> str:
         return await self.configurations.read_secret_value(reference, name)
+
+    def trigger_inbox(self, key: TriggerInboxKey) -> TriggerInbox:
+        """Bind one Trigger binding's inbox in this project's connection storage, without I/O.
+
+        Dex Web projects keep inboxes as private files beside connections.json; hosted projects keep them
+        in project storage. Raises ValueError for an invalid key.
+        """
+        return TriggerInbox(self.connections.objects, self.configuration.scope, key)
+
+    def shared_connection_id(self, key: ConnectionKey) -> str | None:
+        """Return the shared connection ID of a configured connection, or None when it is not shared."""
+        for entry in self.configuration.connections:
+            if entry.connector_id == key.connector_id and entry.connection_name == key.connection_name:
+                return entry.shared_connection_id or None
+        return None
+
+    async def register_relayed_trigger(self, key: ConnectionKey, registration_path: str) -> None:
+        """Ask the credential broker to relay a shared connection's provider events to this application.
+
+        registration_path is an absolute path on the broker endpoint's origin. Connectors register again
+        on every start. Raises ValueError without a broker or a shared connection entry, and the
+        broker's errors otherwise.
+        """
+        if self.broker is None:
+            raise ValueError(
+                "relayed Trigger registration requires a credential broker in the project configuration"
+            )
+        shared_connection_id = self.shared_connection_id(key)
+        if not shared_connection_id:
+            raise ValueError(
+                "relayed Trigger registration requires a shared connection entry for "
+                f"{key.connector_id}/{key.connection_name}"
+            )
+        await self.broker.register_relayed_trigger(
+            shared_connection_id, key.connection_name, registration_path
+        )
+
+    async def verify_relayed_request(self, headers: RelayHeaders, body: bytes, received_at: datetime) -> None:
+        """Check that the host signed a relayed request with this scope's token.
+
+        `Dex-Relay-Signature` must be "v1=" and the hexadecimal HMAC-SHA256 of
+        "v1:<Dex-Relay-Timestamp>:<body>", compared in constant time, and the timestamp must be within five
+        minutes of received_at. A mismatch rereads the token at most once every 30 seconds; inside that
+        window it raises RelayTokenRenewalDeferredError, a retryable CredentialBrokerUnavailableError, so
+        a rotated token is accepted on the host's retry. Raises RelaySignatureInvalidError for a refused
+        request and ValueError without a broker.
+        """
+        if self.broker is None:
+            raise ValueError(
+                "relayed Trigger verification requires a credential broker in the project configuration"
+            )
+        await self.broker.verify_relayed_request(headers, body, received_at)
 
     async def close(self) -> None:
         """Close an internally owned credential broker client."""
@@ -313,17 +399,42 @@ __all__ = [
     "ConfigurationStore",
     "ConnectionConfiguration",
     "ConnectionKey",
+    "ConnectionNotSelectedError",
     "ConnectionStore",
+    "CredentialBrokerRejectedError",
+    "CredentialBrokerUnavailableError",
     "CredentialMaterial",
     "EnvironmentValue",
     "InMemoryObjectStore",
+    "InvalidRawJSONError",
     "LoadedProject",
     "LOCAL_CONNECTIONS_FILE_ENVIRONMENT",
+    "MAXIMUM_PENDING_TRIGGER_EVENTS",
+    "MAXIMUM_TRIGGER_INBOX_BYTES",
+    "ObjectConflictError",
+    "ObjectNotFoundError",
     "ObjectStore",
+    "PendingTriggerEvent",
+    "RelaySignatureInvalidError",
+    "RelayTokenRenewalDeferredError",
+    "RelayedTriggerNotRelayedError",
     "S3ObjectStore",
     "Scope",
     "SnapshotRef",
+    "TRIGGER_INBOX_SCHEMA_VERSION",
+    "TriggerInbox",
+    "TriggerInboxFullError",
+    "TriggerInboxKey",
+    "TriggerJSONPayload",
+    "TriggerPayloadDecoder",
+    "TriggerPayloadEncoder",
+    "decode_trigger_configuration",
+    "decode_trigger_event",
+    "encode_go_json_value",
+    "encode_trigger_event",
     "load_dex_web_project",
     "load_from_environment",
     "load_project_from_object_store",
+    "new_durable_trigger_target",
+    "parse_trigger_payload_json",
 ]
