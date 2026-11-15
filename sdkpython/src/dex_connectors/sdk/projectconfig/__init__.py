@@ -41,6 +41,25 @@ from .models import (
     SnapshotRef,
     require_object,
 )
+from .poll_cursor import (
+    MAXIMUM_KEYED_SNAPSHOT_ENTRIES,
+    MAXIMUM_POLL_CURSOR_DOCUMENT_BYTES,
+    MAXIMUM_POLL_CURSOR_TOKEN_BYTES,
+    POLL_CURSOR_SCHEMA_VERSION,
+    KeyedSnapshot,
+    KeyedSnapshotEntry,
+    PollCursorDocumentInvalidError,
+    PollCursorKey,
+    PollCursorRecord,
+    PollCursorState,
+    PollCursorStore,
+    PollCursorTooLargeError,
+    PollFeedKey,
+    decode_poll_cursor_document,
+    encode_poll_cursor_document,
+    validate_keyed_snapshot,
+    validate_poll_cursor_state,
+)
 from .storage import (
     ConfigurationStore,
     InMemoryObjectStore,
@@ -124,6 +143,22 @@ class LoadedProject:
         in project storage. Raises ValueError for an invalid key.
         """
         return TriggerInbox(self.connections.objects, self.configuration.scope, key)
+
+    def poll_cursor_store(self, key: PollCursorKey) -> PollCursorStore:
+        """Bind one Trigger binding's durable poll cursor in this project's storage, without I/O.
+
+        The cursor head sits beside the binding's Trigger inbox. Dex Web projects keep it in process
+        memory, as Go does, so a local restart reseeds; hosted projects keep it in project storage.
+        Raises ValueError for an invalid key.
+        """
+        return PollCursorStore(self.connections.objects, self.configuration.scope, key)
+
+    def poll_feed_cursor_store(self, key: PollFeedKey) -> PollCursorStore:
+        """Bind one shared feed's durable poll cursor in this project's storage, without I/O.
+
+        Storage follows `poll_cursor_store`. Raises ValueError for an invalid key.
+        """
+        return PollCursorStore(self.connections.objects, self.configuration.scope, key)
 
     def shared_connection_id(self, key: ConnectionKey) -> str | None:
         """Return the shared connection ID of a configured connection, or None when it is not shared."""
@@ -393,6 +428,23 @@ async def load_from_environment(
 
 
 __all__ = [
+    "MAXIMUM_KEYED_SNAPSHOT_ENTRIES",
+    "MAXIMUM_POLL_CURSOR_DOCUMENT_BYTES",
+    "MAXIMUM_POLL_CURSOR_TOKEN_BYTES",
+    "POLL_CURSOR_SCHEMA_VERSION",
+    "KeyedSnapshot",
+    "KeyedSnapshotEntry",
+    "PollCursorDocumentInvalidError",
+    "PollCursorKey",
+    "PollCursorRecord",
+    "PollCursorState",
+    "PollCursorStore",
+    "PollCursorTooLargeError",
+    "PollFeedKey",
+    "decode_poll_cursor_document",
+    "encode_poll_cursor_document",
+    "validate_keyed_snapshot",
+    "validate_poll_cursor_state",
     "ApplicationSecretRef",
     "CONFIGURATION_SCHEMA_VERSION",
     "Configuration",

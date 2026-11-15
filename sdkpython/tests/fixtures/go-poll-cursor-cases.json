@@ -1,0 +1,445 @@
+{
+  "credentialCalls": [
+    {
+      "callId": "a1955d2a-b59d-531a-bca7-c6d350e55ea5",
+      "connection": "gmail-inbox",
+      "connectorId": "gmail",
+      "provider": "gmail",
+      "triggerName": "messageReceived"
+    },
+    {
+      "callId": "94ff6654-d725-5a0c-974a-ee04f246731d",
+      "connection": "main-é-流程 😀",
+      "connectorId": "changelog",
+      "provider": "changelog",
+      "triggerName": "itemChanged"
+    },
+    {
+      "callId": "3313ec1c-7bac-5ba7-a141-544eec8c6047",
+      "connection": "team drive",
+      "connectorId": "google-drive",
+      "provider": "google-drive",
+      "triggerName": "fileCreated"
+    }
+  ],
+  "decoding": [
+    {
+      "name": "unseeded",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0=",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0="
+    },
+    {
+      "name": "state missing",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEifQ==",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0="
+    },
+    {
+      "name": "canonical",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InQiLCJzbmFwc2hvdCI6bnVsbCwic2VlZGVkQXRVbml4TXMiOjEsImNvbW1pdHRlZEF0VW5peE1zIjoyLCJjb21taXRDb3VudCI6MywicmVzZXRDb3VudCI6MCwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9fQ==",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InQiLCJzbmFwc2hvdCI6bnVsbCwic2VlZGVkQXRVbml4TXMiOjEsImNvbW1pdHRlZEF0VW5peE1zIjoyLCJjb21taXRDb3VudCI6MywicmVzZXRDb3VudCI6MCwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9fQ=="
+    },
+    {
+      "name": "whitespace and order",
+      "input": "IHsKICJzdGF0ZSIgOiB7ImNvbW1pdENvdW50IiA6IDMgLCAidG9rZW4iIDogInQifSAsCSJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiIH0K",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InQiLCJzbmFwc2hvdCI6bnVsbCwic2VlZGVkQXRVbml4TXMiOjAsImNvbW1pdHRlZEF0VW5peE1zIjowLCJjb21taXRDb3VudCI6MywicmVzZXRDb3VudCI6MCwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9fQ=="
+    },
+    {
+      "name": "case-insensitive keys",
+      "input": "eyJTQ0hFTUFWRVJTSU9OIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJTdGF0ZSI6eyJUT0tFTiI6InQiLCJDb21taXRDb3VudCI6MywiU05BUFNIT1QiOnsiRW50cmllcyI6W3siS0VZIjoiYSIsIkhhc2giOiIwMTIzNDU2Nzg5YWJjZGVmIiwiU0VFTiI6MSwiVmFsdWUiOjF9XX19fQ==",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InQiLCJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjoxLCJ2YWx1ZSI6MX1dfSwic2VlZGVkQXRVbml4TXMiOjAsImNvbW1pdHRlZEF0VW5peE1zIjowLCJjb21taXRDb3VudCI6MywicmVzZXRDb3VudCI6MCwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9fQ=="
+    },
+    {
+      "name": "kelvin sign folds to k",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b+KEqmVuIjoieCIsInNuYXBzaG90Ijp7ImVudHJpZXMiOlt7IuKEqmV5IjoiYSIsImhhc2giOiIwMTIzNDU2Nzg5YWJjZGVmIn1dfX19",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IngiLCJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjowfV19LCJzZWVkZWRBdFVuaXhNcyI6MCwiY29tbWl0dGVkQXRVbml4TXMiOjAsImNvbW1pdENvdW50IjowLCJyZXNldENvdW50IjowLCJsYXN0UmVzZXRBdFVuaXhNcyI6bnVsbH19"
+    },
+    {
+      "name": "duplicate token last wins",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImEiLCJ0b2tlbiI6ImIifX0=",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImIiLCJzbmFwc2hvdCI6bnVsbCwic2VlZGVkQXRVbml4TXMiOjAsImNvbW1pdHRlZEF0VW5peE1zIjowLCJjb21taXRDb3VudCI6MCwicmVzZXRDb3VudCI6MCwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9fQ=="
+    },
+    {
+      "name": "duplicate state merges",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImEiLCJjb21taXRDb3VudCI6NX0sInN0YXRlIjp7InJlc2V0Q291bnQiOjF9fQ==",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImEiLCJzbmFwc2hvdCI6bnVsbCwic2VlZGVkQXRVbml4TXMiOjAsImNvbW1pdHRlZEF0VW5peE1zIjowLCJjb21taXRDb3VudCI6NSwicmVzZXRDb3VudCI6MSwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9fQ=="
+    },
+    {
+      "name": "state then null",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImEifSwic3RhdGUiOm51bGx9",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0="
+    },
+    {
+      "name": "duplicate snapshot merges",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjoxfV19LCJzbmFwc2hvdCI6e319fQ==",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IiIsInNuYXBzaG90Ijp7ImVudHJpZXMiOlt7ImtleSI6ImEiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiIsInNlZW4iOjF9XX0sInNlZWRlZEF0VW5peE1zIjowLCJjb21taXR0ZWRBdFVuaXhNcyI6MCwiY29tbWl0Q291bnQiOjAsInJlc2V0Q291bnQiOjAsImxhc3RSZXNldEF0VW5peE1zIjpudWxsfX0="
+    },
+    {
+      "name": "duplicate entries arrays",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjo3LCJ2YWx1ZSI6WzFdfSx7ImtleSI6ImEiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiIsInNlZW4iOjF9XX0sInNuYXBzaG90Ijp7ImVudHJpZXMiOlt7ImtleSI6ImIiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiJ9XX19fQ==",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IiIsInNuYXBzaG90Ijp7ImVudHJpZXMiOlt7ImtleSI6ImIiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiIsInNlZW4iOjcsInZhbHVlIjpbMV19XX0sInNlZWRlZEF0VW5peE1zIjowLCJjb21taXR0ZWRBdFVuaXhNcyI6MCwiY29tbWl0Q291bnQiOjAsInJlc2V0Q291bnQiOjAsImxhc3RSZXNldEF0VW5peE1zIjpudWxsfX0="
+    },
+    {
+      "name": "null fields keep zero",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6bnVsbCwiY29tbWl0Q291bnQiOm51bGwsInNuYXBzaG90Ijp7ImVudHJpZXMiOm51bGx9LCJsYXN0UmVzZXRBdFVuaXhNcyI6bnVsbH19",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IiIsInNuYXBzaG90Ijp7ImVudHJpZXMiOltdfSwic2VlZGVkQXRVbml4TXMiOjAsImNvbW1pdHRlZEF0VW5peE1zIjowLCJjb21taXRDb3VudCI6MCwicmVzZXRDb3VudCI6MCwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9fQ=="
+    },
+    {
+      "name": "null token after value",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImtlcHQiLCJ0b2tlbiI6bnVsbH19",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImtlcHQiLCJzbmFwc2hvdCI6bnVsbCwic2VlZGVkQXRVbml4TXMiOjAsImNvbW1pdHRlZEF0VW5peE1zIjowLCJjb21taXRDb3VudCI6MCwicmVzZXRDb3VudCI6MCwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9fQ=="
+    },
+    {
+      "name": "escaped strings",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IsOp8J+YgFx1ZDgwMHhcL1xiIn19",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IsOp8J+YgO+/vXgvXGIiLCJzbmFwc2hvdCI6bnVsbCwic2VlZGVkQXRVbml4TXMiOjAsImNvbW1pdHRlZEF0VW5peE1zIjowLCJjb21taXRDb3VudCI6MCwicmVzZXRDb3VudCI6MCwibGFzdFJlc2V0QXRVbml4TXMiOm51bGx9fQ=="
+    },
+    {
+      "name": "invalid UTF-8 in token",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImH/YsMoIn19",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImHvv71i77+9KCIsInNuYXBzaG90IjpudWxsLCJzZWVkZWRBdFVuaXhNcyI6MCwiY29tbWl0dGVkQXRVbml4TXMiOjAsImNvbW1pdENvdW50IjowLCJyZXNldENvdW50IjowLCJsYXN0UmVzZXRBdFVuaXhNcyI6bnVsbH19"
+    },
+    {
+      "name": "value whitespace kept then compacted",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJ2YWx1ZSI6IHsgIngiIDogWyAxICwgIjwiIF0gfSB9XX19fQ==",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IiIsInNuYXBzaG90Ijp7ImVudHJpZXMiOlt7ImtleSI6ImEiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiIsInNlZW4iOjAsInZhbHVlIjp7IngiOlsxLCJcdTAwM2MiXX19XX0sInNlZWRlZEF0VW5peE1zIjowLCJjb21taXR0ZWRBdFVuaXhNcyI6MCwiY29tbWl0Q291bnQiOjAsInJlc2V0Q291bnQiOjAsImxhc3RSZXNldEF0VW5peE1zIjpudWxsfX0="
+    },
+    {
+      "name": "negative zero integer",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6LTB9fQ==",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IiIsInNuYXBzaG90IjpudWxsLCJzZWVkZWRBdFVuaXhNcyI6MCwiY29tbWl0dGVkQXRVbml4TXMiOjAsImNvbW1pdENvdW50IjowLCJyZXNldENvdW50IjowLCJsYXN0UmVzZXRBdFVuaXhNcyI6bnVsbH19"
+    },
+    {
+      "name": "last reset set",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJsYXN0UmVzZXRBdFVuaXhNcyI6NDJ9fQ==",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IiIsInNuYXBzaG90IjpudWxsLCJzZWVkZWRBdFVuaXhNcyI6MCwiY29tbWl0dGVkQXRVbml4TXMiOjAsImNvbW1pdENvdW50IjowLCJyZXNldENvdW50IjowLCJsYXN0UmVzZXRBdFVuaXhNcyI6NDJ9fQ=="
+    },
+    {
+      "name": "unknown top-level field",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbCwiZXh0cmEiOjF9",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "unknown state field",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJvdGhlciI6MX19",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "unknown entry field",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJvdGhlciI6MX1dfX19",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "unknown snapshot field",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJpdGVtcyI6W119fX0=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "other schema",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjIiLCJzdGF0ZSI6bnVsbH0=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "schema missing",
+      "input": "eyJzdGF0ZSI6bnVsbH0=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "trailing value",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0ge30=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "trailing whitespace",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0gCgk=",
+      "error": false,
+      "reencoded": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6bnVsbH0="
+    },
+    {
+      "name": "top-level array",
+      "input": "W10=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "top-level null",
+      "input": "bnVsbA==",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "float counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6MS4wfX0=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "exponent counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6MWUyfX0=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "overflow counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6OTIyMzM3MjAzNjg1NDc3NTgwOH19",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "string counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJjb21taXRDb3VudCI6IjEifX0=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "number token",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6MX19",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "boolean snapshot",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6dHJ1ZX19",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "negative counter",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJyZXNldENvdW50IjotMX19",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "negative seen",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjotMX1dfX19",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "unsorted entries",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJiIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYifSx7ImtleSI6ImEiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiJ9XX19fQ==",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "duplicate entry keys",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjoxfSx7ImtleSI6ImEiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiIsInNlZW4iOjF9XX19fQ==",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "uppercase hash",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlBQkNERUYifV19fX0=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "short hash",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZSJ9XX19fQ==",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "empty key",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiIiLCJoYXNoIjoiMDEyMzQ1Njc4OWFiY2RlZiJ9XX19fQ==",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "null value",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYiLCJ2YWx1ZSI6bnVsbH1dfX19",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "null entry element",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbbnVsbF19fX0=",
+      "error": true,
+      "reencoded": null
+    },
+    {
+      "name": "invalid JSON",
+      "input": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6ImEi",
+      "error": true,
+      "reencoded": null
+    }
+  ],
+  "documents": [
+    {
+      "document": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InJvdyBcdTAwM2M3XHUwMDNlIFx1MDAyNiBcdTIwMjhlbmQiLCJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJyb3ctMSIsImhhc2giOiI5Zjg2ZDA4MTg4NGM3ZDY1Iiwic2VlbiI6MTIsInZhbHVlIjp7Ik5hbWUiOiJBZGEifX0seyJrZXkiOiJyb3ctMiIsImhhc2giOiIwMTIzNDU2Nzg5YWJjZGVmIiwic2VlbiI6M31dfSwic2VlZGVkQXRVbml4TXMiOjE3NjMxNjQ4MDAwMDAsImNvbW1pdHRlZEF0VW5peE1zIjoxNzYzMTY1NDAwMDAwLCJjb21taXRDb3VudCI6MTIsInJlc2V0Q291bnQiOjAsImxhc3RSZXNldEF0VW5peE1zIjpudWxsfX0=",
+      "name": "golden",
+      "state": {
+        "token": "row \u003c7\u003e \u0026 \u2028end",
+        "snapshot": [
+          {
+            "key": "row-1",
+            "hash": "9f86d081884c7d65",
+            "seen": 12,
+            "value": "{ \"Name\": \"Ada\" }"
+          },
+          {
+            "key": "row-2",
+            "hash": "0123456789abcdef",
+            "seen": 3,
+            "value": null
+          }
+        ],
+        "seededAtUnixMs": 1763164800000,
+        "committedAtUnixMs": 1763165400000,
+        "commitCount": 12,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      }
+    },
+    {
+      "document": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IiIsInNuYXBzaG90IjpudWxsLCJzZWVkZWRBdFVuaXhNcyI6MCwiY29tbWl0dGVkQXRVbml4TXMiOjAsImNvbW1pdENvdW50IjowLCJyZXNldENvdW50IjowLCJsYXN0UmVzZXRBdFVuaXhNcyI6bnVsbH19",
+      "name": "zero state",
+      "state": {
+        "token": "",
+        "snapshot": null,
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 0,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      }
+    },
+    {
+      "document": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6IjAiLCJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbXX0sInNlZWRlZEF0VW5peE1zIjowLCJjb21taXR0ZWRBdFVuaXhNcyI6MCwiY29tbWl0Q291bnQiOjEsInJlc2V0Q291bnQiOjAsImxhc3RSZXNldEF0VW5peE1zIjpudWxsfX0=",
+      "name": "empty snapshot",
+      "state": {
+        "token": "0",
+        "snapshot": [],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 1,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      }
+    },
+    {
+      "document": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InN5bmMtdG9rZW4iLCJzbmFwc2hvdCI6bnVsbCwic2VlZGVkQXRVbml4TXMiOjUsImNvbW1pdHRlZEF0VW5peE1zIjo2LCJjb21taXRDb3VudCI6OSwicmVzZXRDb3VudCI6MiwibGFzdFJlc2V0QXRVbml4TXMiOjE3NjMxNjU0MDAxMjN9fQ==",
+      "name": "reset",
+      "state": {
+        "token": "sync-token",
+        "snapshot": null,
+        "seededAtUnixMs": 5,
+        "committedAtUnixMs": 6,
+        "commitCount": 9,
+        "resetCount": 2,
+        "lastResetAtUnixMs": 1763165400123
+      }
+    },
+    {
+      "document": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InFcImJcXHMvY1x1MDAwMFx1MDAwMVx1MDAxZn9cdFxuXHJcdTIwMjnDqfCfmIBcdTAwM2NcdTAwM2VcdTAwMjbvv70iLCJzbmFwc2hvdCI6eyJlbnRyaWVzIjpbeyJrZXkiOiJhIiwiaGFzaCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJzZWVuIjoxLCJ2YWx1ZSI6WzEuNTBlKzMsIlx1MDAzY2JcdTAwM2VcdTAwMjZhbXA7XHUyMDI4Iix7InoiOm51bGwsImEiOnRydWV9LC0wXX0seyJrZXkiOiLDqSIsImhhc2giOiJmZWRjYmE5ODc2NTQzMjEwIiwic2VlbiI6MiwidmFsdWUiOiLDqVwv8J+YgCJ9LHsia2V5Ijoi772aIiwiaGFzaCI6ImZlZGNiYTk4NzY1NDMyMTAiLCJzZWVuIjozLCJ2YWx1ZSI6MH0seyJrZXkiOiLwn5iAIiwiaGFzaCI6ImZlZGNiYTk4NzY1NDMyMTAiLCJzZWVuIjo0LCJ2YWx1ZSI6e319XX0sInNlZWRlZEF0VW5peE1zIjowLCJjb21taXR0ZWRBdFVuaXhNcyI6MCwiY29tbWl0Q291bnQiOjQsInJlc2V0Q291bnQiOjAsImxhc3RSZXNldEF0VW5peE1zIjpudWxsfX0=",
+      "name": "string escapes",
+      "state": {
+        "token": "q\"b\\s/c\u0000\u0001\u001f\t\n\r\u2029é😀\u003c\u003e\u0026�",
+        "snapshot": [
+          {
+            "key": "a",
+            "hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "seen": 1,
+            "value": " [ 1.50e+3 , \"\u003cb\u003e\u0026amp;\u2028\" , {\"z\" : null, \"a\":true} , -0 ]\n"
+          },
+          {
+            "key": "é",
+            "hash": "fedcba9876543210",
+            "seen": 2,
+            "value": "\"é\\/😀\""
+          },
+          {
+            "key": "ｚ",
+            "hash": "fedcba9876543210",
+            "seen": 3,
+            "value": "0"
+          },
+          {
+            "key": "😀",
+            "hash": "fedcba9876543210",
+            "seen": 4,
+            "value": "{}"
+          }
+        ],
+        "seededAtUnixMs": 0,
+        "committedAtUnixMs": 0,
+        "commitCount": 4,
+        "resetCount": 0,
+        "lastResetAtUnixMs": null
+      }
+    },
+    {
+      "document": "eyJzY2hlbWFWZXJzaW9uIjoiY29ubmVjdG9ycy5kZXguZGV2L3Byb2plY3QtcG9sbC1jdXJzb3IvdjFhbHBoYTEiLCJzdGF0ZSI6eyJ0b2tlbiI6InQiLCJzbmFwc2hvdCI6bnVsbCwic2VlZGVkQXRVbml4TXMiOi0xLCJjb21taXR0ZWRBdFVuaXhNcyI6OTIyMzM3MjAzNjg1NDc3NTgwNywiY29tbWl0Q291bnQiOjkyMjMzNzIwMzY4NTQ3NzU4MDcsInJlc2V0Q291bnQiOjkyMjMzNzIwMzY4NTQ3NzU4MDYsImxhc3RSZXNldEF0VW5peE1zIjotOTIyMzM3MjAzNjg1NDc3NTgwOH19",
+      "name": "large counters",
+      "state": {
+        "token": "t",
+        "snapshot": null,
+        "seededAtUnixMs": -1,
+        "committedAtUnixMs": 9223372036854775807,
+        "commitCount": 9223372036854775807,
+        "resetCount": 9223372036854775806,
+        "lastResetAtUnixMs": -9223372036854775808
+      }
+    }
+  ],
+  "generator": "Go poll Trigger kit: sdkgo/projectconfig PollCursorStore and sdkgo/pollingtrigger NewTriggerCredentialCall",
+  "keys": [
+    {
+      "bindingName": "main / west",
+      "connectionName": "main-é-流程 😀",
+      "connectorId": "sample",
+      "key": "projects/sample-project/preview/poll-cursors/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/itemCreated/bWFpbiAvIHdlc3Q/head",
+      "triggerName": "itemCreated"
+    },
+    {
+      "bindingName": "a+b/c?d=e",
+      "connectionName": "team drive",
+      "connectorId": "google-drive",
+      "key": "projects/sample-project/preview/poll-cursors/google-drive/dGVhbSBkcml2ZQ/fileCreated/YStiL2M_ZD1l/head",
+      "triggerName": "fileCreated"
+    },
+    {
+      "bindingName": "ﬁ",
+      "connectionName": "inner 　space",
+      "connectorId": "x1",
+      "key": "projects/sample-project/preview/poll-cursors/x1/aW5uZXLCoOOAgHNwYWNl/ab/76yB/head",
+      "triggerName": "ab"
+    },
+    {
+      "connectionName": "main-é-流程 😀",
+      "connectorId": "sample",
+      "feedName": "itemChanges",
+      "key": "projects/sample-project/preview/poll-feeds/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/itemChanges/head"
+    },
+    {
+      "connectionName": "team drive",
+      "connectorId": "google-drive",
+      "feedName": "driveChanges",
+      "key": "projects/sample-project/preview/poll-feeds/google-drive/dGVhbSBkcml2ZQ/driveChanges/head"
+    }
+  ]
+}
