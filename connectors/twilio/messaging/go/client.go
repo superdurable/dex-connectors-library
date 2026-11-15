@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -165,7 +166,11 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 }
+
+// minimumPollInterval keeps a messageReceived poll loop within Twilio's per-account API concurrency.
+const minimumPollInterval = 5 * time.Second
 
 // WithHTTPClient replaces the HTTP client used for Twilio API calls. The caller
 // keeps ownership of client and its transport. The connector uses a copy that
@@ -173,6 +178,14 @@ type clientOptions struct {
 // the shorter write window within the 30-second Execute timeout.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithLogger sends the messageReceived Trigger runner's records to logger: seeds, reseeds after an
+// unusable cursor, failed polls, rate-limit pauses, and the durable inboxes NewProjectMessageTriggerRunner
+// opens. Records carry binding identity and never message bodies, addresses, or credentials. Without this
+// option, or with a nil logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
 }
 
 // Client executes authenticated Twilio Messages API calls for one account.
@@ -184,6 +197,8 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -248,6 +263,8 @@ type twilioMessageResource struct {
 	DateCreated         *string         `json:"date_created"`
 	DateSent            *string         `json:"date_sent"`
 	DateUpdated         *string         `json:"date_updated"`
+	// Body is read only by the messageReceived Trigger; operation results never carry it.
+	Body *string `json:"body"`
 }
 
 // flexibleInteger accepts a number, decimal string, or null; Twilio sends counts as strings.
@@ -270,6 +287,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes < 1 {
 		return nil, fmt.Errorf("Twilio maxResponseBytes must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Twilio pollInterval must be at least %s", minimumPollInterval)
+	}
 	var defaultSender messageSender
 	if strings.TrimSpace(config.DefaultSender) != "" {
 		defaultSender, err = parseMessageSender(config.DefaultSender)
@@ -290,7 +310,8 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	return &Client{
 		messagesURL: baseURL + "/Accounts/" + accountSID + "/Messages", accountSID: accountSID, defaultSender: defaultSender,
 		httpClient:  providerhttp.NewProviderHTTPClient(dependencies.httpClient, requestTimeout),
-		credentials: credentials, maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		credentials: credentials, maxResponseBytes: config.MaxResponseBytes,
+		pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
@@ -694,6 +715,11 @@ func (client *Client) decodeMessage(contents []byte, authorization basicAuthoriz
 	if err := decoder.Decode(new(any)); err != io.EOF {
 		return Message{}, errMessageResponseInvalid
 	}
+	return client.convertMessageResource(resource, authorization)
+}
+
+// convertMessageResource validates one Message resource of this account and keeps its safe view.
+func (client *Client) convertMessageResource(resource twilioMessageResource, authorization basicAuthorization) (Message, error) {
 	if !messageSIDPattern.MatchString(resource.SID) || resource.AccountSID != client.accountSID ||
 		!messageStatusPattern.MatchString(resource.Status) || !isSafeProviderAddress(resource.To) {
 		return Message{}, errMessageResponseInvalid

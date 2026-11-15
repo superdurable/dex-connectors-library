@@ -143,7 +143,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.twilio_messaging.c
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"accountSid", "defaultSender", "endpoint", "maxResponseBytes"}:
+    if set(value) - {"accountSid", "defaultSender", "endpoint", "maxResponseBytes", "pollInterval"}:
         raise ValueError("Twilio Messaging configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "accountSid" in value:
@@ -170,4 +170,9 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(max_response_bytes) is int):
             raise ValueError("Twilio Messaging configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
+    if "pollInterval" in value:
+        poll_interval = value["pollInterval"]
+        if not (type(poll_interval) is int):
+            raise ValueError("Twilio Messaging configuration pollInterval has an invalid type")
+        config_arguments['poll_interval_seconds'] = poll_interval / 1_000_000_000
     return Config(**config_arguments)

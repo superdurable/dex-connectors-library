@@ -36,7 +36,13 @@ type guidanceManifest struct {
 				} `yaml:"guide"`
 			} `yaml:"methods"`
 		} `yaml:"auth"`
-		Studio any `yaml:"studio"`
+		Studio *struct {
+			Commands []any `yaml:"commands"`
+			Units    []struct {
+				ID          string `yaml:"id"`
+				Description string `yaml:"description"`
+			} `yaml:"units"`
+		} `yaml:"studio"`
 	} `yaml:"spec"`
 }
 
@@ -70,7 +76,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"accountSid", "defaultSender", "endpoint", "maxResponseBytes", "auth_token", "api_key_sid", "api_key_secret"}, names,
+	require.Equal(t, []string{"accountSid", "defaultSender", "endpoint", "maxResponseBytes", "pollInterval", "auth_token", "api_key_sid", "api_key_secret"}, names,
 		"a new visible field needs its own guidance review")
 
 	for _, field := range visibleFields {
@@ -114,11 +120,21 @@ func TestAuthenticationMethodsExplainSetupAndRevocation(t *testing.T) {
 	require.True(t, manifest.Spec.Auth.Methods[1].Recommended)
 }
 
-// TestManifestDeclaresNoStudioBundle records that Studio commands cannot send the HTTP Basic credential Twilio requires.
-func TestManifestDeclaresNoStudioBundle(t *testing.T) {
-	require.Nil(t, readGuidanceManifest(t).Spec.Studio)
-	_, err := os.Stat("../ui")
-	require.True(t, os.IsNotExist(err))
+// TestStudioBundleDeclaresNoSetupCommands records that Studio commands cannot send the HTTP Basic credential
+// Twilio requires, so the bundle has only the guided receivingAddressInput unit and no provider picker.
+func TestStudioBundleDeclaresNoSetupCommands(t *testing.T) {
+	studio := readGuidanceManifest(t).Spec.Studio
+	require.NotNil(t, studio)
+	require.Empty(t, studio.Commands)
+	require.Len(t, studio.Units, 1)
+	unit := studio.Units[0]
+	require.Equal(t, "receivingAddressInput", unit.ID)
+	require.Regexp(t, consoleURLPattern, unit.Description)
+	for _, guidance := range []string{"E.164", "whatsapp:+", "Phone Numbers > Manage > Active numbers", "Blank"} {
+		require.Contains(t, unit.Description, guidance)
+	}
+	_, err := os.Stat("../ui/package.json")
+	require.NoError(t, err)
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {

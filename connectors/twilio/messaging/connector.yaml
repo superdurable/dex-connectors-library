@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: twilio-messaging
   displayName: Twilio Messaging
-  description: Send SMS, MMS, and WhatsApp messages through Twilio Programmable Messaging and read their delivery status.
+  description: Send SMS, MMS, and WhatsApp messages through Twilio Programmable Messaging, read their delivery status, and receive inbound messages.
   company: Twilio
   categories: [communication]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: twilio
   languages:
@@ -47,6 +47,12 @@ spec:
         description: "Maximum complete Twilio API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized getMessage response selects invalidResponse, and an oversized response to an accepted send selects uncertain."
         required: false
         default: 1048576
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between messageReceived Trigger polls of the Twilio Messages list, as a Go duration of at least 5s such as 15s or 2m. Shorter intervals deliver inbound messages sooner and send more list requests, which count against the account's API concurrency limit. Leave blank to keep the displayed interval."
+        required: false
+        default: 30s
   auth:
     methodLabel: Credential
     defaultMethod: auth-token
@@ -93,6 +99,26 @@ spec:
             - Enter a friendly name, choose the Twilio Region of the endpoint (United States (US1) for the default), and choose Standard, or Restricted with permission to create and read Messages.
             - Copy the SK SID into api_key_sid and the secret shown once into api_key_secret, then copy the account's AC Account SID from the Account Dashboard into accountSid.
             - To revoke access, delete the key on the same page; other keys and the Auth Token keep working.
+  # No setup commands: Studio commands cannot send the HTTP Basic credential Twilio requires.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    units:
+      - id: receivingAddressInput
+        goName: ReceivingAddressInput
+        description: "Enter the Twilio phone number in E.164 form, such as +14155550100, or the WhatsApp sender written whatsapp:+14155550100, whose inbound messages the binding receives; copy it from https://console.twilio.com/us1/develop/phone-numbers/manage/incoming (Phone Numbers > Manage > Active numbers) or Messaging > Senders > WhatsApp senders. Not secret. Blank receives every inbound message of the account."
+        outputs:
+          - {name: to, goName: To, type: string}
+  triggers:
+    - name: messageReceived
+      goName: MessageReceived
+      eventType: MessageReceivedEvent
+      configurationType: MessageReceivedTriggerConfiguration
+      description: "Receive each inbound SMS, MMS, or WhatsApp message to the account, or to one Twilio number, read by polling the Twilio Messages list; the first run records a baseline and delivers no existing messages."
   operations:
     - name: sendMessage
       goName: SendMessage

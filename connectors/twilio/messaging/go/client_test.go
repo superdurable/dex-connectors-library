@@ -528,7 +528,7 @@ func TestNewValidatesConnectionConfiguration(t *testing.T) {
 }
 
 func TestDefaultConfigUsesTheUnitedStatesRegion(t *testing.T) {
-	require.Equal(t, messaging.Config{Endpoint: "https://api.twilio.com/2010-04-01", MaxResponseBytes: 1 << 20}, messaging.DefaultConfig())
+	require.Equal(t, messaging.Config{Endpoint: "https://api.twilio.com/2010-04-01", MaxResponseBytes: 1 << 20, PollInterval: 30 * time.Second}, messaging.DefaultConfig())
 }
 
 type recordedRequest struct {

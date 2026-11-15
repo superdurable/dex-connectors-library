@@ -1,6 +1,6 @@
 {
   "connectorId": "twilio-messaging",
-  "releaseTag": "connectors/twilio/messaging/go/v0.23.0",
+  "releaseTag": "connectors/twilio/messaging/go/v0.24.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-twilio-messaging",
