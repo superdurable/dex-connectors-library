@@ -97,12 +97,12 @@ function mutationSessionFailure<T>(error: unknown, zero: T, operation: string): 
   if (error instanceof JiraSessionFailure) return error.retry ? newMutationRetry(error.failure, error.retryAfterMs) : newMutationBranch('defect', zero, {}, error.failure);
   return newMutationRetry(jiraFailure(operation, 'AVAILABILITY', 'Jira setup is temporarily unavailable'));
 }
-function rejection(operation: string, subject: string, status: number, fields: string[]): Failure { return jiraFailure(operation, statusFailureKind(status), `Jira rejected the ${subject} with HTTP ${status}${fields.length ? ` (fields: ${fields.join(', ')})` : ''}`); }
-function rejectedFields(body: Uint8Array): string[] {
+export function rejection(operation: string, subject: string, status: number, fields: string[]): Failure { return jiraFailure(operation, statusFailureKind(status), `Jira rejected the ${subject} with HTTP ${status}${fields.length ? ` (fields: ${fields.join(', ')})` : ''}`); }
+export function rejectedFields(body: Uint8Array): string[] {
   try { const root = decodeObject(body); const errors = root.errors; return errors && typeof errors === 'object' && !Array.isArray(errors) ? Object.keys(errors).filter(key => fieldId.test(key)).sort().slice(0, 20) : []; }
   catch { return []; }
 }
-function decodeObject(body: Uint8Array): Record<string, unknown> {
+export function decodeObject(body: Uint8Array): Record<string, unknown> {
   const json = JSON as typeof JSON & { rawJSON(text: string): unknown };
   return requireObject(JSON.parse(Buffer.from(body).toString('utf8'), (_key, value: unknown, context?: { source?: string }) =>
     typeof value === 'number' && context?.source ? json.rawJSON(context.source) : value));
@@ -113,7 +113,7 @@ function optionalString(value: unknown): string { return value === undefined || 
 function message(error: unknown): string { return error instanceof Error ? error.message : 'Jira input is invalid'; }
 function validateIssueIdOrKey(value: string): string { const trimmed = value.trim(); if (!numericId.test(trimmed) && !issueKey.test(trimmed)) throw new TypeError('issueIdOrKey must be an issue key or numeric issue ID'); return trimmed; }
 function validateFields(additional: string[], description: boolean): string[] { if (additional.length > 20) throw new TypeError('additionalFields accepts at most 20 field IDs'); const fields = [...standardFields, ...(description ? ['description'] : [])]; for (const field of additional) { if (!fieldId.test(field)) throw new TypeError('additionalFields must be Jira field IDs'); if (!fields.includes(field)) fields.push(field); } return fields; }
-function parseJiraTime(value: unknown): string {
+export function parseJiraTime(value: unknown): string {
   if (value === '' || value === undefined || value === null) return zeroTime;
   const text = requireString(value);
   const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:([.,])(\d+))?(Z|([+-])(\d{2}):?(\d{2}))$/.exec(text);
@@ -134,7 +134,7 @@ function parseJiraTime(value: unknown): string {
   return utc.toISOString().slice(0, 19) + (fraction ? '.' + fraction : '') + 'Z';
 }
 function decodeStatus(value: unknown): IssueStatus { const status = requireObject(value); const category = status.statusCategory === undefined || status.statusCategory === null ? undefined : requireObject(status.statusCategory); const categoryKey = category ? optionalString(category.key) : ''; return { id: requireString(status.id ?? ''), name: requireString(status.name ?? ''), ...(categoryKey ? { categoryKey } : {}) }; }
-function decodeIssue(value: unknown, additional: string[], description: boolean): Issue {
+export function decodeIssue(value: unknown, additional: string[], description: boolean): Issue {
   const resource = requireObject(value), id = requireString(resource.id), key = requireString(resource.key);
   if (!numericId.test(id) || !issueKey.test(key)) throw new TypeError('issue ID or key is invalid');
   const fields = resource.fields == null ? {} : requireObject(resource.fields);
