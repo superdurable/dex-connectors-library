@@ -8,7 +8,10 @@ import { HackerNewsClient } from '../src/client.js';
 import { GetItemInputSchema, ListStoryIDsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, withScenarioHTTPServer, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hackernews/scenarios.json', import.meta.url));
+// searchStories is Go only; replay just the operations this package implements.
+const typescriptOperations = new Set(['listStoryIDs', 'getItem']);
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hackernews/scenarios.json', import.meta.url))
+  .filter(scenario => typescriptOperations.has(scenario.operation));
 const connection = { provider: 'hacker-news', name: 'public' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeHackerNews));
 

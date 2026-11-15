@@ -20,8 +20,9 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   return generatedProjectConnection(project, connectionName, (loadedProject, name) => {
     const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'hacker-news-daily' && entry.connectionName === name);
     if (!selected) throw new TypeError('Hacker News project connection is not configured');
-    const raw = z.strictObject({ baseUrl: z.string().optional(), timeout: z.number().int().refine(Number.isSafeInteger).optional(), maxResponseBytes: z.number().int().refine(Number.isSafeInteger).optional() }).parse(selected.configuration);
-    const config: Config = { baseUrl: raw.baseUrl, timeoutMs: raw.timeout === undefined ? undefined : raw.timeout / 1_000_000, maxResponseBytes: raw.maxResponseBytes };
+    // Only the Go package implements searchStories; this package accepts its searchBaseUrl setting and does not use it.
+    const raw = z.strictObject({ baseUrl: z.string().optional(), timeout: z.number().int().refine(Number.isSafeInteger).optional(), maxResponseBytes: z.number().int().refine(Number.isSafeInteger).optional(), searchBaseUrl: z.string().optional() }).parse(selected.configuration);
+    const config: Config = { baseUrl: raw.baseUrl, timeoutMs: raw.timeout === undefined ? undefined : raw.timeout / 1_000_000, maxResponseBytes: raw.maxResponseBytes, searchBaseUrl: raw.searchBaseUrl };
     return new HackerNewsClient(config);
   });
 }

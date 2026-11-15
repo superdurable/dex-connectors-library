@@ -55,7 +55,7 @@ Last reviewed against `main` at `f5c9edf` (2026-10-01).
 | google/gmail | Partial live | a real Google OAuth client reproduced a scope error | any real send or read, Trigger polling, token refresh | #89 |
 | google/spreadsheet | Structural | unit tests against `httptest` fakes | real Google authorization (#116), every Sheets call, picker, refresh (#127) | #7 |
 | google/workspace-admin | Dex-integrated | 8 real-Dex scenarios against a fake Google; the Dex Web run stopped at the first Google call (no real tenant) | everything against a real tenant: delegation, group-membership statuses | #170 |
-| hackernews | Live | Dex Web connection Ready; a live digest ran through Start Flow | one manual run only; no automated live test | #88 |
+| hackernews | Live | Dex Web connection Ready; a live digest ran through Start Flow; the story-search example ran four live searches through Start Flow, covering date and relevance order, tag and points filters, and two pages | manual runs only; no automated live test | #88 |
 | helpscout | Dex-integrated | Dex Web run against a fake | client-credentials token errors, reply rendering, picker | #161 |
 | hubspot | Dex-integrated | two Dex runs against a fake | real response and error shapes, OAuth (expected to fail on `scope` versus `scopes`), pickers | #143 |
 | intercom | Partial live | placeholder-token requests to all three regional hosts returned 401 | every response to a valid token, real webhook signatures | #152 |

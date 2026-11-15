@@ -22,6 +22,7 @@ type Config struct {
 	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	SearchBaseURL    string        `json:"searchBaseUrl,omitempty" yaml:"searchBaseUrl,omitempty"`
 }
 
 type Credentials struct {
@@ -41,6 +42,7 @@ type Connection struct {
 type Operations interface {
 	ListStoryIDs() sdkgo.Query[ListStoryIDsInput, StoryIDs]
 	GetItem() sdkgo.Query[GetItemInput, Item]
+	SearchStories() sdkgo.Query[SearchStoriesInput, StorySearchPage]
 }
 
 type clientOperations struct{ client *Client }
@@ -50,6 +52,9 @@ func (operations clientOperations) ListStoryIDs() sdkgo.Query[ListStoryIDsInput,
 }
 func (operations clientOperations) GetItem() sdkgo.Query[GetItemInput, Item] {
 	return operations.client.GetItem()
+}
+func (operations clientOperations) SearchStories() sdkgo.Query[SearchStoriesInput, StorySearchPage] {
+	return operations.client.SearchStories()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -146,6 +151,7 @@ func DefaultConfig() Config {
 		BaseURL:          "https://hacker-news.firebaseio.com/v0",
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 1048576,
+		SearchBaseURL:    "https://hn.algolia.com/api/v1",
 	}
 }
 
@@ -159,6 +165,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.SearchBaseURL == "" {
+		config.SearchBaseURL = defaults.SearchBaseURL
 	}
 	return config
 }
@@ -175,6 +184,12 @@ func (config Config) Validate() error {
 	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.SearchBaseURL != "" {
+		parsed, err := url.Parse(config.SearchBaseURL)
+		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
+			return fmt.Errorf("configuration searchBaseUrl must be an absolute URL")
+		}
 	}
 	return nil
 }
@@ -323,6 +338,77 @@ func NewGetItemStep[IN any](config GetItemStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchStoriesBranchSearched sdkgo.BranchID = "searched"
+const SearchStoriesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchStoriesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchStoriesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchStoriesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchStories"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchStoriesBranchSearched, Description: "One page of matching stories was read; it can be empty."},
+		{ID: SearchStoriesBranchProviderRejected, Description: "Hacker News Search rejected the request.", Optional: true},
+		{ID: SearchStoriesBranchInvalidResponse, Description: "Hacker News Search returned malformed or oversized data.", Optional: true},
+		{ID: SearchStoriesBranchDefect, Description: "Local input or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchStoriesResult = sdkgo.QueryResult[StorySearchPage]
+
+type SearchStoriesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=hacker-news-daily"`
+	operationID                    struct{}                                           `connector:"operationId=searchStories"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchStoriesInput                        `connector:"mapToOperationInput"`
+	Searched                       sdkgo.Target[SearchStoriesResult]                  `connector:"branch=searched"`
+	ProviderRejected               sdkgo.Target[SearchStoriesResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchStoriesResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchStoriesResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[StorySearchPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewSearchStoriesStep[IN any](config SearchStoriesStepConfig[IN]) sdkgo.QueryStep[IN, SearchStoriesInput, StorySearchPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hacker-news-daily connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchStoriesInput, StorySearchPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchStories(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchStoriesResult] {
+			branches := make([]sdkgo.BranchTarget[SearchStoriesResult], 0, 4)
+			if config.Searched.HasStep() {
+				branches = append(branches, config.Searched.BranchTarget(SearchStoriesBranchSearched))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchStoriesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchStoriesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchStoriesBranchDefect))
 			}
 			return branches
 		}(),

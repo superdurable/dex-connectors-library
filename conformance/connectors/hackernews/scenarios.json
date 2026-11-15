@@ -672,6 +672,445 @@
       },
       "name": "getItem-defect",
       "operation": "getItem"
+    },
+    {
+      "callId": "4ee004ad-bba4-56b9-90f3-29ccff45313f",
+      "exchanges": [
+        {
+          "body": "{\"hits\":[{\"objectID\":\"42003\",\"title\":\"Show HN: A Rust compiler explorer\",\"url\":\"https://example.com/explorer\",\"author\":\"langtools\",\"points\":12,\"num_comments\":3,\"created_at\":\"2026-10-26T11:50:00Z\",\"created_at_i\":1793015400,\"story_text\":null,\"_tags\":[\"story\",\"author_langtools\",\"story_42003\",\"show_hn\",\"front_page\"]},{\"objectID\":\"41990\",\"title\":\"Show HN: Notes from writing a compiler in Rust\",\"url\":null,\"author\":\"testwriter\",\"points\":null,\"num_comments\":null,\"created_at\":\"2026-10-26T09:30:00Z\",\"created_at_i\":1793007000,\"story_text\":\"We fuzz the parser \u0026amp; the \u003ci\u003eoptimizer\u003c/i\u003e.\u003cp\u003eSee \u003ca href=\\\"https:\u0026#x2F;\u0026#x2F;example.com\u0026#x2F;fuzz\\\"\u003ehttps:\u0026#x2F;\u0026#x2F;example.com\u0026#x2F;fuzz\u003c/a\u003e for details.\",\"_tags\":[\"story\",\"author_testwriter\",\"story_41990\",\"show_hn\",\"front_page\"]}],\"nbHits\":5,\"page\":1,\"nbPages\":3,\"hitsPerPage\":2,\"exhaustiveNbHits\":true,\"query\":\"rust compiler\",\"params\":\"query=rust+compiler\"}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search_by_date",
+          "query": {
+            "hitsPerPage": [
+              "2"
+            ],
+            "numericFilters": [
+              "created_at_i\u003e1792929600,created_at_i\u003c1793016000,points\u003e=10"
+            ],
+            "page": [
+              "1"
+            ],
+            "query": [
+              "rust compiler"
+            ],
+            "tags": [
+              "story,show_hn,front_page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "hitsPerPage": 2,
+          "nextPage": 2,
+          "page": 1,
+          "pages": 3,
+          "stories": [
+            {
+              "author": "langtools",
+              "commentCount": 3,
+              "createdAt": "2026-10-26T11:50:00Z",
+              "discussionUrl": "https://news.ycombinator.com/item?id=42003",
+              "id": 42003,
+              "points": 12,
+              "tags": [
+                "story",
+                "show_hn",
+                "front_page"
+              ],
+              "title": "Show HN: A Rust compiler explorer",
+              "url": "https://example.com/explorer"
+            },
+            {
+              "author": "testwriter",
+              "commentCount": 0,
+              "createdAt": "2026-10-26T09:30:00Z",
+              "discussionUrl": "https://news.ycombinator.com/item?id=41990",
+              "id": 41990,
+              "points": 0,
+              "storyText": "We fuzz the parser \u0026 the optimizer.\n\nSee https://example.com/fuzz for details.",
+              "tags": [
+                "story",
+                "show_hn",
+                "front_page"
+              ],
+              "title": "Show HN: Notes from writing a compiler in Rust"
+            }
+          ],
+          "totalHits": 5
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "createdAfter": "2026-10-25T12:00:00Z",
+        "createdBefore": "2026-10-26T12:00:00Z",
+        "hitsPerPage": 2,
+        "minPoints": 10,
+        "page": 1,
+        "query": "rust compiler",
+        "sortBy": "date",
+        "tags": [
+          "show_hn",
+          "front_page"
+        ]
+      },
+      "name": "searchStories-success",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "6f55ce2f-18e2-5679-9078-377641d71dc8",
+      "exchanges": [
+        {
+          "body": "{\"hits\":[],\"nbHits\":0,\"page\":0,\"nbPages\":0,\"hitsPerPage\":20}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "hitsPerPage": [
+              "20"
+            ],
+            "page": [
+              "0"
+            ],
+            "tags": [
+              "story"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "hitsPerPage": 20,
+          "nextPage": 0,
+          "page": 0,
+          "pages": 0,
+          "stories": [],
+          "totalHits": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "searchStories-defaults",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "8494ab08-2019-5845-8163-e4f7eb95f16a",
+      "exchanges": [
+        {
+          "body": "{\"code\":400,\"message\":\"Invalid value for \\\"query\\\" parameter\"}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "hitsPerPage": [
+              "20"
+            ],
+            "page": [
+              "0"
+            ],
+            "query": [
+              "rust compiler"
+            ],
+            "tags": [
+              "story"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hitsPerPage": 0,
+          "nextPage": 0,
+          "page": 0,
+          "pages": 0,
+          "stories": [],
+          "totalHits": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "rust compiler"
+      },
+      "name": "searchStories-rejected",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "aae0d5be-baad-5dc7-95ce-7b6a45b85894",
+      "exchanges": [
+        {
+          "body": "{\"hits\":[{\"objectID\":\"not-a-number\",\"created_at_i\":1793015400}],\"nbHits\":1,\"page\":0,\"nbPages\":1}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "hitsPerPage": [
+              "20"
+            ],
+            "page": [
+              "0"
+            ],
+            "query": [
+              "rust compiler"
+            ],
+            "tags": [
+              "story"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hitsPerPage": 0,
+          "nextPage": 0,
+          "page": 0,
+          "pages": 0,
+          "stories": [],
+          "totalHits": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "rust compiler"
+      },
+      "name": "searchStories-invalid",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "bdb586fe-6ece-56ae-8270-58f1669bcaba",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "hitsPerPage": [
+              "20"
+            ],
+            "page": [
+              "0"
+            ],
+            "query": [
+              "rust compiler"
+            ],
+            "tags": [
+              "story"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "rust compiler"
+      },
+      "name": "searchStories-rate-limit",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "6a1418b6-b1d0-583f-bf94-f5b77a35cc8e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "hitsPerPage": [
+              "20"
+            ],
+            "page": [
+              "0"
+            ],
+            "query": [
+              "rust compiler"
+            ],
+            "tags": [
+              "story"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "rust compiler"
+      },
+      "name": "searchStories-server-error",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "a10d85cd-5d3e-5183-89ef-1a39ef0279d7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "hitsPerPage": [
+              "20"
+            ],
+            "page": [
+              "0"
+            ],
+            "query": [
+              "rust compiler"
+            ],
+            "tags": [
+              "story"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-hacker-news-daily/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "rust compiler"
+      },
+      "name": "searchStories-transport",
+      "operation": "searchStories"
+    },
+    {
+      "callId": "0b4ddcbc-d506-5b1d-a337-77a1437bf5aa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hitsPerPage": 0,
+          "nextPage": 0,
+          "page": 0,
+          "pages": 0,
+          "stories": [],
+          "totalHits": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 101,
+        "query": "rust compiler"
+      },
+      "name": "searchStories-defect",
+      "operation": "searchStories"
     }
   ],
   "schemaVersion": 1

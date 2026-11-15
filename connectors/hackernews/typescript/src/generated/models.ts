@@ -41,12 +41,14 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Hacker News Firebase API base URL; this is a fixed public endpoint, so leave the field blank unless a loopback test server is being used. */
+  /** Hacker News Firebase API base URL that listStoryIDs and getItem read; this is a fixed public endpoint, so leave the field blank unless a loopback test server is being used. */
   baseUrl?: string;
   /** Maximum duration for one Hacker News HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default. Runtime value in milliseconds. */
   timeoutMs?: number;
   /** Maximum bytes accepted from one Hacker News response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;
+  /** Hacker News Search API base URL that searchStories reads, documented at https://hn.algolia.com/api; this is a fixed public endpoint that needs no key and is not secret, so leave the field blank unless a loopback test server is being used. */
+  searchBaseUrl?: string;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -54,6 +56,7 @@ export const ConfigSchema = z.object({
   "baseUrl": z.string().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "searchBaseUrl": z.string().optional(),
 });
 
 /** Private connector credentials resolved by the host. */
