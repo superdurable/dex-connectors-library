@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** Reddit OAuth API origin. Blank uses the displayed public endpoint; override only for a trusted compatible gateway or local test. */
@@ -101,6 +135,86 @@ export interface Post {
   /** Score is the current vote score, which may change. */
   "score": number;
 }
+/** ListSubredditPostsInput selects one page of posts from one subreddit or several joined with +. */
+export interface ListSubredditPostsInput {
+  /** Subreddit is one community name without r/, such as golang, or up to 10 names joined with +, such as
+   * golang+programming. Each name has 2 to 21 letters, digits, or underscores and does not start with an underscore. */
+  "subreddit": string;
+  /** Sort orders the listing: new, hot, top, or rising. Blank lists new posts, newest first. */
+  "sort"?: "hot" | "new" | "rising" | "top" | (string & {}) | undefined;
+  /** TimeWindow limits a top listing to posts from the last hour, day, week, month, or year, or all time.
+   * Only the top sort accepts it; blank then reads the last day. Every other sort requires it blank. */
+  "timeWindow"?: "all" | "day" | "hour" | "month" | "week" | "year" | (string & {}) | undefined;
+  /** Limit is the most posts on the page, 1 through 100; blank or 0 reads 25. Reddit may return fewer posts
+   * while After still continues the listing. */
+  "limit"?: number | undefined;
+  /** After is the previous page's After cursor, a full t3_ post ID. Blank reads the first page. */
+  "after"?: string | undefined;
+}
+/** ListedPost contains bounded public metadata for one post on a listing or search page. */
+export interface ListedPost {
+  /** ID is the full t3_ post ID, which getPost also accepts. */
+  "id": string;
+  /** Title is the post's current title. */
+  "title": string;
+  /** Subreddit is the community name without r/. */
+  "subreddit": string;
+  /** Author is the poster's username without /u/, or [deleted] after the account was deleted. */
+  "author": string;
+  /** Permalink is the absolute https://www.reddit.com URL of the post's comments page. */
+  "permalink": string;
+  /** LinkURL is the absolute URL a link post points to, such as an article or an image. It is empty for a
+   * self post and when Reddit's value is not an HTTP or HTTPS URL. */
+  "linkUrl"?: string | undefined;
+  /** IsSelf is true for a text post, whose body is SelfText, and false for a link post. */
+  "isSelf": boolean;
+  /** SelfText is a text post's body as plain text in the author's Markdown, never HTML, cut to at most
+   * MaxSelfTextBytes. It is empty for link posts and empty text posts. */
+  "selfText"?: string | undefined;
+  /** IsSelfTextTruncated reports that SelfText was cut at MaxSelfTextBytes. */
+  "isSelfTextTruncated"?: boolean | undefined;
+  /** Score is the current vote score, which may change. */
+  "score": number;
+  /** CommentCount is the current number of comments, which may change. */
+  "commentCount": number;
+  /** CreatedAt is when the post was created, in UTC to the second. */
+  "createdAt": string;
+  /** IsOver18 is true when the post is marked NSFW, for adults only. */
+  "isOver18": boolean;
+  /** IsSpoiler is true when the post is marked as a spoiler. */
+  "isSpoiler": boolean;
+  /** IsStickied is true when moderators pinned the post to the top of its subreddit. */
+  "isStickied": boolean;
+}
+/** PostPage is one page of posts from a subreddit listing or a search. */
+export interface PostPage {
+  /** Posts are the page's posts in Reddit's order for the requested sort. A post can appear on two pages
+   * when the listing changes between reads, so deduplicate by ID. */
+  "posts": Array<ListedPost> | null;
+  /** After continues to the next page when non-blank: pass it as the next input's After. Blank means
+   * Reddit returned the last page. */
+  "after"?: string | undefined;
+}
+/** SearchPostsInput selects one page of Reddit search results for posts. */
+export interface SearchPostsInput {
+  /** Query is the search text Reddit matches against posts, such as generics, at most 512 characters.
+   * It is sent to Reddit unchanged and must not be blank. */
+  "query": string;
+  /** Subreddit restricts the search to one community, named without r/, such as golang. Blank searches all
+   * of Reddit. */
+  "subreddit"?: string | undefined;
+  /** Sort orders the results: new, relevance, top, hot, or comments, which puts the most commented posts
+   * first. Blank returns the newest matching posts first. */
+  "sort"?: "comments" | "hot" | "new" | "relevance" | "top" | (string & {}) | undefined;
+  /** TimeWindow limits the results to posts from the last hour, day, week, month, or year, or all time.
+   * Blank searches all time. */
+  "timeWindow"?: "all" | "day" | "hour" | "month" | "week" | "year" | (string & {}) | undefined;
+  /** Limit is the most posts on the page, 1 through 100; blank or 0 reads 25. Reddit may return fewer posts
+   * while After still continues the results. */
+  "limit"?: number | undefined;
+  /** After is the previous page's After cursor, a full t3_ post ID. Blank reads the first page. */
+  "after"?: string | undefined;
+}
 
 /** Runtime validator for GetPostInput. */
 export const GetPostInputSchema = z.strictObject({
@@ -115,3 +229,47 @@ export const PostSchema = z.strictObject({
   "permalink": z.string(),
   "score": z.number().int(),
 }) satisfies z.ZodType<Post>;
+
+/** Runtime validator for ListSubredditPostsInput. */
+export const ListSubredditPostsInputSchema = z.strictObject({
+  "subreddit": z.string(),
+  "sort": z.string().optional(),
+  "timeWindow": z.string().optional(),
+  "limit": z.number().int().optional(),
+  "after": z.string().optional(),
+}) satisfies z.ZodType<ListSubredditPostsInput>;
+
+/** Runtime validator for ListedPost. */
+export const ListedPostSchema = z.strictObject({
+  "id": z.string(),
+  "title": z.string(),
+  "subreddit": z.string(),
+  "author": z.string(),
+  "permalink": z.string(),
+  "linkUrl": z.string().optional(),
+  "isSelf": z.boolean(),
+  "selfText": z.string().optional(),
+  "isSelfTextTruncated": z.boolean().optional(),
+  "score": z.number().int(),
+  "commentCount": z.number().int(),
+  "createdAt": GoTimeJSONSchema,
+  "isOver18": z.boolean(),
+  "isSpoiler": z.boolean(),
+  "isStickied": z.boolean(),
+}) satisfies z.ZodType<ListedPost>;
+
+/** Runtime validator for PostPage. */
+export const PostPageSchema = z.strictObject({
+  "posts": z.array(ListedPostSchema).nullable(),
+  "after": z.string().optional(),
+}) satisfies z.ZodType<PostPage>;
+
+/** Runtime validator for SearchPostsInput. */
+export const SearchPostsInputSchema = z.strictObject({
+  "query": z.string(),
+  "subreddit": z.string().optional(),
+  "sort": z.string().optional(),
+  "timeWindow": z.string().optional(),
+  "limit": z.number().int().optional(),
+  "after": z.string().optional(),
+}) satisfies z.ZodType<SearchPostsInput>;
