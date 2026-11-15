@@ -46,8 +46,9 @@ idempotency key; see [Duplicate safety](#duplicate-safety).
 
 It also exposes one Go poll Trigger, [`ticketChanged`](#ticketchanged-trigger),
 which starts a Flow for every ticket event in the account's event log, such as
-`ticket-created`, `ticket-updated`, or `ticket-closed`. The Python and
-TypeScript packages do not implement it. This release has no webhook Trigger,
+`ticket-created`, `ticket-updated`, or `ticket-closed`. The Python package
+implements it from `v0.2.0`; the TypeScript package does not. This release has
+no webhook Trigger,
 no Studio pickers, and no OAuth method; see
 [Not in this release](#not-in-this-release).
 
@@ -458,12 +459,17 @@ follows up on their open ticket about an issue or creates one, sets its
 priority, adds one internal triage note, and optionally emails the customer
 an acknowledgement.
 
-The [Python package](python/README.md) implements all six operations at
-`v0.1.0`. Its [ticket triage example](python/examples/triage_issue/README.md)
-binds the static `gorgias` connection, reads a ticket and its latest messages,
-and has a real Dex Worker and Client integration test. The Python conformance
-suite replays Go-recorded provider requests, branches, retries, and uncertainty.
-Live Gorgias behavior for the Python package has not been verified.
+The [Python package](python/README.md) implements all six operations and,
+from `v0.2.0`, the `ticketChanged` poll Trigger at parity with Go: the same
+event types, event IDs, overlap window, paging, and rate-limit rules, and poll
+cursor documents that Go and Python replicas read and write byte for byte. Its
+[ticket triage example](python/examples/triage_issue/README.md) binds the
+static `gorgias` connection, reads a ticket and its latest messages, and its
+[ticket changed example](python/examples/ticket_changed/README.md) starts one
+Flow per ticket event on `gorgias-ticket-watcher`; both have real Dex Worker
+and Client integration tests. The Python conformance suite replays Go-recorded
+provider requests, branches, retries, and uncertainty. Live Gorgias behavior
+for the Python package has not been verified.
 
 ## Verification
 
