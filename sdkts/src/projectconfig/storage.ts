@@ -374,11 +374,11 @@ function canonicalFieldOrder(object: Record<string, unknown>): string[] {
 export const MaxProjectObjectBytes = 4 << 20;
 
 /**
- * Largest object a process-local store accepts for key: 8 MiB for a Trigger inbox, which the Go SDK's local
- * store also holds, and MaxProjectObjectBytes otherwise.
+ * Largest object a process-local store accepts for key: 8 MiB for a Trigger inbox or a poll cursor, which the
+ * Go SDK's local store also holds, and MaxProjectObjectBytes otherwise.
  */
 export function localObjectByteLimit(key: string): number {
-  return key.includes('/trigger-inboxes/') ? 8 << 20 : MaxProjectObjectBytes;
+  return /\/(trigger-inboxes|poll-cursors|poll-feeds)\//.test(key) ? 8 << 20 : MaxProjectObjectBytes;
 }
 
 /** Reject an empty object or one larger than maxBytes. */

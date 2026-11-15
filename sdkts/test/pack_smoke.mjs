@@ -31,7 +31,7 @@ try {
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
-const paths = ['', '/providerhttp', '/projectconfig', '/connectormock', '/oauthtoken', '/singledispatch', '/textgen', '/textgen/openaichat', '/textgen/textgentest', '/webhooktrigger', '/relaysignature'];
+const paths = ['', '/providerhttp', '/projectconfig', '/connectormock', '/oauthtoken', '/singledispatch', '/textgen', '/textgen/openaichat', '/textgen/textgentest', '/webhooktrigger', '/pollingtrigger', '/relaysignature'];
 const requirePackage = createRequire(import.meta.url);
 for (const path of paths) {
   const specifier = '@superdurable/connectors-sdk' + path;

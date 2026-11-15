@@ -138,6 +138,31 @@ export function decodeGoJSONString(raw: Uint8Array): string {
 }
 
 /**
+ * Report whether a JSON object key names a Go struct field, as encoding/json matches keys: exactly or
+ * case-insensitively with Unicode simple folding, under which U+017F folds to s and U+212A to k.
+ */
+export function isGoFieldKey(key: string, field: string): boolean {
+  return key === field || key.toLowerCase().replaceAll('ſ', 's') === field.toLowerCase();
+}
+
+/**
+ * Decode one JSON value into a Go string field: a string decodes as Go decodes strings, and null leaves the
+ * field unchanged, as encoding/json does; any other kind is a type error.
+ */
+export function decodeGoStringField(raw: Uint8Array, current: string): string {
+  const kind = rawJSONKind(raw);
+  if (kind === 'null') return current;
+  if (kind !== 'string') throw new InvalidRawJSONError();
+  return decodeGoJSONString(Buffer.from(raw).subarray(firstByteIndex(raw)));
+}
+
+function firstByteIndex(raw: Uint8Array): number {
+  let index = 0;
+  while (raw[index] === 0x20 || raw[index] === 0x09 || raw[index] === 0x0a || raw[index] === 0x0d) index++;
+  return index;
+}
+
+/**
  * Parse a Trigger payload's raw JSON bytes, or text encoded as UTF-8, as Go's encoding/json decodes them into any. Every finite number
  * becomes the nearest double, so an integer beyond 2^53 such as 9007199254740993 becomes 9007199254740992,
  * and a value too small for a double such as 1e-400 becomes 0; a number beyond the double range, such as

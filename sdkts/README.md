@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.11.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.45.4 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.12.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.45.4 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -22,6 +22,7 @@ node examples/singledispatch.mjs
 node examples/fence.mjs
 node examples/textgen.mjs
 node examples/triggers.mjs
+node examples/polling_trigger.mjs
 ```
 
 All durations in this package are milliseconds. Public JSON shapes use the Go SDK's field names. Credential values and project objects stay outside Flow state and cannot be serialized through their wrappers.
@@ -360,7 +361,35 @@ const definition = { trigger: { connectorId: 'sample', triggerName: 'itemCreated
 const runner = newTrigger({ definition, binding: { connection, trigger: definition.trigger, name: 'start' }, source: endpoint.newSource(), target });
 ```
 
+## Polling Triggers
+
+A connector whose provider exposes a change feed (a sync token, a history ID, a page token, or a sequence) builds its Trigger sources on `@superdurable/connectors-sdk/pollingtrigger`, at parity with the Go SDK's `sdkgo/pollingtrigger`, instead of its own poll loop. The connector supplies a `ChangeFetcher`: `seedCursor(context)` returns the provider's current position without reporting existing items, and `fetchChanges(context, cursor)` returns one `ChangePage` of at most `MaxChangesPerPage` (500) changes after a `Cursor`. The kit owns the cursor, the schedule, and delivery. The [runnable polling example](examples/polling_trigger.mjs) wires a fake change log to a durable inbox, and the [Dex integration harness](test/integ/polling_trigger_flows.mjs) runs the kit against a real Worker and Client for backlog, restarts, crashes on both sides of the commit, cursor reset, Retry-After, two replicas, and a shared feed.
+
+- **Durable cursor.** `newBindingPoller` keeps one cursor per binding in `poll-cursors/` and `newFeedPoller` one cursor per shared feed in `poll-feeds/`, beside the bindings' `trigger-inboxes/` (`LoadedProject.pollCursorStore(key)` and `pollFeedCursorStore(key)`). The object keys and the `connectors.dex.dev/project-poll-cursor/v1alpha1` document match the Go SDK byte for byte, so a Go and a TypeScript replica can share one cursor: an opaque token of at most 64 KiB of UTF-8, an optional keyed snapshot, and commit and reset counters, written only by compare-and-swap. Snapshot keys sort by their UTF-8 bytes, as Go compares strings, and each `value` is raw JSON bytes. Reads decode as Go's strict decoder does; an integer beyond 2^53, which Go's int64 holds but a JavaScript number does not, makes the document invalid. A poll whose page is empty and leaves the cursor where it was writes nothing. The in-memory and Dex Web local stores keep cursors in process memory, as Go's do, so a local restart reseeds.
+- **Ordering rule.** The cursor commits past a change only after every member target recorded it (a target with `prepareTrigger`, such as `newDurableTriggerTarget` builds) or consumed it (any other target). Recorded events are delivered after the commit, in page order; while one fails, the poller retries it before fetching again. A commit conflict with a replica still delivers what this replica recorded. A retry from the same cursor skips the event IDs each member already recorded or consumed, even when the provider now returns a different page, and still delivers recorded events the retry no longer lists. Delivery is at least once: every event ID must be a pure function of the provider change, so a refetch after a crash yields the same IDs and `newDexFlowTriggerTarget` starts one Flow per event.
+- **Seed and reset.** The first poll seeds the cursor with no backlog. A fetch error marked with `markCursorInvalid` (for example 410 Gone for a sync token) reseeds, increments `resetCount`, and logs the gap at WARN; changes in the gap are not delivered.
+- **Schedule.** One `Runner` from `newRunner` serves every poller of one connection, one poll at a time, in configuration order. `PollSchedule` sets `intervalMs` (at least 1000), `jitterFraction` (default 0.1), `maxBackoffMs` (default 15 minutes), and `maxPagesPerPoll` (default 10). Failures back off per poller, `intervalMs * 2^(n-1)` up to `maxBackoffMs`. An error marked with `markRateLimited(error, retryAfterMs)` pauses every poller of the runner for `max(retryAfterMs, intervalMs)`, or backs off exponentially without a Retry-After; `parseRetryAfter` from `providerhttp` reads the header. A fetcher calls `waitForPollRequest(context)` before every provider request, so an application `RequestLimiter` gates seeds and multi-request fetches too. `wakePoller(name)` makes a poller due now.
+- **Keyed snapshots.** `KeyedSnapshotOptions` enables a bounded snapshot (default 10,000 entries, at most 100,000) stored in the cursor document and committed with it. A full-listing Trigger calls `diffKeyedSnapshot` inside `fetchChanges` and emits events from `added`, `changed`, and `removed`; a delta feed calls `applyKeyedSnapshotChanges`, optionally with `evictLeastRecentlySeen`. A feed member's selector receives the committed entry of a change that implements `KeyedItem` (`snapshotKey`, `snapshotHash`, `snapshotValue`).
+
+`run(context)` checks every stored cursor, replays each durable target, and then polls until the context's signal aborts, when it rejects with `TriggerDeliveryAbortedError`. It rejects early only for a stored document that fails strict decoding (`PollCursorDocumentInvalidError`), which it never overwrites. A cursor state over a bound (`PollCursorTooLargeError`) is a configuration fault retried every `maxBackoffMs`. `newTriggerCredentialCall(connection, trigger, signal)` gives a poller the same stable credential-call ID the Go SDK and the Gmail Trigger use, and `newBindingTriggerSource(config, schedule)` adapts one binding poller to `TriggerSource` for `newTrigger`.
+
+```js
+// Durable inbox: events are recorded here before the cursor moves past them.
+const target = newDurableTriggerTarget(new TriggerInbox(objects, scope, key), key, { handleTrigger: async (_context, event) => { delivered.push(event.id); } });
+const cursor = newPollCursorStore(objects, scope, key);
+const poller = newBindingPoller({ definition, binding, cursor, fetcher, target });
+const runner = newRunner({ connection, schedule: { intervalMs: 1000, maxBackoffMs: 60_000 }, pollers: [poller] });
+// Replays the inbox, seeds on first start, then polls until the signal aborts.
+const running = runner.run(newTriggerContext(stop.signal)).catch(() => undefined);
+```
+
+Records carry `connector`, `connection`, and `trigger` plus `binding` (or `feed`), never payloads, cursor tokens, or snapshot values: INFO `poll cursor seeded` (`reset`), WARN `poll cursor invalid; reseeding` (`reset_count`), WARN `poll failed; retrying` (`attempt`, `delay_ms`), WARN `poll rate limited; pausing connection` (`delay_ms`, `pollers`), WARN `poll paused: trigger inbox full`, ERROR `poll paused: cursor state exceeds bound` and `poll cursor document invalid`, and DEBUG `poll cursor committed` (`commit_count`, `events`) and `poll cursor commit conflict`. Delivery uses the `trigger delivery failed; retrying`, `trigger delivered after retry`, and `trigger event skipped: undeliverable` records of `deliverTrigger`. The application's storage grant needs `GetObject` and `PutObject` on `poll-cursors/` and `poll-feeds/` as well.
+
 ## Release notes
+
+### 0.12.0
+
+Durable poll Trigger kit, at parity with the Go SDK's `sdkgo/pollingtrigger`. The new `@superdurable/connectors-sdk/pollingtrigger` export adds `newBindingPoller`, `newFeedPoller`, `newFeedMember`, `newRunner`, `newBindingTriggerSource`, `newMemoryCursorStore`, the fetcher signals `markCursorInvalid` and `markRateLimited`, `waitForPollRequest`, `diffKeyedSnapshot`, `applyKeyedSnapshotChanges`, and `newTriggerCredentialCall`. `projectconfig` adds `newPollCursorStore`, `newPollFeedCursorStore`, `LoadedProject.pollCursorStore` and `pollFeedCursorStore`, `PollCursorTooLargeError`, `PollCursorDocumentInvalidError`, and the cursor document codec, whose keys and bytes match the Go SDK's. The in-memory store now holds poll cursor objects up to 8 MiB, as it already did for Trigger inboxes. These additions are not breaking.
 
 ### 0.11.0
 
