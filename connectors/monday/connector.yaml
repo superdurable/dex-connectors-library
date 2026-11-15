@@ -16,10 +16,10 @@ spec:
       operations: [listItems, getItem, createItem, updateItemColumnValues, addUpdate]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-monday'
       operations: [listItems, getItem, createItem, updateItemColumnValues, addUpdate]
-      triggers: []
+      triggers: [itemChanged]
   codegen:
     go:
       package: monday

@@ -492,7 +492,8 @@ unverified:
 `python/` provides `dex-connector-monday` v0.1.0 with all five Go operations and both manifest authentication methods. `new_project_connection` uses the generated Python OAuth refresh wiring and the static connection name shown in the [runnable work-request example](python/examples/work_request/README.md). The example reads a board page, creates an item, sets typed column values, adds an update, and reads the item back. Provider replay fixtures in `conformance/connectors/monday/scenarios.json` check exact Go request and outcome agreement; live monday.com authorization and API behavior are not verified by those fixtures.
 ## TypeScript package
 
-`@superdurable/connector-monday` v0.1.0 implements all five Go operations:
+`@superdurable/connector-monday` v0.2.0, on `@superdurable/connectors-sdk` 0.12.0,
+implements all five Go operations and the `itemChanged` Trigger:
 `listItems`, `getItem`, `createItem`, `updateItemColumnValues`, and `addUpdate`.
 Its generated factories, definitions, models, mock cases, and OAuth credential
 refresh declarations come from `connector.yaml`. The hand-written provider
@@ -502,3 +503,11 @@ API version, and idempotency keys as Go. See the runnable
 Worker setup, the static `monday-board` connection, and a real Dex integration
 check. Provider requests can be replayed against the Go-recorded scenarios in
 `conformance/connectors/monday/scenarios.json`.
+
+`newProjectItemTriggerRunner` polls `itemChanged` with the TypeScript Connector
+SDK's poll Trigger kit at behavior parity with Go: the same scan, lookback,
+batches, rate-limit pauses, and reset rules, and cursor documents and Trigger
+event IDs that match Go byte for byte, so Go and TypeScript replicas share one
+binding's cursor and inbox. The
+[TypeScript item-changed example](typescript/examples/item-changed/README.md)
+starts one `MondayItemChangeTypeScript` Flow per change.
