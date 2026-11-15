@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -79,6 +82,8 @@ CREATE_ITEM_DEFINITION = MutationDefinition(
         heartbeat_timeout=timedelta(seconds=20),
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 10, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_ITEM_COLUMN_VALUES_DEFINITION = MutationDefinition(
@@ -95,6 +100,7 @@ UPDATE_ITEM_COLUMN_VALUES_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 ADD_UPDATE_DEFINITION = MutationDefinition(
@@ -112,4 +118,11 @@ ADD_UPDATE_DEFINITION = MutationDefinition(
         heartbeat_timeout=timedelta(seconds=20),
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 10, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
+)
+
+ITEM_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="itemChanged"),
+    description="Receive each active item created or changed on one monday.com board, read by polling the board's items by monday.com's last-updated time; the first poll records a baseline and delivers no existing items.",
 )

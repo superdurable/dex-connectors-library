@@ -1,9 +1,9 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Dex-native monday.com board, item, and update operations."""
+"""Dex-native monday.com board, item, and update operations, and the itemChanged poll Trigger."""
 
 from ._generated.config import Config, Credentials
-from .client import Client
+from .client import MINIMUM_POLL_INTERVAL, Client
 from .connection import (
     Connection,
     decode_credentials,
@@ -19,6 +19,8 @@ from .models import (
     CreateItemOutput,
     GetItemInput,
     Item,
+    ItemChangedEvent,
+    ItemChangedTriggerConfiguration,
     ItemColumnValue,
     ItemFilter,
     ItemFilterRule,
@@ -43,8 +45,23 @@ from .steps import (
     new_list_items_step,
     new_update_item_column_values_step,
 )
+from .triggers import (
+    ITEM_CHANGED_TRIGGER_DEFINITION,
+    ItemChangedTriggerRoute,
+    ItemChangeKind,
+    ProjectItemChangedTriggerRoute,
+    decode_item_changed_event_payload,
+    decode_item_changed_trigger_configuration,
+    define_item_changed_trigger_binding,
+    new_item_changed_trigger,
+    new_item_trigger_runner,
+    new_project_item_trigger_runner,
+    validate_item_changed_trigger_configuration,
+)
 
 __all__ = [
+    "ITEM_CHANGED_TRIGGER_DEFINITION",
+    "MINIMUM_POLL_INTERVAL",
     "AddUpdateInput",
     "AddUpdateOperation",
     "AddUpdateOutput",
@@ -59,6 +76,10 @@ __all__ = [
     "GetItemInput",
     "GetItemOperation",
     "Item",
+    "ItemChangeKind",
+    "ItemChangedEvent",
+    "ItemChangedTriggerConfiguration",
+    "ItemChangedTriggerRoute",
     "ItemColumnValue",
     "ItemFilter",
     "ItemFilterRule",
@@ -67,16 +88,24 @@ __all__ = [
     "ListItemsInput",
     "ListItemsOperation",
     "ListItemsOutput",
+    "ProjectItemChangedTriggerRoute",
     "UpdateItemColumnValuesInput",
     "UpdateItemColumnValuesOperation",
     "UpdateItemColumnValuesOutput",
     "decode_credentials",
+    "decode_item_changed_event_payload",
+    "decode_item_changed_trigger_configuration",
+    "define_item_changed_trigger_binding",
     "new_add_update_step",
     "new_connection",
     "new_connection_with_operations",
     "new_create_item_step",
     "new_get_item_step",
+    "new_item_changed_trigger",
+    "new_item_trigger_runner",
     "new_list_items_step",
     "new_project_connection",
+    "new_project_item_trigger_runner",
     "new_update_item_column_values_step",
+    "validate_item_changed_trigger_configuration",
 ]

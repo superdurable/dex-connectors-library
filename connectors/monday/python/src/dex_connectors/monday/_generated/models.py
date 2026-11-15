@@ -360,3 +360,31 @@ class AddUpdateOutput:
 
 
 setattr(AddUpdateOutput, '__module__', 'dex_connectors.monday.models')
+
+
+# ItemChangedEvent is one active item created or changed on the watched board, as monday.com returned it
+# in the poll's items page with every column value.
+@dataclass(frozen=True, slots=True)
+class ItemChangedEvent:
+    # BoardID is the watched board.
+    board_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'boardId'})
+    # ChangeKind is the derived change kind; see ItemChangeKind.
+    change_kind: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'changeKind'})
+    # Item is the item with its group, timestamps, and every column value.
+    item: Item = _dataclass_field(default_factory=Item)
+
+
+setattr(ItemChangedEvent, '__module__', 'dex_connectors.monday.models')
+
+
+# ItemChangedTriggerConfiguration is the itemChanged binding configuration that the boardIdInput unit
+# saves in Dex Web. Changing the board of a binding that already polled makes its next poll record a new
+# baseline for the new board.
+@dataclass(frozen=True, slots=True)
+class ItemChangedTriggerConfiguration:
+    # BoardID is the numeric ID of the watched board, the digits after /boards/ in the board's address,
+    # such as 1234567890. It is required.
+    board_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'boardId'})
+
+
+setattr(ItemChangedTriggerConfiguration, '__module__', 'dex_connectors.monday.models')
