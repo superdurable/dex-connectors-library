@@ -320,3 +320,32 @@ class ParticipantPage:
 ParticipantPage.__annotations__['participants'] = tuple[MeetingParticipant, ...] | None
 ParticipantPage.__dataclass_fields__['participants'].type = tuple[MeetingParticipant, ...] | None
 setattr(ParticipantPage, '__module__', 'dex_connectors.zoom.models')
+
+
+# MeetingChangedEvent is one meeting scheduled, updated, or removed between two polls of the authorized
+# user's scheduled meetings.
+@dataclass(frozen=True, slots=True)
+class MeetingChangedEvent:
+    # ChangeKind is the derived change kind; see MeetingChangeKind.
+    change_kind: str = _dataclass_field(metadata={'dex_json_name': 'changeKind'})
+    # Meeting is the meeting as this poll listed it. For a removed meeting it is the last listed state,
+    # without UUID or JoinURL, which the stored snapshot never keeps.
+    meeting: MeetingSummary = _dataclass_field(default_factory=MeetingSummary)
+    # PreviousMeeting is the state the previous poll listed, without UUID or JoinURL; set only for updated.
+    previous_meeting: MeetingSummary | None = _dataclass_field(default=None, metadata={'dex_json_name': 'previousMeeting', 'dex_json_omit_default': True})
+
+
+setattr(MeetingChangedEvent, '__module__', 'dex_connectors.zoom.models')
+
+
+# MeetingChangedTriggerConfiguration is the meetingChanged binding configuration. The binding always
+# watches the authorized user's own scheduled meetings, so Dex Web shows no field for it; an application
+# may narrow the delivered kinds in code.
+@dataclass(frozen=True, slots=True)
+class MeetingChangedTriggerConfiguration:
+    # ChangeKinds limits deliveries to these kinds; empty delivers scheduled, updated, and removed.
+    # Skipped kinds still advance the stored snapshot, so they are never delivered later.
+    change_kinds: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'changeKinds', 'dex_json_omit_default': True})
+
+
+setattr(MeetingChangedTriggerConfiguration, '__module__', 'dex_connectors.zoom.models')

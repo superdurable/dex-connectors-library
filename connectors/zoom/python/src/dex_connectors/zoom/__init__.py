@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Dex-native Zoom Meetings connector."""
+"""Dex-native Zoom Meetings connector: meeting operations and the meetingChanged poll Trigger."""
 
 from .client import Client, Config, Credentials
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
@@ -10,6 +10,8 @@ from .models import (
     ListMeetingsInput,
     ListPastMeetingParticipantsInput,
     Meeting,
+    MeetingChangedEvent,
+    MeetingChangedTriggerConfiguration,
     MeetingPage,
     MeetingParticipant,
     MeetingSettings,
@@ -33,6 +35,19 @@ from .steps import (
     new_list_past_meeting_participants_step,
     new_update_meeting_step,
 )
+from .triggers import (
+    MEETING_CHANGED_TRIGGER_DEFINITION,
+    MeetingChangedTriggerRoute,
+    MeetingChangeKind,
+    ProjectMeetingChangedTriggerRoute,
+    decode_meeting_changed_event_payload,
+    decode_meeting_changed_trigger_configuration,
+    define_meeting_changed_trigger_binding,
+    new_meeting_changed_trigger,
+    new_meeting_trigger_runner,
+    new_project_meeting_trigger_runner,
+    validate_meeting_changed_trigger_configuration,
+)
 
 __all__ = [
     "Client",
@@ -47,6 +62,8 @@ __all__ = [
     "ListMeetingsInput",
     "ListPastMeetingParticipantsInput",
     "Meeting",
+    "MeetingChangedEvent",
+    "MeetingChangedTriggerConfiguration",
     "MeetingPage",
     "MeetingParticipant",
     "MeetingSettings",
@@ -65,4 +82,15 @@ __all__ = [
     "new_list_meetings_step",
     "new_list_past_meeting_participants_step",
     "new_update_meeting_step",
+    "MEETING_CHANGED_TRIGGER_DEFINITION",
+    "MeetingChangeKind",
+    "MeetingChangedTriggerRoute",
+    "ProjectMeetingChangedTriggerRoute",
+    "decode_meeting_changed_event_payload",
+    "decode_meeting_changed_trigger_configuration",
+    "define_meeting_changed_trigger_binding",
+    "new_meeting_changed_trigger",
+    "new_meeting_trigger_runner",
+    "new_project_meeting_trigger_runner",
+    "validate_meeting_changed_trigger_configuration",
 ]

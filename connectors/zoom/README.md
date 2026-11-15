@@ -349,14 +349,19 @@ for literal call-input, call-count, reschedule, and attendance assertions.
 
 ## Python package
 
-The first Python package is [`python/`](python/README.md), version `v0.1.0` with
-`dex-connectors-sdk==0.6.0`. It implements all five meeting operations using
+The Python package is [`python/`](python/README.md), version `v0.2.0` with
+`dex-connectors-sdk>=0.12.0`. It implements all five meeting operations using
 the manifest-generated models, Step factories, connection, and OAuth refresh
-wiring. The checked-in [meeting-list example](python/examples/meeting_list/README.md)
-binds `zoom-meetings` and has a real Dex Worker/Client integration test with a
-fake provider. `createMeeting` uses the SDK single-dispatch fence and reports
-an unconfirmed dispatch as uncertain. No live Zoom authorization or provider
-request was performed for this port.
+wiring, and, from 0.2.0, the `meetingChanged` poll Trigger at parity with Go:
+the same change kinds, event IDs, pagination, reset, and rate-limit rules, and
+poll cursor documents that Go and Python replicas read and write byte for byte.
+The checked-in [meeting-list example](python/examples/meeting_list/README.md)
+binds `zoom-meetings`, and the
+[meeting-changed example](python/examples/meeting_changed/README.md) starts one
+Flow per change on `zoom-meeting-watcher`; both have real Dex Worker/Client
+integration tests with a fake provider. `createMeeting` uses the SDK
+single-dispatch fence and reports an unconfirmed dispatch as uncertain. No live
+Zoom authorization or provider request was performed for this port.
 
 ## Not in this release
 
