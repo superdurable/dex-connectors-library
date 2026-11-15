@@ -1,6 +1,10 @@
 # GitHub Connector for TypeScript
 
-`@superdurable/connector-github` provides Dex Query operations for an authenticated profile, public repositories, merged pull requests, pull request files, releases, and commits. The generated Step factories and connection bindings use the same connector and branch IDs as the Go module. The Go-only `listIssues` and `createIssue` operations, and the `github-oauth-repository` authorization method they use, are not implemented in this package; its conformance test replays only the six Queries.
+`@superdurable/connector-github` provides Dex Query operations for an authenticated profile, public repositories, merged pull requests, pull request files, releases, commits, and repository issues (`newListIssuesStep`), and the `createIssue` Mutation (`newCreateIssueStep`). The generated Step factories and connection bindings use the same connector and branch IDs as the Go module, and its conformance test replays every Go-recorded scenario.
+
+A connection uses `github-oauth` (the default, `read:user user:email`) or `github-oauth-repository` (`repo`), exported as `PublicAuthMethodID` and `RepositoryAuthMethodID`. Every operation requires the exact scopes of the connection's method. `createIssue` needs `github-oauth-repository` and selects `insufficientScope` on any other method without calling GitHub; the profile, repository, change, and release queries select `insufficientScope` on a repository connection. See the [connector README](../README.md#repository-issues) for the duplicate protection: a hidden marker holding a digest of the Call ID, the single-dispatch fence with `repeatOnUnknown: limited` and at most 3 sends, the saved issue number, and read-back before any resend. A Step may set `maxSends` from 1 to 10.
+
+The [issue filing example](examples/issue-filing/README.md) files an issue unless an open one with the same title is already tracked.
 
 The OAuth connection requests `read:user`, `user:email`, and `offline_access`. Dex stores the access and rotating refresh tokens in the named project connection. The package uses manifest-generated credential decoders and refresh declarations. Decoded `Credentials` carry an optional `authMethodId`; a credential stored without a method decodes as `github-oauth`. GitHub Enterprise Server may return a non-expiring access token without refresh material.
 

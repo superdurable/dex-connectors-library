@@ -11,9 +11,9 @@ spec:
   provider: github
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-github'
-      operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits]
+      operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits, listIssues, createIssue]
       triggers: []
     python:
       version: v0.1.0

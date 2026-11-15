@@ -2,30 +2,32 @@
 // SPDX-License-Identifier: MIT
 
 import { it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type Mutation } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
-import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
-import { GitHubClient } from '../src/client.js';
-import type { Credentials, GetAuthenticatedProfileInput, ListPublicRepositoriesInput, ListMergedPullRequestsInput, ListPullRequestFilesInput, ListReleasesInput, ListCommitsInput } from '../src/generated/models.js';
+import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type HeartbeatContext, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
+import { GitHubClient, PublicAuthMethodID, RepositoryAuthMethodID } from '../src/client.js';
+import { CreateIssueInputSchema, type Credentials, type GetAuthenticatedProfileInput, type ListPublicRepositoriesInput, type ListMergedPullRequestsInput, type ListPullRequestFilesInput, type ListReleasesInput, type ListCommitsInput, type ListIssuesInput } from '../src/generated/models.js';
 
-// listIssues and createIssue are Go only; replay just the operations this package implements.
-const typescriptOperations = new Set([
-  'getAuthenticatedProfile', 'listPublicRepositories', 'listMergedPullRequests', 'listPullRequestFiles', 'listReleases', 'listCommits',
-]);
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/github/scenarios.json', import.meta.url))
-  .filter(scenario => typescriptOperations.has(scenario.operation));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/github/scenarios.json', import.meta.url));
 const connection = { provider: 'github', name: 'signup' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGitHub));
 
-async function invokeGitHub(scenario: Scenario, recorder: ExchangeRecorder) {
+function productionMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input, key: string) {
+  return invokeProductionMutation(operation, key,
+    recording => runMutation(recording as Mutation<Input, Output>, call, input), error => error instanceof RetryError);
+}
+
+async function invokeGitHub(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
   const sender = async (request: ProviderRequest) => {
     const response = await answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
     if (response.body.length > request.maxResponseBytes!) throw new BodyTooLargeError(response.status, response.headers);
     return response;
   };
   const accessToken = scenario.name === 'getAuthenticatedProfile-defect' ? '' : scenario.name === 'getAuthenticatedProfile-refresh-after-rejection' ? 'rejected-token' : 'manifest-access-token';
-  const initialCredentials: Credentials = { accessToken: new SecretString(accessToken), oauthClientId: 'client-id', oauthClientSecret: new SecretString('client-secret') };
+  // The Go adapter selects the repository method for createIssue and for listIssues scenarios named after it.
+  const isRepositoryMethod = scenario.operation === 'createIssue' && !scenario.name.endsWith('-public-method') || scenario.name.endsWith('-repository-method');
+  const initialCredentials: Credentials = { authMethodId: isRepositoryMethod ? RepositoryAuthMethodID : PublicAuthMethodID, accessToken: new SecretString(accessToken), oauthClientId: 'client-id', oauthClientSecret: new SecretString('client-secret') };
   const credentials = new StaticCredentialProvider([[connection, initialCredentials]]);
   const credentialSource = scenario.name === 'getAuthenticatedProfile-refresh-after-rejection'
     ? { resolve: (call: Call) => credentials.resolve(call), resolveWithRefresh: (call: Call) => credentials.resolveWithRefresh(call),
@@ -43,6 +45,12 @@ async function invokeGitHub(scenario: Scenario, recorder: ExchangeRecorder) {
     case 'listPullRequestFiles': return client.listPullRequestFiles().invoke(call, scenario.input as unknown as ListPullRequestFilesInput);
     case 'listReleases': return client.listReleases().invoke(call, scenario.input as unknown as ListReleasesInput);
     case 'listCommits': return client.listCommits().invoke(call, scenario.input as unknown as ListCommitsInput);
+    case 'listIssues': return client.listIssues().invoke(call, scenario.input as unknown as ListIssuesInput);
+    case 'createIssue': {
+      // The single-dispatch fence reads and writes the scenario's heartbeats across attempts.
+      const fencedCall = scenarioCall(scenario, connection, 'github', context) as Call;
+      return productionMutation(client.createIssue(), fencedCall, CreateIssueInputSchema.parse(scenario.input), scenario.idempotencyKey!);
+    }
     default: throw new TypeError(`unknown GitHub operation ${scenario.operation}`);
   }
 }

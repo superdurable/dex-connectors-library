@@ -2,13 +2,21 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, CredentialSource } from './generated/models.js';
 import { GetAuthenticatedProfileOperation, ListPublicRepositoriesOperation, ListMergedPullRequestsOperation, ListPullRequestFilesOperation, ListReleasesOperation, ListCommitsOperation } from './operations.js';
+import { CreateIssueOperation, ListIssuesOperation } from './issues.js';
 
+/** Default authorization method: read:user and user:email, so GitHub serves only public repository data. */
+export const PublicAuthMethodID = 'github-oauth';
+/** Authorization method granting the repo scope that createIssue requires. */
+export const RepositoryAuthMethodID = 'github-oauth-repository';
+
+const publicOAuthScopes = ['read:user', 'user:email'];
+const repositoryOAuthScopes = ['repo'];
 const defaultBaseUrl = 'https://api.github.com';
 const defaultApiVersion = '2026-03-10';
 const userAgent = 'superdurable-dex-github-connector/0.1';
@@ -19,10 +27,21 @@ export interface GitHubClientOptions {
   now?: () => Date;
 }
 
-/** A successful exchange or classified provider failure. */
+/** A successful exchange or classified provider failure; isTransportFailure marks a request without a response. */
 export type GitHubExchange =
   | { response: ProviderResponse; receipt: ReceiptDraft }
-  | { branch?: string; failure: Failure; retryAfterMs?: number; receipt: ReceiptDraft };
+  | { branch?: string; failure: Failure; retryAfterMs?: number; receipt: ReceiptDraft; isTransportFailure?: boolean };
+
+/** Access token and authorization method resolved once per call. */
+export interface GitHubAccess { token: string; authMethodId: string }
+
+/** Outcome of one fenced write; isDispatched is false only when the request provably never left. */
+export interface GitHubWriteResult {
+  response?: ProviderResponse;
+  isDispatched: boolean;
+  /** The answer's status arrived but its body was oversized or interrupted. */
+  hasUnusableBody: boolean;
+}
 
 /** GitHub REST client bound to host managed OAuth credentials. */
 export class GitHubClient {
@@ -37,7 +56,7 @@ export class GitHubClient {
   readonly maxCommitMessageCharacters: number;
   readonly now: () => Date;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
-  private readonly accessTokens = new WeakMap<Call, string>();
+  private readonly accesses = new WeakMap<Call, GitHubAccess>();
   private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'GitHub', auth: Authorization, credentialFields: CredentialFields });
 
   /** Validate connection settings without contacting GitHub. */
@@ -79,18 +98,30 @@ export class GitHubClient {
   listReleases(): ListReleasesOperation { return new ListReleasesOperation(this); }
   /** Bind the commit query. */
   listCommits(): ListCommitsOperation { return new ListCommitsOperation(this); }
+  /** Bind the bounded repository issue query. */
+  listIssues(): ListIssuesOperation { return new ListIssuesOperation(this); }
+  /** Bind the fenced issue creation Mutation. */
+  createIssue(): CreateIssueOperation { return new CreateIssueOperation(this); }
+
+  /** Resolve the call's access token and authorization method once; a blank method is the default. */
+  async resolveAccess(call: Call, operation: string): Promise<GitHubAccess | Extract<GitHubExchange, { failure: Failure }>> {
+    const cached = this.accesses.get(call);
+    if (cached) return cached;
+    try {
+      const credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+      const token = credential.accessToken?.reveal() ?? '';
+      if (!token) throw new TypeError('missing access token');
+      const access = { token, authMethodId: credential.authMethodId || PublicAuthMethodID };
+      this.accesses.set(call, access);
+      return access;
+    } catch { return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked'), receipt: {} }; }
+  }
 
   /** Resolve credentials, send a single GitHub GET, and classify the result. */
   async get(call: Call, operation: string, path: string, query: Record<string, string> = {}): Promise<GitHubExchange> {
-    let token = this.accessTokens.get(call);
-    if (!token) {
-      try {
-        const credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-        token = credential.accessToken.reveal();
-        if (!token) throw new TypeError('missing access token');
-        this.accessTokens.set(call, token);
-      } catch { return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked'), receipt: {} }; }
-    }
+    const access = await this.resolveAccess(call, operation);
+    if ('failure' in access) return access;
+    let token = access.token;
     const search = encodeGoQuery(query);
     const url = `${this.baseUrl}${path}${search ? `?${search}` : ''}`;
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -106,34 +137,19 @@ export class GitHubClient {
         });
       } catch (error) {
         if (error instanceof BodyTooLargeError) return { branch: 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', `${operation === 'getAuthenticatedProfile' ? path === '/user/emails' ? 'GitHub email' : 'GitHub profile' : operation === 'listPublicRepositories' ? 'GitHub repository' : 'GitHub'} response exceeds the configured size limit`), receipt: requestReceipt(error.headers ?? {}) };
-        return { failure: failure(operation, 'AVAILABILITY', 'GitHub is unavailable'), retryAfterMs: 0, receipt: {} };
+        return { failure: failure(operation, 'AVAILABILITY', 'GitHub is unavailable'), retryAfterMs: 0, receipt: {}, isTransportFailure: true };
       }
       const receipt = requestReceipt(response.headers);
       if (response.status === 401 && attempt === 0 && 'resolveAfterRejection' in this.credentials) {
         try {
           const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-          token = replacement.accessToken.reveal();
-          if (token) { this.accessTokens.set(call, token); continue; }
+          token = replacement.accessToken?.reveal() ?? '';
+          if (token) { this.accesses.set(call, { ...access, token }); continue; }
         } catch { /* A failed refresh preserves GitHub's original 401 classification. */ }
       }
       if (response.status >= 200 && response.status < 300 || operation === 'listCommits' && response.status === 409) return { response, receipt };
-      const header = (name: string) => responseHeader(response.headers, name);
-      let rateLimited = response.status === 429 || response.status === 403 && (header('retry-after') !== '' || header('x-ratelimit-remaining') === '0');
-      if (!rateLimited && response.status === 403) {
-        try {
-          const body: unknown = JSON.parse(Buffer.from(response.body).toString());
-          rateLimited = typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string' && body.message.toLowerCase().includes('rate limit');
-        } catch { /* Non-JSON errors cannot identify a secondary rate limit. */ }
-      }
-      if (rateLimited) {
-        let delay = parseRetryAfter(header('retry-after'), this.now());
-        if (!Number.isSafeInteger(delay) || delay <= 0) {
-          const reset = header('x-ratelimit-reset');
-          delay = header('x-ratelimit-remaining') === '0' && /^[+-]?\d+$/.test(reset) && Number.isSafeInteger(Number(reset)) ? Math.max(Number(reset) * 1000 - this.now().getTime(), 0) : 0;
-          if (!Number.isFinite(delay) || delay <= 0) delay = 60_000;
-        }
-        return { failure: failure(operation, 'RATE_LIMIT', 'GitHub rate limit was reached'), retryAfterMs: delay, receipt };
-      }
+      const delay = rateLimitDelayMs(response, this.now());
+      if (delay !== undefined) return { failure: failure(operation, 'RATE_LIMIT', 'GitHub rate limit was reached'), retryAfterMs: delay, receipt };
       if (response.status >= 500) return { failure: failure(operation, 'AVAILABILITY', 'GitHub is unavailable'), retryAfterMs: 0, receipt };
       if (response.status === 401) return { branch: 'authorizationRevoked', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is invalid or revoked'), receipt };
       if (response.status === 403) return { branch: 'insufficientScope', failure: failure(operation, 'AUTHORIZATION', 'GitHub authorization is forbidden or lacks scope'), receipt };
@@ -142,6 +158,54 @@ export class GitHubClient {
     }
     throw new Error('GitHub authenticated request retry was exhausted');
   }
+
+  /** Send one fenced POST without any transparent retry; the caller classifies the outcome. */
+  async postFencedWrite(token: string, path: string, payload: Uint8Array, signal: AbortSignal): Promise<GitHubWriteResult> {
+    try {
+      const response = await this.send({
+        url: `${this.baseUrl}${path}`, method: 'POST', headers: {
+          Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json',
+          'User-Agent': userAgent, 'X-GitHub-Api-Version': this.apiVersion,
+        }, body: payload, addressPolicy: 'unrestricted',
+        maxResponseBytes: this.maxResponseBytes, timeoutMs: this.timeoutMs, signal,
+      });
+      return { response, isDispatched: true, hasUnusableBody: false };
+    } catch (error) {
+      if (error instanceof BodyTooLargeError || error instanceof ProviderTransportError && error.status !== undefined) {
+        return { response: { status: error.status ?? 0, headers: error.headers ?? {}, body: new Uint8Array() }, isDispatched: true, hasUnusableBody: true };
+      }
+      return { isDispatched: !(error instanceof ProviderTransportError && error.isProvablyNotSent), hasUnusableBody: false };
+    }
+  }
+
+  /** Report whether the credential source issued a new token after GitHub rejected the call's token. */
+  async hasReplacementCredential(call: Call): Promise<boolean> {
+    if (!('resolveAfterRejection' in this.credentials)) return false;
+    try {
+      const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+      return Boolean(replacement.accessToken?.reveal());
+    } catch { return false; }
+  }
+}
+
+/** Return GitHub's retry delay for any 429 or a 403 rate limit, or undefined for another answer. */
+export function rateLimitDelayMs(response: ProviderResponse, now: Date): number | undefined {
+  const header = (name: string) => responseHeader(response.headers, name);
+  let rateLimited = response.status === 429 || response.status === 403 && (header('retry-after') !== '' || header('x-ratelimit-remaining') === '0');
+  if (!rateLimited && response.status === 403) {
+    try {
+      const body: unknown = JSON.parse(Buffer.from(response.body).toString());
+      rateLimited = typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string' && body.message.toLowerCase().includes('rate limit');
+    } catch { /* Non-JSON errors cannot identify a secondary rate limit. */ }
+  }
+  if (!rateLimited) return undefined;
+  let delay = parseRetryAfter(header('retry-after'), now);
+  if (!Number.isSafeInteger(delay) || delay <= 0) {
+    const reset = header('x-ratelimit-reset');
+    delay = header('x-ratelimit-remaining') === '0' && /^[+-]?\d+$/.test(reset) && Number.isSafeInteger(Number(reset)) ? Math.max(Number(reset) * 1000 - now.getTime(), 0) : 0;
+    if (!Number.isFinite(delay) || delay <= 0) delay = 60_000;
+  }
+  return delay;
 }
 
 /** Produce a provider-safe failure. */
@@ -163,10 +227,21 @@ export function requestReceipt(headers: ProviderResponse['headers']): ReceiptDra
   return {};
 }
 
-/** Verify the exact two scopes required by the Go connector. */
+/** Verify the exact two scopes of the default authorization method. */
 export function hasRequiredScopes(headers: ProviderResponse['headers']): boolean {
+  return hasExactGrantedScopes(headers, publicOAuthScopes);
+}
+
+/** Verify that GitHub granted exactly the scopes of the connection's authorization method. */
+export function hasAuthMethodScopes(headers: ProviderResponse['headers'], authMethodId: string): boolean {
+  if (authMethodId === '' || authMethodId === PublicAuthMethodID) return hasExactGrantedScopes(headers, publicOAuthScopes);
+  if (authMethodId === RepositoryAuthMethodID) return hasExactGrantedScopes(headers, repositoryOAuthScopes);
+  return false;
+}
+
+function hasExactGrantedScopes(headers: ProviderResponse['headers'], requiredScopes: readonly string[]): boolean {
   const scopes = new Set(responseHeader(headers, 'x-oauth-scopes').split(',').map(value => value.trim()).filter(Boolean));
-  return scopes.size === 2 && scopes.has('read:user') && scopes.has('user:email');
+  return scopes.size === requiredScopes.length && requiredScopes.every(scope => scopes.has(scope));
 }
 
 /** Encode a Go url.Values component. */

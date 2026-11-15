@@ -2,10 +2,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
+import { ConnectionRefSchema, type ConnectionRef, type Mutation, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { newRefreshingCredentialProvider, type CredentialDecoder, type CredentialEncoder, type SharedCredentialDecoder } from '@superdurable/connectors-sdk/projectconfig';
-import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFilePage, ListReleasesInput, ReleasePage, ListCommitsInput, CommitPage } from './models.js';
+import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFilePage, ListReleasesInput, ReleasePage, ListCommitsInput, CommitPage, ListIssuesInput, IssuePage, CreateIssueInput, CreatedIssue } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
@@ -22,6 +22,10 @@ export interface Operations {
   listReleases(): Query<ListReleasesInput, ReleasePage>;
   /** Invoke listCommits through this connection. */
   listCommits(): Query<ListCommitsInput, CommitPage>;
+  /** Invoke listIssues through this connection. */
+  listIssues(): Query<ListIssuesInput, IssuePage>;
+  /** Invoke createIssue through this connection. */
+  createIssue(): Mutation<CreateIssueInput, CreatedIssue>;
 }
 
 /** Named connector connection kept outside Flow state. */

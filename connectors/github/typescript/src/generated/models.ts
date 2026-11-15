@@ -429,6 +429,116 @@ export interface CommitPage {
   /** NextPage is the one-based page that follows, or zero when this is the last page. */
   "nextPage": number;
 }
+/** ListIssuesInput selects one page of a repository's issues, newest created first. */
+export interface ListIssuesInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** State is open, closed, or all. Empty selects open. */
+  "state"?: string | undefined;
+  /** Labels keeps only issues that carry every listed label name. A name cannot contain a comma, because
+   * GitHub receives the list comma-separated. */
+  "labels"?: Array<string> | undefined;
+  /** Creator keeps only issues opened by this GitHub login. */
+  "creator"?: string | undefined;
+  /** UpdatedSince keeps only issues updated at or after this time. GitHub receives it in UTC with second
+   * precision. */
+  "updatedSince"?: string | null | undefined;
+  /** PageSize is 1 through 100. Zero selects 30. */
+  "pageSize"?: number | undefined;
+  /** Page is one-based. Zero selects 1. */
+  "page"?: number | undefined;
+  /** MaxBodyCharacters bounds each issue body to 1 through 16384 Unicode characters. Zero selects 4000. */
+  "maxBodyCharacters"?: number | undefined;
+}
+/** Issue is one repository issue with a bounded body. */
+export interface Issue {
+  /** Number is the issue number within its repository. */
+  "number": number;
+  /** NodeID is GitHub's global node ID for the issue, such as I_kwDOAbCdEs4AAAAM. */
+  "nodeId": string;
+  /** Title is the trimmed issue title, bounded to 1024 bytes. */
+  "title": string;
+  /** Body is the beginning of the Markdown body, bounded by ListIssuesInput.MaxBodyCharacters. It keeps the
+   * hidden marker comment of an issue that createIssue wrote. */
+  "body"?: string | undefined;
+  /** BodyTruncated reports that Body omits the end of the issue body. */
+  "bodyTruncated": boolean;
+  /** State is open or closed. */
+  "state": string;
+  /** StateReason is GitHub's reason for the state, such as completed, not_planned, or reopened, when set. */
+  "stateReason"?: string | undefined;
+  /** URL is the issue's GitHub web URL, or empty when GitHub returns an unsafe URL. */
+  "url"?: string | undefined;
+  /** AuthorLogin is the login of the account that opened the issue, or empty when GitHub omits it. */
+  "authorLogin"?: string | undefined;
+  /** Labels holds up to 100 label names, each bounded to 256 bytes. */
+  "labels"?: Array<string> | undefined;
+  /** Assignees holds up to 100 assignee logins. */
+  "assignees"?: Array<string> | undefined;
+  /** Comments is the number of comments on the issue. */
+  "comments": number;
+  /** CreatedAt is the creation time in UTC. */
+  "createdAt": string;
+  /** UpdatedAt is the last update time in UTC. */
+  "updatedAt": string;
+  /** ClosedAt is the close time in UTC, absent for an open issue. */
+  "closedAt"?: string | null | undefined;
+}
+/** IssuePage is one bounded page of issues. NextPage is zero when no page follows. */
+export interface IssuePage {
+  /** Issues holds this page's issues, newest created first. GitHub lists pull requests with issues; they are
+   * left out, so a page can hold fewer than PageSize issues while NextPage is nonzero. */
+  "issues": Array<Issue> | null;
+  /** NextPage is the one-based page that follows, or zero when this is the last page. */
+  "nextPage": number;
+}
+/** CreateIssueInput describes one issue to create. */
+export interface CreateIssueInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** Title is the issue title, 1 through 256 Unicode characters after surrounding whitespace is trimmed,
+   * without line breaks or other control characters. */
+  "title": string;
+  /** Body is the Markdown issue body. The connector appends a hidden HTML comment that marks the issue for
+   * read-back, so Body holds at most 65536 characters less that marker; empty sends only the marker. */
+  "body"?: string | undefined;
+  /** Labels names up to 100 labels of 1 through 50 characters. GitHub applies labels only for an account
+   * with push access and drops them silently otherwise; CreatedIssue.Labels lists the labels applied. */
+  "labels"?: Array<string> | undefined;
+  /** Assignees lists up to 10 GitHub logins. GitHub applies assignees only for an account with push access
+   * and drops them silently otherwise; CreatedIssue.Assignees lists the assignees applied. */
+  "assignees"?: Array<string> | undefined;
+}
+/** CreatedIssue identifies the created issue. On every other branch only Owner, Repository, and Title are
+   * set, echoing the request so the application can reconcile. */
+export interface CreatedIssue {
+  /** Owner echoes the requested repository owner. */
+  "owner": string;
+  /** Repository echoes the requested repository name. */
+  "repository": string;
+  /** Title is GitHub's title of the created issue, or the requested title on other branches. */
+  "title": string;
+  /** Number is the issue number within its repository. */
+  "number"?: number | undefined;
+  /** ID is GitHub's numeric REST ID for the issue. */
+  "id"?: number | undefined;
+  /** NodeID is GitHub's global node ID for the issue. */
+  "nodeId"?: string | undefined;
+  /** URL is the issue's GitHub web URL, or empty when GitHub returns an unsafe URL. */
+  "url"?: string | undefined;
+  /** State is the issue state GitHub returned, normally open. */
+  "state"?: string | undefined;
+  /** CreatedAt is the creation time in UTC. */
+  "createdAt"?: string | null | undefined;
+  /** Labels lists the label names GitHub applied. */
+  "labels"?: Array<string> | undefined;
+  /** Assignees lists the logins GitHub assigned. */
+  "assignees"?: Array<string> | undefined;
+}
 
 /** Runtime validator for GetAuthenticatedProfileInput. */
 export const GetAuthenticatedProfileInputSchema = z.strictObject({
@@ -602,3 +712,66 @@ export const CommitPageSchema = z.strictObject({
   "commits": z.array(CommitSummarySchema).nullable(),
   "nextPage": z.number().int(),
 }) satisfies z.ZodType<CommitPage>;
+
+/** Runtime validator for ListIssuesInput. */
+export const ListIssuesInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "state": z.string().optional(),
+  "labels": z.array(z.string()).optional(),
+  "creator": z.string().optional(),
+  "updatedSince": GoTimeJSONSchema.nullable().optional(),
+  "pageSize": z.number().int().optional(),
+  "page": z.number().int().optional(),
+  "maxBodyCharacters": z.number().int().optional(),
+}) satisfies z.ZodType<ListIssuesInput>;
+
+/** Runtime validator for Issue. */
+export const IssueSchema = z.strictObject({
+  "number": z.number().int(),
+  "nodeId": z.string(),
+  "title": z.string(),
+  "body": z.string().optional(),
+  "bodyTruncated": z.boolean(),
+  "state": z.string(),
+  "stateReason": z.string().optional(),
+  "url": z.string().optional(),
+  "authorLogin": z.string().optional(),
+  "labels": z.array(z.string()).optional(),
+  "assignees": z.array(z.string()).optional(),
+  "comments": z.number().int(),
+  "createdAt": GoTimeJSONSchema,
+  "updatedAt": GoTimeJSONSchema,
+  "closedAt": GoTimeJSONSchema.nullable().optional(),
+}) satisfies z.ZodType<Issue>;
+
+/** Runtime validator for IssuePage. */
+export const IssuePageSchema = z.strictObject({
+  "issues": z.array(IssueSchema).nullable(),
+  "nextPage": z.number().int(),
+}) satisfies z.ZodType<IssuePage>;
+
+/** Runtime validator for CreateIssueInput. */
+export const CreateIssueInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "title": z.string(),
+  "body": z.string().optional(),
+  "labels": z.array(z.string()).optional(),
+  "assignees": z.array(z.string()).optional(),
+}) satisfies z.ZodType<CreateIssueInput>;
+
+/** Runtime validator for CreatedIssue. */
+export const CreatedIssueSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "title": z.string(),
+  "number": z.number().int().optional(),
+  "id": z.number().int().optional(),
+  "nodeId": z.string().optional(),
+  "url": z.string().optional(),
+  "state": z.string().optional(),
+  "createdAt": GoTimeJSONSchema.nullable().optional(),
+  "labels": z.array(z.string()).optional(),
+  "assignees": z.array(z.string()).optional(),
+}) satisfies z.ZodType<CreatedIssue>;
