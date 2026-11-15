@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: salesforce
   displayName: Salesforce
-  description: Query Salesforce CRM records with typed SOQL bind values, read one record, create or update a record by external ID without duplicates on retry, and update a record by ID.
+  description: Query Salesforce CRM records with typed SOQL bind values, read one record, create or update a record by external ID without duplicates on retry, update a record by ID, and start Flows when records of one object are created or modified.
   company: Salesforce
   categories: [crm-sales]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: salesforce
   languages:
@@ -41,6 +41,18 @@ spec:
         goName: QueryBatchSize
         type: integer
         description: Records requested per queryRecords page, sent as the Sforce-Query-Options batchSize header when a Step input leaves batchSize at zero; the default is Salesforce's minimum, so enter a larger whole number, up to Salesforce's maximum of 2,000, only to trade larger Results for fewer requests. Salesforce treats the value as a hint and can return a different page size.
+        required: false
+        default: 200
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: Wait between two recordModifiedPolled Trigger polls of one object, as a Go duration of at least 5s such as 15s or 2m; shorten it only when Flows must start sooner, because every poll spends one request of the org's daily API request allocation shown after signing in at https://login.salesforce.com under Setup > Company Information > API Requests, Last 24 Hours.
+        required: false
+        default: 30s
+      - name: pollPageSize
+        goName: PollPageSize
+        type: integer
+        description: Most records one recordModifiedPolled poll request reads, as the SOQL LIMIT, a whole number from 1 to 500; lower it only when pages with many selected fields exceed maxResponseBytes, and raise it only to catch up on bulk updates in fewer requests.
         required: false
         default: 200
   auth:
@@ -249,6 +261,17 @@ spec:
         description: Enter the API name of one field, such as Email or ERP_Id__c, from Setup > Object Manager > the object > Fields & Relationships > Field Name column; the unit validates and stores the API name, and blank leaves the field to the Flow.
         outputs:
           - {name: fieldName, goName: FieldName, type: string}
+      - id: fieldNamesInput
+        goName: FieldNamesInput
+        description: Enter the comma-separated API names of up to 50 extra fields to read with each record, such as Email, StageName, or ERP_Id__c, after signing in at https://login.salesforce.com (https://test.salesforce.com for a sandbox) under Setup > Object Manager > the object > Fields & Relationships > Field Name column; the unit validates and stores the non-secret list, and blank reads only Id, CreatedDate, LastModifiedDate, and SystemModstamp.
+        outputs:
+          - {name: fieldNames, goName: FieldNames, type: stringList}
+  triggers:
+    - name: recordModifiedPolled
+      goName: RecordModifiedPolled
+      eventType: RecordModifiedEvent
+      configurationType: RecordModifiedTriggerConfiguration
+      description: Receive each record of one object that was created or modified after the Trigger first started, read by polling SOQL on SystemModstamp and Id; the first run records a baseline and delivers no existing records, and deletions are not delivered.
   operations:
     - name: queryRecords
       goName: QueryRecords
@@ -745,6 +768,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # An upsert keyed by external ID and a field PATCH are absolute writes, so a repeat is harmless.
+        repeatOnUnknown: safe
       mocks:
         - name: linkedPriyaUpsert
           branch: upserted
@@ -782,6 +807,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # An upsert keyed by external ID and a field PATCH are absolute writes, so a repeat is harmless.
+        repeatOnUnknown: safe
       mocks:
         - name: linkedPriyaUpdate
           branch: updated

@@ -14,6 +14,10 @@ export interface Config {
   maxResponseBytes?: number;
   /** Records requested per queryRecords page, sent as the Sforce-Query-Options batchSize header when a Step input leaves batchSize at zero; the default is Salesforce's minimum, so enter a larger whole number, up to Salesforce's maximum of 2,000, only to trade larger Results for fewer requests. Salesforce treats the value as a hint and can return a different page size. */
   queryBatchSize?: number;
+  /** Wait between two recordModifiedPolled Trigger polls of one object, as a Go duration of at least 5s such as 15s or 2m; shorten it only when Flows must start sooner, because every poll spends one request of the org's daily API request allocation shown after signing in at https://login.salesforce.com under Setup > Company Information > API Requests, Last 24 Hours. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
+  /** Most records one recordModifiedPolled poll request reads, as the SOQL LIMIT, a whole number from 1 to 500; lower it only when pages with many selected fields exceed maxResponseBytes, and raise it only to catch up on bulk updates in fewer requests. */
+  pollPageSize?: number;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -21,6 +25,8 @@ export const ConfigSchema = z.object({
   "apiVersion": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
   "queryBatchSize": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
+  "pollPageSize": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

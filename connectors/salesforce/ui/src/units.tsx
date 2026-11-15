@@ -10,7 +10,7 @@ import {
   type ConnectorStudioConfigurationUnitTarget,
 } from "@superdurable/dex-connectors-react";
 import { useState, type ReactNode } from "react";
-import { isSalesforceAPIName, standardSObjects } from "./provider.js";
+import { fieldNamesFromInput, isSalesforceAPIName, standardSObjects } from "./provider.js";
 
 export interface SalesforceUnitProps {
   target: ConnectorStudioConfigurationUnitTarget;
@@ -21,6 +21,7 @@ export interface SalesforceUnitProps {
 export function SalesforceConfigurationUnit(props: SalesforceUnitProps) {
   if (props.target.unitId === "sObjectPicker") return <SObjectPickerUnit {...props}/>;
   if (props.target.unitId === "fieldNameInput") return <FieldNameInputUnit {...props}/>;
+  if (props.target.unitId === "fieldNamesInput") return <FieldNamesInputUnit {...props}/>;
   const {target} = props;
   return <StudioNotice tone="error">Unsupported Salesforce configuration unit: {target.unitId}</StudioNotice>;
 }
@@ -58,6 +59,18 @@ function FieldNameInputUnit({target, busy, onSave}: SalesforceUnitProps) {
   </UnitFrame>;
 }
 
+function FieldNamesInputUnit({target, busy, onSave}: SalesforceUnitProps) {
+  const [fieldsInput, setFieldsInput] = useState(stringListValue(target.value.fieldNames).join(", "));
+  const {fieldNames, problem} = fieldNamesFromInput(fieldsInput);
+  return <UnitFrame target={target}>
+    <StudioField hint="Separate field API names with commas, copied from the Field Name column at Setup > Object Manager > the object > Fields & Relationships, such as Name, StageName, ERP_Id__c. Leave blank to deliver only Id, CreatedDate, LastModifiedDate, and SystemModstamp." label="Field API names">
+      <textarea onChange={(event) => setFieldsInput(event.target.value)} rows={3} value={fieldsInput}/>
+    </StudioField>
+    {problem !== undefined && <StudioNotice tone="error">{problem}</StudioNotice>}
+    <SaveAction disabled={busy || problem !== undefined || (target.required && fieldNames.length === 0)} onSave={() => onSave({fieldNames})}/>
+  </UnitFrame>;
+}
+
 function UnitFrame({target, children}: {target: ConnectorStudioConfigurationUnitTarget; children: ReactNode}) {
   return <StudioSurface label={target.label}>
     <StudioHeader description={target.description} title={target.label}/>
@@ -81,3 +94,4 @@ function SaveAction({disabled, onSave}: {disabled?: boolean; onSave(): Promise<u
 }
 
 function stringValue(value: unknown): string { return typeof value === "string" ? value : ""; }
+function stringListValue(value: unknown): string[] { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []; }

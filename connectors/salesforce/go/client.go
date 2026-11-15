@@ -3,12 +3,15 @@
 
 // Package salesforce implements bounded Salesforce REST API operations for
 // Dex: SOQL queries with typed bind values, single-record reads, upserts keyed
-// by an External ID field, and field updates by record ID.
+// by an External ID field, and field updates by record ID, plus the
+// recordModifiedPolled Trigger, which polls one object for created and
+// modified records.
 //
 // Applications use the generated operation-specific Step factories, such as
 // NewQueryRecordsStep and NewUpsertRecordByExternalIDStep, with a Connection
 // built by NewProjectConnection or NewConnection. The runnable example in
-// examples/record-sync uses every operation in one Flow.
+// examples/record-sync uses every operation in one Flow, and
+// examples/record-changes starts one Flow per created or modified record.
 //
 // Every request goes to the org's instance URL, which Salesforce returns with
 // each access token, and runs with the object, field, and sharing access of the
@@ -17,10 +20,12 @@ package salesforce
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -41,6 +46,10 @@ const (
 	maximumQueryBatchSize  = 2000
 	// maxRequestBodyBytes bounds one record write, well below Salesforce's REST request limit.
 	maxRequestBodyBytes = 1 << 20
+	// minimumPollInterval keeps a recordModifiedPolled poll loop from spending the org's daily API requests.
+	minimumPollInterval = 5 * time.Second
+	minimumPollPageSize = 1
+	maximumPollPageSize = 500
 	queryOptionsHeader  = "Sforce-Query-Options"
 	limitInfoHeader     = "Sforce-Limit-Info"
 )
@@ -76,6 +85,7 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 	now        func() time.Time
 }
 
@@ -85,6 +95,14 @@ type clientOptions struct {
 // original client and its transport.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithLogger sends the recordModifiedPolled Trigger runner's records to logger: seeds, failed polls,
+// rate-limit pauses, and the durable inboxes NewProjectRecordTriggerRunner opens. Records carry binding
+// identity and never record values or credentials. Without this option, or with a nil logger, records go
+// to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
 }
 
 // Client executes authenticated Salesforce REST requests for connector
@@ -97,6 +115,9 @@ type Client struct {
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	queryBatchSize   int
+	pollInterval     time.Duration
+	pollPageSize     int
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -171,7 +192,7 @@ type operationBranches struct {
 
 // New validates configuration and constructs an authenticated Salesforce client.
 // It fails when apiVersion is not a vNN.0 version from v46.0, a limit is outside
-// its documented range, or credentials is nil.
+// its documented range, pollInterval is under 5s, or credentials is nil.
 func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	config = withConfigDefaults(config)
 	if err := config.Validate(); err != nil {
@@ -185,6 +206,12 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	}
 	if config.QueryBatchSize < minimumQueryBatchSize || config.QueryBatchSize > maximumQueryBatchSize {
 		return nil, fmt.Errorf("Salesforce queryBatchSize must be from %d to %d", minimumQueryBatchSize, maximumQueryBatchSize)
+	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Salesforce pollInterval must be at least %s", minimumPollInterval)
+	}
+	if config.PollPageSize < minimumPollPageSize || config.PollPageSize > maximumPollPageSize {
+		return nil, fmt.Errorf("Salesforce pollPageSize must be from %d to %d", minimumPollPageSize, maximumPollPageSize)
 	}
 	if credentials == nil {
 		return nil, errors.New("credential provider is required")
@@ -206,6 +233,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
 		maxResponseBytes: config.MaxResponseBytes,
 		queryBatchSize:   int(config.QueryBatchSize),
+		pollInterval:     config.PollInterval,
+		pollPageSize:     int(config.PollPageSize),
+		logger:           dependencies.logger,
 		now:              dependencies.now,
 	}, nil
 }
@@ -253,7 +283,7 @@ func (client *Client) send(
 	branches operationBranches,
 	request salesforceRequest,
 ) (salesforceResponse, *providerOutcome) {
-	response, err := client.sendRequest(call, credential, request)
+	response, err := client.sendRequest(call.Context, call, credential, request)
 	var requestErr *salesforceRequestError
 	if errors.As(err, &requestErr) {
 		switch requestErr.kind {
@@ -274,8 +304,9 @@ func (client *Client) send(
 	return response, &outcome
 }
 
-// sendRequest sends request; after one 401 it forces one coordinated refresh and sends once more.
-func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, request salesforceRequest) (salesforceResponse, error) {
+// sendRequest sends request under ctx; after one 401 it forces one coordinated refresh and sends once
+// more. Operation Steps pass their Step context, and Trigger pollers their own, because a poll has no Step.
+func (client *Client) sendRequest(ctx context.Context, call sdkgo.Call, credential *Credentials, request salesforceRequest) (salesforceResponse, error) {
 	for attempt := 0; attempt < 2; attempt++ {
 		target, err := client.requestURL(credential.InstanceURL, request)
 		if err != nil {
@@ -285,7 +316,7 @@ func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, requ
 		if request.body != nil {
 			body = bytes.NewReader(request.body)
 		}
-		httpRequest, err := http.NewRequestWithContext(call.Context, request.method, target, body)
+		httpRequest, err := http.NewRequestWithContext(ctx, request.method, target, body)
 		if err != nil {
 			return salesforceResponse{}, &salesforceRequestError{kind: sdkgo.FailureLocalDefect, message: "Salesforce request could not be built"}
 		}
@@ -329,7 +360,7 @@ func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, requ
 			return response, nil
 		}
 		// Salesforce reports an expired or revoked session as 401 INVALID_SESSION_ID before applying any change.
-		refreshed, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		refreshed, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
 		if err != nil || validateResolvedCredentials(refreshed) != nil {
 			return response, nil
 		}

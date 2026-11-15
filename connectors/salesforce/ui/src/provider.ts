@@ -21,3 +21,23 @@ const apiNamePattern = /^[A-Za-z][A-Za-z0-9_]{0,254}$/;
 export function isSalesforceAPIName(value: string): boolean {
   return apiNamePattern.test(value) && !value.endsWith("_");
 }
+
+/** maxTriggerFieldNames mirrors salesforce.MaxTriggerFieldNames. */
+export const maxTriggerFieldNames = 50;
+
+/**
+ * fieldNamesFromInput splits a comma- or newline-separated list into trimmed field API names. It reports
+ * the first entry that is not an API name, a repeated name ignoring case, or a list over the limit.
+ */
+export function fieldNamesFromInput(value: string): {fieldNames: string[]; problem?: string} {
+  const fieldNames = value.split(/[\s,]+/).map((name) => name.trim()).filter((name) => name !== "");
+  const invalid = fieldNames.find((name) => !isSalesforceAPIName(name));
+  if (invalid !== undefined) return {fieldNames, problem: `${invalid} is not a field API name such as StageName or ERP_Id__c.`};
+  const seen = new Set<string>();
+  for (const name of fieldNames) {
+    if (seen.has(name.toLowerCase())) return {fieldNames, problem: `${name} is listed twice.`};
+    seen.add(name.toLowerCase());
+  }
+  if (fieldNames.length > maxTriggerFieldNames) return {fieldNames, problem: `Enter at most ${maxTriggerFieldNames} field API names.`};
+  return {fieldNames};
+}
