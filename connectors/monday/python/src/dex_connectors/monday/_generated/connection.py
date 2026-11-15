@@ -222,7 +222,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.monday.connection'
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"maxResponseBytes"}:
+    if set(value) - {"maxResponseBytes", "pollInterval"}:
         raise ValueError("monday.com configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "maxResponseBytes" in value:
@@ -230,4 +230,9 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(max_response_bytes) is int):
             raise ValueError("monday.com configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
+    if "pollInterval" in value:
+        poll_interval = value["pollInterval"]
+        if not (type(poll_interval) is int):
+            raise ValueError("monday.com configuration pollInterval has an invalid type")
+        config_arguments['poll_interval_seconds'] = poll_interval / 1_000_000_000
     return Config(**config_arguments)

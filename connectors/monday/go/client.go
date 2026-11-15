@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"regexp"
@@ -75,7 +76,11 @@ type clientOptions struct {
 	httpClient *http.Client
 	apiURL     string
 	now        func() time.Time
+	logger     *slog.Logger
 }
+
+// minimumPollInterval keeps itemChanged polls from spending the account's daily call limit too fast.
+const minimumPollInterval = 30 * time.Second
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 12 seconds per request.
 // The caller retains ownership of the client and its transport. The connector uses a copy
@@ -98,6 +103,14 @@ func WithClock(now func() time.Time) Option {
 	return func(options *clientOptions) { options.now = now }
 }
 
+// WithLogger sends the itemChanged Trigger runner's records to logger: seeds, reseeds, failed polls,
+// rate-limit pauses, and the durable inboxes NewProjectItemTriggerRunner opens. Records carry binding
+// identity and never item payloads or credentials. Without this option, or with a nil logger, records go
+// to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated monday.com GraphQL requests for connector operations.
 // A Client is safe for concurrent use by several Steps.
 type Client struct {
@@ -106,6 +119,8 @@ type Client struct {
 	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -173,6 +188,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.MaxResponseBytes < 1 {
 		return nil, errors.New("monday.com response limit must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("monday.com pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, errors.New("monday.com credential provider is required")
 	}
@@ -199,7 +217,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	refreshDriver.now = dependencies.now
 	return &Client{
 		apiURL: apiURL, httpClient: httpClient, credentials: credentials, refreshDriver: refreshDriver,
-		maxResponseBytes: config.MaxResponseBytes, now: dependencies.now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval, logger: dependencies.logger, now: dependencies.now,
 	}, nil
 }
 
@@ -259,14 +277,14 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request graphQ
 			return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureAvailability, operation, "dispatch checkpoint could not be recorded")}
 		}
 	}
-	result := client.send(call, credentials, operation, request)
+	result := client.send(call.Context, call, credentials, operation, request)
 	if result.response.statusCode == http.StatusUnauthorized && client.canRefreshAfterRejection(credentials) {
 		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
 		if err == nil && validateResolvedCredentials(replacement) == nil {
 			if heartbeat != nil && !hasRequestBudget(call.Context, requestDeadlineMargin+minimumMutationRequestWindow) {
 				result = mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureAvailability, operation, "not enough time remains to resend the mutation")}
 			} else {
-				result = client.send(call, replacement, operation, request)
+				result = client.send(call.Context, call, replacement, operation, request)
 			}
 		}
 	}
@@ -306,16 +324,17 @@ func (client *Client) canRefreshAfterRejection(credentials Credentials) bool {
 	return supportsRejectionRefresh
 }
 
-// send performs one HTTP exchange and classifies it without deciding retry policy.
-func (client *Client) send(call sdkgo.Call, credentials Credentials, operation string, request graphQLRequest) mondayExchange {
-	httpRequest, err := client.buildRequest(call, credentials, request)
+// send performs one HTTP exchange under ctx, a Step context or a Trigger poller's context, and
+// classifies it without deciding retry policy.
+func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Credentials, operation string, request graphQLRequest) mondayExchange {
+	httpRequest, err := client.buildRequest(ctx, call, credentials, request)
 	if err != nil {
 		return mondayExchange{outcome: exchangeDefect, failure: mondayFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
-	requestContext := context.Context(call.Context)
-	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+	requestContext := ctx
+	if deadline, hasDeadline := ctx.Deadline(); hasDeadline {
 		var cancel context.CancelFunc
-		requestContext, cancel = context.WithDeadline(call.Context, deadline.Add(-requestDeadlineMargin))
+		requestContext, cancel = context.WithDeadline(ctx, deadline.Add(-requestDeadlineMargin))
 		defer cancel()
 	}
 	if requestContext.Err() != nil {
@@ -382,12 +401,12 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, operation s
 	return mondayExchange{outcome: exchangeSucceeded, response: response}
 }
 
-func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, request graphQLRequest) (*http.Request, error) {
+func (client *Client) buildRequest(ctx context.Context, call sdkgo.Call, credentials Credentials, request graphQLRequest) (*http.Request, error) {
 	encoded, err := json.Marshal(graphQLRequestBody{Query: request.document, Variables: request.variables})
 	if err != nil {
 		return nil, errRequestNotBuilt
 	}
-	httpRequest, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.apiURL, bytes.NewReader(encoded))
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, client.apiURL, bytes.NewReader(encoded))
 	if err != nil {
 		return nil, errRequestNotBuilt
 	}

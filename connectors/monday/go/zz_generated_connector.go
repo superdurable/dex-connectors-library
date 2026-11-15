@@ -17,8 +17,14 @@ import (
 
 const ConnectorID = "monday"
 
+const (
+	UIUnitBoardIDInput        = "boardIdInput"
+	UIBoardIDInputPortBoardID = "boardId"
+)
+
 type Config struct {
-	MaxResponseBytes int64 `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 }
 
 type Credentials struct {
@@ -217,6 +223,7 @@ func (Connection) GoString() string { return "monday.Connection{[REDACTED]}" }
 func DefaultConfig() Config {
 	return Config{
 		MaxResponseBytes: 4194304,
+		PollInterval:     time.Duration(300000000000),
 	}
 }
 
@@ -225,12 +232,18 @@ func withConfigDefaults(config Config) Config {
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
 	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
+	}
 	return config
 }
 
 func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
 	}
 	return nil
 }
@@ -280,6 +293,52 @@ func (credentials Credentials) validateSharedCredential() error {
 	return nil
 }
 
+var ItemChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "itemChanged"},
+	Description: "Receive each active item created or changed on one monday.com board, read by polling the board's items by monday.com's last-updated time; the first poll records a baseline and delivers no existing items.",
+}
+
+type ItemChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=monday"`
+	triggerName                             struct{}                       `connector:"triggerName=itemChanged"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineItemChangedTriggerBinding(config ItemChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: ItemChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type ItemChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                              `connector:"connectorId=monday"`
+	triggerName                      struct{}                              `connector:"triggerName=itemChanged"`
+	Connection                       Connection                            `connector:"connection"`
+	ConnectionName                   string                                `connector:"connectionName"`
+	BindingName                      string                                `connector:"bindingName"`
+	Configuration                    ItemChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[ItemChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewItemChangedTrigger(config ItemChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("monday connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ItemChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[ItemChangedEvent]{
+		Definition: ItemChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.itemChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
 const ListItemsBranchListed sdkgo.BranchID = "listed"
 const ListItemsBranchNotFound sdkgo.BranchID = "notFound"
 const ListItemsBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -310,6 +369,7 @@ type ListItemsStepConfig[IN any] struct {
 	operationID                    struct{}                                           `connector:"operationId=listItems"`
 	StepType                       string                                             `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
 	Connection                     Connection                                         `connector:"connection"`
 	ConnectionName                 string                                             `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListItemsInput                            `connector:"mapToOperationInput"`
@@ -331,7 +391,8 @@ func NewListItemsStep[IN any](config ListItemsStepConfig[IN]) sdkgo.QueryStep[IN
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListItemsInput, ListItemsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListItems(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListItems(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListItemsResult] {
 			branches := make([]sdkgo.BranchTarget[ListItemsResult], 0, 5)
@@ -387,6 +448,7 @@ type GetItemStepConfig[IN any] struct {
 	operationID                    struct{}                                `connector:"operationId=getItem"`
 	StepType                       string                                  `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI          `connector:"configurationUI"`
 	Connection                     Connection                              `connector:"connection"`
 	ConnectionName                 string                                  `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetItemInput                   `connector:"mapToOperationInput"`
@@ -408,7 +470,8 @@ func NewGetItemStep[IN any](config GetItemStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetItemInput, Item]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetItem(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetItem(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetItemResult] {
 			branches := make([]sdkgo.BranchTarget[GetItemResult], 0, 5)
@@ -454,6 +517,8 @@ var CreateItemDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 10, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateItemResult = sdkgo.MutationResult[CreateItemOutput]
@@ -464,6 +529,7 @@ type CreateItemStepConfig[IN any] struct {
 	operationID                       struct{}                                               `connector:"operationId=createItem"`
 	StepType                          string                                                 `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
 	Connection                        Connection                                             `connector:"connection"`
 	ConnectionName                    string                                                 `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreateItemInput                               `connector:"mapToOperationInput"`
@@ -474,6 +540,8 @@ type CreateItemStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateItemResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateItemOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateItemStep[IN any](config CreateItemStepConfig[IN]) sdkgo.MutationStep[IN, CreateItemInput, CreateItemOutput] {
@@ -485,7 +553,8 @@ func NewCreateItemStep[IN any](config CreateItemStepConfig[IN]) sdkgo.MutationSt
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateItemInput, CreateItemOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.CreateItem(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateItem(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateItemResult] {
 			branches := make([]sdkgo.BranchTarget[CreateItemResult], 0, 5)
@@ -508,6 +577,7 @@ func NewCreateItemStep[IN any](config CreateItemStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -531,6 +601,7 @@ var UpdateItemColumnValuesDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateItemColumnValuesResult = sdkgo.MutationResult[UpdateItemColumnValuesOutput]
@@ -541,6 +612,7 @@ type UpdateItemColumnValuesStepConfig[IN any] struct {
 	operationID                       struct{}                                                           `connector:"operationId=updateItemColumnValues"`
 	StepType                          string                                                             `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                              `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                                     `connector:"configurationUI"`
 	Connection                        Connection                                                         `connector:"connection"`
 	ConnectionName                    string                                                             `connector:"connectionName"`
 	MapToOperationInput               func(IN) UpdateItemColumnValuesInput                               `connector:"mapToOperationInput"`
@@ -562,7 +634,8 @@ func NewUpdateItemColumnValuesStep[IN any](config UpdateItemColumnValuesStepConf
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateItemColumnValuesInput, UpdateItemColumnValuesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.UpdateItemColumnValues(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpdateItemColumnValues(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateItemColumnValuesResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateItemColumnValuesResult], 0, 5)
@@ -608,6 +681,8 @@ var AddUpdateDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 10, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AddUpdateResult = sdkgo.MutationResult[AddUpdateOutput]
@@ -618,6 +693,7 @@ type AddUpdateStepConfig[IN any] struct {
 	operationID                       struct{}                                              `connector:"operationId=addUpdate"`
 	StepType                          string                                                `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
 	Connection                        Connection                                            `connector:"connection"`
 	ConnectionName                    string                                                `connector:"connectionName"`
 	MapToOperationInput               func(IN) AddUpdateInput                               `connector:"mapToOperationInput"`
@@ -628,6 +704,8 @@ type AddUpdateStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddUpdateResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddUpdateOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddUpdateStep[IN any](config AddUpdateStepConfig[IN]) sdkgo.MutationStep[IN, AddUpdateInput, AddUpdateOutput] {
@@ -639,7 +717,8 @@ func NewAddUpdateStep[IN any](config AddUpdateStepConfig[IN]) sdkgo.MutationStep
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddUpdateInput, AddUpdateOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.AddUpdate(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.AddUpdate(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddUpdateResult] {
 			branches := make([]sdkgo.BranchTarget[AddUpdateResult], 0, 5)
@@ -662,5 +741,6 @@ func NewAddUpdateStep[IN any](config AddUpdateStepConfig[IN]) sdkgo.MutationStep
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

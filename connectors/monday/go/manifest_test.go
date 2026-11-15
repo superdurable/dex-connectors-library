@@ -26,8 +26,20 @@ type guidanceManifest struct {
 			Methods       []authMethod    `yaml:"methods"`
 			Fields        []guidanceField `yaml:"fields"`
 		} `yaml:"auth"`
-		Studio     any   `yaml:"studio"`
-		Triggers   []any `yaml:"triggers"`
+		Studio *struct {
+			Setup    any   `yaml:"setup"`
+			Commands []any `yaml:"commands"`
+			Units    []struct {
+				ID          string `yaml:"id"`
+				Description string `yaml:"description"`
+				Outputs     []struct {
+					Name string `yaml:"name"`
+				} `yaml:"outputs"`
+			} `yaml:"units"`
+		} `yaml:"studio"`
+		Triggers []struct {
+			Name string `yaml:"name"`
+		} `yaml:"triggers"`
 		Operations []struct {
 			Name          string `yaml:"name"`
 			Authorization string `yaml:"authorization"`
@@ -76,7 +88,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"maxResponseBytes", "api_token", "oauth_client_id", "oauth_client_secret", "access_token", "refresh_token"}, names,
+	require.Equal(t, []string{"maxResponseBytes", "pollInterval", "api_token", "oauth_client_id", "oauth_client_secret", "access_token", "refresh_token"}, names,
 		"a new visible field needs its own guidance review")
 
 	for _, field := range visibleFields {
@@ -149,13 +161,25 @@ func TestEveryOperationNeedsAnAuthorizedConnection(t *testing.T) {
 	}
 }
 
-// TestManifestDeclaresNoStudioBundleOrTriggers records that GET-only Studio commands cannot call POST-only GraphQL.
-func TestManifestDeclaresNoStudioBundleOrTriggers(t *testing.T) {
+// TestManifestDeclaresOnlyAManualBoardUnitAndTheItemChangedTrigger records that GET-only Studio commands
+// cannot call POST-only GraphQL, so the board ID is entered by hand.
+func TestManifestDeclaresOnlyAManualBoardUnitAndTheItemChangedTrigger(t *testing.T) {
 	manifest := readGuidanceManifest(t)
-	require.Nil(t, manifest.Spec.Studio)
-	require.Empty(t, manifest.Spec.Triggers)
-	_, err := os.Stat("../ui")
-	require.True(t, os.IsNotExist(err))
+	require.NotNil(t, manifest.Spec.Studio)
+	require.NotNil(t, manifest.Spec.Studio.Setup)
+	require.Empty(t, manifest.Spec.Studio.Commands, "monday.com has no GET endpoint a setup command could call")
+	require.Len(t, manifest.Spec.Studio.Units, 1)
+	unit := manifest.Spec.Studio.Units[0]
+	require.Equal(t, "boardIdInput", unit.ID)
+	require.Len(t, unit.Outputs, 1)
+	require.Equal(t, "boardId", unit.Outputs[0].Name)
+	for _, guidance := range []string{"/boards/", "https://example.monday.com/boards/1234567890", "decimal string", "POST GraphQL"} {
+		require.Contains(t, unit.Description, guidance)
+	}
+	require.Len(t, manifest.Spec.Triggers, 1)
+	require.Equal(t, "itemChanged", manifest.Spec.Triggers[0].Name)
+	_, err := os.Stat("../ui/src/units.tsx")
+	require.NoError(t, err, "the boardIdInput unit ships in the release-owned Studio bundle")
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {

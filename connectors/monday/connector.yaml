@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: monday
   displayName: monday.com
-  description: List a monday.com board's items with a typed column filter, read one item, create items and set typed column values under monday.com idempotency keys, and add updates to items.
+  description: List a monday.com board's items with a typed column filter, read one item, create items and set typed column values under monday.com idempotency keys, add updates to items, and start Flows when a board's items are created or changed.
   company: monday
   categories: [project-management]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: monday
   languages:
@@ -31,6 +31,12 @@ spec:
         description: "Maximum complete monday.com API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a board has many long-text columns. An oversized read selects invalidResponse, and an oversized response to an accepted createItem or addUpdate selects uncertain."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Non-secret delay between itemChanged Trigger polls of each watched board, as a Go duration of at least 30s such as 2m or 30m; leave it blank to keep the displayed interval. Each poll makes at least one monday.com API call, and every call counts against the account's daily call limit, which resets at midnight UTC (200 calls on Free, 1,000 on Standard or Basic, 10,000 on Pro, 25,000 on Enterprise, shown to account admins at https://monday.com/ under your profile picture > Administration > Usage stats > API); shorten it only when that limit covers the polls of every binding plus the Flows' own calls."
+        required: false
+        default: 5m
   auth:
     refreshable: true
     defaultMethod: personal-api-token
@@ -107,6 +113,25 @@ spec:
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, invalid_token]
             missingExpiry: keep
             accessTokenJWTExpiryFallback: 1h
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    units:
+      - id: boardIdInput
+        goName: BoardIDInput
+        description: "Enter the numeric ID of one monday.com board: sign in at https://monday.com/, open the board, and copy the digits after /boards/ in the address bar, such as 1234567890 in https://example.monday.com/boards/1234567890, or paste the whole address. The ID is not secret; the unit saves it as a decimal string in the binding's project configuration. Blank saves nothing, and a binding without a board does not start. monday.com serves board lists only through POST GraphQL requests, which Dex Web setup commands cannot send, so the ID is entered by hand."
+        outputs:
+          - {name: boardId, goName: BoardID, type: string}
+  triggers:
+    - name: itemChanged
+      goName: ItemChanged
+      eventType: ItemChangedEvent
+      configurationType: ItemChangedTriggerConfiguration
+      description: "Receive each active item created or changed on one monday.com board, read by polling the board's items by monday.com's last-updated time; the first poll records a baseline and delivers no existing items."
   operations:
     - name: listItems
       goName: ListItems
@@ -242,6 +267,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Absolute column values make a repeat harmless; the Step already retries an unconfirmed update.
+        repeatOnUnknown: safe
       mocks:
         - name: scheduledWorkItem
           branch: updated
