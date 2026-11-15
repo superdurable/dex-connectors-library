@@ -44,11 +44,14 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Maximum complete Mailchimp Marketing API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when listMembers reads pages of up to 1000 contacts with many merge fields. An oversized read selects invalidResponse, and an oversized campaign read before a send selects invalidResponse without sending. */
   maxResponseBytes?: number;
+  /** Delay between memberChanged Trigger polls of each watched audience, as a Go duration of at least 5s such as 45s or 2m. Leave it blank to keep the displayed interval; a shorter interval delivers contact changes sooner and uses more of the 10 simultaneous requests Mailchimp allows each user, a longer one suits large audiences. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

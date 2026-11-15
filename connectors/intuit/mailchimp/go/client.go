@@ -16,9 +16,11 @@ package mailchimp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -42,6 +44,9 @@ const (
 	requestIDHeader = "X-Request-Id"
 
 	maximumReportedErrorFields = 5
+
+	// minimumPollInterval keeps a memberChanged poll loop from occupying Mailchimp's per-user request slots.
+	minimumPollInterval = 5 * time.Second
 )
 
 var (
@@ -63,6 +68,7 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	apiBaseURL string
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 25 seconds per request.
@@ -79,6 +85,14 @@ func WithAPIBaseURL(baseURL string) Option {
 	return func(options *clientOptions) { options.apiBaseURL = baseURL }
 }
 
+// WithLogger sends the memberChanged Trigger runner's records to logger: seeds, reseeds, failed polls,
+// rate-limit pauses, and the durable inboxes NewProjectMemberTriggerRunner opens. Records carry binding
+// identity and never contact data or credentials. Without this option, or with a nil logger, records go to
+// slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Mailchimp Marketing API 3.0 requests for connector operations.
 // A Client is safe for concurrent use by several Steps.
 type Client struct {
@@ -86,6 +100,8 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -151,6 +167,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes < 1 {
 		return nil, errors.New("Mailchimp response limit must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Mailchimp pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, errors.New("Mailchimp credential provider is required")
 	}
@@ -171,7 +190,8 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	}
 	return &Client{
 		apiBaseURL: apiBaseURL, httpClient: providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
-		credentials: credentials, maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		credentials: credentials, maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval,
+		logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
@@ -213,9 +233,15 @@ func (client *Client) resolveConnection(call sdkgo.Call, operation string) (reso
 	return resolvedConnection{credentials: credentials, apiBaseURL: apiBaseURL}, nil
 }
 
-// exchange sends one authenticated request and classifies its response without deciding retry policy.
+// exchange sends one authenticated request under the Step context of call.
 func (client *Client) exchange(call sdkgo.Call, connection resolvedConnection, operation string, request mailchimpRequest) mailchimpExchange {
-	httpRequest, err := client.buildRequest(call, connection, request)
+	return client.exchangeWithContext(call.Context, connection, operation, request)
+}
+
+// exchangeWithContext sends one authenticated request and classifies its response without deciding retry
+// policy. Trigger pollers pass their own ctx because their calls have no Dex Step context.
+func (client *Client) exchangeWithContext(ctx context.Context, connection resolvedConnection, operation string, request mailchimpRequest) mailchimpExchange {
+	httpRequest, err := client.buildRequest(ctx, connection, request)
 	if err != nil {
 		return mailchimpExchange{outcome: exchangeDefect, failure: mailchimpFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
@@ -247,7 +273,7 @@ func (client *Client) exchange(call sdkgo.Call, connection resolvedConnection, o
 	return client.classifyFailureStatus(response, connection.credentials, operation)
 }
 
-func (client *Client) buildRequest(call sdkgo.Call, connection resolvedConnection, request mailchimpRequest) (*http.Request, error) {
+func (client *Client) buildRequest(ctx context.Context, connection resolvedConnection, request mailchimpRequest) (*http.Request, error) {
 	target := connection.apiBaseURL + request.path
 	if len(request.query) != 0 {
 		target += "?" + request.query.Encode()
@@ -259,9 +285,9 @@ func (client *Client) buildRequest(call sdkgo.Call, connection resolvedConnectio
 		if encodeErr != nil {
 			return nil, errMailchimpRequestNotBuilt
 		}
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, bytes.NewReader(encoded))
+		httpRequest, err = http.NewRequestWithContext(ctx, request.method, target, bytes.NewReader(encoded))
 	} else {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, nil)
+		httpRequest, err = http.NewRequestWithContext(ctx, request.method, target, nil)
 	}
 	if err != nil {
 		return nil, errMailchimpRequestNotBuilt

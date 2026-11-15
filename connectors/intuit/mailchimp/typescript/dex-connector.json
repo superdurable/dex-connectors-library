@@ -1,6 +1,6 @@
 {
   "connectorId": "mailchimp",
-  "releaseTag": "connectors/intuit/mailchimp/go/v0.23.0",
+  "releaseTag": "connectors/intuit/mailchimp/go/v0.24.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-intuit-mailchimp",
