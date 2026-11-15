@@ -13,7 +13,7 @@ stand-in; live Notion provider behavior has not been verified.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/notion`.
 
-The TypeScript package `@superdurable/connector-notion@0.1.0` implements all five operations. See the [TypeScript README](typescript/README.md) and [runnable search example](typescript/examples/search-pages/README.md). Its provider replay is Go-recorded; live Notion behavior remains unverified.
+The TypeScript package `@superdurable/connector-notion@0.2.0` implements all five operations and, from 0.2.0, the `databaseRowChanged` Trigger. See the [TypeScript README](typescript/README.md), the [runnable search example](typescript/examples/search-pages/README.md), and the [row-changed example](typescript/examples/row-changed/README.md). Its provider replay is Go-recorded; live Notion behavior remains unverified.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Notion; no live Notion workspace was used. See
 > [verification status](../../docs/verification-status.md) for what is and
@@ -22,19 +22,23 @@ The TypeScript package `@superdurable/connector-notion@0.1.0` implements all fiv
 The Notion connector runs Notion's public REST API as Dex Steps. It can search
 the pages and data sources shared with a connection by title, query a
 database's rows with typed filters, read a page's properties and plain-text
-content, create database rows, and update page properties. The Go
+content, create database rows, and update page properties. The Go and TypeScript
 `databaseRowChanged` Trigger starts a Flow for each row created or edited in
 one data source. Every request
 sends `Notion-Version: 2026-03-11`, Notion's current version, and the request
 and response shapes follow it.
 
-| Operation | Kind | Required branch | Durability |
-| --- | --- | --- | --- |
-| `search` | Query | `searched` | async |
-| `queryDatabase` | Query | `queried` | async |
-| `getPage` | Query | `found` | async |
-| `createPage` | Mutation | `created` | sync |
-| `updatePageProperties` | Mutation | `updated` | async |
+| Operation | Kind | Required branch | Durability | Languages |
+| --- | --- | --- | --- | --- |
+| `search` | Query | `searched` | async | Go, Python, TypeScript |
+| `queryDatabase` | Query | `queried` | async | Go, Python, TypeScript |
+| `getPage` | Query | `found` | async | Go, Python, TypeScript |
+| `createPage` | Mutation | `created` | sync | Go, Python, TypeScript |
+| `updatePageProperties` | Mutation | `updated` | async | Go, Python, TypeScript |
+
+| Trigger | Source | Languages |
+| --- | --- | --- |
+| `databaseRowChanged` | `POST /v1/data_sources/{id}/query` by `last_edited_time` | Go, TypeScript |
 
 Since `2025-09-03`, a Notion database is a container for one or more data
 sources, and a database row is a page whose parent is a data source.
@@ -43,8 +47,10 @@ ID. A database ID resolves, with one extra read, to the database's only data
 source. A database with several data sources selects `defect` and names their
 IDs, so the caller can pick one.
 
-The [databaseRowChanged Trigger](#databaserowchanged-trigger) is Go only; the
-Python and TypeScript packages implement the operations. Its Studio
+The [databaseRowChanged Trigger](#databaserowchanged-trigger) runs in Go and,
+from 0.2.0, in TypeScript; the Python package implements only the operations.
+See the
+[TypeScript README](typescript/README.md#databaserowchanged-trigger). Its Studio
 `dataSourcePicker` unit resolves a database link to its data sources.
 
 ## Notion setup

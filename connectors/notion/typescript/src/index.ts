@@ -8,3 +8,4 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newProjectConnection } from './project.js';
 export { NotionClient, type NotionClientOptions, type NotionRequestSender } from './client.js';
 export { CreatePageOperation, GetPageOperation, QueryDatabaseOperation, SearchOperation, UpdatePagePropertiesOperation } from './operations.js';
+export * from './database_row_trigger.js';

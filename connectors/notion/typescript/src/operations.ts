@@ -257,7 +257,8 @@ function string(value: unknown): string { if (typeof value !== 'string') throw n
 function objectJSON(bytes: Uint8Array): Record<string, unknown> { return object(JSON.parse(Buffer.from(bytes).toString('utf8')) as unknown); }
 function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replaceAll('%20', '+'); }
 function pathEscape(value: string): string { return queryEscape(value).replaceAll('+', '%20').replace(/%(24|26|2B|3D|3A|40)/gi, encoded => String.fromCharCode(Number.parseInt(encoded.slice(1), 16))); }
-function parseID(value: string): string {
+/** Accept a Notion UUID or a URL ending in one and return its dashed form; throws Error otherwise. */
+export function parseID(value: string): string {
   const candidate = value.trim();
   if (!candidate || Buffer.byteLength(candidate) > 2048) throw new Error('invalid Notion ID');
   let id = candidate;
@@ -272,7 +273,8 @@ function parseID(value: string): string {
   return `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}`;
 }
 function canonicalOrRaw(value: unknown): string { try { return parseID(string(value)); } catch { return text(value); } }
-function validateCursor(value: string): string { const cursor = value.trim(); if (Buffer.byteLength(cursor) > 1024 || (cursor && !/^[!-~]+$/.test(cursor))) throw new Error('invalid cursor'); return cursor; }
+/** Validate one opaque Notion cursor without changing its content; throws Error otherwise. */
+export function validateCursor(value: string): string { const cursor = value.trim(); if (Buffer.byteLength(cursor) > 1024 || (cursor && !/^[!-~]+$/.test(cursor))) throw new Error('invalid cursor'); return cursor; }
 function selectDataSource(dataSourceId?: string, databaseId?: string): { dataSourceId?: string; databaseId?: string } {
   if (Boolean(dataSourceId?.trim()) === Boolean(databaseId?.trim())) throw new Error('select one data source');
   return dataSourceId?.trim() ? { dataSourceId: parseID(dataSourceId) } : { databaseId: parseID(databaseId!) };
@@ -295,7 +297,8 @@ function decodeParent(value: unknown): Parent {
   return { type, ...(id ? { id } : {}), ...(type === 'data_source_id' && canonicalOrRaw(resource.database_id) ? { databaseId: canonicalOrRaw(resource.database_id) } : {}) };
 }
 function joinRichText(value: unknown): string { return Array.isArray(value) ? value.map(item => text(objectOrEmpty(item).plain_text)).join('') : ''; }
-function decodePage(value: unknown): Page {
+/** Validate a Notion page and map its display properties; throws Error for an unusable page. */
+export function decodePage(value: unknown): Page {
   const resource = object(value); if (resource.object !== 'page') throw new Error('not a page');
   const id = parseID(string(resource.id)); const properties = decodeProperties(resource.properties);
   return { id, title: titleOfProperties(properties), parent: decodeParent(resource.parent), inTrash: resource.in_trash === true, archived: resource.is_archived === true, properties,

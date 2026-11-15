@@ -141,6 +141,8 @@ export const CreatePageDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, credential authorization, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 120000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createPage. */
 export const CreatePageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -174,6 +176,7 @@ export const UpdatePagePropertiesDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 90000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updatePageProperties. */
 export const UpdatePagePropertiesMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

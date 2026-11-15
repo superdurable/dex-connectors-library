@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
@@ -9,12 +9,15 @@ import { CreatePageOperation, GetPageOperation, QueryDatabaseOperation, SearchOp
 
 const defaultEndpoint = 'https://api.notion.com';
 const notionVersion = '2026-03-11';
+/** Keeps a databaseRowChanged poll loop well inside Notion's query rate limit. */
+const minimumPollIntervalMs = 5_000;
+const maximumPollPageSize = 100;
 
 /** Injectable bounded provider sender. */
 export type NotionRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
 
 /** One provider exchange, including positive evidence about request dispatch. */
-export type NotionExchange = { response: ProviderResponse; receipt: ReceiptDraft } | { failure: Failure; disposition: 'retry' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect' | 'uncertain' | 'committed'; retryAfterMs?: number; receipt: ReceiptDraft; providerId?: string; isProvablyNotSent?: boolean };
+export type NotionExchange = { response: ProviderResponse; receipt: ReceiptDraft } | { failure: Failure; disposition: 'retry' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect' | 'uncertain' | 'committed'; retryAfterMs?: number; receipt: ReceiptDraft; providerId?: string; isProvablyNotSent?: boolean; providerErrorCode?: string };
 /** A classified exchange before any successful response. */
 export type NotionExchangeFailure = Extract<NotionExchange, { failure: Failure }>;
 
@@ -22,12 +25,25 @@ export type NotionExchangeFailure = Extract<NotionExchange, { failure: Failure }
 export interface NotionClientOptions {
   /** Bounded provider request sender. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>;
   /** Clock for receipt timestamps and Retry-After. */ now?: () => Date;
+  /**
+   * Receives the databaseRowChanged Trigger runner's records: seeds, reseeds, failed polls, rate-limit pauses,
+   * and the durable inboxes newProjectDatabaseRowTriggerRunner opens. Records carry binding identity, never row
+   * contents or the API token. Omitted uses the SDK's default Trigger logger; operation Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
 
-/** Notion API client with call-time credential resolution. */
+/**
+ * Notion API client with call-time credential resolution, shared by the operation Steps and the
+ * databaseRowChanged Trigger. The constructor throws TypeError for an invalid endpoint, a non-positive
+ * maxResponseBytes, a pollIntervalMs under 5000, or a pollPageSize outside 1 to 100.
+ */
 export class NotionClient {
   readonly endpoint: string;
   readonly maxResponseBytes: number;
+  /** Wait between databaseRowChanged polls of one binding, in milliseconds; at least 5000, 30000 by default. */ readonly pollIntervalMs: number;
+  /** Rows per databaseRowChanged query page, 1 to 100, 100 by default. */ readonly pollPageSize: number;
+  /** The databaseRowChanged Trigger logger from the options, or undefined for the SDK default. */ readonly triggerLogger: TriggerLogger | undefined;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly now: () => Date;
 
@@ -37,6 +53,11 @@ export class NotionClient {
     this.endpoint = validateBaseURL(config.endpoint || defaultEndpoint);
     this.maxResponseBytes = config.maxResponseBytes || 4_194_304;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('Notion maxResponseBytes must be positive');
+    this.pollIntervalMs = config.pollIntervalMs || 30_000;
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Notion pollInterval must be at least 5s');
+    this.pollPageSize = config.pollPageSize || maximumPollPageSize;
+    if (!Number.isSafeInteger(this.pollPageSize) || this.pollPageSize < 1 || this.pollPageSize > maximumPollPageSize) throw new TypeError('Notion pollPageSize must be between 1 and 100');
+    this.triggerLogger = options.logger;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
   }
@@ -119,7 +140,10 @@ export class NotionClient {
       if (providerId) return { disposition: 'committed', failure: failure(operation, 'AVAILABILITY', 'Notion saved the page'), providerId, receipt };
     }
     if (status === 404) return { disposition: 'notFound', failure: failure(operation, 'NOT_FOUND', `Notion ${subject} was not found`), receipt };
-    if (status >= 400 && status < 500 && status !== 408) return { disposition: 'providerRejected', failure: failure(operation, status === 400 ? 'VALIDATION' : status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION', `Notion rejected ${subject} with HTTP ${status}`), receipt };
+    if (status >= 400 && status < 500 && status !== 408) {
+      const providerErrorCode = readTopLevelToken(response.body, 'code');
+      return { disposition: 'providerRejected', failure: failure(operation, status === 400 ? 'VALIDATION' : status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION', `Notion rejected ${subject} with HTTP ${status}`), receipt, ...(providerErrorCode ? { providerErrorCode } : {}) };
+    }
     if (status < 200 || status >= 300) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'invalidResponse', failure: failure(operation, status >= 500 ? 'AVAILABILITY' : 'PROTOCOL', `Notion returned HTTP ${status}`), receipt };
     if (response.body.length > this.maxResponseBytes) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', 'Notion response exceeds the configured limit'), receipt };
     if (Buffer.from(response.body).includes(Buffer.from(token))) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'invalidResponse', failure: failure(operation, 'PROTOCOL', 'Notion response contains credential material'), receipt };
@@ -129,6 +153,10 @@ export class NotionClient {
 
 /** Build a failure without provider message text or credentials. */
 export function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { provider: 'notion', operation, kind, message }; }
+
+function readTopLevelToken(body: Uint8Array, key: string): string {
+  try { const data: unknown = JSON.parse(Buffer.from(body).toString('utf8')); if (typeof data !== 'object' || data === null) return ''; const token = (data as Record<string, unknown>)[key]; return typeof token === 'string' && /^[!-~]{1,128}$/.test(token) ? token : ''; } catch { return ''; }
+}
 
 function readToken(body: Uint8Array, parent: string, key: string): string {
   try { const data: unknown = JSON.parse(Buffer.from(body).toString('utf8')); if (typeof data !== 'object' || data === null) return ''; const value = (data as Record<string, unknown>)[parent]; if (typeof value === 'object' && value !== null) { const token = (value as Record<string, unknown>)[key]; return typeof token === 'string' && /^[!-~]{1,128}$/.test(token) ? token : ''; } return ''; } catch { return ''; }
