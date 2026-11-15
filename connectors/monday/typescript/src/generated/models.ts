@@ -44,11 +44,14 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Maximum complete monday.com API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a board has many long-text columns. An oversized read selects invalidResponse, and an oversized response to an accepted createItem or addUpdate selects uncertain. */
   maxResponseBytes?: number;
+  /** Non-secret delay between itemChanged Trigger polls of each watched board, as a Go duration of at least 30s such as 2m or 30m; leave it blank to keep the displayed interval. Each poll makes at least one monday.com API call, and every call counts against the account's daily call limit, which resets at midnight UTC (200 calls on Free, 1,000 on Standard or Basic, 10,000 on Pro, 25,000 on Enterprise, shown to account admins at https://monday.com/ under your profile picture > Administration > Usage stats > API); shorten it only when that limit covers the polls of every binding plus the Flows' own calls. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

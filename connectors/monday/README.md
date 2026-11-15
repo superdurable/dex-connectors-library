@@ -1,6 +1,6 @@
 # monday.com Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/monday/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/monday/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/monday`.
 
@@ -25,7 +25,14 @@ Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
 uses a 30-second Execute timeout. Reads and the absolute `updateItemColumnValues` use the one-hour default retry budget; `createItem` and `addUpdate` keep ten attempts within five minutes. Every mutation sends a monday.com `Idempotency-Key`. `createItem` and `addUpdate` use sync durability so dispatch checkpoints are visible to later attempts; see [Duplicate safety](#duplicate-safety).
 
-This release has no Triggers and no Studio pickers; see
+It also exposes one poll Trigger:
+
+| Trigger | Event | Configuration | Delivers |
+| --- | --- | --- | --- |
+| `itemChanged` | `monday.ItemChangedEvent` | `monday.ItemChangedTriggerConfiguration` (`boardId`) | each active item created or changed on one board |
+
+See [itemChanged Trigger](#itemchanged-trigger). This release has no webhook
+Triggers and no Studio pickers; the Trigger's board ID is entered by hand. See
 [Not in this release](#not-in-this-release).
 
 ## monday.com setup
@@ -220,6 +227,91 @@ comment on an item. The body is plain text of at most 10,000 characters
 none. It is HTML-escaped with line breaks kept as `<br>`, so text is never
 read as markup. The result is the update ID, creator, and creation time.
 
+## itemChanged Trigger
+
+`itemChanged` starts a Flow for each active item created or changed on one
+board. monday.com webhooks need a challenge handshake and, for a personal
+token, cannot be authenticated (see [Triggers](#triggers)), so the Trigger
+polls with the connection's existing `boards:read` access: no new scope.
+
+Each poll sends one `items_page` request for the board with
+`query_params: {order_by: [{column_id: "__last_updated__", direction: desc}]}`
+and 100 items per page with every column value. monday.com documents that
+`__last_updated__` sorts items chronologically by last-updated time. The poll
+follows `next_items_page` cursors until it reaches an item last updated before
+the cursor position minus a five-minute lookback, at most 100 pages. A quiet
+board costs one API call per poll.
+
+- **Baseline.** The first poll records the newest last-updated time and the
+  items updated in the five minutes before it, and delivers nothing. On an
+  empty board it records no time, so every item that later appears is
+  delivered.
+- **Cursor.** The durable poll cursor holds the board ID and the latest
+  delivered last-updated time. Its keyed snapshot holds a content hash for each
+  item updated inside the lookback window. An item is delivered when its hash
+  differs from the snapshot, so a second change within the same second, or one
+  monday.com indexes late, still arrives, and an unchanged item never arrives
+  twice.
+- **Order and batches.** Changes are delivered oldest first, at most 100 and
+  about 4 MiB of item JSON per batch, so a batch always fits the durable
+  Trigger inbox, even with a raised `maxResponseBytes`. The rest of a larger burst comes from the same scan, so a burst of
+  1,000 changes costs one scan of about 10 pages.
+- **Change kind.** `created` is an item the snapshot has not seen whose
+  `createdAt` falls inside the lookback window before the previous position, so
+  an item created and edited between polls is still `created`. Every other
+  change is `updated`.
+- **Event ID.** `monday-item-` plus a hash of the board, item ID, and item
+  content, so a refetch after a crash yields the same ID and
+  `sdkgo.NewDexFlowTriggerTarget` starts one Flow per item version.
+- **Reset.** A cursor that does not decode, a cursor for another board, and
+  more than 10,000 items changed since the last poll mark the cursor invalid.
+  The kit records a new baseline, increments `resetCount`, and logs
+  `poll cursor invalid; reseeding` at WARN; changes in that gap are not
+  delivered. Changing a binding's board therefore records a new baseline.
+- **Rate limits.** HTTP 429 and the documented `RATE_LIMIT_EXCEEDED`,
+  `COMPLEXITY_BUDGET_EXHAUSTED`, `IP_RATE_LIMIT_EXCEEDED`,
+  `maxConcurrencyExceeded`, and `FIELD_LIMIT_EXCEEDED` codes pause every binding
+  of the connection for the longer of `Retry-After` (or `retry_in_seconds`)
+  and `pollInterval`. `DAILY_LIMIT_EXCEEDED` pauses it until the daily limit
+  resets at midnight UTC. Other failures, such as a board the connection cannot
+  see, back off this binding only, up to the kit's maximum.
+- **Not delivered.** `items_page` returns active items only, so archiving,
+  deleting, or moving an item to another board delivers nothing. Subitems live
+  on their own board and are not polled. An item without a readable
+  `updated_at` is skipped.
+
+`pollInterval` (at least 30 seconds) sets the delay between polls. Every poll
+call counts against the account's
+[daily call limit](https://developer.monday.com/api-reference/docs/rate-limits#daily-call-limit):
+200 calls on Free, 1,000 on Standard or Basic, 10,000 on Pro, and 25,000 on
+Enterprise. The default interval spends 288 calls a day per binding on a quiet
+board.
+
+The binding's only Dex Web field is the `boardIdInput` unit, which saves
+`boardId`. It accepts the digits after `/boards/` in the board's address or the
+whole address. `monday.NewProjectItemTriggerRunner` loads the saved board,
+records each change in the binding's project Trigger inbox, and commits the
+cursor in the binding's project poll cursor only after recording, as
+[`examples/item-changed/main.go`](go/examples/item-changed/main.go) does:
+
+```go
+// Each change is recorded in the binding's project Trigger inbox before the poll cursor moves past it.
+triggerRunner, err := monday.NewProjectItemTriggerRunner(project, itemchanged.ConnectionName, monday.ProjectItemTriggerRunnerConfig{
+	ItemChangedRoutes: []monday.ProjectItemChangedTriggerRoute{{
+		BindingName: itemchanged.ItemChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, itemchanged.AcceptEveryItemChange, itemchanged.ResolveFlowID,
+			itemchanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, monday.WithLogger(logger))
+```
+
+A binding without a saved board is an error. `monday.NewItemTriggerRunner`
+takes targets and cursor stores directly, and the generated
+`monday.NewItemChangedTrigger` keeps the cursor in memory, so it records a new
+baseline on every start. `monday.WithLogger` sends the runner's
+[poll records](../../sdkgo/README.md#polling-triggers) to a logger; records
+never carry item payloads or credentials.
+
 ## Duplicate safety
 
 monday.com documents an
@@ -238,7 +330,10 @@ The [monday.com idempotency contract](https://developer.monday.com/api-reference
 A positively unsent request, transient credential-refresh failure, HTTP 408, 409, 423, 429, and every HTTP 5xx response record a can-resend checkpoint and return Retry. An unreadable non-2xx body also does so. A readable 2xx with no mutation data retries when it carries a documented refusal code (`API_TEMPORARILY_BLOCKED`, a rate-limit code, or `IDEMPOTENCY_CONFLICT`) or `status_code` 409, 423, 429, or 503. A 2xx with only another 5xx `status_code` selects `uncertain`, because execution is not ruled out. A 2xx with mutation data never records can-resend. A successful replay sets `replayed: true` and `idempotencyReplayed` in the Receipt. For HTTP 408 and 5xx, the first request may already have executed: monday.com's cache exceptions can make a same-key resend execute again and create a duplicate item or update. The five-minute retry budget limits this residual risk but does not eliminate it.
 
 For `updateItemColumnValues`, that limit is harmless: the values are absolute,
-so a repeat changes nothing.
+so a repeat changes nothing, and the manifest declares it
+`repeatOnUnknown: safe`. `createItem` and `addUpdate` keep the default
+`limited` tier with `maxSends: 3` in their definitions; their checkpoint is
+stricter, because it never resends a request that may have been sent.
 
 ## Errors
 
@@ -297,8 +392,10 @@ A board or group picker needs a Studio setup command, and Studio commands
 support only HTTPS `GET` to a fixed host that returns a JSON object. monday.com
 removed GraphQL over `GET` in API version 2025-01; queries must be in a `POST`
 body. It has no REST endpoint that lists boards or groups. Board, group, and
-column IDs are therefore Flow input. A board's ID is the number after
-`/boards/` in its URL. With **Developer mode**, enabled from the profile
+column IDs are therefore Flow input, and the `itemChanged` binding's board ID is
+entered in the `boardIdInput` unit, which ships in the release-owned Studio
+bundle under `ui/` and makes no provider request. A board's ID is the number
+after `/boards/` in its URL. With **Developer mode**, enabled from the profile
 picture > **monday.labs**, monday.com shows column IDs in the board. `getItem`
 and `listItems` return each item's group ID.
 
@@ -308,15 +405,21 @@ monday.com webhooks, created with `create_webhook`, verify the receiving URL by
 POSTing a `challenge` value that the receiver must echo in its JSON response.
 `sdkgo/webhooktrigger` has no handshake hook yet. Only webhooks created with an
 app token carry a JWT `Authorization` header, so a personal-token webhook
-cannot be authenticated. Until both exist, poll with `listItems` and an
-`order` on `ItemOrderLastUpdated`.
+cannot be authenticated. Until both exist, the polling
+[`itemChanged`](#itemchanged-trigger) Trigger is the only Trigger; update,
+subitem, archive, and delete events are not delivered.
 
 ### Conflict detection
 
 monday.com documents no conditional update, so `updateItemColumnValues`
 overwrites a concurrent change to the columns it sets.
 
-## Example
+## Examples
+
+[`examples/item-changed`](go/examples/item-changed) starts one
+`MondayItemChange` Flow per created or changed item on the board saved in its
+`board-item-changes` binding, reads the item back with `getItem`, and records
+it.
 
 [`examples/work-request`](go/examples/work-request) is a runnable Dex Web
 **Start Flow** example that uses all five operations. It finds a board's open
@@ -356,7 +459,12 @@ The provider fakes cover:
 - partial data beside a nested error, redirects, and oversized, malformed, and
   credential-reflecting responses;
 - the OAuth 2.1 refresh with JWT expiry, scope checks, and a single refresh
-  and resend after a 401 through a refreshing credential source.
+  and resend after a 401 through a refreshing credential source;
+- for `itemChanged`, the `__last_updated__` descending order and cursor
+  pagination, the baseline, same-second changes, a burst split into batches
+  from one scan, 429 with `Retry-After`, `DAILY_LIMIT_EXCEEDED`, and the reset
+  after more than 10,000 changes, in unit tests and in real Dex integration
+  tests of the example across a Trigger process restart.
 
 No live monday.com account was used. The provider's cache-budget exception, checkpoint recovery, and exact 503 behavior were verified only against documentation and a fake provider. The following live behavior is
 unverified:
@@ -373,7 +481,11 @@ unverified:
   client returned `invalid_client`, the same as a JSON request);
 - whether the token response always omits `expires_in` and the access token
   is always a JWT with `exp`;
-- the Developer Center and Developer mode paths in the setup guidance.
+- the Developer Center and Developer mode paths in the setup guidance;
+- for `itemChanged`: that `__last_updated__` ordering is global across groups
+  rather than per group, which the scan's early stop relies on; which edits move
+  an item's `updated_at` (for example an update post or a subitem change); and
+  the precision of `updated_at`.
 
 ## Python package
 
