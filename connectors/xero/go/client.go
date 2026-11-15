@@ -26,10 +26,12 @@ package xero
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -80,6 +82,8 @@ const (
 	defaultRequestTimeout = 20 * time.Second
 	// maximumMinuteLimitDelay separates Xero's minute and concurrency limits from its daily limit.
 	maximumMinuteLimitDelay = 2 * time.Minute
+	// minimumPollInterval keeps an invoiceChanged poll loop well inside Xero's minute and daily limits.
+	minimumPollInterval = 30 * time.Second
 	// maximumIdempotencyKeyBytes is Xero's documented Idempotency-Key limit.
 	maximumIdempotencyKeyBytes = 128
 	// maximumReportedValidationErrors bounds the count read from a Xero validation error body.
@@ -114,6 +118,7 @@ type clientOptions struct {
 	httpClient       *http.Client
 	localProviderURL string
 	now              func() time.Time
+	logger           *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 20 seconds per request.
@@ -133,6 +138,15 @@ func WithLocalProviderURL(baseURL string) Option {
 	return func(options *clientOptions) { options.localProviderURL = baseURL }
 }
 
+// WithLogger sends the invoiceChanged Trigger runner's records to logger: seeds, reseeds after a
+// changed filter or organisation, failed polls, rate-limit pauses, and the durable inboxes
+// NewProjectInvoiceTriggerRunner opens. Records carry binding identity and never invoice payloads or
+// credentials. Without this option, or with a nil logger, records go to slog.Default() as of each
+// record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // WithClock overrides the clock used for Receipts, Retry-After dates, and token expiry.
 // Tests use it; production connections leave it unset.
 func WithClock(now func() time.Time) Option {
@@ -147,6 +161,8 @@ type Client struct {
 	refreshDriver    *CredentialRefreshDriver
 	tenantResolver   *organisationTenantResolver
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -214,6 +230,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.MaxResponseBytes < 1 {
 		return nil, errors.New("Xero response limit must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Xero pollInterval must be at least %s", minimumPollInterval)
+	}
 	organisation := strings.TrimSpace(config.Organisation)
 	if err := validateOrganisation(organisation); err != nil {
 		return nil, err
@@ -245,7 +264,8 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	return &Client{
 		httpClient: httpClient, credentials: credentials, refreshDriver: refreshDriver,
 		tenantResolver:   newOrganisationTenantResolver(organisation, httpClient, config.MaxResponseBytes),
-		maxResponseBytes: config.MaxResponseBytes, now: dependencies.now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval, logger: dependencies.logger,
+		now: dependencies.now,
 	}, nil
 }
 
@@ -277,21 +297,28 @@ func (client *Client) RecordPayment() RecordPaymentOperation {
 	return RecordPaymentOperation{client: client}
 }
 
-// exchange sends one request and resends once after a 401, which Xero answers before running anything.
+// exchange sends one request under the Step context of call.
 func (client *Client) exchange(call sdkgo.Call, operation string, request xeroRequest) xeroExchange {
-	credentials, failedResolution := client.resolveCredentials(call, operation)
+	var ctx context.Context = call.Context
+	return client.exchangeWithContext(ctx, call, operation, request)
+}
+
+// exchangeWithContext sends one request and resends once after a 401, which Xero answers before running
+// anything. A Trigger poller passes its own ctx, because its call has no Dex Step context.
+func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, operation string, request xeroRequest) xeroExchange {
+	credentials, failedResolution := client.resolveCredentials(ctx, call, operation)
 	if failedResolution != nil {
 		return *failedResolution
 	}
-	tenant, failedTenant := client.resolveTenant(call, credentials, operation)
+	tenant, failedTenant := client.resolveTenant(ctx, credentials, operation)
 	if failedTenant != nil {
 		return *failedTenant
 	}
-	result := client.send(call, credentials, tenant, operation, request)
+	result := client.send(ctx, credentials, tenant, operation, request, call.IdempotencyKey)
 	if result.response.statusCode == http.StatusUnauthorized && client.canRefreshAfterRejection() {
-		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
 		if err == nil && validateResolvedCredentials(replacement) == nil && replacement.AuthMethodID == credentials.AuthMethodID {
-			result = client.send(call, replacement, tenant, operation, request)
+			result = client.send(ctx, replacement, tenant, operation, request, call.IdempotencyKey)
 		}
 	}
 	if result.response.statusCode == http.StatusForbidden && tenant.isDerived {
@@ -304,8 +331,8 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request xeroRe
 }
 
 // resolveCredentials separates a revoked grant from a transient token failure and a broken connection.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *xeroExchange) {
-	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, *xeroExchange) {
+	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	switch {
 	case sdkgo.IsReauthorizationRequired(err):
 		return Credentials{}, &xeroExchange{outcome: exchangeRejected,
@@ -321,11 +348,11 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 }
 
 // resolveTenant returns the Xero-Tenant-Id an OAuth connection sends; a Custom Connection sends none.
-func (client *Client) resolveTenant(call sdkgo.Call, credentials Credentials, operation string) (organisationTenant, *xeroExchange) {
+func (client *Client) resolveTenant(ctx context.Context, credentials Credentials, operation string) (organisationTenant, *xeroExchange) {
 	if credentials.AuthMethodID != OAuthAuthMethodID {
 		return organisationTenant{}, nil
 	}
-	return client.tenantResolver.resolveTenant(call, credentials.AccessToken, operation, client.now())
+	return client.tenantResolver.resolveTenant(ctx, credentials.AccessToken, operation, client.now())
 }
 
 func (client *Client) canRefreshAfterRejection() bool {
@@ -334,8 +361,8 @@ func (client *Client) canRefreshAfterRejection() bool {
 }
 
 // send performs one HTTP exchange and classifies it without deciding retry policy.
-func (client *Client) send(call sdkgo.Call, credentials Credentials, tenant organisationTenant, operation string, request xeroRequest) xeroExchange {
-	httpRequest, err := client.buildRequest(call, credentials, tenant, request)
+func (client *Client) send(ctx context.Context, credentials Credentials, tenant organisationTenant, operation string, request xeroRequest, idempotencyKey sdkgo.IdempotencyKey) xeroExchange {
+	httpRequest, err := client.buildRequest(ctx, credentials, tenant, request, idempotencyKey)
 	if err != nil {
 		return xeroExchange{outcome: exchangeDefect, failure: xeroFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
@@ -349,7 +376,7 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, tenant orga
 	return classifyHTTPResponse(operation, httpResponse, credentials.AccessToken.Reveal(), client.maxResponseBytes, client.now())
 }
 
-func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, tenant organisationTenant, request xeroRequest) (*http.Request, error) {
+func (client *Client) buildRequest(ctx context.Context, credentials Credentials, tenant organisationTenant, request xeroRequest, idempotencyKey sdkgo.IdempotencyKey) (*http.Request, error) {
 	var body io.Reader
 	if request.payload != nil {
 		encoded, err := json.Marshal(request.payload)
@@ -362,7 +389,7 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, ten
 	if len(request.query) != 0 {
 		target += "?" + request.query.Encode()
 	}
-	httpRequest, err := http.NewRequestWithContext(call.Context, request.method, target, body)
+	httpRequest, err := http.NewRequestWithContext(ctx, request.method, target, body)
 	if err != nil {
 		return nil, errRequestNotBuilt
 	}
@@ -378,10 +405,10 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, ten
 		httpRequest.Header.Set(ifModifiedSinceHeader, request.modifiedSince.UTC().Format(modifiedSinceLayout))
 	}
 	if request.isMutation {
-		if call.IdempotencyKey == "" || len(call.IdempotencyKey) > maximumIdempotencyKeyBytes {
+		if idempotencyKey == "" || len(idempotencyKey) > maximumIdempotencyKeyBytes {
 			return nil, errors.New("Xero mutation has no usable idempotency key")
 		}
-		httpRequest.Header.Set(idempotencyKeyHeader, string(call.IdempotencyKey))
+		httpRequest.Header.Set(idempotencyKeyHeader, string(idempotencyKey))
 	}
 	return httpRequest, nil
 }

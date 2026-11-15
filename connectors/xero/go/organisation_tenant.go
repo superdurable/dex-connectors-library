@@ -4,6 +4,7 @@
 package xero
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -50,7 +51,7 @@ func newOrganisationTenantResolver(organisation string, httpClient *http.Client,
 
 // resolveTenant uses a configured tenant ID, else the named or only organisation in /connections.
 func (resolver *organisationTenantResolver) resolveTenant(
-	call sdkgo.Call,
+	ctx context.Context,
 	accessToken sdkgo.SecretString,
 	operation string,
 	now time.Time,
@@ -64,7 +65,7 @@ func (resolver *organisationTenantResolver) resolveTenant(
 	if derivedTenantID != "" {
 		return organisationTenant{tenantID: derivedTenantID, isDerived: true}, nil
 	}
-	connections, failedRead := resolver.readConnections(call, accessToken, operation, now)
+	connections, failedRead := resolver.readConnections(ctx, accessToken, operation, now)
 	if failedRead != nil {
 		return organisationTenant{}, failedRead
 	}
@@ -88,12 +89,12 @@ func (resolver *organisationTenantResolver) forgetDerivedTenant(tenantID string)
 }
 
 func (resolver *organisationTenantResolver) readConnections(
-	call sdkgo.Call,
+	ctx context.Context,
 	accessToken sdkgo.SecretString,
 	operation string,
 	now time.Time,
 ) ([]connectionWire, *xeroExchange) {
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, connectionsURL, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, connectionsURL, nil)
 	if err != nil {
 		return nil, &xeroExchange{outcome: exchangeDefect, failure: xeroFailure(sdkgo.FailureLocalDefect, operation, errRequestNotBuilt.Error())}
 	}

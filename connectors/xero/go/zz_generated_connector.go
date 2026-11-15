@@ -17,9 +17,16 @@ import (
 
 const ConnectorID = "xero"
 
+const (
+	UIUnitInvoiceChangeFilter         = "invoiceChangeFilter"
+	UIInvoiceChangeFilterPortType     = "type"
+	UIInvoiceChangeFilterPortStatuses = "statuses"
+)
+
 type Config struct {
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
-	Organisation     string `json:"organisation,omitempty" yaml:"organisation,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
+	Organisation     string        `json:"organisation,omitempty" yaml:"organisation,omitempty"`
 }
 
 type Credentials struct {
@@ -217,6 +224,7 @@ func (Connection) GoString() string { return "xero.Connection{[REDACTED]}" }
 func DefaultConfig() Config {
 	return Config{
 		MaxResponseBytes: 4194304,
+		PollInterval:     time.Duration(300000000000),
 	}
 }
 
@@ -225,12 +233,18 @@ func withConfigDefaults(config Config) Config {
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
 	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
+	}
 	return config
 }
 
 func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
 	}
 	return nil
 }
@@ -286,6 +300,52 @@ func (credentials Credentials) validateSharedCredential() error {
 	return nil
 }
 
+var InvoiceChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "invoiceChanged"},
+	Description: "Receive each Xero sales invoice or bill created or changed in the organisation, with its line items and exact decimal totals, read by polling GET /Invoices with If-Modified-Since; the first run records a baseline and delivers no existing invoices.",
+}
+
+type InvoiceChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=xero"`
+	triggerName                             struct{}                       `connector:"triggerName=invoiceChanged"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineInvoiceChangedTriggerBinding(config InvoiceChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: InvoiceChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type InvoiceChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                 `connector:"connectorId=xero"`
+	triggerName                      struct{}                                 `connector:"triggerName=invoiceChanged"`
+	Connection                       Connection                               `connector:"connection"`
+	ConnectionName                   string                                   `connector:"connectionName"`
+	BindingName                      string                                   `connector:"bindingName"`
+	Configuration                    InvoiceChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[InvoiceChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewInvoiceChangedTrigger(config InvoiceChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("xero connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: InvoiceChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[InvoiceChangedEvent]{
+		Definition: InvoiceChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.invoiceChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
 const ListContactsBranchListed sdkgo.BranchID = "listed"
 const ListContactsBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const ListContactsBranchDailyLimitReached sdkgo.BranchID = "dailyLimitReached"
@@ -316,6 +376,7 @@ type ListContactsStepConfig[IN any] struct {
 	operationID                    struct{}                                       `connector:"operationId=listContacts"`
 	StepType                       string                                         `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                 `connector:"configurationUI"`
 	Connection                     Connection                                     `connector:"connection"`
 	ConnectionName                 string                                         `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListContactsInput                     `connector:"mapToOperationInput"`
@@ -337,7 +398,8 @@ func NewListContactsStep[IN any](config ListContactsStepConfig[IN]) sdkgo.QueryS
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactsInput, ContactPage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListContacts(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListContacts(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListContactsResult] {
 			branches := make([]sdkgo.BranchTarget[ListContactsResult], 0, 5)
@@ -397,6 +459,7 @@ type FindContactByEmailStepConfig[IN any] struct {
 	operationID                    struct{}                                                    `connector:"operationId=findContactByEmail"`
 	StepType                       string                                                      `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                       `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                              `connector:"configurationUI"`
 	Connection                     Connection                                                  `connector:"connection"`
 	ConnectionName                 string                                                      `connector:"connectionName"`
 	MapToOperationInput            func(IN) FindContactByEmailInput                            `connector:"mapToOperationInput"`
@@ -420,7 +483,8 @@ func NewFindContactByEmailStep[IN any](config FindContactByEmailStepConfig[IN]) 
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindContactByEmailInput, FindContactByEmailOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.FindContactByEmail(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.FindContactByEmail(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[FindContactByEmailResult] {
 			branches := make([]sdkgo.BranchTarget[FindContactByEmailResult], 0, 7)
@@ -484,6 +548,7 @@ type GetInvoiceStepConfig[IN any] struct {
 	operationID                    struct{}                                   `connector:"operationId=getInvoice"`
 	StepType                       string                                     `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI             `connector:"configurationUI"`
 	Connection                     Connection                                 `connector:"connection"`
 	ConnectionName                 string                                     `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetInvoiceInput                   `connector:"mapToOperationInput"`
@@ -506,7 +571,8 @@ func NewGetInvoiceStep[IN any](config GetInvoiceStepConfig[IN]) sdkgo.QueryStep[
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInvoiceInput, Invoice]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetInvoice(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetInvoice(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetInvoiceResult] {
 			branches := make([]sdkgo.BranchTarget[GetInvoiceResult], 0, 6)
@@ -565,6 +631,7 @@ type ListInvoicesStepConfig[IN any] struct {
 	operationID                    struct{}                                       `connector:"operationId=listInvoices"`
 	StepType                       string                                         `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                 `connector:"configurationUI"`
 	Connection                     Connection                                     `connector:"connection"`
 	ConnectionName                 string                                         `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListInvoicesInput                     `connector:"mapToOperationInput"`
@@ -586,7 +653,8 @@ func NewListInvoicesStep[IN any](config ListInvoicesStepConfig[IN]) sdkgo.QueryS
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInvoicesInput, InvoicePage]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListInvoices(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListInvoices(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListInvoicesResult] {
 			branches := make([]sdkgo.BranchTarget[ListInvoicesResult], 0, 5)
@@ -632,6 +700,7 @@ var CreateInvoiceDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(240000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CreateInvoiceResult = sdkgo.MutationResult[CreateInvoiceOutput]
@@ -642,6 +711,7 @@ type CreateInvoiceStepConfig[IN any] struct {
 	operationID                       struct{}                                                  `connector:"operationId=createInvoice"`
 	StepType                          string                                                    `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                            `connector:"configurationUI"`
 	Connection                        Connection                                                `connector:"connection"`
 	ConnectionName                    string                                                    `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreateInvoiceInput                               `connector:"mapToOperationInput"`
@@ -663,7 +733,8 @@ func NewCreateInvoiceStep[IN any](config CreateInvoiceStepConfig[IN]) sdkgo.Muta
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateInvoiceInput, CreateInvoiceOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.CreateInvoice(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateInvoice(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateInvoiceResult] {
 			branches := make([]sdkgo.BranchTarget[CreateInvoiceResult], 0, 5)
@@ -709,6 +780,7 @@ var RecordPaymentDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(240000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type RecordPaymentResult = sdkgo.MutationResult[RecordPaymentOutput]
@@ -719,6 +791,7 @@ type RecordPaymentStepConfig[IN any] struct {
 	operationID                       struct{}                                                  `connector:"operationId=recordPayment"`
 	StepType                          string                                                    `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                            `connector:"configurationUI"`
 	Connection                        Connection                                                `connector:"connection"`
 	ConnectionName                    string                                                    `connector:"connectionName"`
 	MapToOperationInput               func(IN) RecordPaymentInput                               `connector:"mapToOperationInput"`
@@ -740,7 +813,8 @@ func NewRecordPaymentStep[IN any](config RecordPaymentStepConfig[IN]) sdkgo.Muta
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RecordPaymentInput, RecordPaymentOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.RecordPayment(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.RecordPayment(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[RecordPaymentResult] {
 			branches := make([]sdkgo.BranchTarget[RecordPaymentResult], 0, 5)
