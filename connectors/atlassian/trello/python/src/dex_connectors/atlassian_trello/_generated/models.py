@@ -317,3 +317,89 @@ class AddCommentOutput:
 
 
 setattr(AddCommentOutput, '__module__', 'dex_connectors.atlassian_trello.models')
+
+
+# ActionCard is the card snapshot a Trello action records.
+@dataclass(frozen=True, slots=True)
+class ActionCard:
+    # ID is the card's 24-character ID.
+    id: str = ''
+    # Name is the card name when the action recorded it; empty for a deleted card.
+    name: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # ShortLink is the card's 8-character short link, when recorded.
+    short_link: str = _dataclass_field(default='', metadata={'dex_json_name': 'shortLink', 'dex_json_omit_default': True})
+    # ShortID is the card's number on its board, such as 42, when recorded.
+    short_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'shortId', 'dex_json_omit_default': True})
+    # ListID is the card's list, when recorded.
+    list_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'listId', 'dex_json_omit_default': True})
+    # IsClosed reports the archived state an updateCard recorded; nil when the action did not record it.
+    is_closed: bool | None = _dataclass_field(default=None, metadata={'dex_json_name': 'isClosed', 'dex_json_omit_default': True})
+
+
+setattr(ActionCard, '__module__', 'dex_connectors.atlassian_trello.models')
+
+
+# ActionList is a list as a Trello action records it.
+@dataclass(frozen=True, slots=True)
+class ActionList:
+    # ID is the list's 24-character ID.
+    id: str = ''
+    # Name is the list name when the action recorded it.
+    name: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(ActionList, '__module__', 'dex_connectors.atlassian_trello.models')
+
+
+# CardChangedEvent is one card action read from the watched board's action history.
+@dataclass(frozen=True, slots=True)
+class CardChangedEvent:
+    # BoardID is the board the action belongs to, as Trello reports its 24-character ID.
+    board_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'boardId'})
+    # BoardName is the board's name when the action recorded it.
+    board_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'boardName', 'dex_json_omit_default': True})
+    # ActionID is Trello's 24-character action ID; it also identifies the Trigger event.
+    action_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'actionId'})
+    # ActionType is the Trello action type; see CardActionType.
+    action_type: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'actionType'})
+    # OccurredAt is when Trello recorded the action, in UTC with millisecond precision.
+    occurred_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'occurredAt', 'dex_json_format': 'rfc3339'})
+    # MemberCreatorID is the ID of the member who performed the action.
+    member_creator_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'memberCreatorId', 'dex_json_omit_default': True})
+    # MemberCreator is that member's name and username when Trello returned them.
+    member_creator: MemberReference | None = _dataclass_field(default=None, metadata={'dex_json_name': 'memberCreator', 'dex_json_omit_default': True})
+    # Card is the card as the action recorded it; read it with getCard for its current state.
+    card: ActionCard = _dataclass_field(default_factory=ActionCard)
+    # List is the card's list when the action recorded one, such as for createCard.
+    list: ActionList | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
+    # ListBefore and ListAfter are set on an updateCard that moved the card between lists.
+    list_before: ActionList | None = _dataclass_field(default=None, metadata={'dex_json_name': 'listBefore', 'dex_json_omit_default': True})
+    # ListAfter is the list the card moved to; see ListBefore.
+    list_after: ActionList | None = _dataclass_field(default=None, metadata={'dex_json_name': 'listAfter', 'dex_json_omit_default': True})
+    # ChangedFields names the card fields an updateCard changed, such as idList, name, due, or closed,
+    # sorted; empty for other action types.
+    changed_fields: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'changedFields', 'dex_json_omit_default': True})
+    # CommentText is the comment of a commentCard action.
+    comment_text: str = _dataclass_field(default='', metadata={'dex_json_name': 'commentText', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.occurred_at, str):
+            object.__setattr__(self, 'occurred_at', parse_go_datetime(self.occurred_at, 'occurred_at'))
+        elif self.occurred_at is not None:
+            validate_go_datetime(self.occurred_at, 'occurred_at')
+
+
+setattr(CardChangedEvent, '__module__', 'dex_connectors.atlassian_trello.models')
+
+
+# CardChangedTriggerConfiguration is the cardChanged binding configuration that the boardInput unit
+# saves in Dex Web. Changing the board of a binding that already polled makes its next poll record a new
+# baseline for the new board.
+@dataclass(frozen=True, slots=True)
+class CardChangedTriggerConfiguration:
+    # BoardID is the watched board: its 24-character ID, such as 5b6893f01cb3228998cf629e, or its
+    # 8-character short link from the board URL https://trello.com/b/<shortLink>/<name>. Required.
+    board_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'boardId'})
+
+
+setattr(CardChangedTriggerConfiguration, '__module__', 'dex_connectors.atlassian_trello.models')

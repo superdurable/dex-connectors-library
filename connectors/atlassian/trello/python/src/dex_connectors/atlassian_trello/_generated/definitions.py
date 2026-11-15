@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -77,6 +80,8 @@ CREATE_CARD_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_CARD_DEFINITION = MutationDefinition(
@@ -93,6 +98,7 @@ UPDATE_CARD_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 ADD_COMMENT_DEFINITION = MutationDefinition(
@@ -109,4 +115,11 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
+)
+
+CARD_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="cardChanged"),
+    description="Receive each card created, copied, updated (moved, renamed, archived, rescheduled, and other field changes), commented on, moved in from another board, or deleted on one board, read by polling the board's action history; the first run records a baseline and delivers no earlier actions.",
 )

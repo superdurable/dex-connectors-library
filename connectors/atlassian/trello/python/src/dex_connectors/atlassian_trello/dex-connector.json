@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-atlassian-trello",
-    "version": "0.1.1"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -418,6 +418,16 @@
           "text"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_card_changed_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "cardChanged",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

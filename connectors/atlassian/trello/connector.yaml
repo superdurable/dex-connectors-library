@@ -11,9 +11,9 @@ spec:
   provider: trello
   languages:
     python:
-      version: v0.1.1
+      version: v0.2.0
       operations: [listCards, getCard, createCard, updateCard, addComment]
-      triggers: []
+      triggers: [cardChanged]
     typescript:
       version: v0.1.2
       operations: [listCards, getCard, createCard, updateCard, addComment]
