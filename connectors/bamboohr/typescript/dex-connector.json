@@ -1,6 +1,6 @@
 {
   "connectorId": "bamboohr",
-  "releaseTag": "connectors/bamboohr/go/v0.23.0",
+  "releaseTag": "connectors/bamboohr/go/v0.24.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-bamboohr",

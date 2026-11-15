@@ -46,12 +46,15 @@ export interface Config {
   companyDomain: string;
   /** Maximum complete BambooHR API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to raise it, for example when listEmployeeChanges covers a long period in a large company. An oversized response selects invalidResponse. */
   maxResponseBytes?: number;
+  /** Delay between employeeChanged Trigger polls of BambooHR's changed-employees list, as a Go duration of at least 10s such as 30s or 5m. Leave blank to keep the displayed interval. Each poll normally makes one request for every employeeChanged binding of the connection; BambooHR publishes no numeric rate limit and answers 429 with Retry-After when it throttles, which pauses every binding of the connection. A change is delivered once it is at least 30s old by BambooHR's clock, so it reaches a Flow 30s to pollInterval plus 30s after it is made. Shorter intervals deliver changes sooner, and a longer interval makes it likelier that several edits to one employee arrive as one change, because BambooHR reports only each employee's latest change. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "companyDomain": z.string(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

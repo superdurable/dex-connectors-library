@@ -17,9 +17,15 @@ import (
 
 const ConnectorID = "bamboohr"
 
+const (
+	UIUnitChangeTypePicker           = "changeTypePicker"
+	UIChangeTypePickerPortChangeType = "changeType"
+)
+
 type Config struct {
-	CompanyDomain    string `json:"companyDomain,omitempty" yaml:"companyDomain,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	CompanyDomain    string        `json:"companyDomain,omitempty" yaml:"companyDomain,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 }
 
 type Credentials struct {
@@ -162,6 +168,7 @@ func (Connection) GoString() string { return "bamboohr.Connection{[REDACTED]}" }
 func DefaultConfig() Config {
 	return Config{
 		MaxResponseBytes: 4194304,
+		PollInterval:     time.Duration(60000000000),
 	}
 }
 
@@ -169,6 +176,9 @@ func withConfigDefaults(config Config) Config {
 	defaults := DefaultConfig()
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
 	}
 	return config
 }
@@ -180,6 +190,9 @@ func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
+	}
 	return nil
 }
 
@@ -188,6 +201,52 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+var EmployeeChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "employeeChanged"},
+	Description: "Receive each employee BambooHR reports as inserted, updated, or deleted after the last processed change, polled from the changed-employees list with a durable cursor; the first poll records the current time and delivers no earlier changes.",
+}
+
+type EmployeeChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=bamboohr"`
+	triggerName                             struct{}                       `connector:"triggerName=employeeChanged"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineEmployeeChangedTriggerBinding(config EmployeeChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: EmployeeChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type EmployeeChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                  `connector:"connectorId=bamboohr"`
+	triggerName                      struct{}                                  `connector:"triggerName=employeeChanged"`
+	Connection                       Connection                                `connector:"connection"`
+	ConnectionName                   string                                    `connector:"connectionName"`
+	BindingName                      string                                    `connector:"bindingName"`
+	Configuration                    EmployeeChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[EmployeeChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewEmployeeChangedTrigger(config EmployeeChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bamboohr connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: EmployeeChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[EmployeeChangedEvent]{
+		Definition: EmployeeChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.employeeChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const GetEmployeeBranchFound sdkgo.BranchID = "found"
@@ -220,6 +279,7 @@ type GetEmployeeStepConfig[IN any] struct {
 	operationID                    struct{}                                          `connector:"operationId=getEmployee"`
 	StepType                       string                                            `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                    `connector:"configurationUI"`
 	Connection                     Connection                                        `connector:"connection"`
 	ConnectionName                 string                                            `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetEmployeeInput                         `connector:"mapToOperationInput"`
@@ -241,7 +301,8 @@ func NewGetEmployeeStep[IN any](config GetEmployeeStepConfig[IN]) sdkgo.QuerySte
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEmployeeInput, EmployeeRecord]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetEmployee(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetEmployee(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetEmployeeResult] {
 			branches := make([]sdkgo.BranchTarget[GetEmployeeResult], 0, 5)
@@ -299,6 +360,7 @@ type FindEmployeeByEmailStepConfig[IN any] struct {
 	operationID                    struct{}                                                     `connector:"operationId=findEmployeeByEmail"`
 	StepType                       string                                                       `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                        `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                               `connector:"configurationUI"`
 	Connection                     Connection                                                   `connector:"connection"`
 	ConnectionName                 string                                                       `connector:"connectionName"`
 	MapToOperationInput            func(IN) FindEmployeeByEmailInput                            `connector:"mapToOperationInput"`
@@ -321,7 +383,8 @@ func NewFindEmployeeByEmailStep[IN any](config FindEmployeeByEmailStepConfig[IN]
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindEmployeeByEmailInput, FindEmployeeByEmailOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.FindEmployeeByEmail(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.FindEmployeeByEmail(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[FindEmployeeByEmailResult] {
 			branches := make([]sdkgo.BranchTarget[FindEmployeeByEmailResult], 0, 6)
@@ -378,6 +441,7 @@ type ListEmployeeChangesStepConfig[IN any] struct {
 	operationID                    struct{}                                                     `connector:"operationId=listEmployeeChanges"`
 	StepType                       string                                                       `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                        `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                               `connector:"configurationUI"`
 	Connection                     Connection                                                   `connector:"connection"`
 	ConnectionName                 string                                                       `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListEmployeeChangesInput                            `connector:"mapToOperationInput"`
@@ -398,7 +462,8 @@ func NewListEmployeeChangesStep[IN any](config ListEmployeeChangesStepConfig[IN]
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEmployeeChangesInput, ListEmployeeChangesOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListEmployeeChanges(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListEmployeeChanges(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListEmployeeChangesResult] {
 			branches := make([]sdkgo.BranchTarget[ListEmployeeChangesResult], 0, 4)
@@ -449,6 +514,7 @@ type ListTimeOffRequestsStepConfig[IN any] struct {
 	operationID                    struct{}                                                     `connector:"operationId=listTimeOffRequests"`
 	StepType                       string                                                       `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                                        `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                               `connector:"configurationUI"`
 	Connection                     Connection                                                   `connector:"connection"`
 	ConnectionName                 string                                                       `connector:"connectionName"`
 	MapToOperationInput            func(IN) ListTimeOffRequestsInput                            `connector:"mapToOperationInput"`
@@ -469,7 +535,8 @@ func NewListTimeOffRequestsStep[IN any](config ListTimeOffRequestsStepConfig[IN]
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTimeOffRequestsInput, ListTimeOffRequestsOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.ListTimeOffRequests(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListTimeOffRequests(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ListTimeOffRequestsResult] {
 			branches := make([]sdkgo.BranchTarget[ListTimeOffRequestsResult], 0, 4)
@@ -512,6 +579,7 @@ var UpdateEmployeeDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateEmployeeResult = sdkgo.MutationResult[UpdateEmployeeOutput]
@@ -522,6 +590,7 @@ type UpdateEmployeeStepConfig[IN any] struct {
 	operationID                       struct{}                                                   `connector:"operationId=updateEmployee"`
 	StepType                          string                                                     `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                             `connector:"configurationUI"`
 	Connection                        Connection                                                 `connector:"connection"`
 	ConnectionName                    string                                                     `connector:"connectionName"`
 	MapToOperationInput               func(IN) UpdateEmployeeInput                               `connector:"mapToOperationInput"`
@@ -543,7 +612,8 @@ func NewUpdateEmployeeStep[IN any](config UpdateEmployeeStepConfig[IN]) sdkgo.Mu
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateEmployeeInput, UpdateEmployeeOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.UpdateEmployee(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpdateEmployee(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateEmployeeResult] {
 			branches := make([]sdkgo.BranchTarget[UpdateEmployeeResult], 0, 5)
@@ -587,6 +657,8 @@ var AddEmployeeDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AddEmployeeResult = sdkgo.MutationResult[AddEmployeeOutput]
@@ -597,6 +669,7 @@ type AddEmployeeStepConfig[IN any] struct {
 	operationID                       struct{}                                                `connector:"operationId=addEmployee"`
 	StepType                          string                                                  `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
 	Connection                        Connection                                              `connector:"connection"`
 	ConnectionName                    string                                                  `connector:"connectionName"`
 	MapToOperationInput               func(IN) AddEmployeeInput                               `connector:"mapToOperationInput"`
@@ -606,6 +679,8 @@ type AddEmployeeStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddEmployeeResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddEmployeeOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddEmployeeStep[IN any](config AddEmployeeStepConfig[IN]) sdkgo.MutationStep[IN, AddEmployeeInput, AddEmployeeOutput] {
@@ -617,7 +692,8 @@ func NewAddEmployeeStep[IN any](config AddEmployeeStepConfig[IN]) sdkgo.Mutation
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddEmployeeInput, AddEmployeeOutput]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.AddEmployee(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.AddEmployee(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[AddEmployeeResult] {
 			branches := make([]sdkgo.BranchTarget[AddEmployeeResult], 0, 4)
@@ -637,5 +713,6 @@ func NewAddEmployeeStep[IN any](config AddEmployeeStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

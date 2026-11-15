@@ -27,8 +27,13 @@ because BambooHR does not document whether a 503 means the add was not applied.
 It uses sync durability for its dispatch fence; see
 [Duplicate safety](#duplicate-safety).
 
-Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.23.0`.
-The module requires Connector Go SDK v0.33.0 for the shared single-dispatch fence.
+The `employeeChanged` Trigger starts a Flow for each employee BambooHR lists
+as inserted, updated, or deleted, polled with a durable cursor; see
+[employeeChanged Trigger](#employeechanged-trigger).
+
+Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.24.0`.
+The module requires Connector Go SDK v0.38.0 for the durable poll Trigger kit
+(`sdkgo/pollingtrigger`) and the shared single-dispatch fence.
 
 ## Python package
 
@@ -37,7 +42,8 @@ implements all six operations above with the same branch IDs and provider
 request behavior as the Go connector. It includes generated typed inputs,
 outputs, operation-specific Step factories, named project connections, and
 mock outcomes. `addEmployee` uses the Python Connector SDK's single-dispatch
-fence and sync Execute durability. The Python package has no Triggers.
+fence and sync Execute durability. The Python package does not implement the
+`employeeChanged` Trigger.
 
 The [Python employee lookup example](python/examples/get_employee/README.md)
 uses the static `bamboohr` connection name, a Worker entrypoint, and a start
@@ -47,8 +53,8 @@ scenarios are replayed by the Python package. A live BambooHR account has not
 been used for this Python port, so live authorization and provider behavior
 remain unverified.
 
-This release has no Triggers, no Studio pickers, and no OAuth; see
-[Not in this release](#not-in-this-release).
+This release has no webhook Triggers, no field or employee pickers, and no
+OAuth; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
@@ -58,7 +64,8 @@ Its [runnable getEmployee Flow](typescript/examples/get-employee/) uses the
 static `bamboohr-employees` connection name. Go-recorded conformance scenarios
 cover provider requests, branches, retries, uncertainty, and duplicate safety;
 the example also ran through a real Dex Worker and Client with a local provider
-fixture. Live BambooHR behavior remains unverified.
+fixture. Live BambooHR behavior remains unverified. The TypeScript package
+does not implement the `employeeChanged` Trigger.
 
 ## BambooHR setup
 
@@ -247,6 +254,101 @@ documents a 201 response body with a required string `id` and a `Location`
 header whose web-app URL includes the employee ID; their live formats remain
 unverified. BambooHR rejects an email another employee already holds with 409.
 
+## employeeChanged Trigger
+
+`employeeChanged` polls BambooHR's
+[Get Changed Employee IDs](https://documentation.bamboohr.com/reference/get-changed-employee-ids)
+list, `GET /api/v1/employees/changed?since=...`, the same history
+`listEmployeeChanges` reads, and delivers one `bamboohr.EmployeeChangedEvent`
+per changed employee: the employee ID, BambooHR's `Inserted`, `Updated`, or
+`Deleted` action, and `lastChanged`. BambooHR returns an employee for a
+change to any field, employment status, job information, or compensation, and
+a termination is an `Updated` change. The event carries no field values, so a
+Flow reads the employee with `getEmployee`, as the
+[employee-changed example](go/examples/employee-changed) does. It uses the
+connection's existing API key; no other permission is needed, and BambooHR
+lists only employees the key's user can see.
+
+The binding's configuration is `bamboohr.EmployeeChangedTriggerConfiguration`,
+saved in Dex Web by the `changeTypePicker` unit: `changeType` `inserted`,
+`updated`, or `deleted` is sent as BambooHR's `type` filter, and blank
+delivers every change. The connector's Studio bundle has no provider commands;
+the unit only saves the choice.
+
+- **Cursor.** The durable poll cursor stores the last delivered change's
+  `lastChanged` and employee ID, like `listEmployeeChanges`' `nextCursor`, and
+  the change type it was read with. Each poll asks one second before the
+  cursor, because BambooHR does not document whether `since` is inclusive, and
+  delivers the changes after it oldest first, ordered by `lastChanged` and then
+  numeric employee ID, so changes that share a second are neither skipped nor
+  repeated.
+- **Settle delay.** BambooHR stamps `lastChanged` in whole seconds and does not
+  document when a change becomes visible, so a change in a second the cursor
+  already passed, such as a lower employee ID in the same second, would be
+  skipped. A poll therefore delivers only changes at least 30 seconds older
+  than BambooHR's response `Date` header (the local clock without one); newer
+  changes wait for a later poll. A change reaches a Flow 30 seconds to
+  `pollInterval` plus 30 seconds after it is made, and a change that appears
+  more than 30 seconds late is not delivered unless the employee changes again.
+- **First poll.** The cursor starts at BambooHR's clock, read from the
+  response `Date` header (the local clock when the header is missing), so no
+  change before that second starts a Flow. A change stamped with that second
+  itself is delivered, because it may have been made after the binding
+  started.
+- **Coalescing.** BambooHR reports only each employee's latest change, so
+  several edits between two polls arrive as one event with the latest action.
+  An employee added and then edited before the next poll arrives as `Updated`
+  for a binding that delivers every change. BambooHR does not document whether
+  `type=inserted` still lists such an employee, so a short `pollInterval`
+  keeps that window small.
+- **Event IDs.** `employee-<id>-<action>-<lastChanged Unix seconds>` is a pure
+  function of the change, so a refetch after a crash yields the same ID, and a
+  later change to the same employee yields a new one.
+- **Paging.** BambooHR does not paginate this list. A poll delivers at most 500
+  changes (`pollingtrigger.MaxChangesPerPage`) and reads the rest at once, up to
+  the kit's ten pages per poll. The whole list since the cursor must fit
+  `maxResponseBytes`; a larger one fails the poll with a message to raise it,
+  and never skips changes.
+- **Rate limits.** BambooHR publishes no numeric limit and answers 429 with
+  `Retry-After` when it throttles, as its
+  [technical overview](https://documentation.bamboohr.com/docs/api-details)
+  describes. A 429, or a 503, pauses every binding of the connection for
+  `max(Retry-After, pollInterval)`, or backs off exponentially without the
+  header. Other failures, such as 401 or 403, back off per binding and are
+  logged.
+- **Reset.** BambooHR documents 400 for a `since` it cannot accept. A 400, an
+  undecodable stored cursor, or a cursor read with another change type
+  starts the binding again at the current time and logs
+  `poll cursor invalid; reseeding` at WARN; changes in between are not
+  delivered.
+
+`pollInterval` on the connection sets the delay between polls, at least 10
+seconds. Use the runners rather than the generated factory for a durable
+cursor:
+
+- `bamboohr.NewProjectEmployeeChangedTriggerRunner` opens the connection from
+  the loaded project, loads each binding's saved change type, and records each
+  change in the binding's project Trigger inbox before the cursor commits in
+  its project poll cursor, so a restarted or replaced Worker neither misses
+  nor repeats a change;
+- `bamboohr.NewEmployeeChangedTriggerRunner` takes routes with their own
+  targets, cursor stores, and an optional `RequestLimiter`;
+- the generated `bamboohr.NewEmployeeChangedTrigger` keeps the cursor in
+  memory, so every start begins at the current time.
+
+`bamboohr.WithLogger` sends the runners' records to a logger. Records carry
+the connector, connection, Trigger, and binding, never employee data, API
+keys, or cursor tokens. The [employee-changed example](go/examples/employee-changed/main.go)
+wires the project runner:
+
+```go
+triggerRunner, err := bamboohr.NewProjectEmployeeChangedTriggerRunner(project, employeechanged.ConnectionName, []bamboohr.ProjectEmployeeChangedTriggerRoute{{
+	BindingName: employeechanged.EmployeeChangedTriggerBinding,
+	Target: sdkgo.NewDexFlowTriggerTarget(client, flow, employeechanged.AcceptEveryEmployeeChange, employeechanged.ResolveFlowID,
+		employeechanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+}}, connectionOptions(logger)...)
+```
+
 ## Duplicate safety
 
 BambooHR API v1 documents no idempotency key, so a repeated add is a second
@@ -257,7 +359,7 @@ take these positions:
   computed from a fresh read, and history-table fields are refused, so a
   second dispatch sends the same values or finds them applied. It keeps async
   durability, and every unconfirmed outcome, including a 5xx or a lost
-  response, is retried.
+  response, is retried; its manifest declares `repeatOnUnknown: safe`.
 - **addEmployee** uses the shared single-dispatch fence with sync durability.
   Its attempt-numbered heartbeat allows another send only after the immediately
   prior attempt recorded `notSent` or `canResend`. A missing, stale, or legacy
@@ -343,18 +445,20 @@ Connect login, which exchanged an `id_token` for an API key, is closed to new
 applications since April 2025. The connector therefore offers API keys only,
 which suit a customer connecting their own company.
 
-### Triggers
+### Webhook Triggers
 
 BambooHR signs webhooks: each POST carries `X-BambooHR-Timestamp` and
 `X-BambooHR-Signature`, an HMAC-SHA256 over the raw body followed by the
 timestamp, keyed by a private key. Global webhooks are registered by an
 administrator in the BambooHR settings, which generate the key; permissioned
 webhooks are registered with `POST /api/v1/webhooks`, which returns the key
-once. There is no handshake. The connector still declares no Trigger, because
+once. There is no handshake. The connector declares no webhook Trigger, because
 a delivery has no provider event ID, batches several employees into one POST,
 names fields by the labels the webhook's creator chose, and BambooHR documents
 neither the timestamp format nor a replay window. Until a webhook source can
-derive a stable per-employee event ID, poll with `listEmployeeChanges`, as the
+derive a stable per-employee event ID, use the poll-based
+[employeeChanged Trigger](#employeechanged-trigger), or sweep with
+`listEmployeeChanges` as the
 [employee change sweep](go/examples/employee-change-sweep) example does.
 
 ### Studio pickers
@@ -363,7 +467,9 @@ A field or employee picker would list `GET /api/v1/meta/fields` or
 `GET /api/v1/employees`, but Studio setup commands declare a fixed HTTPS host
 and support only bearer or raw-header credentials. BambooHR's host is per
 company and an API key needs HTTP Basic, so the connection uses guided inputs
-and field names are operation input.
+and field names are operation input. The Studio bundle therefore declares no
+provider commands; its only unit, `changeTypePicker`, saves the
+`employeeChanged` change type.
 
 ### History tables and termination
 
@@ -382,6 +488,10 @@ terminations through `listEmployeeChanges`, but does not write them.
 - [`examples/employee-change-sweep`](go/examples/employee-change-sweep) is a
   runnable **Start Flow** example that pages through `listEmployeeChanges`
   from a cursor and completes with the cursor the next sweep starts from.
+- [`examples/employee-changed`](go/examples/employee-changed) is a runnable
+  Trigger example: the `employeeChanged` binding, configured with the
+  `changeTypePicker` unit, starts one Flow per changed employee, which reads
+  the employee back with `getEmployee`.
 
 ## Verification
 
@@ -411,7 +521,13 @@ overlap filter and dropped notes, only-changed-field updates with read-back
 and history-table refusal, the dispatch checkpoint and its clearing, the
 `Location` fallback, 429 with and without `Retry-After`, BambooHR error codes
 without message text, redirects, oversized, malformed, and
-credential-reflecting responses, and invalid credentials.
+credential-reflecting responses, and invalid credentials. For
+`employeeChanged`, the `internal/bamboohrfake` stand-in, which stamps changes
+with its own clock and `Date` header, covers a seed against a clock behind the
+local one, the settle delay with a change that becomes visible late in a second
+the list already showed, the `type` filter, more than 500 changes, 429 and 503 pauses with
+`Retry-After`, the 400 reset, undecodable cursors, and an oversized list. The
+example's real Dex tests cover delivery across a restart and the reset.
 
 No live BambooHR account was used. The following live behavior is
 unverified: the API Keys menu path and key removal in the setup guidance;
@@ -422,4 +538,8 @@ the time off filter matches lowercase statuses and supports `in`; whether
 whether a field requested by numeric ID returns under its name; whether
 duplicate-email 409 covers `homeEmail`; whether List Employees includes a hire
 whose start date is in the future; and the live 201 body ID and `Location`
-header formats, 503 non-application, and 429 without `Retry-After`.
+header formats, 503 non-application, and 429 without `Retry-After`. For
+`employeeChanged`: whether the live `Date` header tracks the clock BambooHR
+stamps `lastChanged` with, whether `type=inserted` still lists an employee
+edited after the insert, how quickly a change appears in the list, and the
+Dex Web rendering of the `changeTypePicker` unit with a real connection.

@@ -2,7 +2,7 @@
 
 This example runs one operation-only Flow from Dex Web **Start Flow**. It
 reads BambooHR's employee change history, the poll source for onboarding and
-offboarding while the connector has no Triggers:
+offboarding on demand; the [employee-changed](../employee-changed) example polls the same list continuously through the employeeChanged Trigger:
 
 1. `RecordSweepWindow` validates the RFC 3339 instant to sweep from, an
    optional employee ID tie-breaker, the change type, the page size, and the

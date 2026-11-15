@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/bamboohr/go"
 	"gopkg.in/yaml.v3"
 )
 
@@ -30,8 +31,19 @@ type guidanceManifest struct {
 			} `yaml:"guide"`
 			OAuth2 any `yaml:"oauth2"`
 		} `yaml:"auth"`
-		Studio   any `yaml:"studio"`
-		Triggers any `yaml:"triggers"`
+		Studio struct {
+			Setup struct {
+				BackendCapabilities []string `yaml:"backendCapabilities"`
+			} `yaml:"setup"`
+			Commands []any `yaml:"commands"`
+			Units    []struct {
+				ID          string `yaml:"id"`
+				Description string `yaml:"description"`
+			} `yaml:"units"`
+		} `yaml:"studio"`
+		Triggers []struct {
+			Name string `yaml:"name"`
+		} `yaml:"triggers"`
 	} `yaml:"spec"`
 }
 
@@ -58,7 +70,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"companyDomain", "maxResponseBytes", "api_key"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"companyDomain", "maxResponseBytes", "pollInterval", "api_key"}, names, "a new visible field needs its own guidance review")
 
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
@@ -103,14 +115,32 @@ func TestAPIKeyGuideCoversWhereTheKeyIsAndHowToRevokeIt(t *testing.T) {
 	}
 }
 
-// TestManifestDeclaresNoStudioBundleOrTriggers records that Studio commands can reach neither a
-// per-company BambooHR host nor send HTTP Basic, and that this release has no Triggers.
-func TestManifestDeclaresNoStudioBundleOrTriggers(t *testing.T) {
+// TestStudioBundleDeclaresNoProviderCommands records that Studio commands can reach neither a
+// per-company BambooHR host nor send HTTP Basic, so the bundle only saves the change type a binding picks.
+func TestStudioBundleDeclaresNoProviderCommands(t *testing.T) {
 	manifest := readGuidanceManifest(t)
-	require.Nil(t, manifest.Spec.Studio)
-	require.Nil(t, manifest.Spec.Triggers)
-	_, err := os.Stat("../ui")
-	require.True(t, os.IsNotExist(err))
+	require.Empty(t, manifest.Spec.Studio.Commands)
+	require.Equal(t, []string{"use.configuration.write"}, manifest.Spec.Studio.Setup.BackendCapabilities)
+	require.Len(t, manifest.Spec.Studio.Units, 1)
+	require.Equal(t, "changeTypePicker", manifest.Spec.Studio.Units[0].ID)
+	for _, value := range []string{"Inserted", "Updated", "Deleted", "terminations", "empty value for every change"} {
+		require.Contains(t, manifest.Spec.Studio.Units[0].Description, value)
+	}
+	require.Len(t, manifest.Spec.Triggers, 1)
+	require.Equal(t, "employeeChanged", manifest.Spec.Triggers[0].Name)
+}
+
+// TestStudioChangeTypesMatchTheTriggerConfiguration keeps ui/src/change-types.ts equal to the change
+// types EmployeeChangedTriggerConfiguration accepts.
+func TestStudioChangeTypesMatchTheTriggerConfiguration(t *testing.T) {
+	contents, err := os.ReadFile("../ui/src/change-types.ts")
+	require.NoError(t, err)
+	var studioChangeTypes []string
+	for _, match := range regexp.MustCompile(`changeType: "([a-z]*)"`).FindAllStringSubmatch(string(contents), -1) {
+		studioChangeTypes = append(studioChangeTypes, match[1])
+		require.NoError(t, bamboohr.EmployeeChangedTriggerConfiguration{ChangeType: bamboohr.EmployeeChangeType(match[1])}.Validate())
+	}
+	require.Equal(t, []string{"", string(bamboohr.EmployeeChangeTypeInserted), string(bamboohr.EmployeeChangeTypeUpdated), string(bamboohr.EmployeeChangeTypeDeleted)}, studioChangeTypes)
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {

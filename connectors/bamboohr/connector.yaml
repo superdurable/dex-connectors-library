@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: bamboohr
   displayName: BambooHR
-  description: Read BambooHR employee records, find an employee by email, poll employee changes, list time off requests, update employee fields, and add employees, keeping BambooHR's own field names and status values.
+  description: Read BambooHR employee records, find an employee by email, poll employee changes, start Flows when employees are added, updated, or deleted, list time off requests, update employee fields, and add employees, keeping BambooHR's own field names and status values.
   company: BambooHR
   categories: [hr-recruiting]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: bamboohr
   languages:
@@ -34,6 +34,12 @@ spec:
         description: "Maximum complete BambooHR API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to raise it, for example when listEmployeeChanges covers a long period in a large company. An oversized response selects invalidResponse."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between employeeChanged Trigger polls of BambooHR's changed-employees list, as a Go duration of at least 10s such as 30s or 5m. Leave blank to keep the displayed interval. Each poll normally makes one request for every employeeChanged binding of the connection; BambooHR publishes no numeric rate limit and answers 429 with Retry-After when it throttles, which pauses every binding of the connection. A change is delivered once it is at least 30s old by BambooHR's clock, so it reaches a Flow 30s to pollInterval plus 30s after it is made. Shorter intervals deliver changes sooner, and a longer interval makes it likelier that several edits to one employee arrive as one change, because BambooHR reports only each employee's latest change."
+        required: false
+        default: 1m
   auth:
     type: apiKey
     connectionKind: bamboohr-api-key
@@ -51,6 +57,25 @@ spec:
         - Add a key, give it a name such as Dex, and copy it into api_key now; BambooHR shows the key only once.
         - Enter companyDomain as the mycompany in https://mycompany.bamboohr.com.
         - To revoke access, remove the key on the same API Keys page. BambooHR answers 403 to every request for a period after repeated requests with an unknown key, so replace a removed key here promptly.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    units:
+      - id: changeTypePicker
+        goName: ChangeTypePicker
+        description: "Choose which BambooHR change actions an employeeChanged binding delivers: every change, or only Inserted (new employees), Updated (record, employment status, job information, or compensation changes, including terminations), or Deleted employees. The unit stores inserted, updated, or deleted, or an empty value for every change."
+        outputs:
+          - {name: changeType, goName: ChangeType, type: string}
+  triggers:
+    - name: employeeChanged
+      goName: EmployeeChanged
+      eventType: EmployeeChangedEvent
+      configurationType: EmployeeChangedTriggerConfiguration
+      description: "Receive each employee BambooHR reports as inserted, updated, or deleted after the last processed change, polled from the changed-employees list with a durable cursor; the first poll records the current time and delivers no earlier changes."
   operations:
     - name: getEmployee
       goName: GetEmployee
@@ -204,6 +229,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Each attempt writes absolute plain values computed from a fresh read, so a repeat is harmless.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedDefaultAnswer
           branch: updated

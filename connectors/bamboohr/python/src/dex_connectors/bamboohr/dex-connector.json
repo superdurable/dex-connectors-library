@@ -1,6 +1,6 @@
 {
   "connectorId": "bamboohr",
-  "releaseTag": "connectors/bamboohr/go/v0.23.0",
+  "releaseTag": "connectors/bamboohr/go/v0.24.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-bamboohr",

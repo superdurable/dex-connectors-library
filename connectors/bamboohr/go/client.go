@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -43,6 +44,9 @@ const (
 
 	// jsonContentType must be exact: BambooHR parses a body with any other Content-Type as XML.
 	jsonContentType = "application/json"
+
+	// minimumPollInterval keeps employeeChanged polling from tripping BambooHR's unpublished throttling.
+	minimumPollInterval = 10 * time.Second
 )
 
 var (
@@ -57,6 +61,7 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	apiBaseURL string
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 9 seconds per request.
@@ -73,6 +78,15 @@ func WithAPIBaseURL(baseURL string) Option {
 	return func(options *clientOptions) { options.apiBaseURL = baseURL }
 }
 
+// WithLogger sends the employeeChanged Trigger runners' records to logger: seeded cursors, reseeds after
+// BambooHR rejects a cursor, failed polls, rate-limit pauses, and the durable inboxes that
+// NewProjectEmployeeChangedTriggerRunner opens. Records carry the connector, connection, Trigger, and
+// binding, never employee data, API keys, or cursor tokens. Without this option, or with a nil logger,
+// records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated BambooHR API v1 requests for connector operations.
 // A Client is safe for concurrent use by several Steps.
 type Client struct {
@@ -80,6 +94,8 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
+	pollInterval     time.Duration
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -135,6 +151,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes < 1 {
 		return nil, errors.New("BambooHR response limit must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("BambooHR pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, errors.New("BambooHR credential provider is required")
 	}
@@ -156,7 +175,8 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	return &Client{
 		apiBaseURL:  apiBaseURL,
 		httpClient:  providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
-		credentials: credentials, maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		credentials: credentials, maxResponseBytes: config.MaxResponseBytes,
+		pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
