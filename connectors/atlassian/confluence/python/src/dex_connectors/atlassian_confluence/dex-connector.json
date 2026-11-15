@@ -1,6 +1,6 @@
 {
   "connectorId": "confluence",
-  "releaseTag": "connectors/atlassian/confluence/go/v0.24.0",
+  "releaseTag": "connectors/atlassian/confluence/go/v0.25.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-atlassian-confluence",

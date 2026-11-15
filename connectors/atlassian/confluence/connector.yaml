@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: confluence
   displayName: Confluence
-  description: Search Confluence Cloud pages with bounded CQL, read a page as Markdown or plain text, publish and update pages without duplicates, and add footer comments.
+  description: Search Confluence Cloud pages with bounded CQL, read a page as Markdown or plain text, publish and update pages without duplicates, add footer comments, and receive created and updated pages.
   company: Atlassian
   categories: [productivity, files-documents]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: atlassian
   languages:
@@ -43,6 +43,12 @@ spec:
         description: "Maximum complete Confluence API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to read longer pages. An oversized read selects invalidResponse, and a write whose response is oversized is confirmed by reading the page or comment back."
         required: false
         default: 8388608
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between pageChanged Trigger polls of Confluence CQL search, as a Go duration of at least 10s such as 30s or 5m. Leave blank to keep the displayed interval; shorter intervals deliver page changes sooner and spend more of the OAuth app's quota described at https://developer.atlassian.com/cloud/confluence/rate-limiting/. Operations ignore it, and the value is read when the application starts."
+        required: false
+        default: 1m
   auth:
     refreshable: true
     type: oauth2
@@ -72,7 +78,7 @@ spec:
       startURL: https://developer.atlassian.com/console/myapps/
       steps:
         - Choose Create > OAuth 2.0 integration, name the app, and accept the developer terms; one app can serve every Dex connection.
-        - Open Permissions, choose Add next to Confluence API, then Configure. Under Classic scopes add search:confluence for CQL search. Under Granular scopes add read:page:confluence and write:page:confluence for reading, creating, and updating pages, read:space:confluence for the space picker and space keys, and read:comment:confluence and write:comment:confluence for footer comments. Dex also requests offline_access so Atlassian issues a rotating refresh token.
+        - Open Permissions, choose Add next to Confluence API, then Configure. Under Classic scopes add search:confluence for CQL search and the pageChanged Trigger's polls. Under Granular scopes add read:page:confluence and write:page:confluence for reading, creating, and updating pages, read:space:confluence for the space picker and space keys, and read:comment:confluence and write:comment:confluence for footer comments. Dex also requests offline_access so Atlassian issues a rotating refresh token.
         - Open Authorization, choose Configure next to OAuth 2.0 (3LO), paste the exact Redirect URI shown below into Callback URL, and choose Save changes.
         - Open Settings and copy Client ID and Secret into the fields below; the secret is sensitive.
         - Choose Connect, pick the Confluence site the Flows work in on the Atlassian consent screen, and choose Accept. The app stays private to its owner until Distribution > Enable sharing is on, and a refresh token unused for 90 days requires reconnecting.
@@ -136,6 +142,12 @@ spec:
           - {name: spaceId, goName: SpaceID, type: string}
           - {name: spaceKey, goName: SpaceKey, type: string}
           - {name: spaceName, goName: SpaceName, type: string}
+  triggers:
+    - name: pageChanged
+      goName: PageChanged
+      eventType: PageChangedEvent
+      configurationType: PageChangedTriggerConfiguration
+      description: "Receive each page created or updated in one space, or in every space the connection can view, read through Confluence CQL search ordered by last modification; the first run records a baseline and delivers no existing pages."
   operations:
     - name: searchPages
       goName: SearchPages

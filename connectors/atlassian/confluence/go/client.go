@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -76,7 +77,11 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 }
+
+// minimumPollInterval keeps a pageChanged poll loop from spending the app's Confluence rate-limit quota.
+const minimumPollInterval = 10 * time.Second
 
 // WithHTTPClient replaces the HTTP client used for Confluence and Atlassian
 // token requests. The caller keeps ownership of client and its transport.
@@ -85,6 +90,14 @@ type clientOptions struct {
 // timeout.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithLogger sends the pageChanged Trigger runner's records to logger: seeds, reseeds after an unusable
+// cursor, failed polls, rate-limit pauses, and the durable inboxes NewProjectPageTriggerRunner opens.
+// Records carry binding identity and never page content, cursors, or credentials. Without this option, or
+// with a nil logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
 }
 
 // Client executes authenticated Confluence Cloud REST requests for one
@@ -96,6 +109,8 @@ type Client struct {
 	credentials       CredentialSource
 	refreshDriver     sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes  int64
+	pollInterval      time.Duration
+	logger            *slog.Logger
 	now               func() time.Time
 
 	siteMutex       sync.Mutex
@@ -211,6 +226,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.MaxResponseBytes < 1 {
 		return nil, fmt.Errorf("Confluence maxResponseBytes must be positive")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Confluence pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
@@ -226,7 +244,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		httpClient:       providerhttp.NewProviderHTTPClient(dependencies.httpClient, requestTimeout),
 		credentials:      credentials,
 		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
-		maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
@@ -344,7 +362,8 @@ func (client *Client) exchange(session *operationSession, request confluenceRequ
 		if _, supportsRejection := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRejection {
 			return result
 		}
-		replacement, err := sdkgo.ResolveCredentialAfterRejection(session.call.Context, client.credentials, session.call, client.refreshDriver)
+		// A Trigger poll's call has no Step context, so the session context bounds the refresh.
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, session.call, client.refreshDriver)
 		if err != nil || validateResolvedCredentials(replacement) != nil {
 			return result
 		}

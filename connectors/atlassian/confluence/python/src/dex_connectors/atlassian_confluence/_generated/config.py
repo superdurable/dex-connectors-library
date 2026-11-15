@@ -13,6 +13,7 @@ class Config:
     cloud_id: str
     endpoint: str = "https://api.atlassian.com"
     max_response_bytes: int = 8388608
+    poll_interval_seconds: float = 60
 
 setattr(Config, '__module__', 'dex_connectors.atlassian_confluence.client')
 
