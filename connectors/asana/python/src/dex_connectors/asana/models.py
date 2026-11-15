@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Public Asana operation models generated from the Go connector."""
+"""Public Asana operation and Trigger models generated from the Go connector."""
 
 from ._generated.models import (
     AddCommentInput,
@@ -10,12 +10,15 @@ from ._generated.models import (
     CustomFieldValue,
     CustomFieldValueInput,
     EnumOptionReference,
+    EventParentReference,
     GetTaskInput,
     ListTasksInput,
     ListTasksOutput,
     ProjectReference,
     SectionReference,
     Task,
+    TaskChangedEvent,
+    TaskChangedTriggerConfiguration,
     TaskMembership,
     TaskReference,
     UpdateTaskInput,
@@ -32,12 +35,15 @@ __all__ = [
     "CustomFieldValue",
     "CustomFieldValueInput",
     "EnumOptionReference",
+    "EventParentReference",
     "GetTaskInput",
     "ListTasksInput",
     "ListTasksOutput",
     "ProjectReference",
     "SectionReference",
     "Task",
+    "TaskChangedEvent",
+    "TaskChangedTriggerConfiguration",
     "TaskMembership",
     "TaskReference",
     "UpdateTaskInput",

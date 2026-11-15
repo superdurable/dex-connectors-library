@@ -10,9 +10,9 @@ metadata:
 spec:
   languages:
     python:
-      version: v0.1.1
+      version: v0.2.0
       operations: [listTasks, getTask, createTask, updateTask, addComment]
-      triggers: []
+      triggers: [taskChanged]
     typescript:
       version: v0.1.1
       operations: [listTasks, getTask, createTask, updateTask, addComment]

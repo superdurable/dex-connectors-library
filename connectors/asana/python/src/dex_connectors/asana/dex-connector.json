@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-asana",
-    "version": "0.1.1"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -428,6 +428,16 @@
           "text"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_task_changed_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "taskChanged",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]
