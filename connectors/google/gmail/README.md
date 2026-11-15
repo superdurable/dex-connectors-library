@@ -4,7 +4,7 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
-## TypeScript (v0.3.0)
+## TypeScript (v0.4.0)
 
 Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client examples, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`, and from 0.3.0 the `messageReceived` and `replyReceived` Triggers at parity with Go: one ordered poller per connection, durable project inboxes, and roots delivered before replies. The [thread reply example](typescript/examples/thread-reply/README.md) mirrors the Go `thread-reply` example. Its manifest-derived npm marker lets Dex CLI render the examples as strict TypeScript FDG 2.0 graphs.
 
@@ -157,33 +157,51 @@ uses that header for Sent Mail read-back:
   landed in another thread. A miss or failed lookup returns Retry.
 - Every numbered attempt after the first tries read-back before reading a
   reply's source or posting. A match returns `sent` without another POST; for a
-  reply its `recipients` can be empty because the source was never read. A miss
-  permits another POST only when the preceding attempt checkpointed `notSent`
-  or `canResend`. A prior `claimed` dispatch can only read back; a search miss
-  or failure returns Retry without another POST.
+  reply its `recipients` can be empty because the source was never read. After
+  a `notSent` or `canResend` checkpoint, a miss permits another POST and a
+  failed search returns Retry.
+- `sendMessage` and `replyToMessage` declare `repeatOnUnknown: limited` with
+  `maxSends: 3`. After a prior `claimed` dispatch whose outcome stayed unknown,
+  a Sent Mail miss or failed search resends with the same `Message-ID` while
+  fewer than `call.MaxSends()` sends may have taken effect, counting every
+  earlier attempt that may have sent. At that cap, a miss returns Retry without
+  another POST, and the Flow fails when the retry budget runs out; the
+  operations have no `uncertain` branch. A definite 4xx on a send with no
+  earlier possible send selects `providerRejected` and is never resent. After an
+  earlier possible send, a definite 4xx on the resend, or a reply source read
+  that is rejected or unusable, returns Retry instead, because the earlier send
+  may still be delivered; the claim stays, so later attempts read back and the
+  cap still bounds sends. A transient credential failure after an earlier
+  possible send also returns Retry without a `notSent` checkpoint; a failure
+  that needs reconnection, or invalid credential material, selects `defect`,
+  which agent hosts classify as unknown. Gmail does not deduplicate by
+  `Message-ID`, so an unknown outcome can deliver up to three copies when Sent
+  Mail indexing lags an accepted send. An application changes one Step's cap
+  with the factory's `MaxSends` field, from 1 (never resend) to 10.
 
 The Go send result marshals an empty recipient list as JSON `[]` on every
 terminal branch, including an early read-back and a provider rejection.
 - When a prior checkpoint contains Gmail's message ID, the connector reads
   that message directly before searching by RFC `Message-ID`. A matching read
-  returns `sent`; a failed read falls back to the Sent Mail search.
+  returns `sent`; a failed read falls back to the Sent Mail search. A saved
+  message ID proves Gmail accepted the send, so it is never resent.
 - A 429 and a failure that a traced DNS, connect, or TLS error proves happened
   before a connection existed return Retry.
 - A 503 polls Sent Mail like any other 5xx. A match is `sent`; a miss returns
-  Retry and keeps the `claimed` checkpoint, so later attempts only read back.
+  Retry and keeps the `claimed` checkpoint, so the next attempt reads back and
+  resends only below the send cap.
 
-A send or reply records a `claimed` heartbeat before the POST. Synchronous
-Execute durability carries that checkpoint across regular retries. A 429 or
-proven undispatched transport failure can checkpoint `canResend`, allowing one
-later POST after a Sent Mail search miss. Gmail's
+A send or reply records a `claimed` heartbeat, with its `sendCount`, before the
+POST. Synchronous Execute durability carries that checkpoint across regular
+retries. A 429 or proven undispatched transport failure can checkpoint
+`canResend`, allowing one later POST after a Sent Mail search miss. Gmail's
 [error guide](https://developers.google.com/workspace/gmail/api/guides/handle-errors)
 describes 5xx responses, 503 included, as errors raised while processing the
-request, and Sent Mail search can lag an accepted send, so a 503 never permits
-another POST. Any possibly accepted dispatch, including a 503, stays `claimed`:
-later attempts only read back, and the Flow fails when retries are exhausted.
-A 503 that Gmail did not process therefore fails the Flow after the retry
-budget instead of risking a duplicate email. Gmail does not dedupe by `Message-ID`; a lost
-heartbeat frame also cannot prove exactly-once delivery.
+request, and Sent Mail search can lag an accepted send, so a 503 counts as a
+possible send. The manifest retry policy allows seven attempts within five
+minutes: three sends plus read-back retries after the cap. Gmail does not
+dedupe by `Message-ID`; a lost heartbeat frame also cannot prove exactly-once
+delivery.
 The released v0.23.1 selected `uncertain` for an ambiguous send and did not
 search Sent Mail.
 The run-specific Message-ID reduces false matches when a Flow ID is reused or
@@ -192,8 +210,8 @@ second can still collide.
 
 A request whose dispatch cannot be traced counts as possibly sent. That
 includes every failure through a `WithHTTPClient` transport that does not drive
-`net/http/httptrace`, so such a client searches after a failed POST and later
-attempts never resend after a miss.
+`net/http/httptrace`, so such a client searches after a failed POST, and later
+attempts resend after a miss only below the send cap.
 
 Each synchronous Execute attempt budgets at most 30 seconds, shortened by an
 earlier Dex Step deadline. The fenced POST ends by seven twelfths of that
@@ -202,8 +220,9 @@ covers the Result write. With the full 30 seconds, those boundaries are 17.5
 and 25 seconds. A reply's source read reserves at least a tenth of the budget
 for dispatch. If too little time remains, the attempt returns Retry before
 posting and attempts a `notSent` checkpoint. A dispatched request that times
-out searches Sent Mail; a later attempt can POST only after a `notSent` or
-`canResend` checkpoint and its own search miss.
+out searches Sent Mail; a later attempt can POST after its own search miss or
+failed search, following a `notSent` or `canResend` checkpoint, or a `claimed`
+one while below the send cap.
 
 The search adds no scope: `gmail.readonly` permits
 [`messages.list`](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
@@ -211,7 +230,8 @@ with a query. Three Gmail behaviors are unverified without a live account:
 whether `messages.send` keeps the client-set `Message-ID` header, whether the
 documented query matches it, and how soon a sent message becomes searchable.
 Without a saved Gmail message ID, failure of either of the first two behaviors
-leaves ambiguous sends retrying until the Flow fails without a second POST.
+makes an ambiguous send resend up to the send cap, three sends by default, and
+then retry read-back until the Flow fails.
 Live provider authorization and indexing latency remain unverified.
 
 Every operation uses `defect` for invalid local input, connection configuration,

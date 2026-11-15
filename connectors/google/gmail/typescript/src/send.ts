@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  newMutationBranch, newMutationRetry, zeroReceipt,
+  definitionMaxSends, newMutationBranch, newMutationRetry, zeroReceipt,
   type Call, type Failure, type Mutation, type MutationAttempt, type ReceiptDraft,
 } from '@superdurable/connectors-sdk';
 import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
@@ -126,7 +126,7 @@ export class GmailSender {
     if (call.context.attempt < 1) return defect('sendMessage', 'LOCAL_DEFECT', 'Dex Execute attempt number is invalid');
     const messageIdAddress = this.#messageID(call);
     if (!messageIdAddress) return defect('sendMessage', 'LOCAL_DEFECT', MissingRunIDMessage);
-    const fence = newFence(call, SendMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000);
+    const fence = newFence(call, SendMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: definitionMaxSends(SendMessageDefinition) });
     if (fence.decide().kind === 'failClosed') return defect('sendMessage', 'LOCAL_DEFECT', 'Dex send checkpoint is unreadable');
     const budget = new GmailSendAttemptBudget(call.context.cancellationSignal, dexDeadline);
     if (!budget.sendSignal()) {
@@ -135,7 +135,7 @@ export class GmailSender {
     }
     let credentials: Credentials;
     try { credentials = await this.#http.resolveCredentials(call, budget.attemptSignal()); }
-    catch { return defect('sendMessage', 'AUTHENTICATION', 'connection credentials are unavailable'); }
+    catch (error) { return unavailableCredentials(fence, 'sendMessage', error); }
     let recipients: string[];
     try {
       if (!SendMessageInputSchema.safeParse(input).success) throw new TypeError();
@@ -156,7 +156,7 @@ export class GmailSender {
     if (call.context.attempt < 1) return defect('replyToMessage', 'LOCAL_DEFECT', 'Dex Execute attempt number is invalid');
     const messageIdAddress = this.#messageID(call);
     if (!messageIdAddress) return defect('replyToMessage', 'LOCAL_DEFECT', MissingRunIDMessage);
-    const fence = newFence(call, ReplyToMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000);
+    const fence = newFence(call, ReplyToMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: definitionMaxSends(ReplyToMessageDefinition) });
     if (fence.decide().kind === 'failClosed') return defect('replyToMessage', 'LOCAL_DEFECT', 'Dex send checkpoint is unreadable');
     const budget = new GmailSendAttemptBudget(call.context.cancellationSignal, dexDeadline);
     if (!budget.sendSignal()) {
@@ -165,10 +165,10 @@ export class GmailSender {
     }
     let credentials: Credentials;
     try { credentials = await this.#http.resolveCredentials(call, budget.attemptSignal()); }
-    catch { return defect('replyToMessage', 'AUTHENTICATION', 'connection credentials are unavailable'); }
+    catch (error) { return unavailableCredentials(fence, 'replyToMessage', error); }
     if (!ReplyToMessageInputSchema.safeParse(input).success || !input.messageId.trim() || !input.textBody.trim()) return defect('replyToMessage', 'VALIDATION', 'message ID and text body are required');
     const priorProviderId = fence.decide().marker?.providerId;
-    if (fence.decide().kind === 'readBackRequired' && priorProviderId) {
+    if (isReadBackDecision(fence) && priorProviderId) {
       return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes,
         { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true, messageIdAddress },
         { id: priorProviderId, threadId: '' }, this.#receipt(call, '', priorProviderId));
@@ -178,8 +178,11 @@ export class GmailSender {
         const found = await this.#provider.findSentMessage(call, credentials, messageIdAddress, budget.preSendSignal());
         if (found) return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes, { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true, messageIdAddress }, found, this.#receipt(call));
       } catch {
-        await recordPreSendRetry(fence);
-        return newMutationRetry(failure('replyToMessage', 'AVAILABILITY', 'Gmail sent-mail search did not answer before the reply'));
+        // An inconclusive search still permits a resend below the send cap.
+        if (fence.decide().kind !== 'readBackThenResendAllowed') {
+          await recordPreSendRetry(fence);
+          return newMutationRetry(failure('replyToMessage', 'AVAILABILITY', 'Gmail sent-mail search did not answer before the reply'));
+        }
       }
       if (fence.decide().kind === 'readBackRequired') return newMutationRetry(failure('replyToMessage', 'AVAILABILITY', 'Gmail reply outcome is unknown; the sent-mail search found no message'));
     }
@@ -189,24 +192,24 @@ export class GmailSender {
       if (error instanceof GmailCredentialError) return defect('replyToMessage', 'AUTHENTICATION', 'connection credentials are unavailable');
       const status = error instanceof BodyTooLargeError ? error.status ?? 0 : 0;
       const headers = error instanceof BodyTooLargeError ? error.headers ?? {} : {};
-      const result = classifySourceFailure(status, headers, this.#receipt(call));
+      const result = classifySourceFailure(fence, status, headers, this.#receipt(call));
       if (result.kind === 'retry') await recordPreSendRetry(fence);
       return result;
     }
     credentials = source.credentials;
     if (!source.resource) {
-      const result = classifySourceFailure(source.response.status, source.response.headers, this.#receipt(call, gmailRequestID(source.response.headers), input.messageId));
+      const result = classifySourceFailure(fence, source.response.status, source.response.headers, this.#receipt(call, gmailRequestID(source.response.headers), input.messageId));
       if (result.kind === 'retry') await recordPreSendRetry(fence);
       return result;
     }
     let message: Message;
     try { message = decodeGmailMessage(source.resource); }
-    catch { return newMutationBranch(ReplyToMessageBranch.InvalidResponse, emptySend(), this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'source message lacks reply metadata')); }
-    if (!message.threadId || !message.rfcMessageId) return newMutationBranch(ReplyToMessageBranch.InvalidResponse, emptySend(), this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'source message lacks reply metadata'));
+    catch { return rejectUnlessEarlierSendIsUnconfirmed(fence, ReplyToMessageBranch.InvalidResponse, this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'source message lacks reply metadata')); }
+    if (!message.threadId || !message.rfcMessageId) return rejectUnlessEarlierSendIsUnconfirmed(fence, ReplyToMessageBranch.InvalidResponse, this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'source message lacks reply metadata'));
     let recipient: string;
     try { recipient = replyRecipient(message); }
-    catch { return newMutationBranch(ReplyToMessageBranch.InvalidResponse, emptySend(), this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'Gmail returned an invalid source sender')); }
-    if (/[\r\n]/.test(message.subject + message.rfcMessageId + (message.references ?? ''))) return newMutationBranch(ReplyToMessageBranch.InvalidResponse, emptySend(), this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'Gmail returned invalid source reply headers'));
+    catch { return rejectUnlessEarlierSendIsUnconfirmed(fence, ReplyToMessageBranch.InvalidResponse, this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'Gmail returned an invalid source sender')); }
+    if (/[\r\n]/.test(message.subject + message.rfcMessageId + (message.references ?? ''))) return rejectUnlessEarlierSendIsUnconfirmed(fence, ReplyToMessageBranch.InvalidResponse, this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'Gmail returned invalid source reply headers'));
     let raw: Uint8Array;
     try { raw = buildReplyMIMEMessage(call.id, call.idempotencyKey ?? call.id, messageIdAddress, credentials.primaryEmail, message, input); }
     catch { return defect('replyToMessage', 'VALIDATION', 'reply could not be encoded within the configured limit'); }
@@ -216,7 +219,7 @@ export class GmailSender {
 
   async #sendAndConfirm(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage): Promise<MutationAttempt<SendMessageOutput>> {
     const priorProviderId = fence.decide().marker?.providerId;
-    if (fence.decide().kind === 'readBackRequired' && priorProviderId) {
+    if (isReadBackDecision(fence) && priorProviderId) {
       return this.#sentMessage(call, budget, credentials, operation, message,
         { id: priorProviderId, threadId: message.requestedThreadId }, this.#receipt(call, '', priorProviderId));
     }
@@ -225,8 +228,11 @@ export class GmailSender {
         const found = await this.#provider.findSentMessage(call, credentials, message.messageIdAddress, budget.preSendSignal());
         if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, this.#receipt(call));
       } catch {
-        await recordPreSendRetry(fence);
-        return newMutationRetry(failure(operation.operationId, 'AVAILABILITY', `Gmail sent-mail search did not answer before the ${operation.requestName}`));
+        // An inconclusive search still permits a resend below the send cap.
+        if (fence.decide().kind !== 'readBackThenResendAllowed') {
+          await recordPreSendRetry(fence);
+          return newMutationRetry(failure(operation.operationId, 'AVAILABILITY', `Gmail sent-mail search did not answer before the ${operation.requestName}`));
+        }
       }
     }
     if (fence.decide().kind === 'readBackRequired') return newMutationRetry(failure(operation.operationId, 'AVAILABILITY', `Gmail ${operation.requestName} outcome is unknown; the sent-mail search found no message`));
@@ -267,7 +273,7 @@ export class GmailSender {
           if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, receipt);
         } catch { /* A conclusive current refusal still selects its branch. */ }
       }
-      return newMutationBranch(operation.providerRejectedBranch, emptySend(), receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
+      return rejectUnlessEarlierSendIsUnconfirmed(fence, operation.providerRejectedBranch, receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
     }
     if (!sentResponse) {
       const lookup = await this.#pollSentMessage(call, budget, credentials, message);
@@ -330,6 +336,11 @@ export class GmailSender {
 }
 
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'gmail', operation, message }; }
+// A saved provider ID proves Gmail accepted an earlier send, so neither read-back decision resends it.
+function isReadBackDecision(fence: Fence): boolean {
+  const kind = fence.decide().kind;
+  return kind === 'readBackRequired' || kind === 'readBackThenResendAllowed';
+}
 async function recordPreSendRetry(fence: Fence): Promise<void> {
   if (fence.decide().kind !== 'sendAllowed') return;
   try { await fence.recordNotSent(); }
@@ -351,8 +362,27 @@ function retryAfterRefusal(operation: string, kind: Failure['kind'], message: st
   catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'Gmail returned an invalid Retry-After header')); }
 }
 
-function classifySourceFailure(status: number, headers: Record<string, string | string[] | undefined>, receipt: ReceiptDraft): MutationAttempt<SendMessageOutput> {
+/**
+ * Classify a credential failure before any send in this attempt. After an earlier possible send, a transient
+ * failure returns Retry without notSent, so later attempts still read back; a permanent one selects defect.
+ */
+function unavailableCredentials(fence: Fence, operation: 'sendMessage' | 'replyToMessage', error: unknown): MutationAttempt<SendMessageOutput> {
+  const isPermanent = !(error instanceof GmailCredentialError) || error.isPermanent;
+  if (!isPermanent && (fence.decide().priorSendUpperBound ?? 0) > 0) return newMutationRetry(failure(operation, 'AUTHENTICATION', 'Gmail credentials are temporarily unavailable; an earlier send may still be delivered'));
+  return defect(operation, 'AUTHENTICATION', 'connection credentials are unavailable');
+}
+
+/**
+ * Select a definite rejection only when no earlier attempt may have sent. Otherwise that send may still
+ * be delivered, so Retry keeps the claim and later attempts read back until a match or the retry budget ends.
+ */
+function rejectUnlessEarlierSendIsUnconfirmed(fence: Fence, branch: string, receipt: ReceiptDraft, rejection: Failure): MutationAttempt<SendMessageOutput> {
+  if ((fence.decide().priorSendUpperBound ?? 0) > 0) return newMutationRetry({ ...rejection, message: `${rejection.message}; an earlier send may still be delivered` });
+  return newMutationBranch(branch, emptySend(), receipt, rejection);
+}
+
+function classifySourceFailure(fence: Fence, status: number, headers: Record<string, string | string[] | undefined>, receipt: ReceiptDraft): MutationAttempt<SendMessageOutput> {
   if (status === 0 || status === 429 || status >= 500) return retryAfterRefusal('replyToMessage', 'AVAILABILITY', 'Gmail source message is temporarily unavailable', headers);
-  if (status >= 200 && status < 300) return newMutationBranch(ReplyToMessageBranch.InvalidResponse, emptySend(), receipt, failure('replyToMessage', 'PROTOCOL', 'Gmail returned an invalid source message response'));
-  return newMutationBranch(ReplyToMessageBranch.ProviderRejected, emptySend(), receipt, failure('replyToMessage', statusFailureKind(status), 'Gmail rejected the source message lookup'));
+  if (status >= 200 && status < 300) return rejectUnlessEarlierSendIsUnconfirmed(fence, ReplyToMessageBranch.InvalidResponse, receipt, failure('replyToMessage', 'PROTOCOL', 'Gmail returned an invalid source message response'));
+  return rejectUnlessEarlierSendIsUnconfirmed(fence, ReplyToMessageBranch.ProviderRejected, receipt, failure('replyToMessage', statusFailureKind(status), 'Gmail rejected the source message lookup'));
 }

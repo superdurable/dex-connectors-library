@@ -26,8 +26,8 @@ describe('Gmail operation-specific Dex Step factories', () => {
     const reply = newReplyToMessageStep({ stepType: 'ReplyToGmailMessage', annotations, connectionName: ConnectionName, connection,
       mapToOperationInput: (input: { messageId: string; textBody: string }) => input, sent: stepRef('ReplyDone') });
     expect(read.getStepOptions().executeMethodTimeoutMs).toBe(30_000);
-    expect(send.getStepOptions().executeRetry?.maximumAttempts).toBe(5);
-    expect(reply.getStepOptions().executeRetry?.totalDurationMs).toBe(120_000);
+    expect(send.getStepOptions().executeRetry?.maximumAttempts).toBe(7);
+    expect(reply.getStepOptions().executeRetry?.totalDurationMs).toBe(300_000);
     for (const [decision, branch] of [
       [await read.execute(context, { messageId: 'one' }), 'read'],
       [await send.execute(context, { to: ['ada@example.com'], subject: 'Hello', textBody: 'Update' }), 'sent'],

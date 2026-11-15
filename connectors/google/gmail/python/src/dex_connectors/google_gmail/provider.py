@@ -67,6 +67,10 @@ class GmailResponseReadFailure(OSError):
         super().__init__("Gmail response body could not be read")
 
 
+class GmailCredentialMaterialError(ValueError):
+    """Resolved credential material is invalid, so only reconnection can repair it."""
+
+
 def _base64url_decode(value: str) -> str:
     return base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True).decode(
         "utf-8", errors="replace"
@@ -379,7 +383,10 @@ class GmailProvider:
     async def resolve_credentials(self, call: Call) -> Credentials:
         """Resolve current secret material and verify the authorized mailbox."""
         credential = await resolve_credential(self.credentials, call, self.refresh_driver)
-        self._validate_credentials(credential)
+        try:
+            self._validate_credentials(credential)
+        except ValueError as error:
+            raise GmailCredentialMaterialError(str(error)) from None
         return credential
 
     def _validate_credentials(self, credential: Credentials) -> None:

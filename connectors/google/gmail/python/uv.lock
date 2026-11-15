@@ -298,7 +298,7 @@ wheels = [
 
 [[package]]
 name = "dex-connector-google-gmail"
-version = "0.2.1"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "dex-connectors-sdk" },
@@ -318,7 +318,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dex-connectors-sdk", specifier = ">=0.6.0,<1" },
+    { name = "dex-connectors-sdk", specifier = ">=0.10.0,<1" },
     { name = "dex-python-sdk", specifier = ">=1.28.0" },
     { name = "httpx", specifier = ">=0.27" },
 ]
@@ -335,7 +335,7 @@ dev = [
 
 [[package]]
 name = "dex-connectors-sdk"
-version = "0.6.0"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -345,9 +345,9 @@ dependencies = [
     { name = "httpcore" },
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/32/92/b608a9790545ad6b31131f575e58f88b0bf9083234669a3f0b01e901fd87/dex_connectors_sdk-0.6.0.tar.gz", hash = "sha256:4f508978960ed6d78bb929fe99e9aa71b3b091ccd9e36d574528a8088489bbdd", size = 217947, upload-time = "2026-11-05T13:09:11.884Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/a9/7e7c24b31e92dd7b8947f65a618e2510ce21a7b2fa7381233f3e2ccc7ec4/dex_connectors_sdk-0.10.0.tar.gz", hash = "sha256:e01004e24daebeecb8ce0ee89e871c70488b2d87ea6922b30b92e3eed08975e5", size = 240284, upload-time = "2026-11-15T05:41:18.522Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/0b/dad3c80adb6bf1837656f55f140ecca7700527f1bc4c9dc8baa1658d39de/dex_connectors_sdk-0.6.0-py3-none-any.whl", hash = "sha256:aad90bf81352957351d0eb9f6647860a6f7ef5dfb1803b4f18f40abe245af053", size = 118389, upload-time = "2026-11-05T13:09:10.165Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/85/b785ef7dadfbe15747035104a56a04a4b39e0c1c9d6c1ffc4d62f4ae9a27/dex_connectors_sdk-0.10.0-py3-none-any.whl", hash = "sha256:96238022ddbcb01d2208b9f82d4aceacc82a0846bbe010c82eeaacf77a58b617", size = 125376, upload-time = "2026-11-15T05:41:17.338Z" },
 ]
 
 [[package]]
