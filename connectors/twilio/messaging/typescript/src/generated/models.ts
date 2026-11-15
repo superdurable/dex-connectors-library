@@ -50,6 +50,8 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete Twilio API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized getMessage response selects invalidResponse, and an oversized response to an accepted send selects uncertain. */
   maxResponseBytes?: number;
+  /** Delay between messageReceived Trigger polls of the Twilio Messages list, as a Go duration of at least 5s such as 15s or 2m. Shorter intervals deliver inbound messages sooner and send more list requests, which count against the account's API concurrency limit. Leave blank to keep the displayed interval. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -58,6 +60,7 @@ export const ConfigSchema = z.object({
   "defaultSender": z.string().optional(),
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */
@@ -133,7 +136,7 @@ export interface Message {
   /** To is the recipient in E.164 form, or a whatsapp: address. */
   "to": string;
   /** Status is Twilio's delivery status. */
-  "status"?: "accepted" | "canceled" | "delivered" | "failed" | "queued" | "read" | "scheduled" | "sending" | "sent" | "undelivered" | (string & {}) | undefined;
+  "status"?: "accepted" | "canceled" | "delivered" | "failed" | "queued" | "read" | "received" | "receiving" | "scheduled" | "sending" | "sent" | "undelivered" | (string & {}) | undefined;
   /** Direction is Twilio's direction value, such as outbound-api. */
   "direction"?: string | undefined;
   /** ErrorCode is Twilio's numeric error code, documented at https://www.twilio.com/docs/api/errors; zero means none. */

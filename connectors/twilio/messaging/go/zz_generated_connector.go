@@ -18,11 +18,17 @@ import (
 
 const ConnectorID = "twilio-messaging"
 
+const (
+	UIUnitReceivingAddressInput   = "receivingAddressInput"
+	UIReceivingAddressInputPortTo = "to"
+)
+
 type Config struct {
-	AccountSID       string `json:"accountSid,omitempty" yaml:"accountSid,omitempty"`
-	DefaultSender    string `json:"defaultSender,omitempty" yaml:"defaultSender,omitempty"`
-	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	AccountSID       string        `json:"accountSid,omitempty" yaml:"accountSid,omitempty"`
+	DefaultSender    string        `json:"defaultSender,omitempty" yaml:"defaultSender,omitempty"`
+	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 }
 
 type Credentials struct {
@@ -163,6 +169,7 @@ func DefaultConfig() Config {
 	return Config{
 		Endpoint:         "https://api.twilio.com/2010-04-01",
 		MaxResponseBytes: 1048576,
+		PollInterval:     time.Duration(30000000000),
 	}
 }
 
@@ -173,6 +180,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
 	}
 	return config
 }
@@ -189,6 +199,9 @@ func (config Config) Validate() error {
 	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
 	}
 	return nil
 }
@@ -212,6 +225,52 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+var MessageReceivedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "messageReceived"},
+	Description: "Receive each inbound SMS, MMS, or WhatsApp message to the account, or to one Twilio number, read by polling the Twilio Messages list; the first run records a baseline and delivers no existing messages.",
+}
+
+type MessageReceivedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=twilio-messaging"`
+	triggerName                             struct{}                       `connector:"triggerName=messageReceived"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineMessageReceivedTriggerBinding(config MessageReceivedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: MessageReceivedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type MessageReceivedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                  `connector:"connectorId=twilio-messaging"`
+	triggerName                      struct{}                                  `connector:"triggerName=messageReceived"`
+	Connection                       Connection                                `connector:"connection"`
+	ConnectionName                   string                                    `connector:"connectionName"`
+	BindingName                      string                                    `connector:"bindingName"`
+	Configuration                    MessageReceivedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[MessageReceivedEvent] `connector:"triggerTarget"`
+}
+
+func NewMessageReceivedTrigger(config MessageReceivedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("twilio-messaging connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: MessageReceivedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MessageReceivedEvent]{
+		Definition: MessageReceivedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.messageReceivedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
 const SendMessageBranchAccepted sdkgo.BranchID = "accepted"
 const SendMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const SendMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
@@ -230,6 +289,8 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendMessageResult = sdkgo.MutationResult[Message]
@@ -240,6 +301,7 @@ type SendMessageStepConfig[IN any] struct {
 	operationID                       struct{}                                      `connector:"operationId=sendMessage"`
 	StepType                          string                                        `connector:"stepType"`
 	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                `connector:"configurationUI"`
 	Connection                        Connection                                    `connector:"connection"`
 	ConnectionName                    string                                        `connector:"connectionName"`
 	MapToOperationInput               func(IN) SendMessageInput                     `connector:"mapToOperationInput"`
@@ -249,6 +311,8 @@ type SendMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendMessageResult]               `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Message]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, Message] {
@@ -260,7 +324,8 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 	}
 	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, Message]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.SendMessage(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.SendMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendMessageResult] {
 			branches := make([]sdkgo.BranchTarget[SendMessageResult], 0, 4)
@@ -280,6 +345,7 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -313,6 +379,7 @@ type GetMessageStepConfig[IN any] struct {
 	operationID                    struct{}                                   `connector:"operationId=getMessage"`
 	StepType                       string                                     `connector:"stepType"`
 	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI             `connector:"configurationUI"`
 	Connection                     Connection                                 `connector:"connection"`
 	ConnectionName                 string                                     `connector:"connectionName"`
 	MapToOperationInput            func(IN) GetMessageInput                   `connector:"mapToOperationInput"`
@@ -334,7 +401,8 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 	}
 	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
 		StepType: config.StepType, Annotations: config.Annotations,
-		Operation: config.Connection.operations.GetMessage(), Connection: config.Connection.reference,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[GetMessageResult] {
 			branches := make([]sdkgo.BranchTarget[GetMessageResult], 0, 5)

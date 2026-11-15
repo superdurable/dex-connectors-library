@@ -14,6 +14,7 @@ class Config:
     default_sender: str = ''
     endpoint: str = "https://api.twilio.com/2010-04-01"
     max_response_bytes: int = 1048576
+    poll_interval_seconds: float = 30
 
 setattr(Config, '__module__', 'dex_connectors.twilio_messaging.client')
 

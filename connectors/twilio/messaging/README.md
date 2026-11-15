@@ -7,10 +7,10 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/twilio/mes
 > is not verified.
 
 This module sends SMS, MMS, and WhatsApp messages through Twilio Programmable
-Messaging and reads their delivery status:
+Messaging, reads their delivery status, and receives inbound messages:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go@v0.23.0
+go get github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go@v0.24.0
 ```
 
 | Operation | Kind | Happy branch | Other branches |
@@ -18,11 +18,19 @@ go get github.com/superdurable/dex-connectors-library/connectors/twilio/messagin
 | `sendMessage` | Mutation | `accepted` | `providerRejected`, `uncertain`, `defect` |
 | `getMessage` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
+It also exposes one Trigger:
+
+- `messageReceived` delivers each inbound SMS, MMS, or WhatsApp message to the
+  account, or to one Twilio number, read by polling the Messages list. See
+  [messageReceived Trigger](#messagereceived-trigger).
+
 Only a safe message view crosses the connector boundary: the message SID,
 account and Messaging Service SIDs, sender, recipient, Twilio's own status
 value, error code, segment and media counts, price, and timestamps. Results,
 receipts, failures, and logs never contain the message body, media URLs,
-Twilio's error message text, the Auth Token, or the API key secret.
+Twilio's error message text, the Auth Token, or the API key secret. The
+`messageReceived` Trigger event is the one exception for the body: it carries
+the inbound text, because acting on an inbound message needs it.
 
 ## Twilio setup
 
@@ -53,15 +61,19 @@ Credentials, including the API key SID, are reread before every provider call,
 so replacing a key in Dex Web takes effect without a restart. The Account SID,
 default sender, and endpoint are startup configuration.
 
-### No sender picker yet
+### No sender or number picker yet
 
-The manifest declares no Studio bundle, so the default sender is a guided text
-field rather than a picker built from the account's IncomingPhoneNumbers and
-Messaging Services. Twilio's REST API accepts only HTTP Basic authentication,
+The default sender is a guided text field, and the `receivingAddressInput`
+Studio unit of the `messageReceived` Trigger is a guided, validated text input,
+rather than pickers built from the account's IncomingPhoneNumbers and
+Messaging Services. The `ui/` Studio bundle declares no setup commands: Twilio's
+REST API accepts only HTTP Basic authentication,
 while Studio setup commands support only a `bearer` credential or a raw secret
 in a named header, and `Authorization` is a reserved header. A picker therefore
 cannot authenticate until the manifest schema and Dex Web gain a Basic
-credential scheme that pairs a non-secret username with a secret field.
+credential scheme that pairs a non-secret username with a secret field. The
+bundle never receives credentials; `connectorctl ui-artifact` packages its
+build as the release's Studio artifact.
 
 Dex Web `cli-v1.1.0` also omits auth-method `configuration.fields` from the
 setup form, so the API key SID is a non-secret credential field of the
@@ -230,11 +242,77 @@ dex.DefineStep(messaging.NewSendMessageStep(messaging.SendMessageStepConfig[Inpu
 })),
 ```
 
-## Not in this release
+## messageReceived Trigger
 
-Inbound SMS and delivery status callbacks need a Trigger, which waits for the
-shared webhook source design. Until then, read delivery status with
-`getMessage`.
+`messageReceived` polls the account's
+[Messages list](https://www.twilio.com/docs/messaging/api/message-resource#read-multiple-message-resources)
+and delivers one `messaging.MessageReceivedEvent` per inbound message, with
+the safe message view and the text. It is built on the Connector SDK's durable
+poll Trigger kit ([`sdkgo/pollingtrigger`](../../../sdkgo/README.md#polling-triggers),
+sdkgo v0.38.0). Twilio offers no change feed or cursor token, so the binding's
+cursor is a `date_sent` watermark plus a snapshot of the message SIDs it
+delivered within the last two minutes.
+
+- **Binding.** The `receivingAddressInput` unit saves `to`: a Twilio number in
+  E.164 form or a `whatsapp:+E.164` sender, sent as the list's `To` filter.
+  Blank receives every inbound message of the account. Outbound messages are
+  listed but never delivered.
+- **Baseline.** The first poll lists the last two minutes and records those
+  inbound messages as delivered. Existing messages are never delivered.
+- **Polls.** Each poll lists `DateSent>=` the watermark minus two minutes, so a
+  message Twilio dates slightly late is still found, and skips SIDs already in
+  the snapshot. It delivers at most 500 messages per page, oldest first, then
+  moves the watermark to the newest listed `date_sent`.
+- **Held messages.** An inbound message still in `receiving`, such as an MMS
+  whose media Twilio is fetching, is delivered once it is `received`. It holds
+  the watermark back for at most ten minutes, then is delivered as it is. A
+  listed message without `date_sent` holds the watermark at its current value.
+- **Pagination.** Each request asks for 200 messages and follows
+  `next_page_uri` on the same host and path, for at most 10 pages. Twilio
+  lists newest `date_sent` first, so the listing ends at the first page that
+  reaches a message older than the lookback, even if Twilio applies
+  `DateSent>=` to the whole date. A larger window is halved by `DateSent<=`
+  toward the watermark until it lists completely; more than 2,000 messages
+  within two minutes of the watermark fails the poll. While a held message
+  keeps the watermark back, the rest of a halved window waits for the next
+  poll instead of being relisted at once. Page tokens are never stored, so a
+  rejected page restarts the listing on the next poll.
+- **Reset.** A cursor that cannot be decoded, or that belongs to another
+  account or receiving number, records a new baseline and logs a WARN
+  `poll cursor invalid; reseeding` record. Messages in the gap are not
+  delivered.
+- **Rate limits.** A 429 (Twilio error
+  [20429](https://www.twilio.com/docs/api/errors/20429), an account
+  concurrency limit) pauses every binding of the connection for `Retry-After`,
+  or backs off exponentially without it. A 401 or 403 asks to update the
+  connection or grant the API key Messages read access. Other failures back off
+  per binding up to 15 minutes. None of them moves the cursor.
+- **Delivery.** Delivery is at least once. The Trigger event ID is
+  `twilio-message-<SID>`, so a refetch yields the same ID and a Flow target
+  keyed by it starts one Flow per message.
+- **Poll interval.** The connection's `pollInterval` setting is the delay
+  between polls, at least 5 seconds.
+
+`messaging.NewProjectMessageTriggerRunner` opens the connection, loads each
+saved binding, and records every message in the binding's project Trigger inbox
+before the watermark commits in its project poll cursor, as
+[`examples/message-received/main.go`](go/examples/message-received/main.go)
+does:
+
+```go
+triggerRunner, err := messaging.NewProjectMessageTriggerRunner(project, messagereceived.ConnectionName, messaging.ProjectMessageTriggerRunnerConfig{
+	MessageReceivedRoutes: []messaging.ProjectMessageReceivedTriggerRoute{{
+		BindingName: messagereceived.MessageReceivedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, messagereceived.AcceptEveryInboundMessage, messagereceived.ResolveFlowID,
+			messagereceived.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, messaging.WithLogger(logger))
+```
+
+`messaging.NewMessageTriggerRunner` takes targets and cursor stores directly.
+The generated `messaging.NewMessageReceivedTrigger` keeps the cursor in memory,
+so every start records a new baseline. Delivery status callbacks remain
+unimplemented; read delivery status with `getMessage`.
 
 ## Verification
 
@@ -262,14 +340,26 @@ The deterministic provider fakes cover acceptance, conclusive 4xx rejections
 authentication), 429 with `Retry-After`, 503 retry, 500 uncertainty, a timeout after dispatch, a
 refused connection, redirects, oversized and malformed responses, and secret
 reflection. The example's real Dex integration tests are listed in its
-[README](go/examples/text-message-delivery/README.md).
+[README](go/examples/text-message-delivery/README.md). The `messageReceived`
+fetcher tests cover the baseline, oldest-first delivery without repeats,
+outbound and other-number filtering, a held `receiving` MMS, multi-page
+listings over 500 messages, date-only `DateSent` filtering, a busy window
+halved toward the watermark while a message is held, 429 with `Retry-After`, cursor resets, and a
+rejected credential; the
+[message-received example](go/examples/message-received/README.md) runs the
+Trigger on real Dex.
 
 No live Twilio credentials were used. The following live behavior is
 unverified: a real Twilio 201 response and message resource shape, delivery
 status progression and error codes from carriers and WhatsApp, 429 and 503
 behavior under load, regional endpoints, Restricted API key permissions,
 test-credential rejection of `getMessage`, and the Console paths in the setup
-guidance.
+guidance. For `messageReceived`, the live Messages list response shape and
+`next_page_uri`, whether `DateSent>=` and `DateSent<=` honor the time of day
+rather than only the date (the fake covers both; bounds are also applied
+locally, and a date-only `DateSent<=` makes halving a busy window ineffective), the `receiving` status of inbound
+MMS, `date_sent` timing for inbound messages, and live 429 `Retry-After`
+behavior are unverified.
 
 ## Python
 
