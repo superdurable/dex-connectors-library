@@ -428,7 +428,7 @@ Center paths in the setup guidance.
 
 ## Python package
 
-The independent `dex-connector-zendesk-support` Python `v0.1.0` package implements all four ticket operations. Its [README](python/README.md) and [read-ticket example](python/examples/read_ticket/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity; the Python example runs against a real local Dex Worker and a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
+The independent `dex-connector-zendesk-support` Python `v0.2.0` package implements all four ticket operations and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on the Python Connector SDK's poll Trigger kit (`dex-connectors-sdk` 0.12.0). Its cursor documents match Go's byte for byte, so Go and Python replicas can share one binding, and each ticket version keeps Go's event ID. Its [README](python/README.md), [read-ticket example](python/examples/read_ticket/README.md), and [ticket change example](python/examples/ticket_changed/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run against a real local Dex Worker with a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
 
 ## TypeScript package
 
