@@ -30,9 +30,11 @@ const (
 )
 
 type Config struct {
-	Endpoint         string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	MaxResponseBytes int64  `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
-	MaxRows          int64  `json:"maxRows,omitempty" yaml:"maxRows,omitempty"`
+	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	MaxRows          int64         `json:"maxRows,omitempty" yaml:"maxRows,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
+	PollPageSize     int64         `json:"pollPageSize,omitempty" yaml:"pollPageSize,omitempty"`
 }
 
 type Credentials struct {
@@ -211,6 +213,8 @@ func DefaultConfig() Config {
 		Endpoint:         "https://sheets.googleapis.com/v4",
 		MaxResponseBytes: 4194304,
 		MaxRows:          10000,
+		PollInterval:     time.Duration(30000000000),
+		PollPageSize:     100,
 	}
 }
 
@@ -224,6 +228,12 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxRows == 0 {
 		config.MaxRows = defaults.MaxRows
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
+	}
+	if config.PollPageSize == 0 {
+		config.PollPageSize = defaults.PollPageSize
 	}
 	return config
 }
@@ -240,6 +250,12 @@ func (config Config) Validate() error {
 	}
 	if config.MaxRows < 0 {
 		return fmt.Errorf("configuration maxRows cannot be negative")
+	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
+	}
+	if config.PollPageSize < 0 {
+		return fmt.Errorf("configuration pollPageSize cannot be negative")
 	}
 	return nil
 }
@@ -269,6 +285,52 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+var RowAddedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "rowAdded"},
+	Description: "Receive each row appended below the last processed row of one picked spreadsheet tab.",
+}
+
+type RowAddedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{}                       `connector:"connectorId=google-sheets"`
+	triggerName                             struct{}                       `connector:"triggerName=rowAdded"`
+	ConnectionName                          string                         `connector:"connectionName"`
+	BindingName                             string                         `connector:"bindingName"`
+	ConfigurationUI                         sdkgo.ConnectorConfigurationUI `connector:"configurationUI"`
+}
+
+func DefineRowAddedTriggerBinding(config RowAddedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: RowAddedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+		ConfigurationUI: &config.ConfigurationUI,
+	})
+}
+
+type RowAddedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                           `connector:"connectorId=google-sheets"`
+	triggerName                      struct{}                           `connector:"triggerName=rowAdded"`
+	Connection                       Connection                         `connector:"connection"`
+	ConnectionName                   string                             `connector:"connectionName"`
+	BindingName                      string                             `connector:"bindingName"`
+	Configuration                    RowAddedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[RowAddedEvent] `connector:"triggerTarget"`
+}
+
+func NewRowAddedTrigger(config RowAddedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: RowAddedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[RowAddedEvent]{
+		Definition: RowAddedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.rowAddedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const GetValuesBranchRead sdkgo.BranchID = "read"
@@ -457,6 +519,8 @@ var UpsertRowDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UpsertRowResult = sdkgo.MutationResult[UpsertRowOutput]
@@ -479,6 +543,8 @@ type UpsertRowStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpsertRowResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertRowOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) sdkgo.MutationStep[IN, UpsertRowInput, UpsertRowOutput] {
@@ -517,5 +583,6 @@ func NewUpsertRowStep[IN any](config UpsertRowStepConfig[IN]) sdkgo.MutationStep
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

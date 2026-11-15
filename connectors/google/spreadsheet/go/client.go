@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -30,11 +31,20 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	now        func() time.Time
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client; the caller retains ownership.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithLogger sends the rowAdded Trigger runners' records to logger: seeded and committed cursors, failed
+// polls, realigned row positions, and delivery outcomes. Without the option, or with a nil logger, records
+// go to slog.Default() as of each record. Records carry the connector, connection, Trigger, binding, and
+// row numbers, never cell values, sheet titles, or credentials.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
 }
 
 func withClock(now func() time.Time) Option {
@@ -49,6 +59,9 @@ type Client struct {
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
 	maxResponseBytes int64
 	maxRows          int
+	pollInterval     time.Duration
+	pollPageSize     int
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -189,10 +202,17 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.MaxResponseBytes < 1 || config.MaxRows < 2 {
 		return nil, fmt.Errorf("Google Sheets response and row limits must be positive")
 	}
+	if config.PollInterval < time.Second {
+		return nil, fmt.Errorf("Google Sheets pollInterval must be at least one second")
+	}
+	if config.PollPageSize < 1 || config.PollPageSize > maxRowAddedPollPageSize {
+		return nil, fmt.Errorf("Google Sheets pollPageSize must be from 1 to %d", maxRowAddedPollPageSize)
+	}
 	return &Client{
 		endpoint: endpoint, httpClient: dependencies.httpClient, credentials: credentials,
 		refreshDriver:    NewCredentialRefreshDriver(dependencies.httpClient),
-		maxResponseBytes: config.MaxResponseBytes, maxRows: int(config.MaxRows), now: dependencies.now,
+		maxResponseBytes: config.MaxResponseBytes, maxRows: int(config.MaxRows),
+		pollInterval: config.PollInterval, pollPageSize: int(config.PollPageSize), logger: dependencies.logger, now: dependencies.now,
 	}, nil
 }
 

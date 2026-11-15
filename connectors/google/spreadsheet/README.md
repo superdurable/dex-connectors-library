@@ -1,6 +1,6 @@
 # Google Sheets Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go@v0.26.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet`.
 
@@ -56,6 +56,77 @@ retries without sending again. A conclusive Google API refusal uses
 `invalidResponse`. Safe query transport, rate-limit, and availability failures
 retry instead of producing a branch.
 
+## rowAdded Trigger
+
+`rowAdded` delivers each row appended below the last processed row of one
+picked spreadsheet tab. The Sheets API has no change notifications for cell
+values ([API concepts](https://developers.google.com/workspace/sheets/api/guides/concepts)),
+so the Trigger polls with the shared `sdkgo/pollingtrigger` kit. Each binding
+stores `spreadsheetId` and `sheetName` from the `spreadsheetPicker` and
+`sheetTabPicker` units; row 1 of the tab is the header row. Applications run
+every binding of a connection through one durable project runner, as
+[`examples/new-row-intake/main.go`](go/examples/new-row-intake/main.go) does:
+
+```go
+triggerRunner, err := spreadsheet.NewProjectRowAddedTriggerRunner(project, newrowintake.ConnectionName, []spreadsheet.ProjectRowAddedTriggerRoute{{
+	BindingName: newrowintake.NewRowTriggerBinding, Target: newAddedRowTarget(client, flow, logger),
+}}, spreadsheet.WithLogger(logger))
+```
+
+- **Seeding.** The first poll stores the tab's current last row without
+  delivering existing rows. It reads the tab from row 1 in `maxRows` windows.
+- **Polling.** Each later poll makes one
+  [`values:batchGet`](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/batchGet)
+  request for the header row and up to `pollPageSize` rows after the cursor,
+  using whole-row A1 ranges such as `'Leads'!12:112`. Sheets omits trailing
+  empty rows and columns from each
+  [`ValueRange`](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values),
+  so a short page means the tab ends there. Empty rows are skipped. A full page
+  is followed at once by the next one.
+- **Event.** `RowAddedEvent` carries the spreadsheet ID, tab title, row number,
+  header-keyed `values`, and ordered `cells`, all formatted values. Its ID is
+  `row-<row number>-<hash>`, a pure function of the tab, row number, and cells,
+  so a refetch after a crash repeats the same ID.
+- **Cursor.** The durable cursor holds the last processed row number and a
+  SHA-256 of its cells, stored beside the binding's Trigger inbox. It commits
+  only after the inbox recorded every delivered row. When the cursor row moved
+  because rows above it were deleted or inserted, the runner finds the row with
+  the same cells nearest the old number and continues after it. When no row
+  matches, it treats the row as edited in place and keeps its number. When the
+  tab now ends above it, it reseeds, so rows added in that gap are lost and the
+  runner logs the reset. Rows inserted above the cursor are not reported as
+  added. A realignment rereads the tab from row 1, so it costs one request per
+  `maxRows` rows; a scan window whose response exceeds `maxResponseBytes` is
+  halved, down to 100 rows, and read again.
+- **Limits.** The cursor tells rows apart only by position and cells, so
+  some changes are ambiguous. Deleting the last processed row while a new row
+  arrives in the same poll interval looks like an edit of that row, so the new
+  row is not delivered. Sorting or moving rows so that the last processed row
+  lands higher delivers the rows below its new position again, with new event
+  IDs. A run of at least `pollPageSize` blank rows directly below the last
+  processed row hides rows typed after it until the gap is filled or
+  `pollPageSize` grows. The tab title is used exactly as picked, so renaming
+  the tab makes every poll fail with HTTP 400 until the binding is picked
+  again.
+- **Quota.** Google allows 60 read requests per minute per user per project and
+  answers 429 when a quota is exceeded
+  ([usage limits](https://developers.google.com/workspace/sheets/api/limits)).
+  A 429 pauses every binding of the connection for at least its `Retry-After`,
+  and other failures back off exponentially up to five minutes. Set
+  `pollInterval` so that the bindings of one Google account stay under the
+  quota.
+- **Scope.** `values:batchGet` accepts the existing `drive.file` scope, so the
+  Trigger needs no new consent.
+
+The generated `NewRowAddedTrigger` factory keeps its cursor in memory: a
+restart seeds again, and rows added while the process was stopped are not
+delivered. Use it only in tests or applications without project storage.
+
+The Trigger is verified against a fake Sheets server through a real Dex
+Worker; polling a live Google spreadsheet, including its `values:batchGet`
+responses for whole-row ranges, has not been verified. Only the Go module
+implements `rowAdded`; the Python and TypeScript packages do not.
+
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.
 
@@ -92,10 +163,13 @@ This snippet comes from
 [`workflow_mock_integration_test.go`](go/examples/upsert-contact/flow/workflow_mock_integration_test.go).
 Named cases cover missing ranges or rows, duplicate keys, and provider refusals.
 
-## Example
+## Examples
 
 [`examples/upsert-contact`](go/examples/upsert-contact) is a runnable Dex Web
 **Start Flow** example that upserts one contact row by email address.
+[`examples/new-row-intake`](go/examples/new-row-intake) starts one Flow per row
+appended to a picked tab through the `rowAdded` Trigger and reads the row back
+with a `getValues` Step.
 
 ## Verification
 
@@ -103,6 +177,7 @@ Named cases cover missing ranges or rows, duplicate keys, and provider refusals.
 GOWORK=off go test -race -count=1 ./...
 GOWORK=off go vet ./...
 GOWORK=off go vet -tags=integration ./...
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -p 1 -tags=integration ./... -count=1
 npm ci --prefix ui
 npm test --prefix ui
 npm run build --prefix ui

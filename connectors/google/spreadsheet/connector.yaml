@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-sheets
   displayName: Google Sheets
-  description: Read ranges, find stable keyed rows, and idempotently upsert rows in Google Sheets.
+  description: Read ranges, find stable keyed rows, idempotently upsert rows, and start Flows when rows are added in Google Sheets.
   company: Google
   categories: [productivity]
-  version: v0.25.0
+  version: v0.26.0
 spec:
   provider: google
   languages:
@@ -43,6 +43,18 @@ spec:
         description: Positive maximum row count inspected by FindRow and UpsertRow; increase only when the target sheet can exceed the displayed safety limit.
         required: false
         default: 10000
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: Delay between rowAdded Trigger polls of each picked tab, as a Go duration of at least 1s such as 15s or 2m; each poll normally makes one Sheets read request, and Google allows 60 read requests per minute per user per project across every binding of the account.
+        required: false
+        default: 30s
+      - name: pollPageSize
+        goName: PollPageSize
+        type: integer
+        description: Rows after the last processed row that one rowAdded poll request reads, from 1 to 500; a poll that finds only blank rows in this window waits there, so increase it when people leave runs of blank rows below the data, not for busy tabs, since further rows are read by an immediate follow-up request.
+        required: false
+        default: 100
   auth:
     refreshable: true
     type: oauth2
@@ -142,6 +154,12 @@ spec:
         description: Enter the exact A1 range, lookup key, or cell value requested by the operation label; spreadsheet and tab IDs are selected by their dedicated units.
         outputs:
           - {name: text, goName: Text, type: string}
+  triggers:
+    - name: rowAdded
+      goName: RowAdded
+      eventType: RowAddedEvent
+      configurationType: RowAddedTriggerConfiguration
+      description: Receive each row appended below the last processed row of one picked spreadsheet tab.
   operations:
     - name: getValues
       goName: GetValues
