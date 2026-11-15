@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-zendesk-support",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -419,6 +419,16 @@
           "ticketId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineTicketChangedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "ticketChanged",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]
