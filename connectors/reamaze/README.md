@@ -1,6 +1,6 @@
 # Re:amaze Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/reamaze/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/reamaze/go@v0.24.0`.
 
 The Python package is `dex-connector-reamaze==0.1.0` (`dex_connectors.reamaze`).
 It implements all six operations and no Triggers. Its
@@ -41,12 +41,14 @@ minute before the retry. `createConversation` and
 `replyToConversation` use sync durability because Re:amaze has no idempotency
 key; see [Duplicate safety](#duplicate-safety).
 
-This release has no Triggers and no Studio pickers; see
-[Not in this release](#not-in-this-release).
+The `conversationCreated` Trigger starts a Flow for each conversation created
+in the brand, or in one channel, by polling `GET /conversations` with a durable
+cursor; see [conversationCreated Trigger](#conversationcreated-trigger). The
+release has no Studio pickers; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-The independent `@superdurable/connector-reamaze` package starts at `v0.1.0` and implements all six operations. Its [TypeScript README](typescript/README.md) documents installation, connection setup, the [runnable search Flow](typescript/examples/search-conversations/), and Go-recorded conformance coverage. The Go connector remains at `v0.23.0`.
+The independent `@superdurable/connector-reamaze` package starts at `v0.1.0` and implements all six operations. Its [TypeScript README](typescript/README.md) documents installation, connection setup, the [runnable search Flow](typescript/examples/search-conversations/), and Go-recorded conformance coverage. The Go connector is at `v0.24.0`. The Python and TypeScript packages do not implement the `conversationCreated` Trigger.
 
 ## Re:amaze setup
 
@@ -69,8 +71,8 @@ The connector authenticates every request with HTTP Basic,
 [API introduction](https://www.reamaze.com/api) documents. Replies, notes, and
 changes are attributed to that user, and the user's role limits what the
 connector can read and change. Credentials are reread before every provider
-call, so replacing them in Dex Web takes effect without a restart. The brand
-and response limit are startup configuration.
+call, so replacing them in Dex Web takes effect without a restart. The brand,
+response limit, and poll interval are startup configuration.
 
 ## Project configuration
 
@@ -287,28 +289,101 @@ The Receipt carries the Call ID and idempotency key. It includes a conversation
 slug when the connector knows one, including a saved slug on a read-back
 credential failure, and an `X-Request-Id` header when Re:amaze sends one.
 
+## conversationCreated Trigger
+
+`conversationCreated` delivers one `ConversationCreatedEvent` per conversation
+created in the connection's brand, or in the channel a binding saves. Re:amaze
+documents no event webhook subscription: the only signed outbound requests it
+documents belong to custom SMS and voice channel transport, with no event ID or
+type. The Trigger therefore polls
+[`GET /conversations`](https://www.reamaze.com/api/get_conversations) on the
+`sdkgo/pollingtrigger` kit with the connection's existing credential; it needs
+no new permission beyond a staff role that can see the channel.
+
+- **What is listed.** Every poll sends `filter=all`, so archived and spam
+  conversations arrive too, and `category=<channel>` when the binding saves a
+  channel. The event carries the brand, the channel, and the list entry with
+  its first message cut at `MaxTextBytes`. An application filters on
+  `Conversation.Status`, as the example's `AcceptCustomerConversation` skips
+  spam (statuses 3 and 9).
+- **Cursor.** Re:amaze lists conversations by creation time and returns no
+  change token or `updated_at`. The cursor holds the newest creation time seen,
+  a floor, and the slug digests of the conversations seen at or above the
+  floor. A poll delivers each listed conversation at or above the floor that
+  it has not seen, oldest first, so conversations that share a creation time
+  arrive once each. The floor trails the newest creation time by
+  `ConversationCreatedLateIndexWindow` (10 minutes), so a conversation that
+  Re:amaze lists late still arrives when it was created within that window.
+  The seen set keeps at most 800 entries; trimming it raises the floor just
+  past the newest dropped entry, so a dropped conversation that shares a
+  creation time with a kept one is never delivered again.
+- **Order and pagination.** Re:amaze documents the default order as creation
+  time without a direction. The poll reads page 1, and when that page ascends
+  it walks back from the last page; otherwise it walks forward. It stops at the
+  first page that holds a conversation older than the floor, so ties at the
+  floor that straddle a page edge are read, at the end of the list, or after
+  `MaxConversationCreatedPagesPerPoll` (16) pages of 30. A larger burst
+  delivers the newest 480, raises the floor past them, and logs `poll backlog
+  exceeds page bound; older new conversations skipped` at WARN; the older part
+  of that burst is not delivered.
+- **Baseline and reset.** The first poll reads the newest page and delivers
+  nothing; its floor sits just past the oldest conversation on that page, so an
+  existing conversation on the next page is never delivered, even one that
+  shares that creation time. Re:amaze has no expiring cursor, so the kit's reset applies to a
+  stored cursor for another brand or channel, or one that does not decode: the
+  next poll records a new baseline, increments `resetCount`, and logs at WARN.
+  Conversations created in between are not delivered.
+- **Rate limits.** Re:amaze limits requests per minute per API token, without
+  publishing the number, and answers 429. A 429 pauses every binding of the
+  connection for `Retry-After`, or for one minute without it. The limit is
+  shared with operation Steps on the same token, so `pollInterval` (at least
+  10 seconds) trades delivery delay against that budget; one poll normally
+  sends one request.
+- **Delivery.** The event ID is `reamaze-conversation-` plus a hash of the
+  brand and slug, stable across refetches. `NewProjectConversationTriggerRunner`
+  records each event in the binding's project Trigger inbox before the cursor
+  commits, so a restarted or replaced replica neither misses nor repeats a
+  conversation. The generated `NewConversationCreatedTrigger` and
+  `NewConversationTriggerRunner` without a `Cursor` keep the cursor in memory
+  and record a new baseline on every start.
+
+A binding configures one Studio unit, `channelSlugEntry`, which saves
+`{"channel": "<slug>"}`; blank watches every channel. Studio setup commands
+declare a fixed HTTPS host and support only bearer or raw-header credentials,
+while Re:amaze's host is per brand and its API needs HTTP Basic, so the slug is
+entered rather than picked: the `slug` field of
+[`GET /channels`](https://www.reamaze.com/api/get_channels), or the channel
+under **Settings > Channels**. Wire it as
+[`examples/new-conversation/main.go`](go/examples/new-conversation/main.go)
+does:
+
+```go
+triggerRunner, err := reamaze.NewProjectConversationTriggerRunner(project, newconversation.ConnectionName, reamaze.ProjectConversationTriggerRunnerConfig{
+	ConversationCreatedRoutes: []reamaze.ProjectConversationCreatedTriggerRoute{{
+		BindingName: newconversation.ConversationCreatedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, newconversation.AcceptCustomerConversation, newconversation.ResolveFlowID,
+			newconversation.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, options...)
+```
+
 ## Not in this release
 
-### Triggers
+### Changed-conversation Trigger
 
-Re:amaze documents no event webhook subscription in its API reference. The
-only signed outbound requests it documents belong to custom SMS and voice
-channels: a channel-transport protocol that posts a staff reply to the
-channel's own gateway, signed with `X-Reamaze-Hmac-SHA256` over the body with
-the channel's shared secret, with no event ID or event type. That is not a
-conversation event feed, so the connector declares no Trigger. A push Trigger
-would need a documented event subscription with a stable event ID; a polling
-Trigger would need a durable per-binding cursor, which `sdkgo` does not have.
-Until then, poll with `searchConversations`, `sort: changed`, and
-`customerMessageSince`.
+`sort=changed` orders conversations by any update or status change, but list
+entries carry no update time to hold a cursor on, so the connector declares no
+Trigger for changed conversations or customer replies. Poll with
+`searchConversations`, `sort: changed`, and `customerMessageSince` instead.
 
 ### Studio pickers
 
 A channel or staff picker would list `GET /channels` or `GET /staff`, but
 Studio setup commands declare a fixed HTTPS host and support only bearer or
 raw-header credentials. Re:amaze's host is per brand and its API needs HTTP
-Basic, so channel slugs and staff emails are operation input. Settings >
-Channels and Settings > Staff list them.
+Basic, so channel slugs and staff emails are operation input, and the
+`conversationCreated` channel is a guided entry. Settings > Channels and
+Settings > Staff list them.
 
 ### Conflict detection
 
@@ -322,6 +397,11 @@ fields this Step sets.
 Dex Web **Start Flow** example that uses all six operations: it resolves the
 customer by email, finds the customer's unresolved conversation about an issue
 or creates one, reopens and tags it, and adds one internal triage note.
+
+[`examples/new-conversation`](go/examples/new-conversation) is started by the
+`conversationCreated` Trigger: each new conversation that is not spam starts
+one Flow, which reads it back with `getConversation` and records an intake
+summary.
 
 ## Verification
 
@@ -350,7 +430,12 @@ contact matching, the dispatch checkpoint and its clearing, read-back by data
 attribute and by `origin_id`, only-changed-field updates and complete tag
 lists, status-only errors without body text, `Retry-After` and its one-minute
 fallback, redirects, oversized, malformed, and credential-reflecting
-responses, and invalid or unreadable credentials.
+responses, and invalid or unreadable credentials. The `conversationCreated`
+tests cover the baseline, ties and late-listed conversations, both list
+orders, the page bound, the seen-set bound, 429 with and without
+`Retry-After`, rejected requests, and foreign cursors; the example's
+integration tests cover durable delivery across a restart and a channel
+change against a real Dex Server.
 
 No live Re:amaze account was used. The following live behavior is
 unverified: whether `GET /conversations` honors `data[key]=value` for a
@@ -366,4 +451,7 @@ conversations the customer was copied on; how `tag` combines several tags;
 tag letter-case handling and whether `tag_list` replaces the tag set; whether
 an internal note triggers auto-resolve; whether every slug uses only letters,
 digits, hyphens, and underscores, which the connector requires; the
-`X-Request-Id` header; and the Settings paths in the setup guidance.
+`X-Request-Id` header; the Settings paths in the setup guidance; the direction of the default
+`GET /conversations` order, which the Trigger detects; how long Re:amaze takes
+to list a new conversation, which the 10-minute late-index window assumes;
+whether `filter=all` includes spam; and the per-minute request limit.

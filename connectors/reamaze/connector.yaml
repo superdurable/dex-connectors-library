@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: reamaze
   displayName: Re:amaze
-  description: Search, read, create, and update Re:amaze conversations, add public replies or internal notes, and find contacts by email, keeping Re:amaze's own integer statuses.
+  description: Search, read, create, and update Re:amaze conversations, add public replies or internal notes, find contacts by email, and start Flows when conversations are created, keeping Re:amaze's own integer statuses.
   company: Re:amaze
   categories: [customer-support]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: reamaze
   languages:
@@ -36,6 +36,12 @@ spec:
         description: "Non-secret connector safety limit: the maximum complete Re:amaze API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when conversations carry unusually long messages. An oversized response selects invalidResponse for a read or an update; for a create or reply the connector reads back instead of resending, and selects uncertain if it cannot confirm the write."
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Non-secret delay between conversationCreated Trigger polls of GET https://{brand}.reamaze.io/api/v1/conversations, as a Go duration of at least 10s such as 30s or 2m. Leave it blank to keep the displayed delay. Each poll normally makes one request, and Re:amaze limits every API token to a per-minute request count that it does not publish, shared with this connection's operation Steps; shorter intervals start Flows sooner and spend more of that limit."
+        required: false
+        default: 1m
   auth:
     type: apiKey
     connectionKind: reamaze-api-token
@@ -58,6 +64,25 @@ spec:
         - Enter that user's login email address in email; Re:amaze authenticates every API request with HTTP Basic as {email}:{api_token}.
         - Enter the brand field as the acme in https://acme.reamaze.io, from Settings > Brands; each brand of an account has its own host, and Re:amaze scopes conversations and channels by that brand.
         - To revoke access, generate a new token for the user in Settings > API Token, which replaces the old one, or remove the staff user; then paste the new token here.
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    units:
+      - id: channelSlugEntry
+        goName: ChannelSlugEntry
+        description: "Enter the slug of one Re:amaze channel, such as support, from the slug field of GET https://{brand}.reamaze.io/api/v1/channels or the channel's settings page under Settings > Channels; the unit stores the slug, which is not secret, in the binding's project configuration, and leaving it blank selects every channel of the brand. Re:amaze serves its API only on brand hosts with HTTP Basic, which Studio setup commands cannot call, so the slug is entered rather than picked."
+        outputs:
+          - {name: channel, goName: Channel, type: string}
+  triggers:
+    - name: conversationCreated
+      goName: ConversationCreated
+      eventType: ConversationCreatedEvent
+      configurationType: ConversationCreatedTriggerConfiguration
+      description: "Receive each conversation created in the brand, or in one channel, read by polling GET /conversations with a durable creation-time cursor; the first run records a baseline and delivers no existing conversations."
   operations:
     - name: searchConversations
       goName: SearchConversations

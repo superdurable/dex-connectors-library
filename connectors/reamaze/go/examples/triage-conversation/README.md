@@ -64,7 +64,7 @@ mkdir -p /tmp/reamaze-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/reamaze/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/reamaze/go \
-  --version v0.23.0 --tag connectors/reamaze/go/v0.23.0 \
+  --version v0.24.0 --tag connectors/reamaze/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/reamaze-release/connector-release.json \
   --digest-output /tmp/reamaze-release/connector-release.json.sha256

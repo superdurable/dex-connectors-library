@@ -46,12 +46,15 @@ export interface Config {
   brand: string;
   /** Non-secret connector safety limit: the maximum complete Re:amaze API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when conversations carry unusually long messages. An oversized response selects invalidResponse for a read or an update; for a create or reply the connector reads back instead of resending, and selects uncertain if it cannot confirm the write. */
   maxResponseBytes?: number;
+  /** Non-secret delay between conversationCreated Trigger polls of GET https://{brand}.reamaze.io/api/v1/conversations, as a Go duration of at least 10s such as 30s or 2m. Leave it blank to keep the displayed delay. Each poll normally makes one request, and Re:amaze limits every API token to a per-minute request count that it does not publish, shared with this connection's operation Steps; shorter intervals start Flows sooner and spend more of that limit. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "brand": z.string(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */
