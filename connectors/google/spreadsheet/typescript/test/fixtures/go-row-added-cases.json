@@ -1,0 +1,30 @@
+[
+  {
+    "cells": [],
+    "eventId": "row-12-8a084795e4808339",
+    "rowHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "token": "{\"v\":1,\"lastRow\":7,\"rowHash\":\"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945\"}"
+  },
+  {
+    "cells": [
+      "ada@example.test",
+      "Ada",
+      "new"
+    ],
+    "eventId": "row-12-7d2be20498eccf06",
+    "rowHash": "ee0f2e4791470fbd8e5781e101e19be84360f54d4ea8eea2a169d21f8dce8d4d",
+    "token": "{\"v\":1,\"lastRow\":7,\"rowHash\":\"ee0f2e4791470fbd8e5781e101e19be84360f54d4ea8eea2a169d21f8dce8d4d\"}"
+  },
+  {
+    "cells": [
+      "a\u003cb\u003e\u0026\"\\\n\t\b\f\u0001\u2028é😀",
+      "",
+      "x",
+      "",
+      ""
+    ],
+    "eventId": "row-12-0d9facf0d0ff3f9e",
+    "rowHash": "556381f10d0de604b6ebda6a0c61aeca4c725558c69ba27c9c8a391e79b1411e",
+    "token": "{\"v\":1,\"lastRow\":7,\"rowHash\":\"556381f10d0de604b6ebda6a0c61aeca4c725558c69ba27c9c8a391e79b1411e\"}"
+  }
+]

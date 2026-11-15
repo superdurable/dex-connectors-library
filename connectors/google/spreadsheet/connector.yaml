@@ -16,10 +16,10 @@ spec:
       operations: [getValues, findRow, upsertRow]
       triggers: [rowAdded]
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-google-sheets'
       operations: [getValues, findRow, upsertRow]
-      triggers: []
+      triggers: [rowAdded]
   codegen:
     go:
       package: spreadsheet

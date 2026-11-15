@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-sheets",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -223,6 +223,16 @@
           "values"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineRowAddedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "rowAdded",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]
