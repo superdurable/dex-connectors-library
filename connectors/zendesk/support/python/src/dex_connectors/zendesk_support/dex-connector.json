@@ -1,6 +1,6 @@
 {
   "connectorId": "zendesk-support",
-  "releaseTag": "connectors/zendesk/support/go/v0.23.0",
+  "releaseTag": "connectors/zendesk/support/go/v0.24.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-zendesk-support",
@@ -62,6 +62,7 @@
             "items": {
               "enum": [
                 "closed",
+                "deleted",
                 "hold",
                 "new",
                 "open",
@@ -400,6 +401,7 @@
             "description": "Status is the new Zendesk status, or empty to keep it.",
             "enum": [
               "closed",
+              "deleted",
               "hold",
               "new",
               "open",
