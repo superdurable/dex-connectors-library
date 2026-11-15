@@ -48,6 +48,8 @@ export interface Config {
   realmId?: string;
   /** Largest complete QuickBooks API response, in bytes, that one call reads. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when invoices carry hundreds of lines. An oversized read selects invalidResponse; an oversized accepted write is confirmed by ID when possible, otherwise it selects uncertain. */
   maxResponseBytes?: number;
+  /** Non-secret delay between invoiceChanged Trigger polls of the company's invoices, as a Go duration of at least 5s such as 15s or 2m. Each poll sends one QuickBooks query, or up to ten while catching up, and QuickBooks allows 500 requests per minute per company across this connection's Steps and Triggers, so a shorter interval delivers changes sooner and uses more of that limit. Blank uses the displayed interval. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -55,6 +57,7 @@ export const ConfigSchema = z.object({
   "environment": z.string().optional(),
   "realmId": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

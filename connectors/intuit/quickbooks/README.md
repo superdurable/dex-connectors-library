@@ -2,7 +2,7 @@
 
 The [TypeScript package](typescript/) is versioned independently as `@superdurable/connector-intuit-quickbooks` v0.1.0. Its [invoice lookup example](typescript/examples/get-invoice/) runs through a real Dex Worker and Client against a local provider stand-in. Live Intuit authorization and QuickBooks calls have not been verified for the TypeScript port.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks`.
 
@@ -31,7 +31,9 @@ uses async Execute durability and a 30-second Execute timeout. Reads and
 `sendInvoice`, and `recordPayment` use six attempts within five minutes because
 QuickBooks does not document `requestid` retention or whether `/send` honors it.
 
-This release has no Triggers and no Studio pickers; see
+The `invoiceChanged` poll Trigger starts a Flow for each invoice created or
+changed in the company; see [invoiceChanged Trigger](#invoicechanged-trigger).
+This release has no webhook Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
 ## Why these seven operations
@@ -129,7 +131,8 @@ PKCE, so the manifest declares none.
 Dex Web or Superverse Studio saves one connection record in the project
 configuration. Its credentials hold `client_id`, `client_secret`, and the
 `access_token`, `refresh_token`, and `id_token` from consent, and its
-configuration may hold `environment`, `realmId`, and `maxResponseBytes`.
+configuration may hold `environment`, `realmId`, `maxResponseBytes`, and
+`pollInterval`, the delay between `invoiceChanged` polls (at least 5 seconds).
 
 Load the project configuration and open the connection by the name the
 application declares, as
@@ -280,6 +283,77 @@ before creating, as the example does; Intuit recommends this client document
 number plus a query before retry, because `DocNumber` is not itself an
 idempotency key.
 
+## invoiceChanged Trigger
+
+`invoiceChanged` delivers one `InvoiceChangedEvent` per invoice version: the
+company's `realmId` and `environment`, a derived `changeKind`, and the invoice
+as the poll read it. QuickBooks has no invoice change token, so the Trigger
+polls the [query endpoint](https://developer.intuit.com/app/developer/qbo/docs/learn/explore-the-quickbooks-online-api/data-queries):
+
+```text
+select * from Invoice where MetaData.LastUpdatedTime >= '2026-11-02T15:59:35Z'
+ORDERBY MetaData.LastUpdatedTime STARTPOSITION 1 MAXRESULTS 100
+```
+
+- **Baseline.** The first poll reads the most recently changed invoices
+  (`ORDERBY MetaData.LastUpdatedTime DESC`) and records every invoice version
+  in the 30 seconds up to the newest `LastUpdatedTime`. No existing invoice
+  starts a Flow. A company without invoices delivers its first one.
+- **Cursor.** The durable cursor holds the company, the environment, the
+  newest `LastUpdatedTime` second delivered, and the `Id:SyncToken` of every
+  version delivered in the 30 seconds before it, at most 1000. Each poll
+  queries from 30 seconds before that second, so a write QuickBooks stamped
+  earlier but made visible after the previous poll still arrives; a write
+  stamped further back is missed. A full page that does not move the window
+  is followed by `STARTPOSITION`, rereading 20 positions because QuickBooks
+  does not order equal timestamps, up to ten pages per poll. Over 1000
+  versions in the window drop the oldest seconds from it, and over 1000 in
+  one second move the window past that second; later versions in a dropped
+  second are not delivered.
+- **Change kind.** `created` when the invoice's `SyncToken` is `0`, otherwise
+  `updated`. An applied payment, a sent email, and a void each update the
+  invoice, so they arrive as `updated`; read `Balance` and `EmailStatus`. An
+  invoice created and changed between two polls arrives once, as `updated`.
+  The invoice query does not return deleted invoices, so deletions are never
+  delivered.
+- **Event ID.** A hash of environment, company, invoice `Id`, `SyncToken`, and
+  `LastUpdatedTime`, so a refetch after a crash yields the same ID and
+  `sdkgo.NewDexFlowTriggerTarget` starts one Flow per version.
+- **Reset.** A cursor for another company or environment (the connection was
+  authorized again for another company), an undecodable cursor, or a
+  QuickBooks `ValidationFault` (HTTP 400) for the watermark query records a new
+  baseline and logs `poll cursor invalid; reseeding` at WARN. Changes in the
+  gap are not delivered.
+- **Limits.** A poll is one request, or up to ten while catching up;
+  QuickBooks allows 500 requests a minute per company, shared with this
+  connection's Steps. A 429 pauses every binding
+  of the connection for `Retry-After`, or the documented 60 seconds; other
+  failures back off per binding up to the kit's cap. Pollers of one runner run
+  one at a time, inside QuickBooks's 10 concurrent requests per company.
+
+`quickbooks.NewProjectInvoiceTriggerRunner` records each change in the
+binding's project Trigger inbox before the watermark commits in its project
+poll cursor, as [`examples/invoice-changed/main.go`](go/examples/invoice-changed/main.go) does:
+
+```go
+triggerRunner, err := quickbooks.NewProjectInvoiceTriggerRunner(project, invoicechanged.ConnectionName, quickbooks.ProjectInvoiceTriggerRunnerConfig{
+	InvoiceChangedRoutes: []quickbooks.ProjectInvoiceChangedTriggerRoute{{
+		BindingName: invoicechanged.InvoiceChangedTriggerBinding,
+		Target: sdkgo.NewDexFlowTriggerTarget(client, flow, invoicechanged.AcceptEveryInvoiceChange, invoicechanged.ResolveFlowID,
+			invoicechanged.MapToFlowInput, sdkgo.WithTriggerLogger(logger)),
+	}},
+}, options...)
+```
+
+`quickbooks.NewInvoiceTriggerRunner` takes targets and cursor stores directly.
+The generated `quickbooks.NewInvoiceChangedTrigger` keeps its cursor in
+memory, so every start records a new baseline. `quickbooks.WithLogger` sends
+the runner's records, which never carry invoice payloads or credentials. The
+binding has no configuration fields: it watches the whole company, and an
+application narrows changes in its target's accept function, for example by
+`CustomerID`. Customer pickers are not possible for the reason in
+[Studio pickers](#studio-pickers).
+
 ## Rate limits and errors
 
 QuickBooks allows 500 requests a minute per company and 10 a second per
@@ -348,7 +422,7 @@ retry, and the Flow's outcome.
 
 ## Not in this release
 
-### Triggers
+### Webhook Triggers
 
 QuickBooks webhooks need no handshake: Intuit signs each POST with
 `intuit-signature`, an HMAC-SHA256 of the body under the app's verifier
@@ -359,10 +433,9 @@ changes, for several companies, in one POST. The verifier token also belongs
 to the app, not to one connection. A Trigger needs a multi-event decode in
 `webhooktrigger`, with per-event IDs and per-company routing, and a
 connection-independent verifier secret. The notification carries only entity
-IDs, so a Flow would then call `getInvoice`. Until then, poll with
-`listInvoices` and `updatedSince`; a durable poll Trigger on QuickBooks's
-change data capture endpoint needs a per-binding cursor, which `sdkgo` does
-not have yet.
+IDs, so a Flow would then call `getInvoice`. Until then, the
+[`invoiceChanged` poll Trigger](#invoicechanged-trigger) covers invoices;
+other entities and deletions need the change data capture endpoint.
 
 ### Updates
 
@@ -389,6 +462,10 @@ Flow** example: for an order the customer has already paid, it finds the
 customer by email or creates them, looks for an invoice already numbered with
 the order ID, raises one when there is none, records the payment, emails the
 paid invoice as a receipt, and reads it back to confirm nothing is due.
+
+[`examples/invoice-changed`](go/examples/invoice-changed) starts one Flow per
+invoice created or changed in the company through `invoiceChanged`, reads the
+invoice back with `getInvoice`, and records whether it is paid.
 
 ## Verification
 
@@ -418,9 +495,17 @@ environment hosts, `minorversion` on every request, exact decimal requests
 and responses, query quoting, paging, the requestid and its replay under a
 slow, lost, or duplicated first request and a lost Worker, throttling, Fault
 codes without QuickBooks text, redirects, and oversized, malformed, and
-credential-reflecting responses.
+credential-reflecting responses. The `invoiceChanged` fake covers the
+baseline, ties within one second across pages, writes made visible after a
+poll with an earlier timestamp, the cursor bound, throttling with and without
+`Retry-After`, and resets, and the example's real Dex tests cover delivery
+across a restart that first answers 429 and a reset without the gap.
 
-No live QuickBooks company was used. The following live behavior is
+No live QuickBooks company was used. For `invoiceChanged`, the following live
+behavior is also unverified: `ORDERBY MetaData.LastUpdatedTime` with `DESC`
+and with `STARTPOSITION` on ties, a `Z` watermark literal compared with
+company-time `LastUpdatedTime`, `SyncToken` `0` on every new invoice, and how
+soon a change becomes visible to the query. The following live behavior is
 unverified: the Dex Web code exchange and its storage of `id_token`; whether
 Intuit returns `realmid` in the ID token for every consent and an `id_token`
 on refresh; whether the token response carries `scope`; how long QuickBooks
