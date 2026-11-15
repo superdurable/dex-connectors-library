@@ -16,10 +16,10 @@ spec:
       operations: [findCustomer, createCustomer, createInvoice, getInvoice, listInvoices, sendInvoice, recordPayment]
       triggers: [invoiceChanged]
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-intuit-quickbooks"
       operations: [findCustomer, createCustomer, createInvoice, getInvoice, listInvoices, sendInvoice, recordPayment]
-      triggers: []
+      triggers: [invoiceChanged]
   codegen:
     go:
       package: quickbooks

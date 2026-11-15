@@ -1,6 +1,6 @@
 # QuickBooks Online Connector
 
-The [TypeScript package](typescript/) is versioned independently as `@superdurable/connector-intuit-quickbooks` v0.1.0. Its [invoice lookup example](typescript/examples/get-invoice/) runs through a real Dex Worker and Client against a local provider stand-in. Live Intuit authorization and QuickBooks calls have not been verified for the TypeScript port.
+The [TypeScript package](typescript/) is versioned independently as `@superdurable/connector-intuit-quickbooks` v0.2.0 and implements all seven operations and the `invoiceChanged` poll Trigger at parity with Go, sharing Go's cursor documents byte for byte. Its [invoice lookup example](typescript/examples/get-invoice/) and [invoice change example](typescript/examples/invoice-changed/) run through a real Dex Worker and Client against local provider stand-ins, and its `invoiceChanged` fetcher replays Go-recorded polls. Live Intuit authorization, QuickBooks calls, and live invoice polling have not been verified for the TypeScript port.
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go@v0.25.0`.
 
