@@ -8,10 +8,15 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/freshworks
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
 
-The TypeScript package `@superdurable/connector-freshdesk` is also available at
-[`typescript/`](typescript/README.md), with Go-recorded conformance and a runnable
-[search example](typescript/examples/search-tickets/README.md). Its live Freshdesk
-behavior has not been verified.
+The TypeScript package `@superdurable/connector-freshdesk` v0.2.0 is also available at
+[`typescript/`](typescript/README.md). It implements all five ticket operations and,
+from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with
+Go, sharing its cursor documents byte for byte. It has Go-recorded conformance,
+Go-recorded ticket-list cursors, a runnable
+[search example](typescript/examples/search-tickets/README.md), and a
+[ticket change example](typescript/examples/ticket-changed/README.md) whose real Dex
+integration tests poll a stateful ticket-list fake. Its live Freshdesk behavior has
+not been verified.
 
 The Python package `dex-connector-freshworks-freshdesk` is available at
 [`python/`](python/README.md). It implements all five ticket operations and includes
