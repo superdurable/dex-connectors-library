@@ -2,13 +2,16 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go@v0.25.0`.
 
-The TypeScript package is `@superdurable/connector-atlassian-confluence@0.1.0`.
+The TypeScript package is `@superdurable/connector-atlassian-confluence@0.2.0`.
 It implements all five operations with the same branch identities and OAuth
-refresh declaration as Go. The generated TypeScript models, Step factories,
-project credential decoders, and mocks come from `connector.yaml`.
+refresh declaration as Go, and from 0.2.0 the `pageChanged` Trigger. The
+generated TypeScript models, Step factories, project credential decoders, and
+mocks come from `connector.yaml`.
 The [TypeScript read-page example](typescript/examples/read-page/README.md)
 binds the static `confluence-policy` connection and verifies a page read
-through a real Dex Worker and local Confluence stand-in. The
+through a real Dex Worker and local Confluence stand-in, and the
+[TypeScript page-changed example](typescript/examples/page-changed/README.md)
+starts one Flow per changed page version through the same kind of stand-in. The
 [recorded scenarios](../../../conformance/connectors/atlassian/confluence/scenarios.json)
 replay all five operations against Go and TypeScript. Live Atlassian OAuth,
 site selection, page writes, and comment delivery have not been verified.
@@ -53,8 +56,8 @@ any token. A rejection names only the HTTP status, such as `Confluence rejected
 the page with HTTP 400`. Page bodies are returned only as converted Markdown or
 plain text, cut at a caller-chosen character limit.
 
-The Go module also exposes one Trigger, which the Python package implements
-from 0.2.0, sharing the Go cursor documents byte for byte:
+The Go module also exposes one Trigger, which the Python and TypeScript
+packages implement from 0.2.0, sharing the Go cursor documents byte for byte:
 
 - `pageChanged` delivers each page created or updated in one space, or in every
   space the connection can view, by polling CQL search. See
@@ -63,7 +66,7 @@ from 0.2.0, sharing the Go cursor documents byte for byte:
 | Capability | Go | Python | TypeScript |
 | --- | --- | --- | --- |
 | `searchPages`, `getPage`, `createPage`, `updatePage`, `addComment` | yes | yes | yes |
-| `pageChanged` Trigger | yes | yes, from 0.2.0 | no |
+| `pageChanged` Trigger | yes | yes, from 0.2.0 | yes, from 0.2.0 |
 
 Confluence Cloud webhooks are registered in an Atlassian Connect app descriptor
 or a Forge app, and neither the v1 nor the v2 REST API has a webhook endpoint an
