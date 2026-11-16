@@ -10,9 +10,16 @@ import type { Config, CredentialSource, Credentials } from './generated/models.j
 import { GetAuthenticatedProfileOperation } from './operations.js';
 
 const defaultUserInfoURL = 'https://api.linkedin.com/v2/userinfo';
+/** The manifest's default pollInterval, 15 minutes. */
+const defaultPollIntervalMs = 900_000;
+/** Bounds profileChanged polling: profiles change rarely and LinkedIn limits are daily. */
+export const MinimumPollIntervalMs = 60_000;
 
-/** Transport override for deterministic provider tests. */
-export interface LinkedInClientOptions { send?: (request: ProviderRequest) => Promise<ProviderResponse>; }
+/** Transport and clock overrides for deterministic provider tests. */
+export interface LinkedInClientOptions {
+  /** Sends each provider request; omitted uses sendProviderRequest. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>;
+  /** The clock for Retry-After dates and Trigger observation times; omitted uses the system clock. */ now?: () => Date;
+}
 /** Bounded UserInfo response. */
 export interface LinkedInResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; isTooLarge: boolean; }
 
@@ -21,10 +28,17 @@ export class LinkedInClient {
   private readonly userInfoURL: string;
   private readonly maxResponseBytes: number;
   private readonly timeoutMs: number;
+  /** The profileChanged Trigger's delay between polls in milliseconds; at least MinimumPollIntervalMs. */
+  readonly pollIntervalMs: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
-  private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'LinkedIn', auth: Authorization, credentialFields: CredentialFields });
+  private readonly now: () => Date;
+  /** The generated OAuth refresh policy every credential resolution uses, including Trigger polls. */
+  readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'LinkedIn', auth: Authorization, credentialFields: CredentialFields });
 
-  /** Validate settings and bind the credential source. */
+  /**
+   * Validate settings and bind the credential source. An omitted or zero pollIntervalMs uses the manifest's
+   * 15 minutes; one under a minute throws, as Go's New does.
+   */
   constructor(config: Config, readonly credentials: CredentialSource, options: LinkedInClientOptions = {}) {
     if (!credentials) throw new TypeError('LinkedIn credential provider is required');
     const url = new URL(config.userInfoUrl || defaultUserInfoURL);
@@ -37,8 +51,14 @@ export class LinkedInClient {
     this.timeoutMs = config.timeoutMs || 15_000;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('LinkedIn response limit is invalid');
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0) throw new TypeError('LinkedIn timeout is invalid');
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < MinimumPollIntervalMs) throw new TypeError('LinkedIn pollInterval must be at least 1m0s');
     this.send = options.send ?? sendProviderRequest;
+    this.now = options.now ?? (() => new Date());
   }
+
+  /** The client clock, used for Retry-After dates and Trigger observation times. */
+  currentTime(): Date { return this.now(); }
 
   /** Bind the authenticated profile query. */
   getAuthenticatedProfile(): GetAuthenticatedProfileOperation { return new GetAuthenticatedProfileOperation(this); }

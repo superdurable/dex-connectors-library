@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-linkedin",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -66,6 +66,16 @@
         "description": "GetAuthenticatedProfileInput contains the provider request fields for get authenticated profile.",
         "properties": {},
         "type": "object"
+      }
+    },
+    {
+      "name": "defineProfileChangedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "profileChanged",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]
