@@ -16,10 +16,10 @@ spec:
       operations: [searchConversations, getConversation, createConversation, updateConversation, replyToConversation, findContactByEmail]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-reamaze
       operations: [searchConversations, getConversation, createConversation, updateConversation, replyToConversation, findContactByEmail]
-      triggers: []
+      triggers: [conversationCreated]
   codegen:
     go:
       package: reamaze

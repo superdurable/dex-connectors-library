@@ -138,6 +138,7 @@ def new_create_conversation_step(
     defect: dex.StepTarget[MutationResult[CreateConversationOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CreateConversationOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateConversationInput, CreateConversationOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Re:amaze Step connection name must match its connection reference")
@@ -169,6 +170,7 @@ def new_create_conversation_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -189,6 +191,7 @@ def new_update_conversation_step(
     defect: dex.StepTarget[MutationResult[UpdateConversationOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateConversationOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateConversationInput, UpdateConversationOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Re:amaze Step connection name must match its connection reference")
@@ -222,6 +225,7 @@ def new_update_conversation_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -242,6 +246,7 @@ def new_reply_to_conversation_step(
     defect: dex.StepTarget[MutationResult[ConversationReply]] | None = None,
     result_attribute: dex.Attribute[MutationResult[ConversationReply]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, ReplyToConversationInput, ConversationReply]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Re:amaze Step connection name must match its connection reference")
@@ -275,6 +280,7 @@ def new_reply_to_conversation_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
