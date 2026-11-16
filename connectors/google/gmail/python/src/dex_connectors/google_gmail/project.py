@@ -3,7 +3,7 @@
 """Open a Gmail provider from a loaded Dex project connection."""
 
 import httpx
-from dex_connectors.sdk import ConnectionRef
+from dex_connectors.sdk import ConnectionRef, TriggerLogger
 from dex_connectors.sdk.projectconfig import LoadedProject
 from dex_connectors.sdk.projectconfig.connections import ConnectionKey
 from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvider
@@ -19,8 +19,12 @@ def new_project_provider(
     connection_name: str,
     *,
     http_client: httpx.AsyncClient | None = None,
+    logger: TriggerLogger | None = None,
 ) -> GmailProvider:
-    """Use pinned Gmail settings and renewable call-time credentials from Dex Web."""
+    """Use pinned Gmail settings and renewable call-time credentials from Dex Web.
+
+    logger receives the Gmail Trigger records, as `GmailProvider` describes; None uses standard logging.
+    """
     if project is None or not connection_name.strip():
         raise ValueError("loaded project and static Gmail connection name are required")
     entry = next(
@@ -42,7 +46,10 @@ def new_project_provider(
         lambda material: decode_credentials(material, shared=True),
     )
     return GmailProvider(
-        Config.from_project_settings(entry.configuration), credential_source, http_client=http_client
+        Config.from_project_settings(entry.configuration),
+        credential_source,
+        http_client=http_client,
+        logger=logger,
     )
 
 
@@ -51,9 +58,13 @@ def new_project_connection(
     connection_name: str,
     *,
     http_client: httpx.AsyncClient | None = None,
+    logger: TriggerLogger | None = None,
 ) -> Connection:
-    """Open a named Dex Web Gmail connection with project-backed credentials."""
-    client = new_project_provider(project, connection_name, http_client=http_client)
+    """Open a named Dex Web Gmail connection with project-backed credentials.
+
+    logger receives the Gmail Trigger records; None uses standard logging.
+    """
+    client = new_project_provider(project, connection_name, http_client=http_client, logger=logger)
     return new_connection(client, ConnectionRef("google", connection_name))
 
 

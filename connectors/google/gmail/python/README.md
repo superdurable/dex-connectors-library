@@ -2,13 +2,13 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
-Version 0.2.1 includes `getMessage`, `sendMessage`, and `replyToMessage` only;
-the Go `messageReceived` and `replyReceived` Triggers are not available in Python.
+Version 0.3.0 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
+the `messageReceived` and `replyReceived` Triggers at parity with Go.
 
 ## Install
 
-After release, install `dex-connector-google-gmail==0.2.1`. The package requires
-`dex-connectors-sdk>=0.6.0,<1` and `dex-python-sdk>=1.28.0`; the latter provides
+After release, install `dex-connector-google-gmail==0.3.0`. The package requires
+`dex-connectors-sdk>=0.12.0,<1` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
 
@@ -71,6 +71,62 @@ boundary and manifest mocks.
 
 Decoded `Message.to` and `SendMessageOutput.recipients` use Go-compatible RFC
 mailbox strings, including angle brackets around each address.
+
+## Receive messages and replies
+
+The `messageReceived` Trigger receives a matching message that begins a Gmail
+thread, and `replyReceived` a matching reply, one with an `In-Reply-To` or
+`References` header. Each binding polls the newest inbox page every connection
+**Poll interval**, inspecting **Poll page size** messages
+(`labelIds=INBOX`, plus the binding's optional Gmail `searchQuery`), reads each
+new message's metadata, and delivers matches oldest first as a `MessageEvent`:
+the mailbox, message and thread IDs, sender, subject, snippet, `receivedAt`, and
+`isReply`. The event ID is the Gmail message ID. A binding's `MessageMatcher`
+keeps messages whose subject or snippet contains `messageContains`, ignoring
+case, and whose sender address is in `senderEmails`; both may be blank.
+
+Run every binding of one connection on one runner, so each poll lists replies
+before roots and then delivers every root before any reply. A root therefore
+starts its Flow before a reply to it arrives:
+
+```python
+runner = new_project_message_trigger_runner(
+    project,
+    connection,
+    message_received_routes=[ProjectMessageReceivedTriggerRoute(START_TRIGGER_BINDING, start)],
+    reply_received_routes=[ProjectReplyReceivedTriggerRoute(REPLY_TRIGGER_BINDING, reply)],
+)
+await runner.run(TriggerContext(cancellation))
+```
+
+`new_project_message_trigger_runner` loads each binding's saved configuration
+and keeps acknowledged events in the binding's project Trigger inbox until its
+target consumes them, so a restarted replica replays them before it polls. Go
+and Python replicas share the inbox. `new_message_trigger_runner` takes
+configurations and targets directly, and `new_message_received_trigger` and
+`new_reply_received_trigger` poll one binding each, as Go's generated factories
+do.
+
+Delivery stops at the first failure. Every later poll retries that event before
+any listed message, even after newer mail pushes it off the page, and an event
+a target marks undeliverable is consumed. The delivered set covers the last
+listed page in memory, so a restart rescans the page; a deterministic Flow ID
+with the event ID as the start request ID, and an RPC handler that records the
+accepted event ID, absorb the duplicates. Poll credentials use the Go
+connector's stable call ID for each connection and Trigger.
+
+Pass `logger=` to `new_project_connection` or `GmailProvider` to receive the
+Trigger records; the default is the `dex_connectors.sdk.trigger` standard
+logger. WARN `gmail poll failed; retrying` carries the consecutive failed polls
+as `attempt` and the poll interval as `delay_ms`; WARN `trigger delivery
+failed; retrying`, INFO `trigger delivered after retry`, and DEBUG `trigger
+event ignored` with its `reason` (`not_a_root`, `not_a_reply`, or
+`matcher_mismatch`) follow Go. Records carry message and thread IDs and error
+types, never senders, subjects, snippets, bodies, queries, or tokens.
+
+[`examples/trigger_thread_reply`](examples/trigger_thread_reply/README.md) runs
+both Triggers against a real Dex Worker. Live Gmail polling has not been
+verified with this package.
 
 ## Send confirmation
 

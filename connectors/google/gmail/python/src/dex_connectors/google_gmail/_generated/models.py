@@ -123,3 +123,69 @@ class ReplyToMessageInput:
 
 
 setattr(ReplyToMessageInput, '__module__', 'dex_connectors.google_gmail.models')
+
+
+# MessageEvent is the stable, metadata-only payload emitted by Gmail Triggers.
+@dataclass(frozen=True, slots=True)
+class MessageEvent:
+    # PrimaryEmail is the primary email returned by Gmail.
+    primary_email: str = _dataclass_field(default='', metadata={'dex_json_name': 'primaryEmail'})
+    # MessageID is the provider message identifier.
+    message_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'messageId'})
+    # ThreadID is the provider conversation thread identifier.
+    thread_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'threadId'})
+    # From is the sender address.
+    from_: str = _dataclass_field(default='', metadata={'dex_json_name': 'from'})
+    # Subject is the message subject.
+    subject: str = ''
+    # Snippet is the snippet returned by Gmail.
+    snippet: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # ReceivedAt is the received at returned by Gmail.
+    received_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'receivedAt', 'dex_json_format': 'rfc3339'})
+    # IsReply is the is reply returned by Gmail.
+    is_reply: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isReply'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.received_at, str):
+            object.__setattr__(self, 'received_at', parse_go_datetime(self.received_at, 'received_at'))
+        elif self.received_at is not None:
+            validate_go_datetime(self.received_at, 'received_at')
+
+
+setattr(MessageEvent, '__module__', 'dex_connectors.google_gmail.models')
+
+
+# MessageMatcher filters received Gmail messages by sender and text.
+@dataclass(frozen=True, slots=True)
+class MessageMatcher:
+    # MessageContains requires this case-insensitive substring when non-empty.
+    message_contains: str = _dataclass_field(default='', metadata={'dex_json_name': 'messageContains', 'dex_json_omit_default': True})
+    # SenderEmails limits matches to these canonical sender addresses when non-empty.
+    sender_emails: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'senderEmails', 'dex_json_omit_default': True})
+
+
+setattr(MessageMatcher, '__module__', 'dex_connectors.google_gmail.models')
+
+
+# MessageReceivedTriggerConfiguration configures root-message polling.
+@dataclass(frozen=True, slots=True)
+class MessageReceivedTriggerConfiguration:
+    # SearchQuery specifies search query for message received trigger configuration.
+    search_query: str = _dataclass_field(default='', metadata={'dex_json_name': 'searchQuery', 'dex_json_omit_default': True})
+    # MessageMatcher specifies message matcher for message received trigger configuration.
+    message_matcher: MessageMatcher | None = _dataclass_field(default=None, metadata={'dex_json_name': 'messageMatcher', 'dex_json_omit_default': True})
+
+
+setattr(MessageReceivedTriggerConfiguration, '__module__', 'dex_connectors.google_gmail.models')
+
+
+# ReplyReceivedTriggerConfiguration configures reply polling.
+@dataclass(frozen=True, slots=True)
+class ReplyReceivedTriggerConfiguration:
+    # SearchQuery specifies search query for reply received trigger configuration.
+    search_query: str = _dataclass_field(default='', metadata={'dex_json_name': 'searchQuery', 'dex_json_omit_default': True})
+    # ReplyMatcher specifies reply matcher for reply received trigger configuration.
+    reply_matcher: MessageMatcher | None = _dataclass_field(default=None, metadata={'dex_json_name': 'replyMatcher', 'dex_json_omit_default': True})
+
+
+setattr(ReplyReceivedTriggerConfiguration, '__module__', 'dex_connectors.google_gmail.models')
