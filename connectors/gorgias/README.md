@@ -1,8 +1,10 @@
 # Gorgias Connector
 
-The TypeScript package `@superdurable/connector-gorgias@0.1.1` implements all
-six operations. See its [package guide](typescript/README.md) and
-[runnable ticket read](typescript/examples/read-ticket/README.md). Its provider
+The TypeScript package `@superdurable/connector-gorgias@0.2.0` implements all
+six operations and the `ticketChanged` poll Trigger. See its
+[package guide](typescript/README.md), its
+[runnable ticket read](typescript/examples/read-ticket/README.md), and its
+[ticket-changed example](typescript/examples/ticket-changed/README.md). Its provider
 replay and Dex integration use a local stand-in; live Gorgias behavior is
 unverified.
 
@@ -47,8 +49,8 @@ idempotency key; see [Duplicate safety](#duplicate-safety).
 It also exposes one Go poll Trigger, [`ticketChanged`](#ticketchanged-trigger),
 which starts a Flow for every ticket event in the account's event log, such as
 `ticket-created`, `ticket-updated`, or `ticket-closed`. The Python package
-implements it from `v0.2.0`; the TypeScript package does not. This release has
-no webhook Trigger,
+implements it from `v0.2.0`, and the TypeScript package from `v0.2.0`. This
+release has no webhook Trigger,
 no Studio pickers, and no OAuth method; see
 [Not in this release](#not-in-this-release).
 

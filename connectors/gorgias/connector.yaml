@@ -16,10 +16,10 @@ spec:
       operations: [searchTickets, getTicket, findCustomerByEmail, createTicket, updateTicket, addNote]
       triggers: [ticketChanged]
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       package: "@superdurable/connector-gorgias"
       operations: [searchTickets, getTicket, findCustomerByEmail, createTicket, updateTicket, addNote]
-      triggers: []
+      triggers: [ticketChanged]
   codegen:
     go:
       package: gorgias
