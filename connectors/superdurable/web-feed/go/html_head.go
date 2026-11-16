@@ -131,6 +131,18 @@ func (head *htmlDocumentHead) baseURL(pageURL *url.URL) *url.URL {
 	return resolved
 }
 
+// canonicalURL returns the first link rel=canonical that resolves to an absolute http or https URL.
+func (head *htmlDocumentHead) canonicalURL(base *url.URL) string {
+	for _, link := range head.links {
+		if hasRelation(link.relations, "canonical") {
+			if resolved := resolveLink(base, link.href); resolved != "" {
+				return resolved
+			}
+		}
+	}
+	return ""
+}
+
 func isStructuredDataScript(token nethtml.Token) bool {
 	mediaType := strings.ToLower(strings.TrimSpace(strings.SplitN(attributeValue(token, "type"), ";", 2)[0]))
 	return mediaType == "application/ld+json"

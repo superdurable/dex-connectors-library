@@ -16,6 +16,9 @@ the static `web-feed-public` connection and completes with a report:
    `maxPosts` entries for their titles, descriptions, and publication times. A
    page that answers `404` or `410` is skipped; the Flow wires `notFound` for
    that reaction only.
+4. With `includeFirstPostText`, it runs `readPage` on the first reported post
+   and adds up to 2000 code points of its readable text to the report as
+   `firstPostText`. Without posts it completes without reading a page.
 
 Every other optional branch is unwired, so it fails the Flow with the
 connector's safe failure, such as `unreachable` for a private address. The
@@ -78,7 +81,7 @@ of these inputs:
 {"sitemapUrl": "https://kubernetes.io/sitemap.xml", "pathPrefix": "/blog/", "publishedAfter": "2026-10-15T00:00:00Z", "maxPosts": 2}
 ```
 
-To see a conditional GET, run `{"feedUrl": "https://blog.rust-lang.org/feed.xml"}`,
+To read a post's text, add `"includeFirstPostText": true` to any input. To see a conditional GET, run `{"feedUrl": "https://blog.rust-lang.org/feed.xml"}`,
 then start another check that adds the reported `etag` and `lastModified`.
 
 | Field | Default | Meaning |
@@ -90,6 +93,7 @@ then start another check that adds the reported `etag` and `lastModified`.
 | `publishedAfter` | none | RFC 3339 time; only newer posts are reported |
 | `maxPosts` | `5` | reported posts, from 1 through 10 |
 | `etag`, `lastModified` | none | feed validators from a previous check |
+| `includeFirstPostText` | `false` | read the first reported post's text into `firstPostText` |
 
 Give at least one of `siteUrl`, `feedUrl`, or `sitemapUrl`. Dex Web summary
 and display show the stored report. The real-Dex integration tests run with
@@ -119,3 +123,9 @@ Outside the Flow, the same operations read a JSON Feed
 (`https://www.jsonfeed.org/feed.json`), a Google News sitemap with
 `news:title` and `news:publication_date`, a JSON-LD `LiveBlogPosting`, and
 refused `169.254.169.254` before connecting.
+
+Later on 2026-11-15, `readPage` was added. Outside the Flow it read the
+text of public posts on go.dev, blog.rust-lang.org, kubernetes.io, and
+postgresql.org, a Wikipedia article, and a plain-text RFC. The
+`includeFirstPostText` path ran on real Dex with the `webfeedmock`
+connection only; it has not yet run through Dex Web against a public site.

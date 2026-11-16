@@ -43,6 +43,7 @@ type Operations interface {
 	DiscoverFeeds() sdkgo.Query[DiscoverFeedsInput, DiscoveredFeeds]
 	ReadSitemap() sdkgo.Query[ReadSitemapInput, Sitemap]
 	ReadPageMetadata() sdkgo.Query[ReadPageMetadataInput, PageMetadata]
+	ReadPage() sdkgo.Query[ReadPageInput, Page]
 }
 
 type clientOperations struct{ client *Client }
@@ -58,6 +59,9 @@ func (operations clientOperations) ReadSitemap() sdkgo.Query[ReadSitemapInput, S
 }
 func (operations clientOperations) ReadPageMetadata() sdkgo.Query[ReadPageMetadataInput, PageMetadata] {
 	return operations.client.ReadPageMetadata()
+}
+func (operations clientOperations) ReadPage() sdkgo.Query[ReadPageInput, Page] {
+	return operations.client.ReadPage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -528,6 +532,95 @@ func NewReadPageMetadataStep[IN any](config ReadPageMetadataStepConfig[IN]) sdkg
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ReadPageMetadataBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ReadPageBranchRead sdkgo.BranchID = "read"
+const ReadPageBranchNotModified sdkgo.BranchID = "notModified"
+const ReadPageBranchNotFound sdkgo.BranchID = "notFound"
+const ReadPageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ReadPageBranchUnreachable sdkgo.BranchID = "unreachable"
+const ReadPageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ReadPageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ReadPageDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "readPage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ReadPageBranchRead, Description: "The page was downloaded and its readable text extracted; the result holds the text, the page metadata, and the validators for the next conditional GET."},
+		{ID: ReadPageBranchNotModified, Description: "The site answered 304 Not Modified to the conditional GET; the result holds only the refreshed validators and no text.", Optional: true},
+		{ID: ReadPageBranchNotFound, Description: "The site answered 404 Not Found or 410 Gone for the page URL or its redirect target.", Optional: true},
+		{ID: ReadPageBranchProviderRejected, Description: "The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed.", Optional: true},
+		{ID: ReadPageBranchUnreachable, Description: "The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read.", Optional: true},
+		{ID: ReadPageBranchInvalidResponse, Description: "The response is not an HTML or plain-text page: another media type, a page larger than maxDocumentBytes, or a broken or overlong redirect chain.", Optional: true},
+		{ID: ReadPageBranchDefect, Description: "The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http, or a maxTextCharacters out of range; nothing was sent.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ReadPageResult = sdkgo.QueryResult[Page]
+
+type ReadPageStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=web-feed"`
+	operationID                    struct{}                                `connector:"operationId=readPage"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ReadPageInput                  `connector:"mapToOperationInput"`
+	Read                           sdkgo.Target[ReadPageResult]            `connector:"branch=read"`
+	NotModified                    sdkgo.Target[ReadPageResult]            `connector:"branch=notModified,optional"`
+	NotFound                       sdkgo.Target[ReadPageResult]            `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ReadPageResult]            `connector:"branch=providerRejected,optional"`
+	Unreachable                    sdkgo.Target[ReadPageResult]            `connector:"branch=unreachable,optional"`
+	InvalidResponse                sdkgo.Target[ReadPageResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ReadPageResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Page]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewReadPageStep[IN any](config ReadPageStepConfig[IN]) sdkgo.QueryStep[IN, ReadPageInput, Page] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("web-feed connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ReadPageInput, Page]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ReadPage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ReadPageResult] {
+			branches := make([]sdkgo.BranchTarget[ReadPageResult], 0, 7)
+			if config.Read.HasStep() {
+				branches = append(branches, config.Read.BranchTarget(ReadPageBranchRead))
+			}
+			if config.NotModified.HasStep() {
+				branches = append(branches, config.NotModified.BranchTarget(ReadPageBranchNotModified))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ReadPageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ReadPageBranchProviderRejected))
+			}
+			if config.Unreachable.HasStep() {
+				branches = append(branches, config.Unreachable.BranchTarget(ReadPageBranchUnreachable))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ReadPageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ReadPageBranchDefect))
 			}
 			return branches
 		}(),

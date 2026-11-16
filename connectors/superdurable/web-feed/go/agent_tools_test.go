@@ -18,7 +18,7 @@ func TestAgentToolsReadAndClassifyEveryOutcome(t *testing.T) {
 	site.serve("https://blog.example.com/feed.xml", "application/rss+xml", `<rss><channel><title>Agent feed</title><item><title>One</title><guid>1</guid></item></channel></rss>`)
 	site.serve("https://blog.example.com/", "text/html", `<html><head><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head></html>`)
 	site.serve("https://blog.example.com/sitemap.xml", "application/xml", `<urlset><url><loc>https://blog.example.com/blog/a</loc><lastmod>2026-11-09</lastmod></url></urlset>`)
-	site.serve("https://blog.example.com/blog/a", "text/html", `<html><head><title>Post A</title></head></html>`)
+	site.serve("https://blog.example.com/blog/a", "text/html", `<html><head><title>Post A</title></head><body><article><p>Body of post A.</p></article></body></html>`)
 	client := site.newClient(t, Config{})
 	connection, err := NewConnection(client, testConnection)
 	require.NoError(t, err)
@@ -36,8 +36,8 @@ func TestAgentToolsReadAndClassifyEveryOutcome(t *testing.T) {
 		require.NoError(t, json.Unmarshal(tool.Metadata().InputSchema, &schema))
 		require.Equal(t, []string{"url"}, schema.Required, "only the URL is required")
 	}
-	require.Equal(t, []string{"web-feed_read_feed", "web-feed_discover_feeds", "web-feed_read_sitemap", "web-feed_read_page_metadata"}, names)
-	readFeed, discoverFeeds, readSitemap, readPageMetadata := tools[0], tools[1], tools[2], tools[3]
+	require.Equal(t, []string{"web-feed_read_feed", "web-feed_discover_feeds", "web-feed_read_sitemap", "web-feed_read_page_metadata", "web-feed_read_page"}, names)
+	readFeed, discoverFeeds, readSitemap, readPageMetadata, readPage := tools[0], tools[1], tools[2], tools[3], tools[4]
 
 	for _, test := range []struct {
 		name      string
@@ -55,6 +55,9 @@ func TestAgentToolsReadAndClassifyEveryOutcome(t *testing.T) {
 		{"readSitemap read", readSitemap, `{"url":"https://blog.example.com/sitemap.xml","pathPrefix":"/blog/","lastModifiedAfter":"2026-11-01T00:00:00Z"}`, sdkgo.AgentToolAttemptSucceeded, ReadSitemapBranchRead},
 		{"readPageMetadata read", readPageMetadata, `{"url":"https://blog.example.com/blog/a"}`, sdkgo.AgentToolAttemptSucceeded, ReadPageMetadataBranchRead},
 		{"readPageMetadata unreachable", readPageMetadata, `{"url":"https://metadata.example.com/"}`, sdkgo.AgentToolAttemptRejected, ReadPageMetadataBranchUnreachable},
+		{"readPage read", readPage, `{"url":"https://blog.example.com/blog/a","maxTextCharacters":1000}`, sdkgo.AgentToolAttemptSucceeded, ReadPageBranchRead},
+		{"readPage notFound", readPage, `{"url":"https://blog.example.com/blog/missing"}`, sdkgo.AgentToolAttemptRejected, ReadPageBranchNotFound},
+		{"readPage defect", readPage, `{"url":"https://blog.example.com/blog/a","maxTextCharacters":100001}`, sdkgo.AgentToolAttemptRejected, ReadPageBranchDefect},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			attempt, err := test.tool.RunAttempt(singledispatchtest.NewContext("agent-host", test.name), json.RawMessage(test.arguments))
@@ -70,6 +73,12 @@ func TestAgentToolsReadAndClassifyEveryOutcome(t *testing.T) {
 	var sitemap Sitemap
 	require.NoError(t, json.Unmarshal(attempt.Value, &sitemap))
 	require.Equal(t, "https://blog.example.com/blog/a", sitemap.Entries[0].URL)
+
+	attempt, err = readPage.RunAttempt(singledispatchtest.NewContext("agent-host", "page-value"), json.RawMessage(`{"url":"https://blog.example.com/blog/a"}`))
+	require.NoError(t, err)
+	var page Page
+	require.NoError(t, json.Unmarshal(attempt.Value, &page))
+	require.Equal(t, "Body of post A.", page.Text)
 
 	attempt, err = readFeed.RunAttempt(singledispatchtest.NewContext("agent-host", "unknown-field"), json.RawMessage(`{"url":"https://blog.example.com/feed.xml","feedUrl":"x"}`))
 	require.Error(t, err, "the input schema rejects an unknown field before the operation runs")

@@ -86,6 +86,7 @@ func TestOperationsAreRetrySafeReadsWithOneHappyPath(t *testing.T) {
 		"discoverFeeds":    {"discovered", "notFound", "providerRejected", "unreachable", "invalidResponse", "defect"},
 		"readSitemap":      {"read", "notModified", "notFound", "providerRejected", "unreachable", "invalidResponse", "defect"},
 		"readPageMetadata": {"read", "notFound", "providerRejected", "unreachable", "invalidResponse", "defect"},
+		"readPage":         {"read", "notModified", "notFound", "providerRejected", "unreachable", "invalidResponse", "defect"},
 	}
 	require.Len(t, operations, len(expected))
 	for _, operation := range operations {

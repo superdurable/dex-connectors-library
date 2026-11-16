@@ -98,6 +98,7 @@ type documentRequest struct {
 // fetchedDocument is a successful read, or a 304 answer to a conditional GET.
 type fetchedDocument struct {
 	finalURL      *url.URL
+	statusCode    int
 	mediaType     string
 	charsetLabel  string
 	body          []byte
@@ -112,6 +113,14 @@ func (document fetchedDocument) htmlContentType() string {
 		return "text/html"
 	}
 	return "text/html; charset=" + document.charsetLabel
+}
+
+// plainTextContentType rebuilds a plain-text page's content type for the same charset detection as HTML.
+func (document fetchedDocument) plainTextContentType() string {
+	if document.charsetLabel == "" {
+		return "text/plain"
+	}
+	return "text/plain; charset=" + document.charsetLabel
 }
 
 // attemptFromFailure converts a classified failure into the operation's Query attempt.
@@ -246,7 +255,7 @@ func (client *Client) readResponse(response *http.Response, finalURL *url.URL, r
 		if refreshed.lastModified == "" {
 			refreshed.lastModified = request.validators.lastModified
 		}
-		return fetchedDocument{finalURL: finalURL, isNotModified: true, validators: refreshed}, nil
+		return fetchedDocument{finalURL: finalURL, statusCode: status, isNotModified: true, validators: refreshed}, nil
 	case status == http.StatusNotFound || status == http.StatusGone:
 		return fetchedDocument{}, &fetchFailure{class: fetchNotFound, kind: sdkgo.FailureNotFound, message: "the site answered HTTP " + strconv.Itoa(status)}
 	case status == http.StatusTooManyRequests:
@@ -270,7 +279,7 @@ func (client *Client) readResponse(response *http.Response, finalURL *url.URL, r
 		return fetchedDocument{}, failure
 	}
 	return fetchedDocument{
-		finalURL: finalURL, mediaType: mediaType, charsetLabel: charsetLabel, body: body,
+		finalURL: finalURL, statusCode: status, mediaType: mediaType, charsetLabel: charsetLabel, body: body,
 		isTruncated: isTruncated, validators: readValidators(response.Header),
 	}, nil
 }

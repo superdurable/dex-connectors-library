@@ -129,16 +129,10 @@ func (operation ReadPageMetadataOperation) Invoke(call sdkgo.Call, input ReadPag
 		},
 		ArticlePublishedAt: optionalTimestamp(meta["article:published_time"]),
 		ArticleModifiedAt:  optionalTimestamp(meta["article:modified_time"]),
+		CanonicalURL:       head.canonicalURL(base),
 		StructuredData:     readStructuredData(head.structuredScripts),
 		IsTruncated:        document.isTruncated,
 		FetchedAt:          client.clock().UTC(),
-	}
-	for _, link := range head.links {
-		if hasRelation(link.relations, "canonical") {
-			if metadata.CanonicalURL = resolveLink(base, link.href); metadata.CanonicalURL != "" {
-				break
-			}
-		}
 	}
 	metadata.PublishedAt = firstTimestamp(metadata.ArticlePublishedAt, metadata.StructuredData.DatePublished)
 	metadata.ModifiedAt = firstTimestamp(metadata.ArticleModifiedAt, metadata.StructuredData.DateModified, optionalTimestamp(meta["og:updated_time"]))

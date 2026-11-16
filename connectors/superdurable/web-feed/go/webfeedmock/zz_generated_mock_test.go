@@ -40,6 +40,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[webfeed.PageMetadata](`{"finalUrl":"https://www.example.com/blog/spring-release-notes","title":"Spring release notes | Example","description":"Everything the team released this spring, in one place.","canonicalUrl":"https://www.example.com/blog/spring-release-notes","openGraph":{"title":"Spring release notes","description":"Everything the team released this spring.","imageUrl":"https://www.example.com/images/spring-release.png","type":"article","siteName":"Example"},"articlePublishedAt":"2026-11-09T17:00:00Z","articleModifiedAt":"2026-11-09T18:00:00Z","structuredData":{"type":"BlogPosting","headline":"Spring release notes","datePublished":"2026-11-09T17:00:00Z","dateModified":"2026-11-09T18:00:00Z"},"publishedAt":"2026-11-09T17:00:00Z","modifiedAt":"2026-11-09T18:00:00Z","isTruncated":false,"fetchedAt":"2026-11-10T10:00:00Z"}`)
 			return err
 		}},
+		{name: "readPage/blogPostText/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[webfeed.Page](`{"finalUrl":"https://www.example.com/blog/spring-release-notes","statusCode":200,"contentType":"text/html","title":"Spring release notes | Example","description":"Everything the team released this spring, in one place.","siteName":"Example","canonicalUrl":"https://www.example.com/blog/spring-release-notes","publishedAt":"2026-11-09T17:00:00Z","text":"Spring release notes\n\nThis spring the team released faster builds, a new dashboard, and clearer error messages.\n\nBuilds now share one remote cache, so a clean build takes half as long.\n\nThe dashboard shows every run on one page, with filters for status and owner.","isTextTruncated":false,"etag":"\"3b-9f2c\"","lastModified":"Mon, 09 Nov 2026 18:00:00 GMT","fetchedAt":"2026-11-10T10:00:00Z"}`)
+			return err
+		}},
+		{name: "readPage/unchanged/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[webfeed.Page](`{"finalUrl":"https://www.example.com/blog/spring-release-notes","statusCode":304,"text":"","isTextTruncated":false,"etag":"\"3b-9f2c\"","lastModified":"Mon, 09 Nov 2026 18:00:00 GMT","fetchedAt":"2026-11-10T11:00:00Z"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -61,5 +69,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ReadPageMetadata().Definition().Operation.OperationID != "readPageMetadata" {
 		t.Errorf("readPageMetadata mock has another definition")
+	}
+	if mock.ReadPage().Definition().Operation.OperationID != "readPage" {
+		t.Errorf("readPage mock has another definition")
 	}
 }

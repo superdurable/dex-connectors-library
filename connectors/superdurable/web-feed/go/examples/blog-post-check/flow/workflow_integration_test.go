@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -86,6 +87,22 @@ func TestBlogPostCheckFallsBackToTheSitemapWithRealDex(t *testing.T) {
 	pageCalls := mock.ReadPageMetadata().Calls()
 	require.Equal(t, []string{"https://www.example.com/blog/newest", "https://www.example.com/blog/older"}, []string{pageCalls[0].Input.URL, pageCalls[1].Input.URL})
 	require.Equal(t, webfeed.ReadPageMetadataBranchNotFound, pageCalls[1].Branch)
+}
+
+func TestBlogPostCheckReadsTheFirstPostTextWithRealDex(t *testing.T) {
+	mock := webfeedmock.New(t, ConnectionName)
+	harness := newBlogPostCheckHarness(t, mock.Connection())
+	report := harness.requireCompletedReport(t, CheckRequest{FeedURL: "https://blog.example.com/feed.xml", IncludeFirstPostText: true})
+	require.Len(t, report.Posts, 2)
+	require.True(t, strings.HasPrefix(report.FirstPostText, "Spring release notes\n\n"), report.FirstPostText)
+	calls := mock.ReadPage().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, "https://blog.example.com/posts/faster-builds", calls[0].Input.URL, "the first reported post is read")
+	require.Equal(t, 2000, calls[0].Input.MaxTextCharacters)
+
+	withoutText := harness.requireCompletedReport(t, CheckRequest{FeedURL: "https://blog.example.com/feed.xml"})
+	require.Empty(t, withoutText.FirstPostText)
+	require.Len(t, mock.ReadPage().Calls(), 1, "the text is read only on request")
 }
 
 func TestBlogPostCheckRetriesATransientFeedFailureWithRealDex(t *testing.T) {

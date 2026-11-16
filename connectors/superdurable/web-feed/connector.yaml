@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: web-feed
   displayName: Web Feeds
-  description: "Read public RSS, Atom, and JSON feeds with conditional GET, find the feeds a site advertises, read sitemaps with path and date filters, and read one page's head metadata, for any public HTTPS site without credentials."
+  description: "Read public RSS, Atom, and JSON feeds with conditional GET, find the feeds a site advertises, read sitemaps with path and date filters, read one page's head metadata, and read one article page's readable text, for any public HTTPS site without credentials."
   company: Super Durable
   categories: [data-search]
   version: v0.1.0
@@ -22,7 +22,7 @@ spec:
       - name: maxDocumentBytes
         goName: MaxDocumentBytes
         type: integer
-        description: "Largest feed or sitemap, in bytes after decompression, that readFeed and readSitemap accept, as a positive integer; a larger document selects invalidResponse instead of being parsed. Blank uses the displayed default, which fits typical full-content feeds; raise it only for a sitemap or feed that is known to be larger."
+        description: "Largest feed, sitemap, or page, in bytes after decompression, that readFeed, readSitemap, and readPage accept, as a positive integer; a larger document selects invalidResponse instead of being parsed. Blank uses the displayed default, which fits typical full-content feeds and article pages; raise it only for a sitemap, feed, or page that is known to be larger."
         default: 10485760
       - name: maxPageBytes
         goName: MaxPageBytes
@@ -312,3 +312,74 @@ spec:
           branch: invalidResponse
           description: The URL serves an image instead of an HTML page.
           failure: {kind: PROTOCOL, message: "The URL serves image/png, not an HTML page."}
+    - name: readPage
+      goName: ReadPage
+      inputType: ReadPageInput
+      outputType: Page
+      kind: query
+      description: "Read one public article or blog post page and return its readable text with its title, description, site name, publication time, and canonical URL. The text comes from the page's largest article element, else its largest main element, else its body, without scripts, styles, navigation, headers, footers, and asides, with one blank line between paragraphs. A plain-text page is returned as it is. Pass the previous etag and lastModified to make a conditional GET that selects notModified when the page is unchanged."
+      idempotency: none
+      authorization: none
+      agent:
+        exposed: true
+        # A read changes nothing. Every optional branch is a definite outcome the model can act on: notModified
+        # by reading again without validators, invalidResponse by reading the URL with another tool.
+        branches: {notModified: rejected, notFound: rejected, providerRejected: rejected, unreachable: rejected, invalidResponse: rejected, defect: rejected}
+        description: "Read the readable text of one web page, such as a blog post or news article URL, without its navigation, headers, footers, scripts, and styles. Supply the page url; optionally maxTextCharacters from 1 through 100000 (default 20000). Returns the text with a blank line between paragraphs, isTextTruncated when it was cut, and the page title, description, site name, publication time in UTC, and canonical URL. Use the Web Feeds read_page_metadata tool when only the title and dates are needed. Pass etag and lastModified only to repeat an earlier read of the same page; an unchanged page then returns no text."
+      branches:
+        - {id: read, goName: Read, description: "The page was downloaded and its readable text extracted; the result holds the text, the page metadata, and the validators for the next conditional GET."}
+        - {id: notModified, goName: NotModified, description: "The site answered 304 Not Modified to the conditional GET; the result holds only the refreshed validators and no text.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The site answered 404 Not Found or 410 Gone for the page URL or its redirect target.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed.", optional: true}
+        - {id: unreachable, goName: Unreachable, description: "The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The response is not an HTML or plain-text page: another media type, a page larger than maxDocumentBytes, or a broken or overlong redirect chain.", optional: true}
+        - {id: defect, goName: Defect, description: "The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http, or a maxTextCharacters out of range; nothing was sent.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: blogPostText
+          branch: read
+          description: A blog post page whose article holds three paragraphs, with Open Graph and article times.
+          default: true
+          output:
+            finalUrl: "https://www.example.com/blog/spring-release-notes"
+            statusCode: 200
+            contentType: text/html
+            title: Spring release notes | Example
+            description: Everything the team released this spring, in one place.
+            siteName: Example
+            canonicalUrl: "https://www.example.com/blog/spring-release-notes"
+            publishedAt: "2026-11-09T17:00:00Z"
+            text: "Spring release notes\n\nThis spring the team released faster builds, a new dashboard, and clearer error messages.\n\nBuilds now share one remote cache, so a clean build takes half as long.\n\nThe dashboard shows every run on one page, with filters for status and owner."
+            isTextTruncated: false
+            etag: "\"3b-9f2c\""
+            lastModified: "Mon, 09 Nov 2026 18:00:00 GMT"
+            fetchedAt: "2026-11-10T10:00:00Z"
+        - name: unchanged
+          branch: notModified
+          description: The site answers 304 to a conditional GET with the stored etag.
+          output:
+            finalUrl: "https://www.example.com/blog/spring-release-notes"
+            statusCode: 304
+            text: ""
+            isTextTruncated: false
+            etag: "\"3b-9f2c\""
+            lastModified: "Mon, 09 Nov 2026 18:00:00 GMT"
+            fetchedAt: "2026-11-10T11:00:00Z"
+        - name: unpublished
+          branch: notFound
+          description: The post was unpublished and its URL answers 404.
+          failure: {kind: NOT_FOUND, message: "The site answered 404 Not Found for the page URL."}
+        - name: forbidden
+          branch: providerRejected
+          description: The site's bot protection answers 403 Forbidden.
+          failure: {kind: PROVIDER_REJECTION, message: "The site refused the page request with HTTP 403."}
+        - name: hostMissing
+          branch: unreachable
+          description: The page's host name no longer exists in DNS.
+          failure: {kind: TRANSPORT, message: "The page host does not exist."}
+        - name: servesPDF
+          branch: invalidResponse
+          description: The URL serves a PDF instead of an HTML or plain-text page.
+          failure: {kind: PROTOCOL, message: "The URL serves application/pdf, not an HTML or plain-text page."}

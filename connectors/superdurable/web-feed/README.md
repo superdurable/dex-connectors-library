@@ -16,13 +16,15 @@ without credentials:
 | `discoverFeeds` | one HTML page's `link rel="alternate"` feed links | `discovered` |
 | `readSitemap` | one XML sitemap or sitemap index, plain or gzip, with conditional GET | `read`, or `notModified` for an unchanged sitemap |
 | `readPageMetadata` | one HTML page's head metadata: title, description, canonical URL, Open Graph, article times, JSON-LD | `read` |
+| `readPage` | one article page's readable text and its title, description, site name, publication time, and canonical URL, with conditional GET | `read`, or `notModified` for an unchanged page |
 
 A typical watcher discovers a blog's feed once and polls it with `readFeed`.
 A site that publishes no feed, as many sites built with static-site and
 JavaScript frameworks do, usually still publishes `sitemap.xml` with
 `lastmod`; the watcher polls the sitemap with a path prefix such as `/blog/`
-and reads each new page's metadata. The
-[runnable example](go/examples/blog-post-check/README.md) does both.
+and reads each new page's metadata. `readPage` then reads a post's text,
+for example to summarize or index it. The
+[runnable example](go/examples/blog-post-check/README.md) does all three.
 
 ## Connection
 
@@ -32,7 +34,7 @@ safe default, so a connection is ready as soon as it is saved:
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `timeout` | `15s` | bound on one HTTP request, at least one second; each redirect hop is a separate request, and the 30-second Execute timeout bounds them all |
-| `maxDocumentBytes` | `10485760` | largest feed or sitemap after decompression, from 1024 through 268435456; a larger one selects `invalidResponse` |
+| `maxDocumentBytes` | `10485760` | largest feed, sitemap, or `readPage` page after decompression, from 1024 through 268435456; a larger one selects `invalidResponse` |
 | `maxPageBytes` | `1048576` | bytes of an HTML page read by `discoverFeeds` and `readPageMetadata`, from 1024 through 67108864; the rest is not downloaded |
 | `userAgent` | `Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)` | `User-Agent` header, printable ASCII, at most 256 characters |
 
@@ -138,6 +140,50 @@ and `modifiedAt` pick the article properties first, then JSON-LD, then
 `isTruncated` reports a longer page; head metadata comes first, so a cut page
 still yields it. Scripts never run and linked resources are never requested.
 
+### `readPage`
+
+Input: `url` of one article or blog post page, optional `etag` and
+`lastModified` from a previous read, and `maxTextCharacters` (1 through
+100000 code points, default 20000).
+
+The result `Page` holds `finalUrl`, `statusCode`, `contentType`
+(`text/html`, `application/xhtml+xml`, or `text/plain`; a response without a
+`Content-Type` is read as HTML), `title` (the `title` element, else
+`og:title`), `description` (`meta name="description"`, else
+`og:description`), `siteName` (`og:site_name`), `canonicalUrl`,
+`publishedAt` (`article:published_time`, else the JSON-LD article
+`datePublished`; omitted when the page states neither), `text`,
+`isTextTruncated`, the response's `etag` and `lastModified`, and `fetchedAt`.
+
+`text` is extracted without running scripts or requesting linked resources:
+
+- The region is the `article` element with the most text, else the `main`
+  element with the most text, else the whole page. Nested articles count as
+  part of their outermost article, and the first region wins a tie.
+- `script`, `style`, `noscript`, `template`, `svg`, `math`, `iframe`,
+  `title`, `nav`, `header`, `footer`, `aside`, `button`, `select`, and
+  `textarea` content is dropped, also inside the region, so an article's own
+  `header`, such as a byline, is dropped too.
+- Block elements, such as `p`, `h1` to `h6`, `li`, `div`, and `figcaption`,
+  end a paragraph; paragraphs are separated by one blank line, `br` becomes
+  one newline, other whitespace collapses to one space, and entities are
+  decoded. An unclosed element ends with its parent, as browsers and the
+  TypeScript package's HTML parser treat it.
+- A `text/plain` page is returned as it is, with only surrounding whitespace
+  and a byte order mark removed.
+- The text is cut to `maxTextCharacters`, preferring a space or line break,
+  and a cut text ends with `…` and sets `isTextTruncated`.
+
+The whole page must fit in `maxDocumentBytes`; a larger page selects
+`invalidResponse`, as does any other media type, such as a PDF, an image, or
+JSON. The connector does not follow `meta http-equiv="refresh"` redirects or
+render pages that build their text with JavaScript; such pages return the
+little text their HTML holds. A page without `article` or `main` elements,
+such as one built from generic `div` elements, returns menus and sidebars
+that are not marked as `nav` or `aside` along with its text. Conditional GET
+works as for `readFeed`; `notModified` holds `finalUrl`, `statusCode` `304`,
+the refreshed validators, `fetchedAt`, and an empty `text`.
+
 ### Outcomes
 
 Every operation classifies its outcome the same way:
@@ -145,11 +191,11 @@ Every operation classifies its outcome the same way:
 | Outcome | Selected when |
 | --- | --- |
 | happy path | a `2xx` response that parses as the expected document |
-| `notModified` | `304` to a conditional GET (`readFeed` and `readSitemap`) |
+| `notModified` | `304` to a conditional GET (`readFeed`, `readSitemap`, and `readPage`) |
 | `notFound` | `404` or `410` |
 | `providerRejected` | any other `4xx`, such as `401`, `403` (often bot protection), or `451` |
 | `unreachable` | the host does not exist (`NXDOMAIN`), resolves to an address the connector never connects to, presents a certificate that fails verification, or serves no TLS on the port |
-| `invalidResponse` | an unexpected media type, an HTML page where a feed or sitemap is expected, malformed XML, JSON, or gzip, a document over `maxDocumentBytes`, `204`, `304` without validators, more than five redirects, or a redirect to a non-http URL |
+| `invalidResponse` | an unexpected media type, an HTML page where a feed or sitemap is expected, a `readPage` page that is not HTML or plain text, malformed XML, JSON, or gzip, a document over `maxDocumentBytes`, `204`, `304` without validators, more than five redirects, or a redirect to a non-http URL |
 | `defect` | invalid input, such as a relative URL, user information, a plain-http port, an out-of-range limit, or a validator that is not printable ASCII; nothing was sent |
 | Retry | `408`, `425`, `429`, `5xx`, a timeout, a dropped connection, or an interrupted body; `Retry-After` is honored |
 
@@ -164,10 +210,10 @@ shortens the policy with `StepOptionsOverride.ExecuteRetry`.
 
 ## Agent tools
 
-All four operations are reviewed for agent use and set `agent.exposed: true`,
+All five operations are reviewed for agent use and set `agent.exposed: true`,
 so an agent host, such as the Connectors MCP server, offers them as the tools
-`web-feed_read_feed`, `web-feed_discover_feeds`, `web-feed_read_sitemap`, and
-`web-feed_read_page_metadata`. They are reads, so none recommends approval.
+`web-feed_read_feed`, `web-feed_discover_feeds`, `web-feed_read_sitemap`,
+`web-feed_read_page_metadata`, and `web-feed_read_page`. They are reads, so none recommends approval.
 Every optional branch is classified `rejected`: the call changed nothing and
 the model can act on the outcome, such as reading a feed found with
 `discover_feeds` after `read_feed` reports an HTML page, or reading again
@@ -212,8 +258,9 @@ its own.
 
 [Blog post check](go/examples/blog-post-check/README.md) discovers a blog's
 feed and reports its newest posts, or, when the blog has no feed, reads its
-sitemap and the newest post pages. It uses all four operations through the
-static `web-feed-public` connection.
+sitemap and the newest post pages, and on request reads the first reported
+post's text. It uses all five operations through the static
+`web-feed-public` connection.
 
 ## Verification
 
@@ -232,11 +279,13 @@ address or to loopback, private, shared, and link-local addresses. They cover
 every format and branch, redirects across hosts, `http` upgrades, the
 redirect limit, refused addresses at the first hop and after a redirect,
 `NXDOMAIN`, a certificate mismatch, gzip limits, charsets, and the timestamp
-spellings above. The integration tests need a running `dexcli dev -durability
+spellings above, and readable-text extraction from article, `main`, and
+body regions, plain text, truncation, and malformed markup. The integration tests need a running `dexcli dev -durability
 process-crash-safe` and use `DEX_FLOW_SERVICE_ADDRESS` when it is not
 `127.0.0.1:8801`; they run the example on real Dex with the generated
 `webfeedmock` connection, including a Dex retry, the `notModified` wiring, a
-sitemap index with two children, and a skipped removed page.
+sitemap index with two children, a skipped removed page, and the first
+post's text read through `readPage`.
 
 Live verification is recorded in the
 [example README](go/examples/blog-post-check/README.md#live-verification).

@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 // Package blogpostcheck checks one blog for recent posts as a Dex Flow. It reads the feed the blog
-// advertises, or, for a blog without a feed, its sitemap and the head metadata of each recent post page.
+// advertises, or, for a blog without a feed, its sitemap and the head metadata of each recent post page,
+// and optionally reads the readable text of the first reported post.
 package blogpostcheck
 
 import (
@@ -30,8 +31,11 @@ const (
 	readFeedStepType      = "ReadBlogFeed"
 	readSitemapStepType   = "ReadBlogSitemap"
 	readPostPageStepType  = "ReadPostPage"
-	defaultMaxPosts       = 5
-	maxPostsAllowed       = 10
+	readPostTextStepType  = "ReadFirstPostText"
+	// firstPostTextCharacters bounds the reported post text, which the report keeps as an excerpt.
+	firstPostTextCharacters = 2000
+	defaultMaxPosts         = 5
+	maxPostsAllowed         = 10
 	// maxSitemapReads bounds the sitemap and child sitemap reads of one check.
 	maxSitemapReads = 4
 )
@@ -59,6 +63,8 @@ type CheckRequest struct {
 	ETag string `json:"etag,omitempty"`
 	// LastModified is the feed lastModified a previous check reported, sent as a conditional GET validator.
 	LastModified string `json:"lastModified,omitempty"`
+	// IncludeFirstPostText reads the readable text of the first reported post into the report.
+	IncludeFirstPostText bool `json:"includeFirstPostText,omitempty"`
 }
 
 // CheckReport is the Flow output and the Dex Web display value.
@@ -75,6 +81,9 @@ type CheckReport struct {
 	LastModified string `json:"lastModified,omitempty"`
 	// Posts holds the newest matching posts.
 	Posts []Post `json:"posts"`
+	// FirstPostText is the readable text of the first post, at most 2000 code points, when the request
+	// set includeFirstPostText. It is untrusted provider text.
+	FirstPostText string `json:"firstPostText,omitempty"`
 }
 
 // Post is one reported blog post. Title and Summary are untrusted provider text.
@@ -148,6 +157,13 @@ func (flow *BlogPostCheck) GetSteps() []dex.StepDef {
 			NotFound: sdkgo.GoTo(CollectPostPage{}),
 		})),
 		dex.DefineStep(CollectPostPage{}),
+		dex.DefineStep(webfeed.NewReadPageStep(webfeed.ReadPageStepConfig[webfeed.ReadPageInput]{
+			StepType: readPostTextStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "text", GroupLabel: "Post text", Explanation: "Read the readable text of the first reported post."},
+			MapToOperationInput: mapReadPageInput,
+			Read:                sdkgo.GoTo(CollectFirstPostText{}),
+		})),
+		dex.DefineStep(CollectFirstPostText{}),
 	}
 }
 
@@ -262,14 +278,20 @@ func (CollectFeedPosts) Execute(ctx dex.Context, result webfeed.ReadFeedResult) 
 	if err != nil {
 		return nil, err
 	}
-	report := CheckReport{
+	state.Report = CheckReport{
 		Source: SourceFeed, SourceURL: result.Value.FinalURL, ETag: result.Value.ETag, LastModified: result.Value.LastModified,
 		Posts: selectFeedPosts(result.Value.Items, state.PublishedAfter, state.Request.MaxPosts),
 	}
-	if err := reportAttribute.Set(ctx, report); err != nil {
+	if state.shouldReadFirstPostText() {
+		if err := checkStateAttribute.Set(ctx, state); err != nil {
+			return nil, err
+		}
+		return dex.GoTo(sdkgo.StepRef[webfeed.ReadPageInput](readPostTextStepType), state.firstPostTextInput()), nil
+	}
+	if err := reportAttribute.Set(ctx, state.Report); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(report), nil
+	return dex.GracefulComplete(state.Report), nil
 }
 
 // CompleteUnchangedFeed reports an unchanged feed.
@@ -322,6 +344,12 @@ func (CollectSitemapEntries) Execute(ctx dex.Context, result webfeed.ReadSitemap
 		return nil, err
 	}
 	if len(state.PendingPages) == 0 {
+		if state.shouldReadFirstPostText() {
+			if err := checkStateAttribute.Set(ctx, state); err != nil {
+				return nil, err
+			}
+			return dex.GoTo(sdkgo.StepRef[webfeed.ReadPageInput](readPostTextStepType), state.firstPostTextInput()), nil
+		}
 		if err := reportAttribute.Set(ctx, state.Report); err != nil {
 			return nil, err
 		}
@@ -357,6 +385,32 @@ func (CollectPostPage) Execute(ctx dex.Context, result webfeed.ReadPageMetadataR
 	if len(state.PendingPages) > 0 {
 		return dex.GoTo(sdkgo.StepRef[webfeed.ReadPageMetadataInput](readPostPageStepType), webfeed.ReadPageMetadataInput{URL: state.PendingPages[0].URL}), nil
 	}
+	if state.shouldReadFirstPostText() {
+		if err := checkStateAttribute.Set(ctx, state); err != nil {
+			return nil, err
+		}
+		return dex.GoTo(sdkgo.StepRef[webfeed.ReadPageInput](readPostTextStepType), state.firstPostTextInput()), nil
+	}
+	if err := reportAttribute.Set(ctx, state.Report); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(state.Report), nil
+}
+
+// CollectFirstPostText adds the first post's readable text to the report.
+// dex:group group-id:text group-label:"Post text"
+// dex:explanation text:"Add the first post's readable text to the report and complete."
+type CollectFirstPostText struct {
+	dex.StepDefaultsNoWaitFor[webfeed.ReadPageResult]
+}
+
+// Execute records the text and completes the Flow with the report.
+func (CollectFirstPostText) Execute(ctx dex.Context, result webfeed.ReadPageResult) (*dex.StepDecision, error) {
+	state, err := checkStateAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	state.Report.FirstPostText = result.Value.Text
 	if err := reportAttribute.Set(ctx, state.Report); err != nil {
 		return nil, err
 	}
@@ -383,6 +437,15 @@ func newCheckState(request CheckRequest) (checkState, error) {
 		state.PublishedAfter = &publishedAfter
 	}
 	return state, nil
+}
+
+// shouldReadFirstPostText reports that the request asked for the first post's text and a post has a URL.
+func (state checkState) shouldReadFirstPostText() bool {
+	return state.Request.IncludeFirstPostText && len(state.Report.Posts) > 0 && state.Report.Posts[0].URL != ""
+}
+
+func (state checkState) firstPostTextInput() webfeed.ReadPageInput {
+	return webfeed.ReadPageInput{URL: state.Report.Posts[0].URL, MaxTextCharacters: firstPostTextCharacters}
 }
 
 func (state checkState) feedInput(feedURL string) webfeed.ReadFeedInput {
@@ -498,6 +561,8 @@ func mapReadSitemapInput(input webfeed.ReadSitemapInput) webfeed.ReadSitemapInpu
 func mapReadPageMetadataInput(input webfeed.ReadPageMetadataInput) webfeed.ReadPageMetadataInput {
 	return input
 }
+
+func mapReadPageInput(input webfeed.ReadPageInput) webfeed.ReadPageInput { return input }
 
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {

@@ -20,6 +20,7 @@ func ExposedAgentTools() []sdkgo.AgentToolMetadata {
 		discoverFeedsAgentToolMetadata(),
 		readSitemapAgentToolMetadata(),
 		readPageMetadataAgentToolMetadata(),
+		readPageAgentToolMetadata(),
 	}
 }
 
@@ -47,7 +48,11 @@ func (connection Connection) AgentTools() ([]sdkgo.AgentTool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("web-feed agent tool readPageMetadata: %w", err)
 	}
-	return []sdkgo.AgentTool{readFeedAgentTool, discoverFeedsAgentTool, readSitemapAgentTool, readPageMetadataAgentTool}, nil
+	readPageAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.ReadPage(), connection.reference, readPageAgentToolMetadata())
+	if err != nil {
+		return nil, fmt.Errorf("web-feed agent tool readPage: %w", err)
+	}
+	return []sdkgo.AgentTool{readFeedAgentTool, discoverFeedsAgentTool, readSitemapAgentTool, readPageMetadataAgentTool, readPageAgentTool}, nil
 }
 
 // Operations returns the operations this connection's Step factories and agent tools invoke.
@@ -144,5 +149,28 @@ func readPageMetadataAgentToolMetadata() sdkgo.AgentToolMetadata {
 		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"ReadPageMetadataInput selects the article page whose head metadata is read.\",\"properties\":{\"url\":{\"description\":\"URL is the absolute http or https URL of one HTML page, such as a post URL from readSitemap. An http URL is requested over https at the same host.\",\"type\":\"string\"}},\"required\":[\"url\"],\"type\":\"object\"}"),
 		Branches:     ReadPageMetadataDefinition.Branches,
 		StepDefaults: ReadPageMetadataDefinition.StepDefaults,
+	}
+}
+
+func readPageAgentToolMetadata() sdkgo.AgentToolMetadata {
+	return sdkgo.AgentToolMetadata{
+		Operation:             ReadPageDefinition.Operation,
+		Kind:                  sdkgo.AgentOperationKindQuery,
+		ToolName:              "web-feed_read_page",
+		Description:           "Read the readable text of one web page, such as a blog post or news article URL, without its navigation, headers, footers, scripts, and styles. Supply the page url; optionally maxTextCharacters from 1 through 100000 (default 20000). Returns the text with a blank line between paragraphs, isTextTruncated when it was cut, and the page title, description, site name, publication time in UTC, and canonical URL. Use the Web Feeds read_page_metadata tool when only the title and dates are needed. Pass etag and lastModified only to repeat an earlier read of the same page; an unchanged page then returns no text.",
+		IsApprovalRecommended: false,
+		IsRetrySafe:           false,
+		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
+			ReadPageBranchNotModified:      sdkgo.AgentBranchOutcomeRejected,
+			ReadPageBranchNotFound:         sdkgo.AgentBranchOutcomeRejected,
+			ReadPageBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
+			ReadPageBranchUnreachable:      sdkgo.AgentBranchOutcomeRejected,
+			ReadPageBranchInvalidResponse:  sdkgo.AgentBranchOutcomeRejected,
+			ReadPageBranchDefect:           sdkgo.AgentBranchOutcomeRejected,
+		},
+		InputType:    "ReadPageInput",
+		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"ReadPageInput selects one article page and, optionally, the validators of a previous read of it.\",\"properties\":{\"etag\":{\"description\":\"ETag is the etag a previous read of this page returned. The connector sends it as If-None-Match. Empty sends no If-None-Match header.\",\"type\":\"string\"},\"lastModified\":{\"description\":\"LastModified is the lastModified a previous read of this page returned, an HTTP date. The connector sends it as If-Modified-Since. Empty sends no If-Modified-Since header.\",\"type\":\"string\"},\"maxTextCharacters\":{\"description\":\"MaxTextCharacters bounds Text in Unicode code points, from 1 through 100000. Zero selects 20000.\",\"type\":\"integer\"},\"url\":{\"description\":\"URL is the absolute http or https URL of one article or blog post page, such as a post URL from readFeed or readSitemap. An http URL is requested over https at the same host; a fragment is ignored.\",\"type\":\"string\"}},\"required\":[\"url\"],\"type\":\"object\"}"),
+		Branches:     ReadPageDefinition.Branches,
+		StepDefaults: ReadPageDefinition.StepDefaults,
 	}
 }

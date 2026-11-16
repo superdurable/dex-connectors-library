@@ -22,6 +22,7 @@ type Mock struct {
 	discoverFeeds    *connectormock.Query[webfeed.DiscoverFeedsInput, webfeed.DiscoveredFeeds]
 	readSitemap      *connectormock.Query[webfeed.ReadSitemapInput, webfeed.Sitemap]
 	readPageMetadata *connectormock.Query[webfeed.ReadPageMetadataInput, webfeed.PageMetadata]
+	readPage         *connectormock.Query[webfeed.ReadPageInput, webfeed.Page]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -33,11 +34,13 @@ func New(t testing.TB, connectionName string) *Mock {
 		discoverFeeds:    connectormock.NewQuery[webfeed.DiscoverFeedsInput, webfeed.DiscoveredFeeds](t, webfeed.DiscoverFeedsDefinition),
 		readSitemap:      connectormock.NewQuery[webfeed.ReadSitemapInput, webfeed.Sitemap](t, webfeed.ReadSitemapDefinition),
 		readPageMetadata: connectormock.NewQuery[webfeed.ReadPageMetadataInput, webfeed.PageMetadata](t, webfeed.ReadPageMetadataDefinition),
+		readPage:         connectormock.NewQuery[webfeed.ReadPageInput, webfeed.Page](t, webfeed.ReadPageDefinition),
 	}
 	mock.readFeed.Default(ReadFeedDefault())
 	mock.discoverFeeds.Default(DiscoverFeedsDefault())
 	mock.readSitemap.Default(ReadSitemapDefault())
 	mock.readPageMetadata.Default(ReadPageMetadataDefault())
+	mock.readPage.Default(ReadPageDefault())
 	connection, err := webfeed.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "web-feed", Name: connectionName})
 	if err != nil {
 		t.Fatalf("web-feed mock connection: %v", err)
@@ -69,6 +72,11 @@ func (mock *Mock) ReadPageMetadata() *connectormock.Query[webfeed.ReadPageMetada
 	return mock.readPageMetadata
 }
 
+// ReadPage returns the readPage script.
+func (mock *Mock) ReadPage() *connectormock.Query[webfeed.ReadPageInput, webfeed.Page] {
+	return mock.readPage
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ReadFeed() sdkgo.Query[webfeed.ReadFeedInput, webfeed.Feed] {
@@ -82,6 +90,9 @@ func (operations mockOperations) ReadSitemap() sdkgo.Query[webfeed.ReadSitemapIn
 }
 func (operations mockOperations) ReadPageMetadata() sdkgo.Query[webfeed.ReadPageMetadataInput, webfeed.PageMetadata] {
 	return operations.mock.readPageMetadata
+}
+func (operations mockOperations) ReadPage() sdkgo.Query[webfeed.ReadPageInput, webfeed.Page] {
+	return operations.mock.readPage
 }
 
 // ReadFeedRead selects the read branch: The feed was downloaded and parsed; the result holds its items and the validators for the next conditional GET.
@@ -381,3 +392,82 @@ func ReadPageMetadataServesImage() connectormock.Case[webfeed.PageMetadata] {
 func ReadPageMetadataDefault() connectormock.Case[webfeed.PageMetadata] {
 	return ReadPageMetadataBlogPostPage()
 }
+
+// ReadPageRead selects the read branch: The page was downloaded and its readable text extracted; the result holds the text, the page metadata, and the validators for the next conditional GET.
+func ReadPageRead(value webfeed.Page, failure *sdkgo.Failure) connectormock.Case[webfeed.Page] {
+	return connectormock.Branch(webfeed.ReadPageBranchRead, value, failure)
+}
+
+// ReadPageNotModified selects the notModified branch: The site answered 304 Not Modified to the conditional GET; the result holds only the refreshed validators and no text.
+func ReadPageNotModified(value webfeed.Page, failure *sdkgo.Failure) connectormock.Case[webfeed.Page] {
+	return connectormock.Branch(webfeed.ReadPageBranchNotModified, value, failure)
+}
+
+// ReadPageNotFound selects the notFound branch: The site answered 404 Not Found or 410 Gone for the page URL or its redirect target.
+func ReadPageNotFound(value webfeed.Page, failure *sdkgo.Failure) connectormock.Case[webfeed.Page] {
+	return connectormock.Branch(webfeed.ReadPageBranchNotFound, value, failure)
+}
+
+// ReadPageProviderRejected selects the providerRejected branch: The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed.
+func ReadPageProviderRejected(value webfeed.Page, failure *sdkgo.Failure) connectormock.Case[webfeed.Page] {
+	return connectormock.Branch(webfeed.ReadPageBranchProviderRejected, value, failure)
+}
+
+// ReadPageUnreachable selects the unreachable branch: The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read.
+func ReadPageUnreachable(value webfeed.Page, failure *sdkgo.Failure) connectormock.Case[webfeed.Page] {
+	return connectormock.Branch(webfeed.ReadPageBranchUnreachable, value, failure)
+}
+
+// ReadPageInvalidResponse selects the invalidResponse branch: The response is not an HTML or plain-text page: another media type, a page larger than maxDocumentBytes, or a broken or overlong redirect chain.
+func ReadPageInvalidResponse(value webfeed.Page, failure *sdkgo.Failure) connectormock.Case[webfeed.Page] {
+	return connectormock.Branch(webfeed.ReadPageBranchInvalidResponse, value, failure)
+}
+
+// ReadPageDefect selects the defect branch: The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http, or a maxTextCharacters out of range; nothing was sent.
+func ReadPageDefect(value webfeed.Page, failure *sdkgo.Failure) connectormock.Case[webfeed.Page] {
+	return connectormock.Branch(webfeed.ReadPageBranchDefect, value, failure)
+}
+
+// ReadPageRetry asks Dex to retry the readPage Step, after the delay when it is positive.
+func ReadPageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[webfeed.Page] {
+	return connectormock.Retry[webfeed.Page](failure, after)
+}
+
+// ReadPageBlogPostText is the manifest mock blogPostText: A blog post page whose article holds three paragraphs, with Open Graph and article times.
+func ReadPageBlogPostText() connectormock.Case[webfeed.Page] {
+	value := connectormock.MustDecodeOutput[webfeed.Page](`{"finalUrl":"https://www.example.com/blog/spring-release-notes","statusCode":200,"contentType":"text/html","title":"Spring release notes | Example","description":"Everything the team released this spring, in one place.","siteName":"Example","canonicalUrl":"https://www.example.com/blog/spring-release-notes","publishedAt":"2026-11-09T17:00:00Z","text":"Spring release notes\n\nThis spring the team released faster builds, a new dashboard, and clearer error messages.\n\nBuilds now share one remote cache, so a clean build takes half as long.\n\nThe dashboard shows every run on one page, with filters for status and owner.","isTextTruncated":false,"etag":"\"3b-9f2c\"","lastModified":"Mon, 09 Nov 2026 18:00:00 GMT","fetchedAt":"2026-11-10T10:00:00Z"}`)
+	return connectormock.Branch(webfeed.ReadPageBranchRead, value, nil)
+}
+
+// ReadPageUnchanged is the manifest mock unchanged: The site answers 304 to a conditional GET with the stored etag.
+func ReadPageUnchanged() connectormock.Case[webfeed.Page] {
+	value := connectormock.MustDecodeOutput[webfeed.Page](`{"finalUrl":"https://www.example.com/blog/spring-release-notes","statusCode":304,"text":"","isTextTruncated":false,"etag":"\"3b-9f2c\"","lastModified":"Mon, 09 Nov 2026 18:00:00 GMT","fetchedAt":"2026-11-10T11:00:00Z"}`)
+	return connectormock.Branch(webfeed.ReadPageBranchNotModified, value, nil)
+}
+
+// ReadPageUnpublished is the manifest mock unpublished: The post was unpublished and its URL answers 404.
+func ReadPageUnpublished() connectormock.Case[webfeed.Page] {
+	var value webfeed.Page
+	return connectormock.Branch(webfeed.ReadPageBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The site answered 404 Not Found for the page URL."})
+}
+
+// ReadPageForbidden is the manifest mock forbidden: The site's bot protection answers 403 Forbidden.
+func ReadPageForbidden() connectormock.Case[webfeed.Page] {
+	var value webfeed.Page
+	return connectormock.Branch(webfeed.ReadPageBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "The site refused the page request with HTTP 403."})
+}
+
+// ReadPageHostMissing is the manifest mock hostMissing: The page's host name no longer exists in DNS.
+func ReadPageHostMissing() connectormock.Case[webfeed.Page] {
+	var value webfeed.Page
+	return connectormock.Branch(webfeed.ReadPageBranchUnreachable, value, &sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The page host does not exist."})
+}
+
+// ReadPageServesPDF is the manifest mock servesPDF: The URL serves a PDF instead of an HTML or plain-text page.
+func ReadPageServesPDF() connectormock.Case[webfeed.Page] {
+	var value webfeed.Page
+	return connectormock.Branch(webfeed.ReadPageBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "The URL serves application/pdf, not an HTML or plain-text page."})
+}
+
+// ReadPageDefault is the manifest default, blogPostText, which New installs.
+func ReadPageDefault() connectormock.Case[webfeed.Page] { return ReadPageBlogPostText() }

@@ -22,6 +22,8 @@ func TestBlogPostCheckIdentityAndRegistration(t *testing.T) {
 	require.NoError(t, err)
 	input := webfeed.ReadFeedInput{URL: "https://blog.example.com/feed.xml", ETag: `"v1"`}
 	require.Equal(t, input, mapReadFeedInput(input))
+	pageInput := webfeed.ReadPageInput{URL: "https://blog.example.com/posts/faster-builds", MaxTextCharacters: firstPostTextCharacters}
+	require.Equal(t, pageInput, mapReadPageInput(pageInput))
 }
 
 func TestNewCheckStateValidatesTheRequest(t *testing.T) {

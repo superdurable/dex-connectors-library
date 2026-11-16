@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package webfeed reads public web feeds, sitemaps, and HTML page metadata through typed Dex Query Steps.
+// Package webfeed reads public web feeds, sitemaps, HTML page metadata, and readable page text through
+// typed Dex Query Steps.
 //
 // The connector needs no credentials. Every request is a GET to a public address over HTTPS: an http URL
 // is upgraded to https before connecting, the client connects only when every address a host resolves to
@@ -10,8 +11,8 @@
 // byte limits.
 //
 // Applications open the connection with the generated NewProjectConnection and use the generated Step
-// factories NewReadFeedStep, NewDiscoverFeedsStep, NewReadSitemapStep, and NewReadPageMetadataStep. The
-// runnable example in examples/blog-post-check wires all four into one Flow.
+// factories NewReadFeedStep, NewDiscoverFeedsStep, NewReadSitemapStep, NewReadPageMetadataStep, and
+// NewReadPageStep. The runnable example in examples/blog-post-check wires all five into one Flow.
 package webfeed
 
 import (
@@ -75,6 +76,9 @@ type ReadSitemapOperation struct{ client *Client }
 // ReadPageMetadataOperation reads the head metadata of one HTML page per invocation.
 type ReadPageMetadataOperation struct{ client *Client }
 
+// ReadPageOperation reads the readable text of one HTML or plain-text page per invocation.
+type ReadPageOperation struct{ client *Client }
+
 // New validates config and builds a Client. Zero fields take their manifest defaults. The connector has
 // no credentials, so the credential source is ignored and may be nil.
 //
@@ -125,6 +129,9 @@ func (client *Client) ReadSitemap() ReadSitemapOperation { return ReadSitemapOpe
 func (client *Client) ReadPageMetadata() ReadPageMetadataOperation {
 	return ReadPageMetadataOperation{client: client}
 }
+
+// ReadPage returns the readPage Query bound to this client.
+func (client *Client) ReadPage() ReadPageOperation { return ReadPageOperation{client: client} }
 
 func validateLimits(config Config) error {
 	switch {
