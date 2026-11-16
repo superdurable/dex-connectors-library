@@ -11,9 +11,9 @@ spec:
   provider: airtable
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listRecords, getRecord, upsertRecords, updateRecords]
-      triggers: []
+      triggers: [recordChanged]
     typescript:
       version: v0.1.2
       operations: [listRecords, getRecord, upsertRecords, updateRecords]

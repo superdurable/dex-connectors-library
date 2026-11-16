@@ -93,6 +93,12 @@ UI_UNIT_TABLE_PICKER = "tablePicker"
 UI_TABLE_PICKER_PORT_BASE_ID = "baseId"
 UI_TABLE_PICKER_PORT_TABLE_ID = "tableId"
 UI_TABLE_PICKER_PORT_TABLE_NAME = "tableName"
+UI_UNIT_LAST_MODIFIED_TIME_FIELD_PICKER = "lastModifiedTimeFieldPicker"
+"""The Studio unit that lists a table's Last modified time fields with a time of day."""
+UI_LAST_MODIFIED_TIME_FIELD_PICKER_PORT_BASE_ID = "baseId"
+UI_LAST_MODIFIED_TIME_FIELD_PICKER_PORT_TABLE_ID = "tableId"
+UI_LAST_MODIFIED_TIME_FIELD_PICKER_PORT_FIELD_ID = "fieldId"
+UI_LAST_MODIFIED_TIME_FIELD_PICKER_PORT_FIELD_NAME = "fieldName"
 MAXIMUM_PAGE_SIZE = 100
 MAXIMUM_RECORDS_PER_WRITE = 10
 MAXIMUM_FIELDS_PER_RECORD = 500
@@ -192,7 +198,12 @@ class _BaseRequestPacer:
 
 
 class Client:
-    """One redirect-safe HTTP client, shared per-base pacing, and a call-time credential source."""
+    """One redirect-safe HTTP client, shared per-base pacing, and a call-time credential source.
+
+    ``poll_interval_seconds`` is the recordChanged Trigger's delay between polls of one binding and
+    ``poll_page_size`` the records one poll request reads; zero selects the manifest default, and an
+    interval under one second or a page size outside 1 to 100 raises ValueError.
+    """
 
     def __init__(
         self,
@@ -208,6 +219,12 @@ class Client:
             raise ValueError("Airtable credential provider is required")
         self.base_url = validate_base_url(config.endpoint or _DEFAULT_ENDPOINT)
         self.max_response_bytes = config.max_response_bytes or _DEFAULT_MAX_RESPONSE_BYTES
+        self.poll_interval_seconds = config.poll_interval_seconds or Config().poll_interval_seconds
+        if isinstance(self.poll_interval_seconds, bool) or self.poll_interval_seconds < 1:
+            raise ValueError("Airtable pollInterval must be at least one second")
+        self.poll_page_size = config.poll_page_size or Config().poll_page_size
+        if type(self.poll_page_size) is not int or not 1 <= self.poll_page_size <= MAXIMUM_PAGE_SIZE:
+            raise ValueError(f"Airtable pollPageSize must be from 1 to {MAXIMUM_PAGE_SIZE}")
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(_REQUEST_TIMEOUT_SECONDS)
         self.pacer = _BaseRequestPacer()
