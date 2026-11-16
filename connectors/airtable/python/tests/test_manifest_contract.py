@@ -97,6 +97,8 @@ def test_manifest_operations_branches_defaults_and_units() -> None:
     assert [unit["id"] for unit in manifest["spec"]["studio"]["units"]] == [
         UI_UNIT_BASE_PICKER,
         UI_UNIT_TABLE_PICKER,
+        # The Go recordChanged Trigger's unit; this package implements no Trigger.
+        "lastModifiedTimeFieldPicker",
     ]
 
 
@@ -146,9 +148,13 @@ def test_factory_parameters_match_declared_branch_fields() -> None:
         "configuration_ui",
         "result_attribute",
         "step_options_override",
+        "max_sends_override",
     }
     for factory in document["factories"]:
         parameters = set(inspect.signature(getattr(package, factory["name"])).parameters)
+        if factory["kind"] == "trigger":
+            assert parameters == set(factory["fields"].values())
+            continue
         assert parameters - common == {branch["field"] for branch in factory["branches"]}
 
 

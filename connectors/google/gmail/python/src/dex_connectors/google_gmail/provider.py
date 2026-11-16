@@ -8,7 +8,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email import policy
 from email.header import decode_header, make_header
 from email.parser import Parser
@@ -22,6 +22,7 @@ from dex_connectors.sdk import (
     CredentialProvider,
     CredentialRefreshDriver,
     RejectedCredentialRefreshingProvider,
+    TriggerLogger,
     resolve_credential,
     resolve_credential_after_rejection,
 )
@@ -356,7 +357,16 @@ class GmailProvider:
         credentials: CredentialProvider[Credentials],
         refresh_driver: CredentialRefreshDriver[Credentials] | None = None,
         http_client: httpx.AsyncClient | None = None,
+        *,
+        logger: TriggerLogger | None = None,
     ) -> None:
+        """Validate settings and keep the credential source, transport, and Trigger logger.
+
+        logger receives the Gmail Trigger pollers' records: failed polls, ignored and skipped messages,
+        delivery retries, and the durable inboxes `new_project_message_trigger_runner` creates. None
+        uses the standard logging adapter. Records carry message and thread IDs, never senders,
+        subjects, snippets, bodies, or tokens.
+        """
         if credentials is None:
             raise ValueError("credential provider is required")
         self.endpoint = validate_base_url(config.endpoint or Config().endpoint)
@@ -370,6 +380,10 @@ class GmailProvider:
             or config.poll_page_size > 100
         ):
             raise ValueError("Gmail response limits and polling configuration are invalid")
+        # Delay between Trigger polls and the recent inbox messages each poll inspects.
+        self.poll_interval = timedelta(seconds=config.poll_interval_seconds)
+        self.poll_page_size = config.poll_page_size
+        self.trigger_logger = logger
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(25)
         self._owns_http_client = http_client is None
@@ -468,6 +482,42 @@ class GmailProvider:
         return await self.request(
             call, credential, "GET", "/users/me/messages/" + quote(message_id, safe=""), query=query
         )
+
+    async def list_inbox_messages(
+        self, call: Call, credential: Credentials, search_query: str
+    ) -> tuple[list[tuple[str, str]], Credentials]:
+        """List the newest inbox page matching search_query as (message ID, thread ID) pairs, newest first.
+
+        Raises ValueError for a non-2xx or unusable response, and the transport errors `request` raises.
+        """
+        # Go's url.Values.Encode sorts the keys: labelIds, maxResults, q.
+        query: dict[str, str | list[str]] = {"labelIds": "INBOX", "maxResults": str(self.poll_page_size)}
+        if search_query.strip():
+            query["q"] = search_query
+        result, credential = await self.request(call, credential, "GET", "/users/me/messages", query=query)
+        if result.status_code < 200 or result.status_code >= 300:
+            raise ValueError("Gmail message list is unavailable")
+        try:
+            document = json.loads(result.body)
+        except (ValueError, UnicodeDecodeError) as error:
+            raise ValueError("Gmail message list is invalid") from error
+        listed = document.get("messages") if isinstance(document, dict) else None
+        if not isinstance(document, dict) or not isinstance(listed, list | None):
+            raise ValueError("Gmail message list is invalid")
+        references: list[tuple[str, str]] = []
+        for item in listed or []:
+            # Go decodes a null entry as an empty reference, which the poller skips.
+            if item is None:
+                references.append(("", ""))
+                continue
+            message_id = item.get("id") if isinstance(item, dict) else None
+            thread_id = item.get("threadId") if isinstance(item, dict) else None
+            if not isinstance(item, dict) or not isinstance(message_id, str | None):
+                raise ValueError("Gmail message list is invalid")
+            if not isinstance(thread_id, str | None):
+                raise ValueError("Gmail message list is invalid")
+            references.append((message_id or "", thread_id or ""))
+        return references, credential
 
     async def find_sent_message(
         self,

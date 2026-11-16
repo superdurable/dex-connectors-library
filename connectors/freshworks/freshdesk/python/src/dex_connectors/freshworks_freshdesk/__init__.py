@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Freshdesk ticket operations for Dex Flows."""
+"""Freshdesk ticket operations and the ticketChanged poll Trigger for Dex Flows."""
 
 from ._generated.config import Config, Credentials
 from .client import Client
@@ -14,6 +14,8 @@ from .models import (
     SearchTicketsInput,
     SearchTicketsOutput,
     Ticket,
+    TicketChangedEvent,
+    TicketChangedTriggerConfiguration,
     TicketConversation,
     TicketDetails,
     TicketRequester,
@@ -35,6 +37,26 @@ from .steps import (
     new_search_tickets_step,
     new_update_ticket_step,
 )
+from .ticket_change_fetcher import TicketChangeCursorInvalidError
+from .triggers import (
+    TICKET_CHANGE_CREATED,
+    TICKET_CHANGE_OVERLAP,
+    TICKET_CHANGE_UPDATED,
+    TICKET_CHANGED_TRIGGER_DEFINITION,
+    ProjectTicketChangedTriggerRoute,
+    ProjectTicketTriggerRunnerConfig,
+    TicketChangedTriggerRoute,
+    TicketChangeFetcher,
+    TicketTriggerRunnerConfig,
+    decode_ticket_changed_event_payload,
+    decode_ticket_changed_trigger_configuration,
+    define_ticket_changed_trigger_binding,
+    delivers_ticket_change_kind,
+    new_project_ticket_trigger_runner,
+    new_ticket_changed_trigger,
+    new_ticket_trigger_runner,
+    validate_ticket_changed_trigger_configuration,
+)
 
 __all__ = [
     "Config",
@@ -54,6 +76,24 @@ __all__ = [
     "new_get_ticket_step",
     "new_search_tickets_step",
     "new_update_ticket_step",
+    "TICKET_CHANGE_CREATED",
+    "TICKET_CHANGE_OVERLAP",
+    "TICKET_CHANGE_UPDATED",
+    "TICKET_CHANGED_TRIGGER_DEFINITION",
+    "ProjectTicketChangedTriggerRoute",
+    "ProjectTicketTriggerRunnerConfig",
+    "TicketChangeCursorInvalidError",
+    "TicketChangeFetcher",
+    "TicketChangedTriggerRoute",
+    "TicketTriggerRunnerConfig",
+    "decode_ticket_changed_event_payload",
+    "decode_ticket_changed_trigger_configuration",
+    "define_ticket_changed_trigger_binding",
+    "delivers_ticket_change_kind",
+    "new_project_ticket_trigger_runner",
+    "new_ticket_changed_trigger",
+    "new_ticket_trigger_runner",
+    "validate_ticket_changed_trigger_configuration",
     "AddNoteInput",
     "AddNoteOutput",
     "CreateTicketInput",
@@ -62,6 +102,8 @@ __all__ = [
     "SearchTicketsInput",
     "SearchTicketsOutput",
     "Ticket",
+    "TicketChangedEvent",
+    "TicketChangedTriggerConfiguration",
     "TicketConversation",
     "TicketDetails",
     "TicketRequester",

@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-zoom",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -402,6 +402,16 @@
           "meetingId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineMeetingChangedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "meetingChanged",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-gmail",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "factories": [
     {
@@ -211,6 +211,26 @@
           "textBody"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_message_received_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "messageReceived",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
+      }
+    },
+    {
+      "name": "define_reply_received_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "replyReceived",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

@@ -213,7 +213,7 @@ func TestStudioCommandsListOrganizationsAndDepartmentsOnlyOnEachDataCentersOwnHo
 	}
 }
 
-func TestTicketChangedTriggerIsDeclaredForGoOnly(t *testing.T) {
+func TestTicketChangedTriggerIsDeclared(t *testing.T) {
 	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest struct {
@@ -233,8 +233,11 @@ func TestTicketChangedTriggerIsDeclaredForGoOnly(t *testing.T) {
 	require.Equal(t, "ticketChanged", manifest.Spec.Triggers[0].Name)
 	require.Equal(t, "TicketChangedEvent", manifest.Spec.Triggers[0].EventType)
 	require.Equal(t, "TicketChangedTriggerConfiguration", manifest.Spec.Triggers[0].ConfigurationType)
+	// A language package either omits the Trigger or implements exactly this one.
 	for language, declaration := range manifest.Spec.Languages {
-		require.Empty(t, declaration.Triggers, language)
+		if len(declaration.Triggers) > 0 {
+			require.Equal(t, []string{"ticketChanged"}, declaration.Triggers, language)
+		}
 	}
 	require.Equal(t, "ticketChanged", desk.TicketChangedTriggerDefinition.Trigger.TriggerName)
 }

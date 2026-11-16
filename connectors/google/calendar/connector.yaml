@@ -11,15 +11,15 @@ spec:
   provider: google
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-google-calendar'
       operations: [listEvents, getEvent, createEvent, updateEvent, queryFreeBusy]
-      triggers: []
+      triggers: [eventChanged]
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-google-calendar
       operations: [listEvents, getEvent, createEvent, updateEvent, queryFreeBusy]
-      triggers: []
+      triggers: [eventChanged]
   codegen:
     go:
       package: calendar

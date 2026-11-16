@@ -4,7 +4,7 @@
 
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from dex_connectors.sdk import (
     Call,
+    ConnectionRef,
     CredentialProvider,
     Failure,
     FailureKind,
@@ -35,6 +36,10 @@ from .json_values import strict_json_loads
 from .query_values import encode_query_values
 
 if TYPE_CHECKING:
+    from dex_connectors.sdk import TriggerLogger
+    from dex_connectors.sdk.webhooktrigger import WebhookEndpoint
+
+    from .models import ConversationEvent
     from .operations import (
         FindCustomerByEmailOperation,
         GetConversationOperation,
@@ -62,13 +67,21 @@ class Exchange:
 
 
 class Client:
-    """Resolve an access token per call and send bounded Inbox API requests."""
+    """Resolve an access token per call and send bounded Inbox API requests.
+
+    now supplies the receipt time of webhook deliveries; None uses the current UTC time. logger
+    receives the ``conversationEvent`` endpoint's delivery records, which carry event IDs, never
+    bodies or secrets; None uses standard logging.
+    """
 
     def __init__(
         self,
         config: Config,
         credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
+        *,
+        now: Callable[[], datetime] | None = None,
+        logger: "TriggerLogger | None" = None,
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("Help Scout configuration and credential source are required")
@@ -82,6 +95,11 @@ class Client:
         )
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(25, address_policy="publicHTTPS")
+        self._now = now or (lambda: datetime.now(UTC))
+        self._trigger_logger = logger
+        self._conversation_event_endpoints: dict[
+            ConnectionRef, WebhookEndpoint[Credentials, ConversationEvent]
+        ] = {}
 
     def search_conversations(self) -> "SearchConversationsOperation":
         """Bind the conversation search Query."""
@@ -112,6 +130,24 @@ class Client:
         from .operations import FindCustomerByEmailOperation
 
         return FindCustomerByEmailOperation(self)
+
+    def conversation_event_webhook_endpoint(
+        self, connection: ConnectionRef
+    ) -> "WebhookEndpoint[Credentials, ConversationEvent]":
+        """Return the connection's shared signed webhook endpoint, creating it on first use.
+
+        Every ``conversationEvent`` binding of the connection runs one source of this endpoint.
+        Raises ValueError for an invalid connection reference.
+        """
+        endpoint = self._conversation_event_endpoints.get(connection)
+        if endpoint is None:
+            from .triggers import _new_conversation_event_webhook_endpoint
+
+            endpoint = _new_conversation_event_webhook_endpoint(
+                self, connection, self._now, self._trigger_logger
+            )
+            self._conversation_event_endpoints[connection] = endpoint
+        return endpoint
 
     async def aclose(self) -> None:
         """Close the provider transport after Worker shutdown."""

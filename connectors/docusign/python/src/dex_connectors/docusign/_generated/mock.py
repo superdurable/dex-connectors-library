@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import CombinedDocument, CreateEnvelopeFromTemplateInput, CreatedEnvelope, DownloadCombinedDocumentInput, Envelope, EnvelopeCustomField, EnvelopeRecipients, GetEnvelopeInput, ListEnvelopeRecipientsInput, Recipient, TemplateRole, VoidEnvelopeInput, VoidedEnvelope
+from ..models import CombinedDocument, CreateEnvelopeFromTemplateInput, CreatedEnvelope, DownloadCombinedDocumentInput, Envelope, EnvelopeCustomField, EnvelopeEvent, EnvelopeEventReceivedTriggerConfiguration, EnvelopeRecipients, GetEnvelopeInput, ListEnvelopeRecipientsInput, Recipient, TemplateRole, VoidEnvelopeInput, VoidedEnvelope
 from .definitions import CONNECTOR_ID, CREATED, CREATE_ENVELOPE_FROM_TEMPLATE_DEFINITION, DEFECT, DOWNLOADED, DOWNLOAD_COMBINED_DOCUMENT_DEFINITION, FOUND, GET_ENVELOPE_DEFINITION, INVALID_RESPONSE, LISTED, LIST_ENVELOPE_RECIPIENTS_DEFINITION, NOT_FOUND, NOT_VOIDABLE, PROVIDER_REJECTED, TOO_LARGE, UNCERTAIN, VOIDED, VOID_ENVELOPE_DEFINITION
 
 def create_envelope_from_template_created(value: CreatedEnvelope, failure: Failure | None = None) -> Case[CreatedEnvelope]:

@@ -52,6 +52,9 @@ _CURRENCY = re.compile(r"[A-Z]{3}\Z")
 _NUMBER = re.compile(r"[0-9]{1,9}\Z")
 _ZERO_TIME = datetime.min.replace(tzinfo=UTC)
 
+MINIMUM_POLL_INTERVAL_SECONDS = 5
+"""Keeps a messageReceived poll loop within Twilio's per-account API concurrency."""
+
 
 @dataclass(frozen=True, slots=True)
 class Exchange:
@@ -93,7 +96,16 @@ class Client:
         self.default_sender = (
             parse_sender(config.default_sender) if config.default_sender.strip() else ("", "")
         )
+        poll_interval_seconds = config.poll_interval_seconds or 30
+        if (
+            isinstance(poll_interval_seconds, bool)
+            or not isinstance(poll_interval_seconds, int | float)
+            or poll_interval_seconds < MINIMUM_POLL_INTERVAL_SECONDS
+        ):
+            raise ValueError("Twilio pollInterval must be at least 5s")
         self.max_response_bytes = max_response_bytes
+        self.poll_interval_seconds = float(poll_interval_seconds)
+        """Delay between messageReceived Trigger polls, in seconds."""
         self._credentials = credentials
         self._http_client = http_client or new_provider_http_client(20)
         self._owns_http_client = http_client is None
@@ -110,6 +122,10 @@ class Client:
         from .operations import GetMessageOperation
 
         return GetMessageOperation(self)
+
+    def now(self) -> datetime:
+        """Return the client's current time, which tests may replace through the ``now`` argument."""
+        return self._now()
 
     async def aclose(self) -> None:
         """Close the connector-owned HTTP client."""
@@ -217,6 +233,16 @@ class Client:
         """Validate the safe fields of a Twilio Message resource."""
         try:
             resource = json.loads(body, parse_constant=reject_invalid_json_constant)
+        except (ValueError, UnicodeDecodeError) as error:
+            raise ValueError("Twilio returned an invalid message") from error
+        return self.convert_message_resource(resource, authorization)
+
+    def convert_message_resource(self, resource: object, authorization: tuple[str, str]) -> Message:
+        """Validate one decoded Message resource of this account and keep its safe view.
+
+        Raises ValueError for another account, a malformed field, or a field that reflects the credential.
+        """
+        try:
             if not isinstance(resource, dict):
                 raise ValueError("message must be an object")
             sid, account, recipient, status = (
@@ -312,6 +338,11 @@ def parse_sender(value: str) -> tuple[str, str]:
     raise ValueError(
         "sender must be an E.164 phone number, a whatsapp:+E.164 address, or an MG Messaging Service SID"
     )
+
+
+def is_e164_phone_number(value: str) -> bool:
+    """Check an E.164 phone number such as +14155550100."""
+    return bool(_PHONE.fullmatch(value))
 
 
 def is_whatsapp(value: str) -> bool:

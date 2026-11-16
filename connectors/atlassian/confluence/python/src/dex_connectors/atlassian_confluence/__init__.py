@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Dex connector for Atlassian Confluence pages and comments."""
+"""Dex connector for Atlassian Confluence pages and comments, and the pageChanged Trigger."""
 
 from .client import Client, Config, Credentials
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
@@ -11,7 +11,10 @@ from .models import (
     CreatePageOutput,
     GetPageInput,
     Page,
+    PageChangedEvent,
+    PageChangedTriggerConfiguration,
     PageSearchFilter,
+    PageSummary,
     SearchPagesInput,
     SearchPagesOutput,
     UpdatePageInput,
@@ -23,6 +26,23 @@ from .steps import (
     new_get_page_step,
     new_search_pages_step,
     new_update_page_step,
+)
+from .triggers import (
+    PAGE_CHANGE_CREATED,
+    PAGE_CHANGE_UPDATED,
+    PAGE_CHANGED_TRIGGER_DEFINITION,
+    PageChangedTriggerRoute,
+    PageTriggerRunner,
+    PageTriggerRunnerConfig,
+    ProjectPageChangedTriggerRoute,
+    decode_page_changed_event_payload,
+    decode_page_changed_trigger_configuration,
+    define_page_changed_trigger_binding,
+    new_page_changed_trigger,
+    new_page_trigger_runner,
+    new_project_page_trigger_runner,
+    page_change_event_id,
+    validate_page_changed_trigger_configuration,
 )
 
 __all__ = [
@@ -39,7 +59,10 @@ __all__ = [
     "CreatePageOutput",
     "GetPageInput",
     "Page",
+    "PageChangedEvent",
+    "PageChangedTriggerConfiguration",
     "PageSearchFilter",
+    "PageSummary",
     "SearchPagesInput",
     "SearchPagesOutput",
     "UpdatePageInput",
@@ -49,4 +72,19 @@ __all__ = [
     "new_get_page_step",
     "new_search_pages_step",
     "new_update_page_step",
+    "PAGE_CHANGED_TRIGGER_DEFINITION",
+    "PAGE_CHANGE_CREATED",
+    "PAGE_CHANGE_UPDATED",
+    "PageChangedTriggerRoute",
+    "PageTriggerRunner",
+    "PageTriggerRunnerConfig",
+    "ProjectPageChangedTriggerRoute",
+    "decode_page_changed_event_payload",
+    "decode_page_changed_trigger_configuration",
+    "define_page_changed_trigger_binding",
+    "new_page_changed_trigger",
+    "new_page_trigger_runner",
+    "new_project_page_trigger_runner",
+    "page_change_event_id",
+    "validate_page_changed_trigger_configuration",
 ]

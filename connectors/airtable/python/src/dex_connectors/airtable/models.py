@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Public Airtable data models generated from the Go connector."""
+"""Public Airtable operation and Trigger models generated from the Go connector."""
 
 from ._generated.models import (
     FieldEqualityFilter as FieldEqualityFilter,
@@ -13,6 +13,12 @@ from ._generated.models import (
 )
 from ._generated.models import (
     Record as Record,
+)
+from ._generated.models import (
+    RecordChangedEvent as RecordChangedEvent,
+)
+from ._generated.models import (
+    RecordChangedTriggerConfiguration as RecordChangedTriggerConfiguration,
 )
 from ._generated.models import (
     RecordPage as RecordPage,

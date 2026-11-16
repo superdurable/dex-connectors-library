@@ -1,10 +1,10 @@
 {
   "connectorId": "airtable",
-  "releaseTag": "connectors/airtable/go/v0.23.0",
+  "releaseTag": "connectors/airtable/go/v0.24.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-airtable",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -414,6 +414,16 @@
           "tableIdOrName"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_record_changed_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "recordChanged",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

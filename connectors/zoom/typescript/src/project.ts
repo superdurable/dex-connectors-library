@@ -17,6 +17,15 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'zoom' && entry.connectionName === name);
     if (!selected) throw new TypeError('Zoom project connection is not configured');
     const config = ConfigSchema.parse(selected.configuration);
-    return new ZoomClient({ ...(config.endpoint !== undefined ? { endpoint: config.endpoint } : {}), ...(config.maxResponseBytes !== undefined ? { maxResponseBytes: config.maxResponseBytes } : {}) }, newProjectCredentialProvider(loadedProject, name, decodeCredentials, encodeCredentials, decodeSharedCredentials), options);
+    const pollIntervalMs = pollIntervalMilliseconds(selected.configuration.pollInterval);
+    return new ZoomClient({ ...(config.endpoint !== undefined ? { endpoint: config.endpoint } : {}), ...(config.maxResponseBytes !== undefined ? { maxResponseBytes: config.maxResponseBytes } : {}),
+      ...(pollIntervalMs !== undefined ? { pollIntervalMs } : {}) }, newProjectCredentialProvider(loadedProject, name, decodeCredentials, encodeCredentials, decodeSharedCredentials), options);
   });
+}
+
+/** Read the stored pollInterval as Go decodes a time.Duration: integer nanoseconds, as Dex Web saves it. */
+function pollIntervalMilliseconds(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new TypeError('Zoom configuration pollInterval has an invalid type');
+  return value / 1_000_000;
 }

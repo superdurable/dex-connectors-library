@@ -132,6 +132,9 @@ func TestNewRejectsInvalidConfiguration(t *testing.T) {
 		"negative response limit": {MaxResponseBytes: -1},
 		"negative interval":       {RequestIntervalMilliseconds: -1},
 		"interval above a minute": {RequestIntervalMilliseconds: 60001},
+		"poll interval under 1s":  {PollInterval: time.Millisecond},
+		"one poll page":           {PollPagesPerPoll: 1},
+		"six poll pages":          {PollPagesPerPoll: 6},
 	} {
 		_, err := hiver.New(config, testCredentialProvider())
 		require.Error(t, err, name)
@@ -140,7 +143,9 @@ func TestNewRejectsInvalidConfiguration(t *testing.T) {
 	require.Error(t, err)
 	_, err = hiver.New(hiver.Config{}, testCredentialProvider(), hiver.WithAPIBaseURL("http://hiver.example.com/v1"))
 	require.Error(t, err, "a non-loopback base URL must use HTTPS")
-	require.Equal(t, hiver.Config{MaxResponseBytes: 4 << 20, RequestIntervalMilliseconds: 1000}, hiver.DefaultConfig())
+	require.Equal(t, hiver.Config{
+		MaxResponseBytes: 4 << 20, RequestIntervalMilliseconds: 1000, PollInterval: 5 * time.Minute, PollPagesPerPoll: 3,
+	}, hiver.DefaultConfig())
 }
 
 func TestConversationStatusesKeepHiversVocabulary(t *testing.T) {

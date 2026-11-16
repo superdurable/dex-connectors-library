@@ -46,12 +46,18 @@ export interface Config {
   endpoint?: string;
   /** Maximum complete Airtable API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of records carries very long text or many attachments. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;
+  /** Delay between recordChanged Trigger polls of each picked table, as a Go duration of at least 1s such as 15s or 2m; leave blank for the shown interval, and lengthen it when many bindings share one base. Each poll normally makes one Airtable list request, and Airtable allows 5 requests per second per base and 50 per second per personal access token across every binding and Step. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
+  /** Records one recordChanged poll request reads, a whole number from 1 up to Airtable's largest page of one hundred records; leave blank for a full page, and lower it only when records carry so much text or so many attachments that a page exceeds maxResponseBytes, since further changed records are read by an immediate follow-up request. */
+  pollPageSize?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
+  "pollPageSize": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

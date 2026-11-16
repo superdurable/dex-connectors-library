@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptrace"
@@ -65,6 +66,7 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	apiBaseURL string
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 12 seconds per request.
@@ -81,6 +83,14 @@ func WithAPIBaseURL(baseURL string) Option {
 	return func(options *clientOptions) { options.apiBaseURL = baseURL }
 }
 
+// WithLogger sends the conversationReceived Trigger runners' records to logger: seeded and committed
+// cursors, failed and rate-limited polls, restarted sweeps, and delivery outcomes. Without the option, or
+// with a nil logger, records go to slog.Default() as of each record. Records carry the connector,
+// connection, Trigger, and binding names, never conversation contents, page tokens, or credentials.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Hiver API v1 requests for connector operations.
 // A Client is safe for concurrent use by several Steps; their requests share one spacing
 // schedule, so together they stay within the connection's configured request interval.
@@ -92,6 +102,9 @@ type Client struct {
 	credentials      CredentialSource
 	maxResponseBytes int64
 	pacer            *requestPacer
+	pollInterval     time.Duration
+	pollPagesPerPoll int
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -161,6 +174,12 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.RequestIntervalMilliseconds < 1 || config.RequestIntervalMilliseconds > 60000 {
 		return nil, errors.New("Hiver request interval must be between 1 and 60000 milliseconds")
 	}
+	if config.PollInterval < time.Second {
+		return nil, errors.New("Hiver pollInterval must be at least one second")
+	}
+	if config.PollPagesPerPoll < minimumPollPagesPerPoll || config.PollPagesPerPoll > maximumPollPagesPerPoll {
+		return nil, fmt.Errorf("Hiver pollPagesPerPoll must be from %d to %d", minimumPollPagesPerPoll, maximumPollPagesPerPoll)
+	}
 	if credentials == nil {
 		return nil, errors.New("Hiver credential provider is required")
 	}
@@ -182,7 +201,8 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	return &Client{
 		apiBaseURL: apiBaseURL, httpClient: providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
 		credentials: credentials, maxResponseBytes: config.MaxResponseBytes,
-		pacer: newRequestPacer(time.Duration(config.RequestIntervalMilliseconds)*time.Millisecond, time.Now), now: time.Now,
+		pacer:        newRequestPacer(time.Duration(config.RequestIntervalMilliseconds)*time.Millisecond, time.Now),
+		pollInterval: config.PollInterval, pollPagesPerPoll: int(config.PollPagesPerPoll), logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 

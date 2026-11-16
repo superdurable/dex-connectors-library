@@ -13,10 +13,12 @@ issues through Atlassian's OAuth 2.0 (3LO) gateway,
 `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3`:
 
 The [Python package](python/README.md) implements the same five operations at
-`v0.1.0`, with generated OAuth refresh, Go-recorded conformance, and a
-[runnable Dex Flow](python/examples/issue_lookup/README.md). Its local
-integration test uses a Jira stand-in; live Atlassian authorization and API
-behavior remain unverified.
+`v0.2.0`, with generated OAuth refresh, Go-recorded conformance, and a
+[runnable Dex Flow](python/examples/issue_lookup/README.md), and from `v0.2.0`
+the `issueChanged` Trigger, with a
+[runnable issue-changed Flow](python/examples/issue_changed/README.md). Its
+local integration tests use a Jira stand-in; live Atlassian authorization and
+API behavior remain unverified.
 
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
@@ -42,12 +44,20 @@ It also exposes one Go Trigger:
 - `issueChanged` delivers each issue created or updated in one project, or in
   every project the account can browse, read by polling enhanced JQL search on
   the `updated` time. See [issueChanged Trigger](#issuechanged-trigger). The
-  Python and TypeScript packages do not implement it.
+  Python and TypeScript packages implement it from 0.2.0, sharing the Go cursor
+  documents byte for byte.
+
+| Capability | Go | Python | TypeScript |
+| --- | --- | --- | --- |
+| `searchIssues`, `getIssue`, `createIssue`, `transitionIssue`, `addComment` | yes | yes | yes |
+| `issueChanged` Trigger | yes | yes, from 0.2.0 | yes, from 0.2.0 |
 
 ## TypeScript package
 
 The `@superdurable/connector-atlassian-jira` package at `typescript/` is version
-`0.1.0` and implements all five operations in this manifest. Its generated
+`0.2.0` and implements all five operations in this manifest and the
+`issueChanged` Trigger, with a
+[runnable issue-changed example](typescript/examples/issue-changed/README.md). Its generated
 OAuth driver and project credential source refresh rotating Atlassian tokens;
 `createIssue` and `addComment` retain Dex single-dispatch and Jira property
 read-back behavior. See the [package README](typescript/README.md) and

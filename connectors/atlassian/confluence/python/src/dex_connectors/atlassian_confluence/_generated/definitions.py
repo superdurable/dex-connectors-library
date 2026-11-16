@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -79,6 +82,8 @@ CREATE_PAGE_DEFINITION = MutationDefinition(
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_PAGE_DEFINITION = MutationDefinition(
@@ -95,6 +100,8 @@ UPDATE_PAGE_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 ADD_COMMENT_DEFINITION = MutationDefinition(
@@ -111,4 +118,11 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
+)
+
+PAGE_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="pageChanged"),
+    description="Receive each page created or updated in one space, or in every space the connection can view, read through Confluence CQL search ordered by last modification; the first run records a baseline and delivers no existing pages.",
 )

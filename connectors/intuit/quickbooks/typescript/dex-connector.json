@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-intuit-quickbooks",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -543,6 +543,16 @@
           "invoiceId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineInvoiceChangedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "invoiceChanged",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

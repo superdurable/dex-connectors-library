@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""BambooHR operations for Dex Flows."""
+"""BambooHR operations and the employeeChanged poll Trigger for Dex Flows."""
 
 from ._generated.config import Config, Credentials
 from ._generated.definitions import (
@@ -11,13 +11,15 @@ from ._generated.definitions import (
     LIST_TIME_OFF_REQUESTS_DEFINITION,
     UPDATE_EMPLOYEE_DEFINITION,
 )
-from .client import Client
+from .client import MINIMUM_POLL_INTERVAL, Client
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
 from .models import (
     AddEmployeeInput,
     AddEmployeeOutput,
     EmployeeChange,
     EmployeeChangeCursor,
+    EmployeeChangedEvent,
+    EmployeeChangedTriggerConfiguration,
     EmployeeRecord,
     EmployeeSummary,
     FindEmployeeByEmailInput,
@@ -48,11 +50,32 @@ from .steps import (
     new_list_time_off_requests_step,
     new_update_employee_step,
 )
+from .triggers import (
+    EMPLOYEE_CHANGE_ACTION_DELETED,
+    EMPLOYEE_CHANGE_ACTION_INSERTED,
+    EMPLOYEE_CHANGE_ACTION_UPDATED,
+    EMPLOYEE_CHANGE_SETTLE_WINDOW,
+    EMPLOYEE_CHANGE_TYPES,
+    EMPLOYEE_CHANGED_TRIGGER_DEFINITION,
+    UI_CHANGE_TYPE_PICKER_PORT_CHANGE_TYPE,
+    UI_UNIT_CHANGE_TYPE_PICKER,
+    EmployeeChangedTriggerRoute,
+    ProjectEmployeeChangedTriggerRoute,
+    decode_employee_changed_event_payload,
+    decode_employee_changed_trigger_configuration,
+    define_employee_changed_trigger_binding,
+    employee_changed_event_id,
+    new_employee_changed_trigger,
+    new_employee_changed_trigger_runner,
+    new_project_employee_changed_trigger_runner,
+    validate_employee_changed_trigger_configuration,
+)
 
 __all__ = [
     "Config",
     "Credentials",
     "Client",
+    "MINIMUM_POLL_INTERVAL",
     "Connection",
     "new_connection",
     "new_connection_with_operations",
@@ -67,6 +90,8 @@ __all__ = [
     "AddEmployeeOutput",
     "EmployeeChange",
     "EmployeeChangeCursor",
+    "EmployeeChangedEvent",
+    "EmployeeChangedTriggerConfiguration",
     "EmployeeRecord",
     "EmployeeSummary",
     "FindEmployeeByEmailInput",
@@ -92,4 +117,22 @@ __all__ = [
     "new_list_employee_changes_step",
     "new_list_time_off_requests_step",
     "new_update_employee_step",
+    "EMPLOYEE_CHANGED_TRIGGER_DEFINITION",
+    "EMPLOYEE_CHANGE_ACTION_DELETED",
+    "EMPLOYEE_CHANGE_ACTION_INSERTED",
+    "EMPLOYEE_CHANGE_ACTION_UPDATED",
+    "EMPLOYEE_CHANGE_SETTLE_WINDOW",
+    "EMPLOYEE_CHANGE_TYPES",
+    "EmployeeChangedTriggerRoute",
+    "ProjectEmployeeChangedTriggerRoute",
+    "UI_CHANGE_TYPE_PICKER_PORT_CHANGE_TYPE",
+    "UI_UNIT_CHANGE_TYPE_PICKER",
+    "decode_employee_changed_event_payload",
+    "decode_employee_changed_trigger_configuration",
+    "define_employee_changed_trigger_binding",
+    "employee_changed_event_id",
+    "new_employee_changed_trigger",
+    "new_employee_changed_trigger_runner",
+    "new_project_employee_changed_trigger_runner",
+    "validate_employee_changed_trigger_configuration",
 ]

@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AddUpdateInput, AddUpdateOutput, ColumnValue, CreateItemInput, CreateItemOutput, GetItemInput, Item, ItemColumnValue, ItemFilter, ItemFilterRule, ItemGroup, ItemOrder, ListItemsInput, ListItemsOutput, UpdateItemColumnValuesInput, UpdateItemColumnValuesOutput
+from ..models import AddUpdateInput, AddUpdateOutput, ColumnValue, CreateItemInput, CreateItemOutput, GetItemInput, Item, ItemChangedEvent, ItemChangedTriggerConfiguration, ItemColumnValue, ItemFilter, ItemFilterRule, ItemGroup, ItemOrder, ListItemsInput, ListItemsOutput, UpdateItemColumnValuesInput, UpdateItemColumnValuesOutput
 from .definitions import CONNECTOR_ID, ADDED, ADD_UPDATE_DEFINITION, CREATED, CREATE_ITEM_DEFINITION, DEFECT, FOUND, GET_ITEM_DEFINITION, INVALID_RESPONSE, LISTED, LIST_ITEMS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, UNCERTAIN, UPDATED, UPDATE_ITEM_COLUMN_VALUES_DEFINITION
 
 def list_items_listed(value: ListItemsOutput, failure: Failure | None = None) -> Case[ListItemsOutput]:

@@ -276,3 +276,52 @@ class UpdatedRecords:
 UpdatedRecords.__annotations__['records'] = tuple[Record, ...] | None
 UpdatedRecords.__dataclass_fields__['records'].type = tuple[Record, ...] | None
 setattr(UpdatedRecords, '__module__', 'dex_connectors.airtable.models')
+
+
+# RecordChangedEvent is one record created or changed after the last processed change of the polled table.
+@dataclass(frozen=True, slots=True)
+class RecordChangedEvent:
+    # BaseID is the polled base ID.
+    base_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'baseId'})
+    # TableID is the polled table ID.
+    table_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'tableId'})
+    # LastModifiedTime is the record's Last modified time value when the poll read it, in UTC.
+    last_modified_time: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'lastModifiedTime', 'dex_json_format': 'rfc3339'})
+    # IsCreatedRecord reports that the record's createdTime is within one second of LastModifiedTime,
+    # which is how a record that was created and not edited since reads.
+    is_created_record: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isCreatedRecord'})
+    # Record is the record as Airtable returned it, with fields keyed by field name.
+    record: Record = _dataclass_field(default_factory=Record)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.last_modified_time, str):
+            object.__setattr__(self, 'last_modified_time', parse_go_datetime(self.last_modified_time, 'last_modified_time'))
+        elif self.last_modified_time is not None:
+            validate_go_datetime(self.last_modified_time, 'last_modified_time')
+
+
+setattr(RecordChangedEvent, '__module__', 'dex_connectors.airtable.models')
+
+
+# RecordChangedTriggerConfiguration selects the table and Last modified time field a recordChanged binding
+# polls. Dex Web saves it from the basePicker, tablePicker, and lastModifiedTimeFieldPicker units; the
+# names they also save are shown in Dex Web only, so a renamed base, table, or field keeps working.
+@dataclass(frozen=True, slots=True)
+class RecordChangedTriggerConfiguration:
+    # BaseID is the base ID, such as appXXXXXXXXXXXXXX. Required.
+    base_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'baseId'})
+    # BaseName is the base name the picker showed; informational.
+    base_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'baseName', 'dex_json_omit_default': True})
+    # TableID is the table ID, such as tblXXXXXXXXXXXXXX. Required.
+    table_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'tableId'})
+    # TableName is the table name the picker showed; informational.
+    table_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'tableName', 'dex_json_omit_default': True})
+    # LastModifiedTimeFieldID is the field ID, such as fldXXXXXXXXXXXXXX, of a Last modified time field
+    # of the table whose value includes a time of day. Required. The field's own setting decides which
+    # edits count as a change: all fields, or only the fields it watches.
+    field_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'fieldId'})
+    # LastModifiedTimeFieldName is the field name the picker showed; informational.
+    field_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'fieldName', 'dex_json_omit_default': True})
+
+
+setattr(RecordChangedTriggerConfiguration, '__module__', 'dex_connectors.airtable.models')

@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-intercom",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -356,6 +356,16 @@
           "email"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_conversation_event_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "conversationEvent",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

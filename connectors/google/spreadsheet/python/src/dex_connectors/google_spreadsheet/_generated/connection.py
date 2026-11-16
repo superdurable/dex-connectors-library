@@ -172,7 +172,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.google_spreadsheet
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"endpoint", "maxResponseBytes", "maxRows"}:
+    if set(value) - {"endpoint", "maxResponseBytes", "maxRows", "pollInterval", "pollPageSize"}:
         raise ValueError("Google Sheets configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "endpoint" in value:
@@ -190,4 +190,14 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(max_rows) is int):
             raise ValueError("Google Sheets configuration maxRows has an invalid type")
         config_arguments['max_rows'] = max_rows
+    if "pollInterval" in value:
+        poll_interval = value["pollInterval"]
+        if not (type(poll_interval) is int):
+            raise ValueError("Google Sheets configuration pollInterval has an invalid type")
+        config_arguments['poll_interval_seconds'] = poll_interval / 1_000_000_000
+    if "pollPageSize" in value:
+        poll_page_size = value["pollPageSize"]
+        if not (type(poll_page_size) is int):
+            raise ValueError("Google Sheets configuration pollPageSize has an invalid type")
+        config_arguments['poll_page_size'] = poll_page_size
     return Config(**config_arguments)

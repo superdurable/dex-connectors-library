@@ -182,6 +182,7 @@ export const CreateInvoiceDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 240000 } },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for createInvoice. */
 export const CreateInvoiceMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -215,6 +216,7 @@ export const RecordPaymentDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 240000 } },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for recordPayment. */
 export const RecordPaymentMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

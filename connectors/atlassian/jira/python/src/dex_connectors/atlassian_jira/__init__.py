@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Jira Cloud search, issue, workflow, and comment operations for Dex Flows."""
+"""Jira Cloud search, issue, workflow, and comment operations and the issueChanged Trigger for Dex Flows."""
 
 from ._generated.config import Config, Credentials
 from .client import Client
@@ -12,6 +12,8 @@ from .models import (
     CreateIssueOutput,
     GetIssueInput,
     Issue,
+    IssueChangedEvent,
+    IssueChangedTriggerConfiguration,
     IssueSearchFilter,
     SearchIssuesInput,
     SearchIssuesOutput,
@@ -32,6 +34,23 @@ from .steps import (
     new_search_issues_step,
     new_transition_issue_step,
 )
+from .triggers import (
+    ISSUE_CHANGE_CREATED,
+    ISSUE_CHANGE_UPDATED,
+    ISSUE_CHANGED_TRIGGER_DEFINITION,
+    IssueChangedTriggerRoute,
+    IssueTriggerRunner,
+    IssueTriggerRunnerConfig,
+    ProjectIssueChangedTriggerRoute,
+    decode_issue_changed_event_payload,
+    decode_issue_changed_trigger_configuration,
+    define_issue_changed_trigger_binding,
+    issue_change_event_id,
+    new_issue_changed_trigger,
+    new_issue_trigger_runner,
+    new_project_issue_trigger_runner,
+    validate_issue_changed_trigger_configuration,
+)
 
 __all__ = [
     "AddCommentInput",
@@ -46,20 +65,37 @@ __all__ = [
     "Credentials",
     "GetIssueInput",
     "GetIssueOperation",
+    "ISSUE_CHANGED_TRIGGER_DEFINITION",
+    "ISSUE_CHANGE_CREATED",
+    "ISSUE_CHANGE_UPDATED",
     "Issue",
+    "IssueChangedEvent",
+    "IssueChangedTriggerConfiguration",
+    "IssueChangedTriggerRoute",
     "IssueSearchFilter",
+    "IssueTriggerRunner",
+    "IssueTriggerRunnerConfig",
+    "ProjectIssueChangedTriggerRoute",
     "SearchIssuesInput",
     "SearchIssuesOperation",
     "SearchIssuesOutput",
     "TransitionIssueInput",
     "TransitionIssueOperation",
     "TransitionIssueOutput",
+    "decode_issue_changed_event_payload",
+    "decode_issue_changed_trigger_configuration",
+    "define_issue_changed_trigger_binding",
+    "issue_change_event_id",
     "new_add_comment_step",
     "new_connection",
     "new_connection_with_operations",
     "new_create_issue_step",
     "new_get_issue_step",
+    "new_issue_changed_trigger",
+    "new_issue_trigger_runner",
     "new_project_connection",
+    "new_project_issue_trigger_runner",
     "new_search_issues_step",
     "new_transition_issue_step",
+    "validate_issue_changed_trigger_configuration",
 ]

@@ -1,9 +1,10 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Re:amaze conversation and contact operations for Dex Python Flows."""
+"""Re:amaze conversation and contact operations and the conversationCreated Trigger for Dex Python Flows."""
 
 from ._generated.definitions import (
     CONNECTOR_ID,
+    CONVERSATION_CREATED_TRIGGER_DEFINITION,
     CREATE_CONVERSATION_DEFINITION,
     CREATED,
     DEFECT,
@@ -23,10 +24,13 @@ from ._generated.definitions import (
 )
 from .client import Client, Config, Credentials
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
+from .conversation_created_fetcher import ConversationCreatedCursorInvalidError
 from .models import (
     Contact,
     Conversation,
     ConversationChannel,
+    ConversationCreatedEvent,
+    ConversationCreatedTriggerConfiguration,
     ConversationDetails,
     ConversationMessage,
     ConversationParticipant,
@@ -59,9 +63,33 @@ from .steps import (
     new_search_conversations_step,
     new_update_conversation_step,
 )
+from .triggers import (
+    CONVERSATION_CREATED_LATE_INDEX_WINDOW,
+    MAXIMUM_CONVERSATION_CREATED_PAGES_PER_POLL,
+    UI_CHANNEL_SLUG_ENTRY_PORT_CHANNEL,
+    UI_UNIT_CHANNEL_SLUG_ENTRY,
+    ConversationCreatedFetcher,
+    ConversationCreatedTriggerRoute,
+    ConversationTriggerRunnerConfig,
+    ProjectConversationCreatedTriggerRoute,
+    ProjectConversationTriggerRunnerConfig,
+    conversation_created_event_id,
+    decode_conversation_created_event_payload,
+    decode_conversation_created_trigger_configuration,
+    define_conversation_created_trigger_binding,
+    new_conversation_created_trigger,
+    new_conversation_trigger_runner,
+    new_project_conversation_trigger_runner,
+    validate_conversation_created_trigger_configuration,
+)
 
 __all__ = [
     "CONNECTOR_ID",
+    "CONVERSATION_CREATED_LATE_INDEX_WINDOW",
+    "CONVERSATION_CREATED_TRIGGER_DEFINITION",
+    "MAXIMUM_CONVERSATION_CREATED_PAGES_PER_POLL",
+    "UI_CHANNEL_SLUG_ENTRY_PORT_CHANNEL",
+    "UI_UNIT_CHANNEL_SLUG_ENTRY",
     "CREATE_CONVERSATION_DEFINITION",
     "CREATED",
     "DEFECT",
@@ -88,6 +116,22 @@ __all__ = [
     "Contact",
     "Conversation",
     "ConversationChannel",
+    "ConversationCreatedCursorInvalidError",
+    "ConversationCreatedEvent",
+    "ConversationCreatedFetcher",
+    "ConversationCreatedTriggerConfiguration",
+    "ConversationCreatedTriggerRoute",
+    "ConversationTriggerRunnerConfig",
+    "ProjectConversationCreatedTriggerRoute",
+    "ProjectConversationTriggerRunnerConfig",
+    "conversation_created_event_id",
+    "decode_conversation_created_event_payload",
+    "decode_conversation_created_trigger_configuration",
+    "define_conversation_created_trigger_binding",
+    "new_conversation_created_trigger",
+    "new_conversation_trigger_runner",
+    "new_project_conversation_trigger_runner",
+    "validate_conversation_created_trigger_configuration",
     "ConversationDetails",
     "ConversationMessage",
     "ConversationParticipant",

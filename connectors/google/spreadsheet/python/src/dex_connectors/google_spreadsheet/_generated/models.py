@@ -104,3 +104,42 @@ class UpsertRowOutput:
 
 
 setattr(UpsertRowOutput, '__module__', 'dex_connectors.google_spreadsheet.models')
+
+
+# RowAddedEvent is one row appended below the last processed row of the polled tab.
+@dataclass(frozen=True, slots=True)
+class RowAddedEvent:
+    # SpreadsheetID is the polled spreadsheet ID.
+    spreadsheet_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'spreadsheetId'})
+    # SheetName is the polled tab title.
+    sheet_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'sheetName'})
+    # RowNumber is the 1-based sheet row number when the row was read; row 1 is the header.
+    row_number: int = _dataclass_field(default=0, metadata={'dex_json_name': 'rowNumber'})
+    # Values maps each non-empty, unique header cell to this row's formatted cell, or "" when the row has
+    # no value in that column. Columns whose header is empty or repeated appear only in Cells.
+    values: dict[str, str] | None = None
+    # Cells are the row's formatted cell values in column order, without trailing empty cells.
+    cells: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'cells', _replace_nil_slices(self.cells, 1))
+
+
+RowAddedEvent.__annotations__['cells'] = tuple[str, ...] | None
+RowAddedEvent.__dataclass_fields__['cells'].type = tuple[str, ...] | None
+setattr(RowAddedEvent, '__module__', 'dex_connectors.google_spreadsheet.models')
+
+
+# RowAddedTriggerConfiguration selects the spreadsheet tab a rowAdded binding polls. Dex Web saves it
+# from the spreadsheetPicker and sheetTabPicker units.
+@dataclass(frozen=True, slots=True)
+class RowAddedTriggerConfiguration:
+    # SpreadsheetID is the Google spreadsheet ID stored by the spreadsheetPicker unit. Required.
+    spreadsheet_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'spreadsheetId'})
+    # SheetName is the exact tab title stored by the sheetTabPicker unit, used verbatim, including any
+    # leading or trailing spaces. Required. Row 1 of the tab is the header row whose cells name
+    # RowAddedEvent.Values.
+    sheet_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'sheetName'})
+
+
+setattr(RowAddedTriggerConfiguration, '__module__', 'dex_connectors.google_spreadsheet.models')

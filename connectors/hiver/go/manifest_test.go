@@ -31,8 +31,36 @@ type guidanceManifest struct {
 			} `yaml:"guide"`
 			OAuth2 any `yaml:"oauth2"`
 		} `yaml:"auth"`
-		Studio   any `yaml:"studio"`
-		Triggers any `yaml:"triggers"`
+		Studio struct {
+			Setup struct {
+				BackendCapabilities []string `yaml:"backendCapabilities"`
+			} `yaml:"setup"`
+			Commands []struct {
+				ID         string `yaml:"id"`
+				Capability string `yaml:"capability"`
+				Request    struct {
+					Method     string              `yaml:"method"`
+					URL        string              `yaml:"url"`
+					Credential map[string]string   `yaml:"credential"`
+					FixedQuery map[string]string   `yaml:"fixedQuery"`
+					Parameters []map[string]string `yaml:"parameters"`
+				} `yaml:"request"`
+			} `yaml:"commands"`
+			Units []struct {
+				ID          string `yaml:"id"`
+				Description string `yaml:"description"`
+				Outputs     []struct {
+					Name string `yaml:"name"`
+					Type string `yaml:"type"`
+				} `yaml:"outputs"`
+			} `yaml:"units"`
+		} `yaml:"studio"`
+		Triggers []struct {
+			Name              string `yaml:"name"`
+			EventType         string `yaml:"eventType"`
+			ConfigurationType string `yaml:"configurationType"`
+			Description       string `yaml:"description"`
+		} `yaml:"triggers"`
 	} `yaml:"spec"`
 }
 
@@ -53,7 +81,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"maxResponseBytes", "requestIntervalMilliseconds", "api_key"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"maxResponseBytes", "requestIntervalMilliseconds", "pollInterval", "pollPagesPerPoll", "api_key"}, names, "a new visible field needs its own guidance review")
 
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
@@ -79,6 +107,14 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	require.Contains(t, interval.Description, "milliseconds")
 	require.Contains(t, interval.Description, "one request per second")
 	require.Regexp(t, hiverURLPattern, interval.Description, "the provider limit names Hiver's documentation")
+	pollInterval, pollPages := visibleFields[2], visibleFields[3]
+	for _, instruction := range []string{"Go duration", "at least 1s", "5000 requests per day", "pollPagesPerPoll"} {
+		require.Contains(t, pollInterval.Description, instruction)
+	}
+	require.Regexp(t, hiverURLPattern, pollInterval.Description)
+	for _, instruction := range []string{"Pages of 100 conversations", "from 2 to 5", "first page", "sweep", "daily request limit"} {
+		require.Contains(t, pollPages.Description, instruction)
+	}
 }
 
 func TestAPIKeyGuideCoversWhereTheKeyIsAndHowToRevokeIt(t *testing.T) {
@@ -98,13 +134,36 @@ func TestAPIKeyGuideCoversWhereTheKeyIsAndHowToRevokeIt(t *testing.T) {
 	}
 }
 
-// TestManifestDeclaresNoStudioBundleOrTriggers records the deferred surface: no webhooks, no inbox picker.
-func TestManifestDeclaresNoStudioBundleOrTriggers(t *testing.T) {
+// TestManifestDeclaresTheInboxPickerAndConversationReceivedTrigger checks the read-only setup command and
+// the Trigger the inbox picker configures.
+func TestManifestDeclaresTheInboxPickerAndConversationReceivedTrigger(t *testing.T) {
 	manifest := readGuidanceManifest(t)
-	require.Nil(t, manifest.Spec.Studio)
-	require.Nil(t, manifest.Spec.Triggers)
-	_, err := os.Stat("../ui")
-	require.True(t, os.IsNotExist(err))
+	studio := manifest.Spec.Studio
+	require.Equal(t, []string{"use.configuration.write", "hiver.inboxes-list"}, studio.Setup.BackendCapabilities)
+	require.Len(t, studio.Commands, 1)
+	command := studio.Commands[0]
+	require.Equal(t, "listInboxes", command.ID)
+	require.Equal(t, "hiver.inboxes-list", command.Capability)
+	require.Equal(t, "GET", command.Request.Method, "setup commands only read")
+	require.Equal(t, "https://api2.hiverhq.com/v1/inboxes", command.Request.URL)
+	require.Equal(t, map[string]string{"field": "api_key", "scheme": "bearer"}, command.Request.Credential)
+	require.Equal(t, map[string]string{"limit": "100"}, command.Request.FixedQuery)
+	require.Equal(t, []map[string]string{{"name": "next_page", "location": "query", "target": "next_page"}}, command.Request.Parameters)
+	require.Len(t, studio.Units, 1)
+	require.Equal(t, "inboxPicker", studio.Units[0].ID)
+	require.Contains(t, studio.Units[0].Description, "https://api2.hiverhq.com/v1/inboxes")
+	require.Len(t, studio.Units[0].Outputs, 1)
+	require.Equal(t, "inboxId", studio.Units[0].Outputs[0].Name)
+	require.Equal(t, "string", studio.Units[0].Outputs[0].Type, "Hiver IDs are kept as strings")
+
+	require.Len(t, manifest.Spec.Triggers, 1)
+	trigger := manifest.Spec.Triggers[0]
+	require.Equal(t, "conversationReceived", trigger.Name)
+	require.Equal(t, "ConversationReceivedEvent", trigger.EventType)
+	require.Equal(t, "ConversationReceivedTriggerConfiguration", trigger.ConfigurationType)
+	require.Contains(t, trigger.Description, "never delivered")
+	_, err := os.Stat("../ui/src/units.tsx")
+	require.NoError(t, err, "the picker ships in the connector UI bundle")
 }
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {

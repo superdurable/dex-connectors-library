@@ -10,6 +10,10 @@ from dex_connectors.sdk import SecretString
 from dex_connectors.sdk.providerhttp import validate_base_url
 
 from ._generated.config import Config as _GeneratedConfig
+from ._generated.models import MessageEvent as MessageEvent
+from ._generated.models import MessageMatcher as MessageMatcher
+from ._generated.models import MessageReceivedTriggerConfiguration as MessageReceivedTriggerConfiguration
+from ._generated.models import ReplyReceivedTriggerConfiguration as ReplyReceivedTriggerConfiguration
 
 
 class Config(_GeneratedConfig):

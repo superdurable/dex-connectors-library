@@ -35,6 +35,7 @@ def new_send_message_step(
     defect: dex.StepTarget[MutationResult[Message]] | None = None,
     result_attribute: dex.Attribute[MutationResult[Message]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, SendMessageInput, Message]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Twilio Messaging Step connection name must match its connection reference")
@@ -66,6 +67,7 @@ def new_send_message_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

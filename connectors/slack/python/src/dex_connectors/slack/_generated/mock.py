@@ -8,8 +8,8 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import Channel, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput
-from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_THREAD_REPLY_DEFINITION, GET_WORKSPACE_IDENTITY_DEFINITION, INVALID_RESPONSE, LISTED, LIST_CHANNELS_DEFINITION, LIST_THREAD_MESSAGES_DEFINITION, NOT_FOUND, POST_CHANNEL_MESSAGE_DEFINITION, POST_THREAD_REPLY_DEFINITION, PROVIDER_REJECTED, READ, SENT, UNCERTAIN
+from ..models import ButtonClickEvent, ButtonClickedTriggerConfiguration, Channel, ChannelMessage, ChannelThreadCreatedTriggerConfiguration, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelMessagesInput, ListChannelMessagesOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, MessageButton, MessageEvent, MessageMatcher, PostButtonMessageInput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput, ThreadReplyCreatedTriggerConfiguration
+from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_THREAD_REPLY_DEFINITION, GET_WORKSPACE_IDENTITY_DEFINITION, INVALID_RESPONSE, LISTED, LIST_CHANNELS_DEFINITION, LIST_CHANNEL_MESSAGES_DEFINITION, LIST_THREAD_MESSAGES_DEFINITION, NOT_FOUND, POST_BUTTON_MESSAGE_DEFINITION, POST_CHANNEL_MESSAGE_DEFINITION, POST_THREAD_REPLY_DEFINITION, PROVIDER_REJECTED, READ, SENT, UNCERTAIN
 
 def list_channels_listed(value: ListChannelsOutput, failure: Failure | None = None) -> Case[ListChannelsOutput]:
     return Case.branch_result(LISTED, value, failure)
@@ -201,6 +201,51 @@ def get_thread_reply_missing_reply_timestamp() -> Case[GetThreadReplyOutput]:
 
 setattr(get_thread_reply_missing_reply_timestamp, '__module__', "dex_connectors.slack.slackmock")
 
+def list_channel_messages_read(value: ListChannelMessagesOutput, failure: Failure | None = None) -> Case[ListChannelMessagesOutput]:
+    return Case.branch_result(READ, value, failure)
+
+setattr(list_channel_messages_read, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channel_messages_provider_rejected(value: ListChannelMessagesOutput, failure: Failure | None = None) -> Case[ListChannelMessagesOutput]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(list_channel_messages_provider_rejected, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channel_messages_invalid_response(value: ListChannelMessagesOutput, failure: Failure | None = None) -> Case[ListChannelMessagesOutput]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(list_channel_messages_invalid_response, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channel_messages_defect(value: ListChannelMessagesOutput, failure: Failure | None = None) -> Case[ListChannelMessagesOutput]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(list_channel_messages_defect, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channel_messages_retry(failure: Failure, after_seconds: float = 0) -> Case[ListChannelMessagesOutput]:
+    return Case.retry(failure, after_seconds)
+
+setattr(list_channel_messages_retry, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channel_messages_recent_channel_history() -> Case[ListChannelMessagesOutput]:
+    return Case.paged(READ, (ListChannelMessagesOutput(messages=(ChannelMessage(channel_id='C0123456789', timestamp='1710000030.000900', user_id='U0234567890', text='Is order 1042 still on track?'), ChannelMessage(channel_id='C0123456789', timestamp='1710000020.000800', user_id='U0567890123', text='<@U0567890123> has joined the channel')), next_cursor='cursor-page-2'), ListChannelMessagesOutput(messages=(ChannelMessage(channel_id='C0123456789', timestamp='1710000020.000800', user_id='U0567890123', text='<@U0567890123> has joined the channel'), ChannelMessage(channel_id='C0123456789', timestamp='1710000010.000500', thread_timestamp='1710000010.000500', user_id='U0BOT123456', bot_id='B0123456789', text='Order 1042 is ready for review.', reply_count=2)), next_cursor='cursor-page-3'), ListChannelMessagesOutput(messages=(ChannelMessage(channel_id='C0123456789', timestamp='1710000000.000100', user_id='U0123456789', text='Request approval for order 1042.'),))))
+
+setattr(list_channel_messages_recent_channel_history, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channel_messages_history_rejected() -> Case[ListChannelMessagesOutput]:
+    return Case.branch_result(PROVIDER_REJECTED, ListChannelMessagesOutput(), Failure(FailureKind.PROVIDER_REJECTION, CONNECTOR_ID, "listChannelMessages", "Slack rejected the channel history read because the app is not in the channel."))
+
+setattr(list_channel_messages_history_rejected, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channel_messages_malformed_history() -> Case[ListChannelMessagesOutput]:
+    return Case.branch_result(INVALID_RESPONSE, ListChannelMessagesOutput(), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "listChannelMessages", "Slack returned an invalid channel history response."))
+
+setattr(list_channel_messages_malformed_history, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channel_messages_history_page_size_out_of_range() -> Case[ListChannelMessagesOutput]:
+    return Case.branch_result(DEFECT, ListChannelMessagesOutput(), Failure(FailureKind.VALIDATION, CONNECTOR_ID, "listChannelMessages", "The channel history page size must be 1 through 15; blank or 0 reads 15."))
+
+setattr(list_channel_messages_history_page_size_out_of_range, '__module__', "dex_connectors.slack.slackmock")
+
 def post_channel_message_sent(value: PostMessageOutput, failure: Failure | None = None) -> Case[PostMessageOutput]:
     return Case.branch_result(SENT, value, failure)
 
@@ -291,6 +336,51 @@ def post_thread_reply_missing_reply_text() -> Case[PostMessageOutput]:
 
 setattr(post_thread_reply_missing_reply_text, '__module__', "dex_connectors.slack.slackmock")
 
+def post_button_message_sent(value: PostMessageOutput, failure: Failure | None = None) -> Case[PostMessageOutput]:
+    return Case.branch_result(SENT, value, failure)
+
+setattr(post_button_message_sent, '__module__', "dex_connectors.slack.slackmock")
+
+def post_button_message_provider_rejected(value: PostMessageOutput, failure: Failure | None = None) -> Case[PostMessageOutput]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(post_button_message_provider_rejected, '__module__', "dex_connectors.slack.slackmock")
+
+def post_button_message_uncertain(value: PostMessageOutput, failure: Failure) -> Case[PostMessageOutput]:
+    return Case.uncertain(value, failure)
+
+setattr(post_button_message_uncertain, '__module__', "dex_connectors.slack.slackmock")
+
+def post_button_message_defect(value: PostMessageOutput, failure: Failure | None = None) -> Case[PostMessageOutput]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(post_button_message_defect, '__module__', "dex_connectors.slack.slackmock")
+
+def post_button_message_retry(failure: Failure, after_seconds: float = 0) -> Case[PostMessageOutput]:
+    return Case.retry(failure, after_seconds)
+
+setattr(post_button_message_retry, '__module__', "dex_connectors.slack.slackmock")
+
+def post_button_message_button_message_sent() -> Case[PostMessageOutput]:
+    return Case.branch_result(SENT, PostMessageOutput(message=Message(channel_id='C0123456789', timestamp='1710000012.000700', thread_timestamp='1710000000.000100', user_id='U0BOT123456', text='Approve order 1042?')))
+
+setattr(post_button_message_button_message_sent, '__module__', "dex_connectors.slack.slackmock")
+
+def post_button_message_button_message_rejected() -> Case[PostMessageOutput]:
+    return Case.branch_result(PROVIDER_REJECTED, PostMessageOutput(message=Message()), Failure(FailureKind.AUTHORIZATION, CONNECTOR_ID, "postButtonMessage", "Slack rejected the button message because the bot cannot write to the channel."))
+
+setattr(post_button_message_button_message_rejected, '__module__', "dex_connectors.slack.slackmock")
+
+def post_button_message_button_message_outcome_unknown() -> Case[PostMessageOutput]:
+    return Case.uncertain(PostMessageOutput(message=Message()), Failure(FailureKind.TRANSPORT, CONNECTOR_ID, "postButtonMessage", "The connection closed before Slack confirmed the button message."))
+
+setattr(post_button_message_button_message_outcome_unknown, '__module__', "dex_connectors.slack.slackmock")
+
+def post_button_message_duplicate_button_action_id() -> Case[PostMessageOutput]:
+    return Case.branch_result(DEFECT, PostMessageOutput(message=Message()), Failure(FailureKind.VALIDATION, CONNECTOR_ID, "postButtonMessage", "Each button action ID must be unique."))
+
+setattr(post_button_message_duplicate_button_action_id, '__module__', "dex_connectors.slack.slackmock")
+
 
 class Mock:
 
@@ -303,17 +393,23 @@ class Mock:
         self.list_thread_messages_script.default(list_thread_messages_approval_thread())
         self.get_thread_reply_script: Query[GetThreadReplyInput, GetThreadReplyOutput] = Query(GET_THREAD_REPLY_DEFINITION)
         self.get_thread_reply_script.default(get_thread_reply_approval_reply())
+        self.list_channel_messages_script: Query[ListChannelMessagesInput, ListChannelMessagesOutput] = Query(LIST_CHANNEL_MESSAGES_DEFINITION)
+        self.list_channel_messages_script.default(list_channel_messages_recent_channel_history())
         self.post_channel_message_script: Mutation[PostChannelMessageInput, PostMessageOutput] = Mutation(POST_CHANNEL_MESSAGE_DEFINITION)
         self.post_channel_message_script.default(post_channel_message_message_sent())
         self.post_thread_reply_script: Mutation[PostThreadReplyInput, PostMessageOutput] = Mutation(POST_THREAD_REPLY_DEFINITION)
         self.post_thread_reply_script.default(post_thread_reply_reply_sent())
+        self.post_button_message_script: Mutation[PostButtonMessageInput, PostMessageOutput] = Mutation(POST_BUTTON_MESSAGE_DEFINITION)
+        self.post_button_message_script.default(post_button_message_button_message_sent())
         self._connection = new_connection_with_operations(
             list_channels=self.list_channels_script,
             get_workspace_identity=self.get_workspace_identity_script,
             list_thread_messages=self.list_thread_messages_script,
             get_thread_reply=self.get_thread_reply_script,
+            list_channel_messages=self.list_channel_messages_script,
             post_channel_message=self.post_channel_message_script,
             post_thread_reply=self.post_thread_reply_script,
+            post_button_message=self.post_button_message_script,
             reference=ConnectionRef(CONNECTOR_ID, connection_name),
         )
 
@@ -362,6 +458,15 @@ __all__ = [
     "get_thread_reply_reply_rejected",
     "get_thread_reply_malformed_reply",
     "get_thread_reply_missing_reply_timestamp",
+    "list_channel_messages_read",
+    "list_channel_messages_provider_rejected",
+    "list_channel_messages_invalid_response",
+    "list_channel_messages_defect",
+    "list_channel_messages_retry",
+    "list_channel_messages_recent_channel_history",
+    "list_channel_messages_history_rejected",
+    "list_channel_messages_malformed_history",
+    "list_channel_messages_history_page_size_out_of_range",
     "post_channel_message_sent",
     "post_channel_message_provider_rejected",
     "post_channel_message_uncertain",
@@ -380,4 +485,13 @@ __all__ = [
     "post_thread_reply_thread_rejected",
     "post_thread_reply_reply_outcome_unknown",
     "post_thread_reply_missing_reply_text",
+    "post_button_message_sent",
+    "post_button_message_provider_rejected",
+    "post_button_message_uncertain",
+    "post_button_message_defect",
+    "post_button_message_retry",
+    "post_button_message_button_message_sent",
+    "post_button_message_button_message_rejected",
+    "post_button_message_button_message_outcome_unknown",
+    "post_button_message_duplicate_button_action_id",
 ]

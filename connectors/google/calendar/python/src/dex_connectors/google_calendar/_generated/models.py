@@ -370,3 +370,36 @@ class QueryFreeBusyOutput:
 QueryFreeBusyOutput.__annotations__['calendars'] = tuple[CalendarFreeBusy, ...] | None
 QueryFreeBusyOutput.__dataclass_fields__['calendars'].type = tuple[CalendarFreeBusy, ...] | None
 setattr(QueryFreeBusyOutput, '__module__', 'dex_connectors.google_calendar.models')
+
+
+# EventChangedEvent is one created, updated, or cancelled event read through incremental sync. Recurring
+# events are not expanded: a change to a series arrives once for the series, and a changed or cancelled
+# single instance arrives as its own event with RecurringEventID and OriginalStartTime set.
+@dataclass(frozen=True, slots=True)
+class EventChangedEvent:
+    # CalendarID is the watched calendar.
+    calendar_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'calendarId'})
+    # ChangeKind is the derived change kind; see EventChangeKind.
+    change_kind: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'changeKind'})
+    # Event is the event as Google returned it in the sync page. A cancelled event is only guaranteed to
+    # carry ID, and a cancelled recurring instance also RecurringEventID and OriginalStartTime.
+    event: Event = _dataclass_field(default_factory=Event)
+
+
+setattr(EventChangedEvent, '__module__', 'dex_connectors.google_calendar.models')
+
+
+# EventChangedTriggerConfiguration is the eventChanged binding configuration that the calendar picker saves
+# in Dex Web. Changing the calendar of a binding that already polled makes its next poll record a new
+# baseline for the new calendar.
+@dataclass(frozen=True, slots=True)
+class EventChangedTriggerConfiguration:
+    # CalendarID is the watched calendar ID from the calendar picker, such as
+    # team@group.calendar.google.com; blank watches DefaultTriggerCalendarID, the authorized account's
+    # primary calendar.
+    calendar_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'calendarId', 'dex_json_omit_default': True})
+    # CalendarName is the picked calendar's display name, kept for display only.
+    calendar_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'calendarName', 'dex_json_omit_default': True})
+
+
+setattr(EventChangedTriggerConfiguration, '__module__', 'dex_connectors.google_calendar.models')

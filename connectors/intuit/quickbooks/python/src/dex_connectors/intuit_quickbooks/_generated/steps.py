@@ -92,6 +92,7 @@ def new_create_customer_step(
     defect: dex.StepTarget[MutationResult[CreateCustomerOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CreateCustomerOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateCustomerInput, CreateCustomerOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("QuickBooks Online Step connection name must match its connection reference")
@@ -125,6 +126,7 @@ def new_create_customer_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -144,6 +146,7 @@ def new_create_invoice_step(
     defect: dex.StepTarget[MutationResult[CreateInvoiceOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CreateInvoiceOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateInvoiceInput, CreateInvoiceOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("QuickBooks Online Step connection name must match its connection reference")
@@ -175,6 +178,7 @@ def new_create_invoice_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -297,6 +301,7 @@ def new_send_invoice_step(
     defect: dex.StepTarget[MutationResult[Invoice]] | None = None,
     result_attribute: dex.Attribute[MutationResult[Invoice]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, SendInvoiceInput, Invoice]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("QuickBooks Online Step connection name must match its connection reference")
@@ -328,6 +333,7 @@ def new_send_invoice_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -347,6 +353,7 @@ def new_record_payment_step(
     defect: dex.StepTarget[MutationResult[Payment]] | None = None,
     result_attribute: dex.Attribute[MutationResult[Payment]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, RecordPaymentInput, Payment]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("QuickBooks Online Step connection name must match its connection reference")
@@ -378,6 +385,7 @@ def new_record_payment_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

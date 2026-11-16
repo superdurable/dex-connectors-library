@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AddCommentInput, AddCommentOutput, Card, CreateCardInput, CreateCardOutput, GetCardInput, Label, ListCardsInput, ListCardsOutput, MemberReference, UpdateCardInput, UpdateCardOutput
+from ..models import ActionCard, ActionList, AddCommentInput, AddCommentOutput, Card, CardChangedEvent, CardChangedTriggerConfiguration, CreateCardInput, CreateCardOutput, GetCardInput, Label, ListCardsInput, ListCardsOutput, MemberReference, UpdateCardInput, UpdateCardOutput
 from .definitions import CONNECTOR_ID, ADDED, ADD_COMMENT_DEFINITION, CREATED, CREATE_CARD_DEFINITION, DEFECT, FOUND, GET_CARD_DEFINITION, INVALID_RESPONSE, LISTED, LIST_CARDS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, UNCERTAIN, UPDATED, UPDATE_CARD_DEFINITION
 
 def list_cards_listed(value: ListCardsOutput, failure: Failure | None = None) -> Case[ListCardsOutput]:

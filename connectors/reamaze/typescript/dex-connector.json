@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-reamaze",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -488,6 +488,16 @@
           "email"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineConversationCreatedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "conversationCreated",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

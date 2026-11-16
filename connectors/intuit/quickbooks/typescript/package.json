@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-intuit-quickbooks",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "QuickBooks Online customer, invoice, and payment operations for Dex",
   "repository": {
     "type": "git",
@@ -42,11 +42,12 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:invoice": "npm run build && tsx examples/get-invoice/main.ts",
-    "example:invoice:start": "npm run build && tsx examples/get-invoice/start.ts"
+    "example:invoice:start": "npm run build && tsx examples/get-invoice/start.ts",
+    "example:invoice-changed": "npm run build && tsx examples/invoice-changed/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

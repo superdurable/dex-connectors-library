@@ -11,15 +11,15 @@ spec:
   provider: hubspot
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-hubspot
       operations: [searchObjects, getObject, upsertObject, updateObject]
-      triggers: []
+      triggers: [crmObjectChanged]
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-hubspot"
       operations: [searchObjects, getObject, upsertObject, updateObject]
-      triggers: []
+      triggers: [crmObjectChanged]
   codegen:
     go:
       package: hubspot

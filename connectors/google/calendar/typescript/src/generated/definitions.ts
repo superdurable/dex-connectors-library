@@ -104,6 +104,7 @@ export const CreateEventDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for createEvent. */
 export const CreateEventMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -137,6 +138,7 @@ export const UpdateEventDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateEvent. */
 export const UpdateEventMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-drive",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -270,6 +270,36 @@
           "name"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineFileCreatedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "fileCreated",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
+      }
+    },
+    {
+      "name": "defineFileUpdatedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "fileUpdated",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
+      }
+    },
+    {
+      "name": "defineFileTrashedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "fileTrashed",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

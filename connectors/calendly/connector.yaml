@@ -16,10 +16,10 @@ spec:
       operations: [listScheduledEvents, getScheduledEvent, listEventInvitees, cancelScheduledEvent, createSchedulingLink, createWebhookSubscription]
       triggers: [inviteeEventReceived]
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-calendly
       operations: [listScheduledEvents, getScheduledEvent, listEventInvitees, cancelScheduledEvent, createSchedulingLink, createWebhookSubscription]
-      triggers: []
+      triggers: [inviteeEventReceived]
   codegen:
     go:
       package: calendly

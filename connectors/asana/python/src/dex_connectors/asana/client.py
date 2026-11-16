@@ -25,6 +25,9 @@ from dex_connectors.sdk.providerhttp import (
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 
+# Keeps taskChanged polls from spending the Asana user's per-minute request quota.
+_MINIMUM_POLL_SECONDS = 5
+
 if TYPE_CHECKING:
     from .operations import (
         AddCommentOperation,
@@ -51,8 +54,10 @@ class Exchange:
 class Client:
     """Resolve a personal token per call and send one request per exchange.
 
-    A supplied HTTP client remains caller-owned; close a connector-owned client
-    with ``aclose`` after the Worker stops.
+    ``poll_interval_seconds`` is the taskChanged Trigger's delay between polls of one
+    binding; zero selects 30 seconds and anything else must be at least 5 seconds,
+    or construction raises ValueError. A supplied HTTP client remains caller-owned;
+    close a connector-owned client with ``aclose`` after the Worker stops.
     """
 
     def __init__(
@@ -68,6 +73,9 @@ class Client:
         self.max_response_bytes = config.max_response_bytes or Config().max_response_bytes
         if isinstance(self.max_response_bytes, bool) or self.max_response_bytes < 1:
             raise ValueError("Asana maxResponseBytes must be positive")
+        self.poll_interval_seconds = config.poll_interval_seconds or Config().poll_interval_seconds
+        if isinstance(self.poll_interval_seconds, bool) or self.poll_interval_seconds < _MINIMUM_POLL_SECONDS:
+            raise ValueError("Asana pollInterval must be at least 5s")
         self._credentials = credentials
         self._http_client = http_client or new_provider_http_client(20)
         self._owns_http_client = http_client is None
@@ -161,6 +169,10 @@ class Client:
             body=b"" if token.encode() in contents else contents,
             reflects_secret=token.encode() in contents,
         )
+
+    def now(self) -> datetime:
+        """Return the current time from the client's clock, timezone-aware."""
+        return self._now()
 
     def receipt(self, call: Call, object_id: str = "") -> Receipt:
         """Record only a stable Call identity and optional Asana object ID."""

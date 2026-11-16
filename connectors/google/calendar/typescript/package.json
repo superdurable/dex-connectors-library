@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-google-calendar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Google Calendar event and free/busy operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -42,10 +42,11 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:calendar": "npm run build && tsx examples/schedule-meeting/main.ts",
-    "example:calendar:start": "npm run build && tsx examples/schedule-meeting/start.ts"
+    "example:calendar:start": "npm run build && tsx examples/schedule-meeting/start.ts",
+    "example:event-changed": "npm run build && tsx examples/event-changed/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },

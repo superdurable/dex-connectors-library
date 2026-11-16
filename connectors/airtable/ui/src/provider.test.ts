@@ -27,8 +27,22 @@ describe("Airtable metadata responses", () => {
       {id: "tblDecisionLog001", name: "Decision Log", fields: [], views: []},
       {id: "viwNotATable00001", name: "Grid view"},
     ]})).toEqual([
-      {id: "tblPolicies000001", name: "Policies"},
-      {id: "tblDecisionLog001", name: "Decision Log"},
+      {id: "tblPolicies000001", name: "Policies", lastModifiedTimeFields: []},
+      {id: "tblDecisionLog001", name: "Decision Log", lastModifiedTimeFields: []},
+    ]);
+  });
+
+  it("lists only Last modified time fields that include a time of day", () => {
+    const [table] = parseAirtableTables({tables: [{id: "tblIntakeLeads001", name: "Leads", fields: [
+      {id: "fldLastModified01", name: "Last Modified", type: "lastModifiedTime", options: {isValid: true, referencedFieldIds: null, result: {type: "dateTime"}}},
+      {id: "fldStatusChange01", name: "Status Changed", type: "lastModifiedTime"},
+      {id: "fldModifiedDay001", name: "Modified Day", type: "lastModifiedTime", options: {result: {type: "date"}}},
+      {id: "fldCreatedTime001", name: "Created", type: "createdTime", options: {result: {type: "dateTime"}}},
+      {id: "not-a-field", name: "Broken", type: "lastModifiedTime"},
+    ]}]});
+    expect(table.lastModifiedTimeFields).toEqual([
+      {id: "fldLastModified01", name: "Last Modified"},
+      {id: "fldStatusChange01", name: "Status Changed"},
     ]);
   });
 

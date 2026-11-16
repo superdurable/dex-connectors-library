@@ -1,6 +1,6 @@
 # Zendesk Support Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zendesk/support`.
 
@@ -22,10 +22,20 @@ Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
 uses async Execute durability and a 30-second Execute timeout. Reads and
 `createTicket` use the one-hour default retry budget, within Zendesk's two-hour
-Idempotency-Key lifetime. `updateTicket` keeps six attempts within five minutes
-because comment reconciliation scans only the latest audit page.
+Idempotency-Key lifetime. `createTicket` repeats an unknown outcome safely
+(`repeatOnUnknown: safe`), because every attempt sends the same Idempotency-Key.
+`updateTicket` keeps six attempts within five minutes because comment
+reconciliation scans only the latest audit page, and uses the default
+`limited` tier with three sends.
 
-This release has no Triggers and no Studio pickers; see
+It also exposes one Trigger:
+
+- `ticketChanged` delivers each ticket created, updated, or deleted in the
+  account, read through Zendesk's cursor-based incremental ticket export. It
+  needs an administrator connection. See
+  [ticketChanged Trigger](#ticketchanged-trigger).
+
+This release has no Studio pickers and no webhook Triggers; see
 [Not in this release](#not-in-this-release).
 
 ## Zendesk setup
@@ -37,7 +47,10 @@ A connection needs three values:
   `https://{subdomain}.zendesk.com/api/v2`. A host-mapped domain does not work.
 - **email**, a non-secret credential field: the agent or administrator the
   connector acts as. Tickets and comments it writes are authored by this user,
-  and the user's role limits which tickets it can read and change.
+  and the user's role limits which tickets it can read and change. The
+  `ticketChanged` Trigger reads the incremental ticket export, which Zendesk
+  allows only for administrators, so a connection used by that Trigger names an
+  administrator.
 - **api_token**, a secret credential field: a Zendesk API token.
 
 An administrator turns on **Admin Center > Apps and integrations > APIs > API
@@ -52,7 +65,8 @@ July 28, 2026, and Zendesk plans to stop accepting API tokens on April 30,
 [OAuth](#oauth).
 
 Credentials are reread before every provider call, so replacing a token in Dex
-Web takes effect without a restart. The subdomain and response limit are
+Web takes effect without a restart. The subdomain, response limit, and
+`pollInterval` (the delay between `ticketChanged` polls, at least `5s`) are
 startup configuration.
 
 ## Project configuration
@@ -192,6 +206,93 @@ attempt starts again at step 1 and finds its own marker. A closed ticket is
 `providerRejected`; a missing ticket is `notFound`. This release cannot clear
 an assignee or group.
 
+## ticketChanged Trigger
+
+`ticketChanged` polls Zendesk's
+[cursor-based incremental ticket export](https://developer.zendesk.com/api-reference/ticketing/ticket-management/incremental_exports/)
+(`GET /api/v2/incremental/tickets/cursor`) and delivers one
+`support.TicketChangedEvent` per changed ticket. It is built on the Connector
+SDK's durable poll Trigger kit
+([`sdkgo/pollingtrigger`](../../../sdkgo/README.md#polling-triggers), sdkgo v0.38.0).
+
+- **Administrator connection.** Zendesk allows the incremental export only for
+  administrators. With an agent's email and token, every poll answers 403; the
+  binding logs a WARN `poll failed; retrying` record that names the
+  requirement and backs off. No new scope is involved: API tokens carry the
+  role of the user they authenticate.
+- **Baseline.** The first poll of a binding starts the export with
+  `start_time` five minutes ago, so a Worker clock up to four minutes ahead
+  of Zendesk's still sends a `start_time` Zendesk accepts, drains it to `end_of_stream` (at most 100
+  pages), and keeps only the final `after_cursor`. Existing tickets are never
+  delivered.
+- **Changes.** Each later poll sends `cursor=<after_cursor>` with
+  `per_page=100` and follows `after_cursor` while `end_of_stream` is false.
+  The export reports each ticket once per poll, at its latest state, so
+  several changes made between two polls arrive as one event. `GeneratedAt`
+  is Zendesk's `generated_timestamp`, which also moves for system updates.
+- **Change kind.** Zendesk reports no change type, so `ChangeKind` is derived:
+  `deleted` is a ticket with status `deleted`; `created` means `updated_at` is
+  within one second of `created_at`; every other change is `updated`.
+- **Deletions.** By default the Trigger sends `exclude_deleted=true`. A
+  binding whose saved configuration is `{"includeDeleted": true}` also
+  receives deletions as
+  `deleted` events, which carry status `support.TicketStatusDeleted`.
+- **Cursor reset.** The cursor also stores the newest `generated_timestamp`
+  delivered. When Zendesk answers a cursor request with 400 or 422, or the
+  binding's `includeDeleted` changed, the next request restarts the export
+  with `start_time` at that time (never less than 61 seconds ago), so no
+  change is skipped; a restart within the last minute may repeat it, under the
+  same event IDs. Changes that share one `generated_timestamp` second across
+  a page boundary are all refetched, because the stored time moves past a
+  second only at `end_of_stream`, when Zendesk has served all of it. A
+  restart Zendesk also rejects fails the poll and backs off, keeping the
+  cursor. Only a cursor that cannot be decoded records a new baseline and
+  logs a WARN `poll cursor invalid; reseeding` record; changes in that gap
+  are not delivered.
+- **Rate limits.** Zendesk allows 10 incremental export requests per minute
+  per account (30 with the High Volume API add-on). Every binding of one
+  client shares a limiter that starts at most that many requests per minute;
+  `support.WithIncrementalExportRequestsPerMinute(30)` raises it for a High
+  Volume account. A 429 pauses every binding of the connection for
+  `Retry-After`, or backs off exponentially without it. Other failures back
+  off per binding, up to 15 minutes.
+- **Page size.** A page larger than `maxResponseBytes` is requested again with
+  half the `per_page`, down to 10 tickets, for the rest of the process; a page
+  of 10 tickets that is still too large fails the poll until
+  `maxResponseBytes` is raised. Descriptions are cut at `support.MaxTextBytes`.
+- **Event IDs.** Each event ID hashes the ticket ID, `generated_timestamp`,
+  `updated_at`, and status, so a refetch after a crash or a cursor restart
+  yields the same ID and `sdkgo.NewDexFlowTriggerTarget` starts one Flow per
+  ticket version.
+
+The binding has no configuration unit, because Zendesk has no Studio setup
+bundle (see [Studio pickers](#studio-pickers)): the binding declares no
+Trigger field, and the zero configuration watches created and updated tickets
+in the whole account. `includeDeleted` is read from the binding's saved
+project configuration when present. A Flow's accept function narrows deliveries, for
+example by `Ticket.GroupID` or `Ticket.BrandID`.
+
+`support.NewProjectTicketTriggerRunner` opens the connection from the project,
+records each change in the binding's project Trigger inbox before the cursor
+commits in its project poll cursor, and serves every binding of the
+connection from one goroutine, as
+[`examples/ticket-changed/main.go`](go/examples/ticket-changed/main.go) does:
+
+```go
+triggerRunner, err := support.NewProjectTicketTriggerRunner(project, ticketchanged.ConnectionName, support.ProjectTicketTriggerRunnerConfig{
+	TicketChangedRoutes: []support.ProjectTicketChangedTriggerRoute{{
+		BindingName: ticketchanged.TicketChangedTriggerBinding, Target: newTicketChangeTarget(client, flow, logger),
+	}},
+}, options...)
+```
+
+`support.NewTicketTriggerRunner` takes targets and cursor stores directly. The
+generated `support.NewTicketChangedTrigger` keeps its cursor in memory, so it
+records a new baseline on every start. `support.WithLogger` sends the runner's
+records, which never carry ticket payloads, cursors, or credentials, to a
+logger. The application's storage grant needs `GetObject` and `PutObject` on
+`trigger-inboxes/` and `poll-cursors/`.
+
 ## Errors
 
 A non-2xx response never exposes Zendesk's `description` or detail message
@@ -246,10 +347,11 @@ and an API token needs HTTP Basic. Group, assignee, and brand IDs are therefore
 operation input: find a group ID in Admin Center > People > Team > Groups, where
 it is the number at the end of the group's URL.
 
-### Triggers
+### Webhook Triggers
 
-Ticket events need Zendesk webhooks, which wait for the shared webhook source
-design. Until then, poll with `searchTickets` and `updatedSince`.
+Push delivery of ticket events needs Zendesk webhooks and a signing-secret
+verifier, which wait for the shared webhook source design. `ticketChanged`
+polls instead and needs no public endpoint.
 
 ## Example
 
@@ -258,6 +360,10 @@ design. Until then, poll with `searchTickets` and `updatedSince`.
 customer's unsolved tickets about an issue, reads the newest one to confirm it
 still belongs to the customer, then adds one internal follow-up note, or opens
 a ticket when there is none.
+
+[`examples/ticket-changed`](go/examples/ticket-changed) starts one Flow per
+`ticketChanged` delivery, which reads the ticket back with
+`support.NewGetTicketStep` and records it with its latest comment.
 
 ## Mocks
 
@@ -302,10 +408,17 @@ rejection, export pagination, requester sideloads and newest-first comments,
 the Idempotency-Key and its replay, safe updates and audit markers,
 `expectedUpdatedAt` conflicts, Zendesk error codes and detail tokens without
 message text, `Retry-After`, redirects, oversized, malformed, and
-credential-reflecting responses, and invalid credentials.
+credential-reflecting responses, and invalid credentials. The `ticketChanged`
+fake serves the cursor-based incremental export with per-epoch cursors, 422 for
+a rejected cursor, 429 with `Retry-After`, 403 for an agent, and `per_page`
+caps; the example's integration tests run it through a real Dex Worker and
+Client.
 
 No live Zendesk account was used. The following live behavior is unverified:
-the export search response shape, ordering, and cursor expiry error; whether
+the export search response shape, ordering, and cursor expiry error; the
+incremental ticket export's status code for an invalid cursor (the Trigger
+assumes 400 or 422), its `per_page` handling, its 403 for an agent, the shape
+of a deleted ticket, and its rate-limit headers; whether
 `requester:` matches an email exactly; comment `sort=-created_at` and audit
 `sort_order=desc` ordering; Zendesk's handling of two concurrent requests with
 one Idempotency-Key; whether a 5xx response is cached under a key; the
@@ -315,8 +428,8 @@ Center paths in the setup guidance.
 
 ## Python package
 
-The independent `dex-connector-zendesk-support` Python `v0.1.0` package implements all four ticket operations. Its [README](python/README.md) and [read-ticket example](python/examples/read_ticket/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity; the Python example runs against a real local Dex Worker and a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
+The independent `dex-connector-zendesk-support` Python `v0.2.0` package implements all four ticket operations and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on the Python Connector SDK's poll Trigger kit (`dex-connectors-sdk` 0.12.0). Its cursor documents match Go's byte for byte, so Go and Python replicas can share one binding, and each ticket version keeps Go's event ID. Its [README](python/README.md), [read-ticket example](python/examples/read_ticket/README.md), and [ticket change example](python/examples/ticket_changed/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run against a real local Dex Worker with a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
 
 ## TypeScript package
 
-`@superdurable/connector-zendesk-support@0.1.0` implements all four ticket operations with generated operation-specific Step factories. See the runnable [TypeScript customer-issue Flow](typescript/examples/customer-issue/flow.ts) and its [setup instructions](typescript/examples/customer-issue/README.md). The TypeScript conformance suite replays Go-recorded provider requests and outcomes; the example's integration check runs through a real Dex Worker and Client. Live Zendesk authorization and API behavior are unverified.
+`@superdurable/connector-zendesk-support@0.2.0` implements all four ticket operations with generated operation-specific Step factories and, from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go on `@superdurable/connectors-sdk` 0.12.0. Its cursor documents match Go's byte for byte, so Go and TypeScript replicas can share one binding, and each ticket version keeps Go's event ID. See the runnable [TypeScript customer-issue Flow](typescript/examples/customer-issue/flow.ts) and [ticket-changed Flow](typescript/examples/ticket-changed/README.md). The TypeScript conformance suite replays Go-recorded provider requests and outcomes, Go-recorded export fetches cover the Trigger's requests, cursors, and events, and both examples run through a real Dex Worker and Client against provider stand-ins. Live Zendesk authorization and API behavior are unverified.

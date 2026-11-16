@@ -389,19 +389,23 @@ is unverified for the TypeScript package.
 | Capability | Go | Python | TypeScript |
 | --- | --- | --- | --- |
 | Five conversation and contact operations | v0.23.0 | 0.1.0 | 0.1.0 |
-| `conversationEvent` Trigger | v0.23.0 | — | 0.2.0 |
+| `conversationEvent` Trigger | v0.23.0 | 0.2.0 | 0.2.0 |
 
 ## Python package
 
-`dex-connector-intercom==0.1.0` implements the same five conversation and
-contact operations with operation-specific Python Step factories. The
+`dex-connector-intercom==0.2.0` implements the same five conversation and
+contact operations with operation-specific Python Step factories and, from
+0.2.0, the `conversationEvent` webhook Trigger at parity with Go. The
 [`read_conversation` example](python/examples/read_conversation) runs a Dex
 Worker with the static `intercom-support-inbox` connection and includes a real
 Dex integration test that checks rate-limit retry and completion. The
-`conversationEvent` Trigger remains Go-only. Run the package checks and example
-as described in the [Python README](python/README.md). The Go-recorded provider
-scenarios verify request and outcome parity; live Intercom authorization and API
-behavior are unverified for the Python package.
+[`inbound_conversation` example](python/examples/inbound_conversation) starts
+one Flow per new conversation from signed webhooks through
+`new_project_conversation_event_endpoint_runner`. Run the package checks and
+examples as described in the [Python README](python/README.md). The Go-recorded
+provider scenarios verify request and outcome parity, and a Go-recorded decoder
+fixture verifies notification parity; live Intercom authorization, API
+behavior, and webhooks are unverified for the Python package.
 
 ## Verification
 

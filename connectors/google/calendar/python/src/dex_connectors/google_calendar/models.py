@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Google Calendar operation input and result models."""
+"""Google Calendar operation input and result models and eventChanged Trigger models."""
 
 from ._generated.models import BusyInterval as BusyInterval
 from ._generated.models import CalendarFreeBusy as CalendarFreeBusy
@@ -9,6 +9,8 @@ from ._generated.models import CreateEventOutput as CreateEventOutput
 from ._generated.models import Event as Event
 from ._generated.models import EventAttendee as EventAttendee
 from ._generated.models import EventAttendeeInput as EventAttendeeInput
+from ._generated.models import EventChangedEvent as EventChangedEvent
+from ._generated.models import EventChangedTriggerConfiguration as EventChangedTriggerConfiguration
 from ._generated.models import EventConference as EventConference
 from ._generated.models import EventDateTime as EventDateTime
 from ._generated.models import FreeBusyError as FreeBusyError

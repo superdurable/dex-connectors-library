@@ -10,7 +10,7 @@ import {
   type ConnectorStudioConfigurationUnitTarget,
 } from "@superdurable/dex-connectors-react";
 import { useState, type ReactNode } from "react";
-import { baseIDPattern, tableIDPattern, type AirtableBase, type AirtableTable } from "./provider.js";
+import { baseIDPattern, fieldIDPattern, tableIDPattern, type AirtableBase, type AirtableTable } from "./provider.js";
 
 export interface AirtableUnitProps {
   target: ConnectorStudioConfigurationUnitTarget;
@@ -28,6 +28,7 @@ export interface AirtableUnitProps {
 export function AirtableConfigurationUnit(props: AirtableUnitProps) {
   if (props.target.unitId === "basePicker") return <BasePickerUnit {...props}/>;
   if (props.target.unitId === "tablePicker") return <TablePickerUnit {...props}/>;
+  if (props.target.unitId === "lastModifiedTimeFieldPicker") return <LastModifiedTimeFieldPickerUnit {...props}/>;
   const {target} = props;
   return <StudioNotice tone="error">Unsupported Airtable configuration unit: {target.unitId}</StudioNotice>;
 }
@@ -86,6 +87,41 @@ function TablePickerUnit({target, tables = [], busy, loadError, onLoadTables, on
     </StudioField>
     {tableId !== "" && !isValidTableID && <StudioNotice tone="error">A table ID starts with tbl followed by 14 letters and digits.</StudioNotice>}
     <SaveAction disabled={busy || !isValidTableID} onSave={() => onSave({tableId, tableName})}/>
+  </UnitFrame>;
+}
+
+function LastModifiedTimeFieldPickerUnit({target, tables, busy, loadError, onLoadTables, onSave}: AirtableUnitProps) {
+  const [fieldId, setFieldId] = useState(stringValue(target.value.fieldId));
+  const [fieldName, setFieldName] = useState(stringValue(target.value.fieldName));
+  const baseId = stringValue(target.value.baseId);
+  const tableId = stringValue(target.value.tableId);
+  const isTableSaved = baseIDPattern.test(baseId) && tableIDPattern.test(tableId);
+  const table = tables?.find((candidate) => candidate.id === tableId);
+  const fields = table?.lastModifiedTimeFields ?? [];
+  const isValidFieldID = fieldIDPattern.test(fieldId);
+  return <UnitFrame loadError={loadError} target={target}>
+    <div className="studio-actions">
+      <StudioButton disabled={busy || !isTableSaved} onClick={() => onLoadTables(baseId)}>Load fields</StudioButton>
+      {!isTableSaved && <span className="studio-muted">Save a base and table first to list their Last modified time fields.</span>}
+      {fieldName && <span className="studio-muted"><strong>Field:</strong> {fieldName}</span>}
+    </div>
+    {fields.length > 0 && <StudioField label="Last modified time field">
+      <select onChange={(event) => {
+        setFieldId(event.target.value);
+        setFieldName(fields.find((field) => field.id === event.target.value)?.name ?? "");
+      }} value={fieldId}>
+        <option value="">Select a field</option>
+        {fields.map((field) => <option key={field.id} value={field.id}>{field.name}</option>)}
+      </select>
+    </StudioField>}
+    {table && fields.length === 0 && <StudioNotice tone="attention">
+      This table has no Last modified time field with a time of day. In Airtable, add a field of type Last modified time, turn on Include time, then choose Load fields again.
+    </StudioNotice>}
+    <StudioField hint="Use a field ID when the list is unavailable: fld followed by 14 letters and digits, listed beside the field on the base's API page at https://airtable.com/ followed by the base ID and /api/docs." label="Field ID">
+      <input onChange={(event) => { setFieldId(event.target.value.trim()); setFieldName(""); }} type="text" value={fieldId}/>
+    </StudioField>
+    {fieldId !== "" && !isValidFieldID && <StudioNotice tone="error">A field ID starts with fld followed by 14 letters and digits.</StudioNotice>}
+    <SaveAction disabled={busy || !isValidFieldID} onSave={() => onSave({fieldId, fieldName})}/>
   </UnitFrame>;
 }
 

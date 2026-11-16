@@ -37,6 +37,8 @@
       "invalid_token"
     ],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeout": "12s",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -111,6 +113,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -184,6 +187,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -258,6 +262,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -331,6 +336,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -405,6 +411,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -479,6 +486,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -553,6 +561,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -627,6 +636,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -699,6 +709,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -771,6 +782,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 12000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",

@@ -1,13 +1,14 @@
 # Airtable Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/airtable/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/airtable/go@v0.24.0`.
 
 The [TypeScript package](typescript/) is `@superdurable/connector-airtable`
-v0.1.0. It implements the four record operations and provides generated
-operation-specific Step factories and mocks. Its
-[runnable list example](typescript/examples/list-records/) uses a static
-`airtable-policies` Dex connection; the TypeScript package does not implement
-any Triggers. Shared Go-recorded provider scenarios and a real Dex integration
+v0.2.0. It implements the four record operations and the `recordChanged`
+Trigger, and provides generated operation-specific Step factories and mocks.
+Its [runnable list example](typescript/examples/list-records/) uses a static
+`airtable-policies` Dex connection, and its
+[record-changed example](typescript/examples/record-changed-intake/) uses
+`airtable-intake`. Shared Go-recorded provider scenarios and a real Dex integration
 test cover the package. Live Airtable authorization, picker behavior, and
 provider requests remain unverified.
 
@@ -27,6 +28,15 @@ exposes four operation-specific Dex Step factories:
 | `airtable.NewGetRecordStep` | Query | `GET /v0/{baseId}/{tableIdOrName}/{recordId}` | `found` |
 | `airtable.NewUpsertRecordsStep` | Mutation | `PATCH /v0/{baseId}/{tableIdOrName}` with `performUpsert` | `upserted` |
 | `airtable.NewUpdateRecordsStep` | Mutation | `PATCH /v0/{baseId}/{tableIdOrName}` with record IDs | `updated` |
+
+The Go module also ships the `recordChanged` poll Trigger, which starts a Flow
+for each record created or changed in one picked table; see
+[Triggers](#triggers). The Python and TypeScript packages implement it too.
+
+| Capability | Go | Python | TypeScript |
+| --- | --- | --- | --- |
+| `listRecords`, `getRecord`, `upsertRecords`, `updateRecords` | yes | yes | yes |
+| `recordChanged` Trigger | yes | yes | yes |
 
 Airtable is a typed table store: fields have types, and linked record fields
 hold the IDs of records in another table of the same base. The connector keeps
@@ -67,7 +77,9 @@ sent as `Authorization: Bearer`. Create it at
 <https://airtable.com/create/tokens> with the scopes `data.records:read`,
 `data.records:write`, and `schema.bases:read`, and add every base the Flows
 use under **Access**. The token acts as the user who created it, so that user
-needs editor access to those bases. Regenerating or deleting the token rejects
+needs editor access to those bases. The `recordChanged` Trigger needs no
+further scope: it lists records with `data.records:read` and reads the table
+schema with `schema.bases:read`. Regenerating or deleting the token rejects
 the old value; paste the replacement into the connection, and the running
 Worker uses it on its next call.
 
@@ -195,7 +207,7 @@ policy allows three minutes, which fits several 30-second waits.
 
 ## Studio configuration
 
-The `ui/` bundle provides two release-owned units:
+The `ui/` bundle provides three release-owned units:
 
 - `basePicker` lists the bases the token can reach through the read-only
   `listBases` command, `GET https://api.airtable.com/v0/meta/bases`, and stores
@@ -205,6 +217,11 @@ The `ui/` bundle provides two release-owned units:
   `listTables`, `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`,
   and stores the stable `tableId`, which keeps working after a rename, and
   `tableName`.
+- `lastModifiedTimeFieldPicker` reads the saved `baseId` and `tableId`, lists
+  the table's Last modified time fields that include a time of day from the
+  same `listTables` response, and stores the stable `fieldId` and `fieldName`.
+  The `recordChanged` Trigger binding uses it; a table without such a field
+  shows how to add one.
 
 Both commands send the token as a bearer credential that Dex Web injects; the
 iframe never receives it. Dex Web bounds a command response at 4 MiB, so a
@@ -216,29 +233,113 @@ whatever the connection's `endpoint`.
 | --- | --- | --- |
 | `endpoint` | `https://api.airtable.com` | Airtable Web API base URL for operations. |
 | `maxResponseBytes` | `4194304` | Largest complete response; larger ones select `invalidResponse`. |
+| `pollInterval` | `30s` | Delay between `recordChanged` polls of each binding, at least `1s`. |
+| `pollPageSize` | `100` | Records one `recordChanged` poll request reads, 1 to 100. |
 | `personal_access_token` | none | Secret personal access token. |
 
 ## Triggers
 
-No Trigger ships. An Airtable webhook does not deliver changes: it sends a
-ping that names the base and webhook, signed with an HMAC of the body in
-`X-Airtable-Content-MAC`, and the receiver then lists the changes with
-`GET /v0/bases/{baseId}/webhooks/{webhookId}/payloads` from a stored cursor.
-Payloads are kept for seven days, pings are at-least-once and unordered, and
-a webhook created with a token expires after seven days unless it is
-refreshed. A Trigger therefore needs more than `webhooktrigger.Endpoint`,
-which verifies and decodes the pushed request itself:
+### recordChanged
 
-- a binding setup Mutation that creates the webhook and stores its
-  `macSecretBase64` as a credential, because the MAC secret is not a value the
-  user can paste;
-- a durable per-webhook payload cursor, advanced only after every payload in
-  a page is recorded, and a pull loop that follows `mightHaveMore`;
-- a refresh at least every seven days, with the `webhook:manage` scope;
-- a decoder that turns each changed record into a stable event ID from the
-  payload's `baseTransactionNumber` and record ID.
+`recordChanged` starts a Flow for each record created or changed in one
+picked table. It polls with the `sdkgo/pollingtrigger` kit, since Airtable
+offers no change feed to a personal access token without a webhook. The table
+needs a field of type **Last modified time** with **Include time** turned on.
+That field's own setting decides what counts as a change: all fields, or only
+the fields it watches, so a field that watches only `Status` makes the Trigger
+fire on status changes alone. Records whose watched field is empty, such as a
+new record when the field watches fields the record never set, are not
+reported until the field gets a value.
 
-The `sdkgo` webhook and Trigger packages have no ping-then-pull source today.
+| Configuration | Unit | Stored value |
+| --- | --- | --- |
+| `baseId`, `baseName` | `basePicker` | Base ID, such as `app` followed by 14 letters and digits. |
+| `tableId`, `tableName` | `tablePicker` | Table ID, which survives renames. |
+| `fieldId`, `fieldName` | `lastModifiedTimeFieldPicker` | Last modified time field ID, which survives renames. |
+
+Each poll reads the base schema once to find the watched field's current
+name, then sends `POST /v0/{baseId}/{tableId}/listRecords` with
+`filterByFormula` `IS_AFTER({fieldId}, DATETIME_PARSE("<latest delivered
+change minus six seconds>"))`, `sort` ascending by the field ID, and
+`pollPageSize` records.
+Each `RecordChangedEvent` carries the base and table IDs, the parsed
+`LastModifiedTime`, `IsCreatedRecord` (created and not edited since, within one
+second), and the `Record` with fields keyed by name. The event ID is the
+record ID and its modification time, such as
+`recXXXXXXXXXXXXXX-20261115T090000123000000Z`, so a redelivered change maps to
+the same Flow and a later edit of the same record starts a new one.
+
+Cursor and delivery:
+
+- The first poll seeds the cursor at the table's latest modification time
+  without delivering existing records.
+- The cursor stores the latest delivered modification time and the records
+  delivered in the five seconds before it. Each poll lists from five seconds
+  before that time, plus one second for formula rounding, and skips records it
+  already delivered, so a change that becomes visible to the API up to five
+  seconds after a later one is still delivered, and records that share a
+  millisecond, which Airtable orders arbitrarily, are each delivered once.
+- The cursor remembers at most 2,000 records. Past that, such as after a bulk
+  edit, it forgets the oldest ones and stops looking before them once the scan
+  has listed every record at their time. A scan longer than 20 pages of
+  delivered records stores its Airtable `offset` in the cursor and resumes from
+  it; further records come from immediate follow-up requests, up to ten pages
+  per poll.
+- The project runner records each change in the binding's durable inbox
+  before the cursor commits past it, so a restart neither misses nor replays a
+  change. Delivery is at least once, and Dex starts one Flow per event ID.
+- The cursor is a time, so Airtable never expires it. An expired page offset
+  (`422 LIST_RECORDS_ITERATOR_NOT_AVAILABLE`) starts the scan again from the
+  cursor's time, still skipping the records it remembers. A stored cursor that
+  cannot be decoded, or that belongs to a different field than the binding now
+  names, is reseeded and logged as `poll cursor invalid; reseeding`; changes in
+  that gap are not delivered.
+- A renamed field is found again from the schema on the next poll. A field
+  that is no longer a Last modified time field with a time of day, a missing
+  table, a rejected token, or a missing scope fails the poll, which backs off
+  up to five minutes and keeps the cursor.
+- A `429`, or a per-base request queue more than two seconds long, pauses
+  every binding of the connection for at least Airtable's 30 seconds. Polls
+  share the client's 5-requests-per-second pacing per base with Steps in the
+  same process; Airtable also allows 50 requests per second per token.
+
+The poll reads only what the field records, so it cannot report deleted
+records, and an edit that the watched field ignores is not a change. A change
+that becomes visible to the API more than five seconds after a later change
+was already delivered is not reported; Airtable documents no such delay.
+
+The Worker builds a durable runner from the project configuration, as the
+[`record-changed-intake`](go/examples/record-changed-intake) example does:
+
+```go
+triggerRunner, err := airtable.NewProjectRecordChangedTriggerRunner(project, recordchangedintake.ConnectionName, []airtable.ProjectRecordChangedTriggerRoute{{
+	BindingName: recordchangedintake.RecordChangedTriggerBinding, Target: newChangedRecordTarget(client, flow, logger),
+}}, airtable.WithLogger(logger))
+```
+
+`NewRecordChangedTriggerRunner` takes explicit routes, cursors, and targets
+instead, and the generated `NewRecordChangedTrigger` keeps its cursor in
+memory, so a restart seeds again. Log records carry the connector, connection,
+Trigger, and binding, never field values, field names, or the token.
+
+The Python package implements `recordChanged` at parity on the Python poll
+Trigger kit: its cursor documents and event IDs match Go's byte for byte, so Go
+and Python replicas can share one binding's cursor and inbox. See the
+[Python README](python/README.md#recordchanged-trigger) and its
+[`record_changed_intake`](python/examples/record_changed_intake/README.md)
+example.
+
+The TypeScript package implements `recordChanged` at parity on the TypeScript
+poll Trigger kit: its cursor documents and event IDs match Go's byte for byte,
+so Go and TypeScript replicas can share one binding's cursor and inbox. See the
+[TypeScript README](typescript/README.md#recordchanged-trigger) and its
+[`record-changed-intake`](typescript/examples/record-changed-intake/README.md)
+example.
+
+A push Trigger built on Airtable webhooks is not shipped. A webhook sends only
+a ping, after which the receiver lists payloads from a stored cursor; it also
+needs the `webhook:manage` scope, a public HTTPS endpoint, a MAC secret shown
+once at creation, and a refresh every seven days.
 
 ## Example
 
@@ -309,6 +410,10 @@ func (flow *Flow) MapToUpsertDecisionLogInput(decision RefundDecision) airtable.
 The example README lists the table fields, the Dex Web setup, and the Start
 Flow input.
 
+[`examples/record-changed-intake`](go/examples/record-changed-intake) starts
+one Flow per record created or changed in a picked table through the
+`recordChanged` Trigger and records the change for review in Dex Web.
+
 ## Verification
 
 ```bash
@@ -324,15 +429,23 @@ The real-Dex example tests need a Dex development server:
 ```bash
 dexcli dev
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/refund-decision/... -count=1 -v
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/record-changed-intake/... -count=1 -v
 ```
 
 They cover an approved case end to end with a duplicate start, a rerun of one
 case that updates its log row, a duplicate policy key logged for review, a
 Worker replacement that sends one upsert and two converging absolute updates,
 a `429` retried after Airtable's 30-second cooldown, and a rejected
-formula that fails the Flow without provider text.
+formula that fails the Flow without provider text. The
+`record-changed-intake` test serves a fake table and checks that existing
+records start no Flow, each created or edited record starts exactly one
+completed Flow, a renamed field keeps working, and a change made while the
+runner is stopped arrives after a restart that first meets a `503`.
 
-No live Airtable base was used. The operations, picker commands, error types,
+No live Airtable base was used, so the `recordChanged` formula,
+`DATETIME_PARSE` of an ISO 8601 time, sorting by a field ID, and the
+millisecond precision of Last modified time values are unverified against
+Airtable. The operations, picker commands, error types,
 and limits follow Airtable's published Web API reference; the 10-record write
 limit is enforced as Airtable has documented it, although the current
 reference pages no longer state it.

@@ -119,6 +119,8 @@ type testHarness struct {
 	toolSetChanges  []string
 	chatSends       *testconnectors.ChatSends
 	isChatLinked    bool
+	mailAttempts    *testconnectors.MailObservations
+	isMailLinked    bool
 }
 
 type harnessOptions struct {
@@ -133,6 +135,8 @@ type harnessOptions struct {
 	stateDirectory string
 	// isChatLinked links the chat connector and authorizes example-chat/work.
 	isChatLinked bool
+	// isMailLinked links the mail connector and authorizes example-mail/work.
+	isMailLinked bool
 }
 
 func newTestHarness(t *testing.T, options harnessOptions) *testHarness {
@@ -144,12 +148,16 @@ func newTestHarness(t *testing.T, options harnessOptions) *testHarness {
 		t: t, provider: provider, connectionsFile: filepath.Join(directory, "connectors", "connections.json"),
 		stateDirectory: filepath.Join(directory, "state"), clock: newFakeClock(), logs: &synchronizedBuffer{},
 		chatSends: &testconnectors.ChatSends{}, isChatLinked: options.isChatLinked,
+		mailAttempts: &testconnectors.MailObservations{}, isMailLinked: options.isMailLinked,
 	}
 	if options.stateDirectory != "" {
 		harness.stateDirectory = options.stateDirectory
 	}
 	if options.isChatLinked {
 		options.extraConnectors = append(options.extraConnectors, testconnectors.ChatConnector(harness.chatSends))
+	}
+	if options.isMailLinked {
+		options.extraConnectors = append(options.extraConnectors, testconnectors.MailConnector(harness.mailAttempts))
 	}
 	require.NoError(t, os.MkdirAll(filepath.Dir(harness.connectionsFile), 0o700))
 	if options.connectionNames == nil {
@@ -196,6 +204,9 @@ func (harness *testHarness) writeConnectionRecords(connections ...testconnectors
 	harness.t.Helper()
 	if harness.isChatLinked {
 		connections = append(connections, testconnectors.ChatConnection("work"))
+	}
+	if harness.isMailLinked {
+		connections = append(connections, testconnectors.MailConnection("work", harness.provider))
 	}
 	require.NoError(harness.t, testconnectors.WriteConnectionsFile(harness.connectionsFile, connections...))
 }

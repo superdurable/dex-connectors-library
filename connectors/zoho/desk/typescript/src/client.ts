@@ -3,7 +3,7 @@
 
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { SearchTicketsOperation, GetTicketOperation, CreateTicketOperation, UpdateTicketOperation, AddCommentOperation } from './operations.js';
@@ -14,6 +14,9 @@ const dataCenterHosts: Record<string, string> = {
   'zoho-sa-oauth': 'desk.zoho.sa', 'zoho-sg-oauth': 'desk.zoho.sg', 'zoho-ae-oauth': 'desk.zoho.ae',
 };
 const defaultMaxResponseBytes = 4_194_304;
+const defaultPollIntervalMs = 60_000;
+/** Keeps ticketChanged polls from spending the organization's daily API credits. */
+const minimumPollIntervalMs = 15_000;
 
 /** Network and clock dependencies for deterministic provider tests. */
 export interface ZohoDeskClientOptions {
@@ -21,8 +24,14 @@ export interface ZohoDeskClientOptions {
   send?: (request: ProviderRequest) => Promise<ProviderResponse>;
   /** Override the Desk API base only for a trusted local provider stand-in. */
   apiBaseURL?: string;
-  /** Supply a deterministic instant for receipts and Retry-After. */
+  /** Supply a deterministic instant for receipts, Retry-After, and ticketChanged search bounds. */
   now?: () => Date;
+  /**
+   * Receives the ticketChanged Trigger runner's records: baselines, reseeds after an invalid cursor, failed polls,
+   * rate-limit pauses, and the durable inboxes newProjectTicketTriggerRunner opens. Records carry binding identity
+   * and never ticket payloads or credentials. Omitted uses defaultTriggerLogger. Operation Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
 
 /** One classified provider exchange. */
@@ -47,10 +56,15 @@ export class ZohoDeskClient {
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly apiBaseURL?: string;
   private readonly now: () => Date;
+  /** Delay between ticketChanged polls in milliseconds. */ readonly pollIntervalMs: number;
+  /** Trigger record destination. */ readonly triggerLogger: TriggerLogger;
   private readonly operationSignals = new WeakMap<Call, AbortSignal>();
   private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Zoho', auth: Authorization, credentialFields: CredentialFields });
 
-  /** Validate startup configuration without contacting the provider. */
+  /**
+   * Validate startup configuration without contacting the provider. A zero maxResponseBytes uses 4 MiB, and a zero
+   * pollIntervalMs uses one minute; pollIntervalMs must be at least 15 seconds.
+   */
   constructor(config: Config, private readonly credentials: CredentialSource, options: ZohoDeskClientOptions = {}) {
     if (!credentials) throw new TypeError('Zoho Desk credential provider is required');
     this.orgId = config.orgId?.trim() ?? '';
@@ -60,7 +74,12 @@ export class ZohoDeskClient {
     this.apiBaseURL = options.apiBaseURL ? validateBaseURL(options.apiBaseURL) : undefined;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Zoho Desk pollInterval must be at least 15s');
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
   }
+
+  /** The connection's organization ID, sent as the orgId header. */ get organizationId(): string { return this.orgId; }
 
   /** Bind ticket search. */ searchTickets(): SearchTicketsOperation { return new SearchTicketsOperation(this); }
   /** Bind ticket details. */ getTicket(): GetTicketOperation { return new GetTicketOperation(this); }
@@ -195,9 +214,15 @@ function classifyStatus(response: ProviderResponse, operation: string, now: Date
   return failure('rejected', status === 400 || status === 422 ? 'VALIDATION' : status === 409 ? 'CONFLICT' : 'PROVIDER_REJECTION', withSummary(`Zoho Desk rejected the request (HTTP ${status})`));
 }
 function describeError(body: Uint8Array): string {
+  const { code, errors } = summarizeError(body);
+  return [code, ...(errors.length ? [`errors: ${errors.join(', ')}`] : [])].filter(Boolean).join('; ');
+}
+
+/** Return Zoho Desk's machine-readable error code and up to five sorted field errors, such as /from=invalid. */
+export function summarizeError(body: Uint8Array): { code: string; errors: string[] } {
   let document: unknown;
-  try { document = JSON.parse(Buffer.from(body).toString('utf8')); } catch { return ''; }
-  if (!document || typeof document !== 'object' || Array.isArray(document)) return '';
+  try { document = JSON.parse(Buffer.from(body).toString('utf8')); } catch { return { code: '', errors: [] }; }
+  if (!document || typeof document !== 'object' || Array.isArray(document)) return { code: '', errors: [] };
   const fields = document as Record<string, unknown>;
   const code = typeof fields.errorCode === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(fields.errorCode) ? fields.errorCode : '';
   const errors = Array.isArray(fields.errors) ? fields.errors.flatMap(item => {
@@ -207,5 +232,5 @@ function describeError(body: Uint8Array): string {
     const type = typeof field.errorType === 'string' && /^[a-z][A-Za-z_]{0,31}$/.test(field.errorType) ? `=${field.errorType}` : '';
     return [field.fieldName + type];
   }).sort().slice(0, 5) : [];
-  return [code, ...(errors.length ? [`errors: ${errors.join(', ')}`] : [])].filter(Boolean).join('; ');
+  return { code, errors };
 }

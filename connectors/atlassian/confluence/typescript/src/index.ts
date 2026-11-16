@@ -8,3 +8,13 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newProjectConnection } from './project.js';
 export { ConfluenceClient, type ConfluenceClientOptions } from './client.js';
 export { SearchPagesOperation, GetPageOperation, CreatePageOperation, UpdatePageOperation, AddCommentOperation } from './operations.js';
+export {
+  PageChangeCreated, PageChangeUpdated, PageChangedEventSchema, PageChangedTriggerConfigurationSchema, PageChangedTriggerDefinition,
+  UISpacePickerPortSpaceID, UISpacePickerPortSpaceKey, UISpacePickerPortSpaceName, UIUnitSpacePicker, definePageChangedTriggerBinding,
+  type PageChangeKind, type PageChangedEvent, type PageChangedTriggerBindingConfig, type PageChangedTriggerConfiguration,
+} from './page_changed.js';
+export { pageChangeEventId } from './page_change_cursor.js';
+export {
+  PageTriggerRunner, decodePageChangedEventPayload, newPageChangedTrigger, newPageTriggerRunner, newProjectPageTriggerRunner,
+  type PageChangedTriggerConfig, type PageChangedTriggerRoute, type PageTriggerRunnerConfig, type ProjectPageChangedTriggerRoute,
+} from './trigger.js';

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Call, CredentialProvider, Failure, Receipt } from '@superdurable/connectors-sdk';
+import { defaultTriggerLogger, type Call, type CredentialProvider, type Failure, type Receipt, type TriggerLogger } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
 import { SearchTicketsOperation, GetTicketOperation, FindCustomerByEmailOperation, CreateTicketOperation, UpdateTicketOperation, AddNoteOperation } from './operations.js';
 
@@ -27,8 +27,17 @@ export type RequestSender = (request: ProviderRequest) => Promise<ProviderRespon
 export interface GorgiasClientOptions {
   /** Alternate loopback API base URL. */ apiBaseURL?: string;
   /** Alternate bounded HTTP sender. */ send?: RequestSender;
-  /** Receipt and Retry-After clock. */ now?: () => Date;
+  /** Receipt, Retry-After, and ticketChanged baseline clock. */ now?: () => Date;
+  /**
+   * Receives the ticketChanged runner's records: seeds, reseeds after an undecodable cursor, failed polls,
+   * rate-limit pauses, and the durable inboxes newProjectTicketTriggerRunner opens. Records carry binding
+   * identity and never event contents or credentials. Omitted uses defaultTriggerLogger. Operation Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
+
+// Keeps a ticketChanged poll loop from spending the account's 40 requests per 20 seconds on empty polls.
+const minimumPollIntervalMs = 10_000;
 
 /** Authenticated Gorgias API client shared by connector operations. */
 export class GorgiasClient {
@@ -37,6 +46,8 @@ export class GorgiasClient {
   private readonly maxResponseBytes: number;
   private readonly send: RequestSender;
   private readonly now: () => Date;
+  /** Delay between ticketChanged polls in milliseconds, at least 10 seconds; one minute by default. */ readonly pollIntervalMs: number;
+  /** Receives the ticketChanged runner's and durable inboxes' records. */ readonly triggerLogger: TriggerLogger;
 
   /** Validate configuration and bind the credential source. */
   constructor(config: Config, credentials: CredentialProvider<Credentials>, options: GorgiasClientOptions = {}) {
@@ -49,6 +60,10 @@ export class GorgiasClient {
     this.maxResponseBytes = maxResponseBytes;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
+    // A zero pollInterval keeps the one-minute default, as Go's withConfigDefaults does.
+    this.pollIntervalMs = config.pollIntervalMs === undefined || config.pollIntervalMs === 0 ? 60_000 : config.pollIntervalMs;
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Gorgias pollInterval must be at least 10s');
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
   }
 
   /** Bind searchTickets. */ searchTickets(): SearchTicketsOperation { return new SearchTicketsOperation(this); }
@@ -57,6 +72,8 @@ export class GorgiasClient {
   /** Bind createTicket. */ createTicket(): CreateTicketOperation { return new CreateTicketOperation(this); }
   /** Bind updateTicket. */ updateTicket(): UpdateTicketOperation { return new UpdateTicketOperation(this); }
   /** Bind addNote. */ addNote(): AddNoteOperation { return new AddNoteOperation(this); }
+
+  /** Return the current time of the injected clock. */ currentTime(): Date { return this.now(); }
 
   /** Resolve current credentials without retaining credential bearing errors. */
   async resolveCredentials(call: Call, operation: string): Promise<{ credentials?: Credentials; failure?: Failure }> {

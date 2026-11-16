@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/airtable/go"
@@ -21,19 +22,23 @@ func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
 	defaults := airtable.DefaultConfig()
 	require.Contains(t, string(readme), "| `endpoint` | `"+defaults.Endpoint+"` |")
 	require.Contains(t, string(readme), "| `maxResponseBytes` | `"+strconv.FormatInt(defaults.MaxResponseBytes, 10)+"` |")
+	require.Contains(t, string(readme), "| `pollInterval` | `30s` |")
+	require.Equal(t, 30*time.Second, defaults.PollInterval)
+	require.Contains(t, string(readme), "| `pollPageSize` | `"+strconv.FormatInt(defaults.PollPageSize, 10)+"` |")
 	require.Contains(t, string(readme), "up to "+strconv.Itoa(airtable.MaximumRecordsPerWrite)+" records")
 	var exampleSources []string
 	for _, path := range []string{
 		filepath.Join("examples", "refund-decision", "main.go"),
 		filepath.Join("examples", "refund-decision", "flow", "workflow.go"),
 		filepath.Join("examples", "refund-decision", "flow", "workflow_mock_integration_test.go"),
+		filepath.Join("examples", "record-changed-intake", "main.go"),
 	} {
 		source, err := os.ReadFile(path)
 		require.NoError(t, err)
 		exampleSources = append(exampleSources, string(source))
 	}
 	snippets := readmeGoSnippets(string(readme))
-	require.Len(t, snippets, 5)
+	require.Len(t, snippets, 6)
 	for _, snippet := range snippets {
 		require.Truef(t, isIndentedSnippetInSources(snippet, exampleSources), "README Go snippet is not copied from the example:\n%s", snippet)
 	}

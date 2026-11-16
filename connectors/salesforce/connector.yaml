@@ -11,15 +11,15 @@ spec:
   provider: salesforce
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-salesforce"
       operations: [queryRecords, getRecord, upsertRecordByExternalId, updateRecord]
-      triggers: []
+      triggers: [recordModifiedPolled]
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-salesforce
       operations: [queryRecords, getRecord, upsertRecordByExternalId, updateRecord]
-      triggers: []
+      triggers: [recordModifiedPolled]
   codegen:
     go:
       package: salesforce

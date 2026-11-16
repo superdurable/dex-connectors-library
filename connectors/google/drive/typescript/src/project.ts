@@ -12,7 +12,11 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   if (!project) throw new TypeError('Google Drive project is required');
   const entry = project.configuration.connections.find(connection => connection.connectorId === ConnectorID && connection.connectionName === connectionName);
   if (!entry || entry.provider !== ProviderID) throw new TypeError('Google Drive project connection is not configured');
-  const fields = ConfigSchema.parse(entry.configuration);
+  const raw = entry.configuration as Record<string, unknown>;
+  const { pollInterval, ...settings } = raw;
+  // Dex Web stores the Go time.Duration in nanoseconds; the client takes milliseconds.
+  if (pollInterval !== undefined && (typeof pollInterval !== 'number' || !Number.isSafeInteger(pollInterval))) throw new TypeError('Google Drive configuration pollInterval has an invalid type');
+  const fields = ConfigSchema.parse({ ...settings, ...(pollInterval !== undefined ? { pollIntervalMs: Math.floor(pollInterval / 1_000_000) } : {}) });
   const config: Config = { ...fields };
   const provider = newProjectCredentialProvider(project, connectionName, decodeCredentials, encodeCredentials, decodeSharedCredentials);
   return newConnection(new DriveClient(config, provider, options), { provider: ProviderID, name: connectionName });

@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-atlassian-jira",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -418,6 +418,16 @@
           "issueIdOrKey"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_issue_changed_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "issueChanged",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

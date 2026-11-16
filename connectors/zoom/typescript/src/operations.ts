@@ -12,13 +12,15 @@ const emptyParticipants: ParticipantPage = { meetingId: 0, participants: [], tot
 const emptyUpdate: UpdatedMeeting = { meetingId: 0 };
 const successful = (status: number) => status >= 200 && status < 300;
 
-type Classified = { outcome: 'usable' | 'retry' | 'notFound' | 'rejected' | 'invalid'; failure?: Failure; errorCode: string; retryAfter: number };
+/** One classified Zoom exchange, as the Go connector's classifyReadResponse returns it. */
+export type Classified = { outcome: 'usable' | 'retry' | 'notFound' | 'rejected' | 'invalid'; failure?: Failure; errorCode: string; retryAfter: number };
 function code(body: Uint8Array): string {
   try { const value = integer(responseObject(body).code); return value >= 0 && value <= 4_294_967_295 ? String(value) : ''; }
   catch { return ''; }
 }
 function statusMessage(message: string, status: number, errorCode: string): string { return `${message} with HTTP ${status}${errorCode ? ` (code ${errorCode})` : ''}`; }
-function classify(client: ZoomClient, operation: string, exchange: ZoomExchange): Classified {
+/** Classify one exchange into Go's status outcomes, failure, numeric error code, and Retry-After. */
+export function classify(client: ZoomClient, operation: string, exchange: ZoomExchange): Classified {
   if ('error' in exchange) return { outcome: 'retry', failure: zoomFailure(operation, 'TRANSPORT', 'Zoom could not be reached'), errorCode: '', retryAfter: 0 };
   const { response, isTooLarge, reflectsCredential } = exchange, status = response.status;
   const errorCode = code(response.body), retryAfter = client.retryAfter(response.headers);

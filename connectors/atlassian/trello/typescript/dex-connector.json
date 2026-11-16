@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-atlassian-trello",
-    "version": "0.1.2"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -418,6 +418,16 @@
           "text"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineCardChangedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "cardChanged",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

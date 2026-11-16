@@ -4,7 +4,8 @@
 // Package support implements Zendesk Support ticket operations as Dex connector
 // Steps: searchTickets and getTicket read tickets, createTicket creates one
 // ticket under a Step-derived Zendesk Idempotency-Key, and updateTicket changes
-// ticket fields and adds at most one comment per Step execution.
+// ticket fields and adds at most one comment per Step execution. The ticketChanged
+// Trigger polls the incremental ticket export; see NewProjectTicketTriggerRunner.
 //
 // The connector authenticates with a Zendesk API token as {email}/token over
 // HTTP Basic and sends every request to https://{subdomain}.zendesk.com/api/v2.
@@ -13,9 +14,11 @@ package support
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/mail"
 	"net/url"
@@ -43,6 +46,12 @@ const (
 	idempotencyMetadataKey = "dex_idempotency_key"
 
 	maximumReportedErrorDetails = 5
+
+	// minimumPollInterval keeps a ticketChanged poll loop from spending the export rate limit on empty polls.
+	minimumPollInterval = 5 * time.Second
+	// DefaultIncrementalExportRequestsPerMinute is Zendesk's documented incremental export rate limit for an account
+	// without the High Volume API add-on.
+	DefaultIncrementalExportRequestsPerMinute = 10
 )
 
 var (
@@ -55,8 +64,10 @@ var (
 type Option func(*clientOptions)
 
 type clientOptions struct {
-	httpClient *http.Client
-	apiBaseURL string
+	httpClient                         *http.Client
+	apiBaseURL                         string
+	logger                             *slog.Logger
+	incrementalExportRequestsPerMinute int
 }
 
 // WithHTTPClient overrides the default HTTP client, whose timeout is 9 seconds per request.
@@ -73,6 +84,22 @@ func WithAPIBaseURL(baseURL string) Option {
 	return func(options *clientOptions) { options.apiBaseURL = baseURL }
 }
 
+// WithLogger sends the ticketChanged Trigger runner's records to logger: seeds, cursor resets, failed
+// polls, rate-limit pauses, and the durable inboxes NewProjectTicketTriggerRunner opens. Records carry
+// binding identity and never ticket payloads, cursors, or credentials. Without this option, or with a nil
+// logger, records go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
+// WithIncrementalExportRequestsPerMinute sets how many incremental ticket export requests every
+// ticketChanged binding of this client may start per minute together, from 1 to 600. Without it the client
+// uses DefaultIncrementalExportRequestsPerMinute; an account with Zendesk's High Volume API add-on may pass
+// 30. Other integrations on the same account share Zendesk's limit, and a 429 still pauses the bindings.
+func WithIncrementalExportRequestsPerMinute(requestsPerMinute int) Option {
+	return func(options *clientOptions) { options.incrementalExportRequestsPerMinute = requestsPerMinute }
+}
+
 // Client executes authenticated Zendesk Support API requests for connector operations.
 // A Client is safe for concurrent use by several Steps.
 type Client struct {
@@ -81,7 +108,11 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
-	now              func() time.Time
+	pollInterval     time.Duration
+	logger           *slog.Logger
+	// exportRequestLimiter spaces incremental export requests across every ticketChanged binding.
+	exportRequestLimiter *requestSpacingLimiter
+	now                  func() time.Time
 }
 
 type zendeskRequest struct {
@@ -142,12 +173,18 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if credentials == nil {
 		return nil, errors.New("Zendesk credential provider is required")
 	}
-	dependencies := clientOptions{}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("Zendesk pollInterval must be at least %s", minimumPollInterval)
+	}
+	dependencies := clientOptions{incrementalExportRequestsPerMinute: DefaultIncrementalExportRequestsPerMinute}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Zendesk connector option is nil")
 		}
 		option(&dependencies)
+	}
+	if dependencies.incrementalExportRequestsPerMinute < 1 || dependencies.incrementalExportRequestsPerMinute > 600 {
+		return nil, errors.New("Zendesk incremental export requests per minute must be 1 to 600")
 	}
 	accountURL := "https://" + config.Subdomain + ".zendesk.com"
 	apiBaseURL := accountURL + "/api/v2"
@@ -161,7 +198,10 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	return &Client{
 		apiBaseURL: apiBaseURL, agentTicketURL: accountURL + "/agent/tickets/",
 		httpClient:  providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
-		credentials: credentials, maxResponseBytes: config.MaxResponseBytes, now: time.Now,
+		credentials: credentials, maxResponseBytes: config.MaxResponseBytes, pollInterval: config.PollInterval,
+		logger:               dependencies.logger,
+		exportRequestLimiter: newRequestSpacingLimiter(time.Minute / time.Duration(dependencies.incrementalExportRequestsPerMinute)),
+		now:                  time.Now,
 	}, nil
 }
 
@@ -194,7 +234,12 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 
 // exchange sends one authenticated request and classifies its response; every operation's retry is duplicate-safe.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request zendeskRequest) zendeskExchange {
-	httpRequest, err := client.buildRequest(call, credentials, request)
+	return client.exchangeWithContext(call.Context, credentials, operation, request)
+}
+
+// exchangeWithContext is exchange under ctx; Trigger pollers pass their own ctx because their calls have no Dex Step context.
+func (client *Client) exchangeWithContext(ctx context.Context, credentials Credentials, operation string, request zendeskRequest) zendeskExchange {
+	httpRequest, err := client.buildRequest(ctx, credentials, request)
 	if err != nil {
 		return zendeskExchange{outcome: exchangeDefect, failure: zendeskFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
@@ -223,7 +268,7 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 	return client.classifyFailureStatus(response, credentials, operation)
 }
 
-func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, request zendeskRequest) (*http.Request, error) {
+func (client *Client) buildRequest(ctx context.Context, credentials Credentials, request zendeskRequest) (*http.Request, error) {
 	var body *bytes.Reader
 	if request.payload != nil {
 		encoded, err := json.Marshal(request.payload)
@@ -239,9 +284,9 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 	var httpRequest *http.Request
 	var err error
 	if body != nil {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, body)
+		httpRequest, err = http.NewRequestWithContext(ctx, request.method, target, body)
 	} else {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, nil)
+		httpRequest, err = http.NewRequestWithContext(ctx, request.method, target, nil)
 	}
 	if err != nil {
 		return nil, errZendeskRequestNotBuilt

@@ -457,3 +457,31 @@ class Payment:
 
 
 setattr(Payment, '__module__', 'dex_connectors.intuit_quickbooks.models')
+
+
+# InvoiceChangedEvent is one invoice version read by the invoiceChanged poll. QuickBooks's invoice query
+# does not return deleted invoices, so a deletion is never delivered.
+@dataclass(frozen=True, slots=True)
+class InvoiceChangedEvent:
+    # RealmID is the QuickBooks company the invoice belongs to.
+    realm_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'realmId'})
+    # Environment is the connection's QuickBooks environment, production or sandbox.
+    environment: str = _dataclass_field(kw_only=True)
+    # ChangeKind is the derived change kind; see InvoiceChangeKind.
+    change_kind: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'changeKind'})
+    # Invoice is the invoice as QuickBooks returned it in the poll, with its SyncToken and UpdatedAt.
+    invoice: Invoice = _dataclass_field(default_factory=Invoice)
+
+
+setattr(InvoiceChangedEvent, '__module__', 'dex_connectors.intuit_quickbooks.models')
+
+
+# InvoiceChangedTriggerConfiguration is the invoiceChanged binding configuration. A binding watches every
+# invoice of the connection's company, so it has no fields; an application narrows the changes it starts
+# Flows for in its Trigger target's accept function, for example by customer.
+@dataclass(frozen=True, slots=True)
+class InvoiceChangedTriggerConfiguration:
+    pass
+
+
+setattr(InvoiceChangedTriggerConfiguration, '__module__', 'dex_connectors.intuit_quickbooks.models')

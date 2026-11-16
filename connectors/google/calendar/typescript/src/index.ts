@@ -8,3 +8,4 @@ export { Connection, newConnection, newConnectionWithOperations, newProjectCrede
 export * from './client.js';
 export * from './operations.js';
 export * from './project.js';
+export * from './trigger.js';

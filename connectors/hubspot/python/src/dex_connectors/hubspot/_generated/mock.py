@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import CRMObject, GetObjectInput, ObjectPage, SearchFilter, SearchFilterGroup, SearchObjectsInput, SearchSort, UpdateObjectInput, UpsertObjectInput, UpsertedObject
+from ..models import CRMObject, CRMObjectChangedEvent, CRMObjectChangedTriggerConfiguration, GetObjectInput, ObjectPage, SearchFilter, SearchFilterGroup, SearchObjectsInput, SearchSort, UpdateObjectInput, UpsertObjectInput, UpsertedObject
 from .definitions import CONNECTOR_ID, CONFLICT, DEFECT, FOUND, GET_OBJECT_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEARCHED, SEARCH_OBJECTS_DEFINITION, UPDATED, UPDATE_OBJECT_DEFINITION, UPSERTED, UPSERT_OBJECT_DEFINITION
 
 def search_objects_searched(value: ObjectPage, failure: Failure | None = None) -> Case[ObjectPage]:

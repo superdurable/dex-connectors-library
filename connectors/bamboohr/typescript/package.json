@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-bamboohr",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "BambooHR employee and time off operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -42,11 +42,12 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:get": "npm run build && tsx examples/get-employee/main.ts",
-    "example:get:start": "npm run build && tsx examples/get-employee/start.ts"
+    "example:get:start": "npm run build && tsx examples/get-employee/start.ts",
+    "example:employee-changed": "npm run build && tsx examples/employee-changed/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.1",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

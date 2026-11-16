@@ -225,6 +225,8 @@ function optionalBoolean(value: unknown): boolean { if (value === undefined || v
 function optionalStringArray(value: unknown): string[] { if (value === undefined || value === null) return []; return array(value).map(item => { if (typeof item !== 'string') throw new Error('expected string'); return item; }); }
 function optionalTime(value: unknown): string { if (value === undefined || value === null) return ''; if (typeof value !== 'string') throw new Error('expected time string'); return value; }
 function truncateUTF8(value: string): { value: string; truncated: boolean } { const data = Buffer.from(value, 'utf8'); if (data.length <= 16384) return { value, truncated: false }; return { value: data.subarray(0, 16384).toString('utf8').replace(/\uFFFD$/, ''), truncated: true }; }
+/** Decode one Zendesk ticket object at parity with the Go connector; throws when it is invalid. */
+export function decodeTicketWire(value: unknown, agentTicketURL: string): Ticket { return decodeTicket(object(value), agentTicketURL).ticket; }
 function decodeTicket(wire: Record<string, unknown>, agentTicketURL: string): { ticket: Ticket; updatedStamp: string } {
   const id = optionalNumber(wire.id); const status = optionalString(wire.status); if (id < 1 || !status) throw new Error('ticket ID or status is missing');
   const createdStamp = optionalTime(wire.created_at); const updatedStamp = optionalTime(wire.updated_at);

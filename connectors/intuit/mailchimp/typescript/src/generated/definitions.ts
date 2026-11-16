@@ -100,6 +100,7 @@ export const UpsertMemberDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for upsertMember. */
 export const UpsertMemberMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -133,6 +134,7 @@ export const UpdateMemberTagsDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateMemberTags. */
 export const UpdateMemberTagsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -178,6 +180,8 @@ export const SendCampaignDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 60000, executeDurability: "sync" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for sendCampaign. */
 export const SendCampaignMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

@@ -247,6 +247,31 @@ def render_soql(statement: str, bindings: dict[str, SOQLValue]) -> str:
     return "".join(rendered)
 
 
+def decode_query_page(client: Client, status: int, body: bytes) -> QueryRecordsOutput:
+    """Decode one 200 query page as the Go connector does; raises ValueError, TypeError, or UnicodeError."""
+    document = _json_document(body)
+    if status != 200 or not isinstance(document, dict):
+        raise ValueError("query status or shape")
+    total = document.get("totalSize")
+    done = document.get("done")
+    records = document.get("records")
+    if records is None:
+        records = []
+    if type(total) is not int or total < 0 or type(done) is not bool or not isinstance(records, list):
+        raise ValueError("query fields")
+    next_cursor = ""
+    if not done:
+        next_cursor = document.get("nextRecordsUrl", "")
+        prefix = client.data_path("query") + "/"
+        if (
+            not isinstance(next_cursor, str)
+            or not next_cursor.startswith(prefix)
+            or not _LOCATOR.fullmatch(next_cursor[len(prefix) :])
+        ):
+            raise ValueError("next cursor")
+    return QueryRecordsOutput(tuple(_decode_record(value) for value in records), total, done, next_cursor)
+
+
 def _query_outcome(
     client: Client, call: Call, operation: str, outcome: Outcome, empty: T, routes: dict[str, str]
 ) -> QueryAttempt[T]:
@@ -325,29 +350,7 @@ class QueryRecordsOperation:
         assert response is not None
         receipt = self.client.receipt(call, api_usage=response.api_usage)
         try:
-            document = _json_document(response.body)
-            if response.status != 200 or not isinstance(document, dict):
-                raise ValueError("query status or shape")
-            total = document.get("totalSize")
-            done = document.get("done")
-            records = document.get("records")
-            if records is None:
-                records = []
-            if type(total) is not int or total < 0 or type(done) is not bool or not isinstance(records, list):
-                raise ValueError("query fields")
-            next_cursor = ""
-            if not done:
-                next_cursor = document.get("nextRecordsUrl", "")
-                prefix = self.client.data_path("query") + "/"
-                if (
-                    not isinstance(next_cursor, str)
-                    or not next_cursor.startswith(prefix)
-                    or not _LOCATOR.fullmatch(next_cursor[len(prefix) :])
-                ):
-                    raise ValueError("next cursor")
-            output = QueryRecordsOutput(
-                tuple(_decode_record(value) for value in records), total, done, next_cursor
-            )
+            output = decode_query_page(self.client, response.status, response.body)
         except (ValueError, TypeError, UnicodeDecodeError):
             return QueryAttempt.branch_result(
                 "invalidResponse",

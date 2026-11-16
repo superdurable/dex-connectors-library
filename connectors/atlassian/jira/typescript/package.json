@@ -1,7 +1,7 @@
 {
   "name": "@superdurable/connector-atlassian-jira",
-  "version": "0.1.0",
-  "description": "Atlassian Jira Cloud operations for Dex",
+  "version": "0.2.0",
+  "description": "Atlassian Jira Cloud operations and issueChanged poll Triggers for Dex",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
@@ -42,11 +42,12 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:get": "npm run build && tsx examples/get-issue/main.ts",
-    "example:get:start": "npm run build && tsx examples/get-issue/start.ts"
+    "example:get:start": "npm run build && tsx examples/get-issue/start.ts",
+    "example:changes": "npm run build && tsx examples/issue-changed/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

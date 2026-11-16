@@ -3,8 +3,9 @@
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isIP } from 'node:net';
-import type { Call, CredentialProvider, Failure, Receipt } from '@superdurable/connectors-sdk';
+import { defaultTriggerLogger, type Call, type CredentialProvider, type Failure, type Receipt, type TriggerLogger } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
+import { RequestSpacingLimiter } from './request_spacing_limiter.js';
 import { CreateTicketOperation, GetTicketOperation, SearchTicketsOperation, UpdateTicketOperation } from './operations.js';
 
 /** Injectable transport and receipt clock for deterministic provider tests. */
@@ -13,9 +14,27 @@ export interface ZendeskClientOptions {
   apiBaseURL?: string;
   /** Substitute the production safe HTTP sender. */
   send?: (request: ProviderRequest) => Promise<ProviderResponse>;
-  /** Receipt clock. */
+  /** Receipt, Retry-After, and ticketChanged baseline clock. */
   now?: () => Date;
+  /**
+   * Receives the ticketChanged runner's records: seeds, cursor resets, failed polls, rate-limit pauses, and the
+   * durable inboxes newProjectTicketTriggerRunner opens. Records carry binding identity and never ticket payloads,
+   * cursors, or credentials. Omitted uses defaultTriggerLogger. Operation Steps do not log.
+   */
+  logger?: TriggerLogger;
+  /**
+   * How many incremental ticket export requests every ticketChanged binding of this client may start per minute
+   * together, from 1 to 600. Omitted uses DefaultIncrementalExportRequestsPerMinute; an account with Zendesk's High
+   * Volume API add-on may pass 30. Other integrations on the same account share Zendesk's limit, and a 429 still
+   * pauses the bindings.
+   */
+  incrementalExportRequestsPerMinute?: number;
 }
+
+/** Zendesk's documented incremental export rate limit for an account without the High Volume API add-on. */
+export const DefaultIncrementalExportRequestsPerMinute = 10;
+// Keeps a ticketChanged poll loop from spending the export rate limit on empty polls.
+const minimumPollIntervalMs = 5_000;
 
 /** Classified response to one Zendesk HTTP request. */
 export type ZendeskExchange =
@@ -33,13 +52,25 @@ export class ZendeskClient {
   private readonly credentials: CredentialProvider<Credentials>;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly now: () => Date;
+  /** Delay between ticketChanged polls in milliseconds, at least 5 seconds; one minute by default. */ readonly pollIntervalMs: number;
+  /** Receives the ticketChanged runner's and durable inboxes' records. */ readonly triggerLogger: TriggerLogger;
+  /** Spaces incremental export requests across every ticketChanged binding of this client. */ readonly exportRequestLimiter: RequestSpacingLimiter;
 
-  /** Validate account configuration and bind the current credential provider. */
+  /**
+   * Validate account configuration and bind the current credential provider. Throws for an invalid subdomain or
+   * response limit, a pollInterval under 5s, or an export request rate outside 1 to 600.
+   */
   constructor(config: Config, credentials: CredentialProvider<Credentials>, options: ZendeskClientOptions = {}) {
     if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(config.subdomain)) throw new TypeError('Zendesk subdomain must be lowercase letters, digits, and hyphens');
     if (!credentials) throw new TypeError('Zendesk credential provider is required');
     const maxResponseBytes = config.maxResponseBytes ?? 4_194_304;
     if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1) throw new TypeError('Zendesk response limit must be positive');
+    this.pollIntervalMs = config.pollIntervalMs ?? 60_000;
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Zendesk pollInterval must be at least 5s');
+    const requestsPerMinute = options.incrementalExportRequestsPerMinute ?? DefaultIncrementalExportRequestsPerMinute;
+    if (!Number.isSafeInteger(requestsPerMinute) || requestsPerMinute < 1 || requestsPerMinute > 600) throw new TypeError('Zendesk incremental export requests per minute must be 1 to 600');
+    this.exportRequestLimiter = new RequestSpacingLimiter(60_000 / requestsPerMinute);
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
     this.apiBaseURL = validateBaseURL(options.apiBaseURL ?? `https://${config.subdomain}.zendesk.com/api/v2`);
     this.agentTicketURL = `https://${config.subdomain}.zendesk.com/agent/tickets/`;
     this.maxResponseBytes = maxResponseBytes;
@@ -52,6 +83,7 @@ export class ZendeskClient {
   /** Bind getTicket. */ getTicket(): GetTicketOperation { return new GetTicketOperation(this); }
   /** Bind createTicket. */ createTicket(): CreateTicketOperation { return new CreateTicketOperation(this); }
   /** Bind updateTicket. */ updateTicket(): UpdateTicketOperation { return new UpdateTicketOperation(this); }
+  /** Return the current time of the injected clock. */ currentTime(): Date { return this.now(); }
 
   /** Resolve current credentials without exposing provider secrets through failures. */
   async resolveCredentials(call: Call): Promise<{ email: string; apiToken: string } | undefined> {

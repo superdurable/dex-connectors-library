@@ -7,7 +7,11 @@ import { ConfigSchema, decodeCredentials, decodeSharedCredentials, type Credenti
 import { newProjectConnection as newGeneratedProjectConnection, newProjectCredentialProvider } from './generated/connection.js';
 import { CalendarClient, type CalendarClientOptions } from './client.js';
 
-const projectSettingsSchema = ConfigSchema.extend({ timeout: z.union([z.string(), z.number().int()]).optional() }).strict();
+const projectSettingsSchema = ConfigSchema.extend({
+  timeout: z.union([z.string(), z.number().int()]).optional(),
+  // Dex Web stores the manifest pollInterval as a Go duration, in nanoseconds or as text.
+  pollInterval: z.union([z.string(), z.number().int()]).optional(),
+}).strict();
 
 function encodeCredentials(credentials: Credentials): Record<string, unknown> {
   return {
@@ -28,27 +32,28 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     if (!selected) throw new TypeError('Google Calendar project connection is not configured');
     const raw = selected.configuration as Record<string, unknown>;
     const settings = projectSettingsSchema.parse(raw);
-    const { timeout: configuredTimeout, ...config } = settings;
+    const { timeout: configuredTimeout, pollInterval: configuredPollInterval, ...config } = settings;
     const timeout = configuredTimeout === undefined ? undefined : parseDurationMilliseconds(configuredTimeout);
-    return new CalendarClient({ ...config, ...(timeout === undefined ? {} : { timeout }) }, newProjectCredentialProvider(loadedProject, name, decodeCredentials, encodeCredentials, decodeSharedCredentials), options);
+    const pollIntervalMs = configuredPollInterval === undefined ? undefined : parseDurationMilliseconds(configuredPollInterval, 'pollInterval');
+    return new CalendarClient({ ...config, ...(timeout === undefined ? {} : { timeout }), ...(pollIntervalMs === undefined ? {} : { pollIntervalMs }) }, newProjectCredentialProvider(loadedProject, name, decodeCredentials, encodeCredentials, decodeSharedCredentials), options);
   });
 }
 
-function parseDurationMilliseconds(value: unknown): number {
+function parseDurationMilliseconds(value: unknown, name = 'timeout'): number {
   if (typeof value === 'number') {
     const milliseconds = Math.ceil(value / 1_000_000);
     if (Number.isSafeInteger(milliseconds) && milliseconds > 0) return milliseconds;
   }
-  if (typeof value !== 'string') throw new TypeError('Google Calendar timeout must be a positive Go duration');
+  if (typeof value !== 'string') throw new TypeError(`Google Calendar ${name} must be a positive Go duration`);
   let remaining = value;
   let milliseconds = 0;
   const units: Record<string, number> = { ns: 0.000001, us: 0.001, 'µs': 0.001, ms: 1, s: 1_000, m: 60_000, h: 3_600_000 };
   while (remaining) {
     const component = /^(\d+(?:\.\d+)?)(ns|us|µs|ms|s|m|h)/.exec(remaining);
-    if (!component) throw new TypeError('Google Calendar timeout must be a positive Go duration');
+    if (!component) throw new TypeError(`Google Calendar ${name} must be a positive Go duration`);
     milliseconds += Number(component[1]) * (units[component[2] ?? ''] ?? NaN);
     remaining = remaining.slice(component[0].length);
   }
-  if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0) throw new TypeError('Google Calendar timeout must resolve to positive whole milliseconds');
+  if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0) throw new TypeError(`Google Calendar ${name} must resolve to positive whole milliseconds`);
   return milliseconds;
 }

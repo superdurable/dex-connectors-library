@@ -1,0 +1,393 @@
+{
+  "inboxId": "105902",
+  "initialCount": 1050,
+  "initialFirstId": 573741000,
+  "pollPagesPerPoll": 5,
+  "steps": [
+    {
+      "action": "seed",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":false}",
+      "delivered": null,
+      "eventIds": null,
+      "hasMorePages": false
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":false,\"sweepPageToken\":\"e0.o1000\"}",
+      "entriesSha256": "db81acb0be53cf5d72575957ca17086bd4234af3e64844ce89bed94d5998c763",
+      "entryCount": 1000,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": true,
+      "firstEntries": [
+        "573741050:f7cf337bd5123077:2",
+        "573741051:d993d48783f1a126:2",
+        "573741052:f86f5d302a937154:2"
+      ]
+    },
+    {
+      "action": "expire",
+      "delivered": null,
+      "eventIds": null,
+      "hasMorePages": false
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":false}",
+      "entriesSha256": "db81acb0be53cf5d72575957ca17086bd4234af3e64844ce89bed94d5998c763",
+      "entryCount": 1000,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": true,
+      "firstEntries": [
+        "573741050:f7cf337bd5123077:2",
+        "573741051:d993d48783f1a126:2",
+        "573741052:f86f5d302a937154:2"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":false,\"sweepPageToken\":\"e1.o1000\"}",
+      "entriesSha256": "f28d7e8e58432ffd7b1a31a15c0142a35d6e07a2708a4734096ce34c39d852ee",
+      "entryCount": 1000,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": true,
+      "firstEntries": [
+        "573741050:f7cf337bd5123077:4",
+        "573741051:d993d48783f1a126:4",
+        "573741052:f86f5d302a937154:4"
+      ]
+    },
+    {
+      "action": "add",
+      "ids": [
+        "573760001",
+        "573760002"
+      ],
+      "delivered": null,
+      "eventIds": null,
+      "hasMorePages": false
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true}",
+      "entriesSha256": "2a4b85007446dd33aca950b878684c1be4b881882bbd6c6137804ff64902f604",
+      "entryCount": 1050,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:5",
+        "573741001:7907096f51b982b1:5",
+        "573741002:65e778dcfc0c9f29:5"
+      ]
+    },
+    {
+      "action": "delete",
+      "ids": [
+        "573742049"
+      ],
+      "delivered": null,
+      "eventIds": null,
+      "hasMorePages": false
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e1.o500\",\"sweepStartSeen\":6}",
+      "entriesSha256": "5191b84ca9de93174df6809bea6e6db3b4e6f7feba356a600ad928c3256e7f11",
+      "entryCount": 1052,
+      "delivered": [
+        "573760002",
+        "573760001"
+      ],
+      "eventIds": [
+        "conversation-105902-573760002",
+        "conversation-105902-573760001"
+      ],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:5",
+        "573741001:7907096f51b982b1:5",
+        "573741002:65e778dcfc0c9f29:5"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e1.o900\",\"sweepStartSeen\":6}",
+      "entriesSha256": "73a398773389bfdb9cb8659fc915807202b1e63735645a77eb4e34fbce4e88b8",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:5",
+        "573741001:7907096f51b982b1:5",
+        "573741002:65e778dcfc0c9f29:5"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepStartSeen\":6,\"previousSweepStartSeen\":6}",
+      "entriesSha256": "f7dec5947fcc429e89a433c7f247a06165a7d6e958f1bf0d4bdd86381e5c84df",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:8",
+        "573741001:7907096f51b982b1:8",
+        "573741002:65e778dcfc0c9f29:8"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e1.o500\",\"sweepStartSeen\":9,\"previousSweepStartSeen\":6}",
+      "entriesSha256": "e9a88b43b34557857d89789e4b744a58a8ce9858b3b85a9b412796a5e60c7231",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:8",
+        "573741001:7907096f51b982b1:8",
+        "573741002:65e778dcfc0c9f29:8"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e1.o900\",\"sweepStartSeen\":9,\"previousSweepStartSeen\":6}",
+      "entriesSha256": "adc772802f8f83fdeef97c0b3fcdac8b6098979fc07750a4489a0dba2e553125",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:8",
+        "573741001:7907096f51b982b1:8",
+        "573741002:65e778dcfc0c9f29:8"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepStartSeen\":9,\"previousSweepStartSeen\":9}",
+      "entriesSha256": "836d88b60aab850c8e80e576d05c7099e3b60a20d8791590e4581a5f0fcc2dfc",
+      "entryCount": 1051,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:11",
+        "573741001:7907096f51b982b1:11",
+        "573741002:65e778dcfc0c9f29:11"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e1.o500\",\"sweepStartSeen\":12,\"previousSweepStartSeen\":9}",
+      "entriesSha256": "19a8ce919dac1f5fa186e9cb7848cf88398d4d32fcc0543ad968033c5b585cb6",
+      "entryCount": 1051,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:11",
+        "573741001:7907096f51b982b1:11",
+        "573741002:65e778dcfc0c9f29:11"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e1.o900\",\"sweepStartSeen\":12,\"previousSweepStartSeen\":9}",
+      "entriesSha256": "41aea3d1374384fd2d821fb8ed0ba3f84b4548cb1b059143ae63b21263bf2f39",
+      "entryCount": 1051,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:11",
+        "573741001:7907096f51b982b1:11",
+        "573741002:65e778dcfc0c9f29:11"
+      ]
+    },
+    {
+      "action": "oldestFirst",
+      "delivered": null,
+      "eventIds": null,
+      "hasMorePages": false
+    },
+    {
+      "action": "add",
+      "ids": [
+        "573769999"
+      ],
+      "delivered": null,
+      "eventIds": null,
+      "hasMorePages": false
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepStartSeen\":12,\"previousSweepStartSeen\":12}",
+      "entriesSha256": "5ae380ed1e6e6f4e017e7d022e5c0bc2ffd3ff71796c047f3db117bcf65464c8",
+      "entryCount": 1052,
+      "delivered": [
+        "573769999"
+      ],
+      "eventIds": [
+        "conversation-105902-573769999"
+      ],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:14",
+        "573741001:7907096f51b982b1:14",
+        "573741002:65e778dcfc0c9f29:14"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e1.o500\",\"sweepStartSeen\":15,\"previousSweepStartSeen\":12}",
+      "entriesSha256": "ccc7ba2b530ce49f13c03b4a5fcb4b41ebdf82d7b2fa1e5c85c2fde4c109bfa2",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:15",
+        "573741001:7907096f51b982b1:15",
+        "573741002:65e778dcfc0c9f29:15"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e1.o900\",\"sweepStartSeen\":15,\"previousSweepStartSeen\":12}",
+      "entriesSha256": "ddbfc2a8f148737061e20821f4b6b9997561a445a6b2e853dc0013e5b3e71f4c",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:16",
+        "573741001:7907096f51b982b1:16",
+        "573741002:65e778dcfc0c9f29:16"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepStartSeen\":15,\"previousSweepStartSeen\":15}",
+      "entriesSha256": "281c12b8e05a545b31ed5c6c31664620b929969065b451df39db22f6a9555b13",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:17",
+        "573741001:7907096f51b982b1:17",
+        "573741002:65e778dcfc0c9f29:17"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e1.o500\",\"sweepStartSeen\":18,\"previousSweepStartSeen\":15}",
+      "entriesSha256": "9a9746664e321e643104ce6487ef01e5af95416b8a9b5508aba7a91f339a9c74",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:18",
+        "573741001:7907096f51b982b1:18",
+        "573741002:65e778dcfc0c9f29:18"
+      ]
+    },
+    {
+      "action": "expire",
+      "delivered": null,
+      "eventIds": null,
+      "hasMorePages": false
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepStartSeen\":18,\"previousSweepStartSeen\":15}",
+      "entriesSha256": "8866f87dffc9b4cd9d242297fd07edb6c8672842f56c01a409b7a322cdf1fc86",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:19",
+        "573741001:7907096f51b982b1:19",
+        "573741002:65e778dcfc0c9f29:19"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e2.o500\",\"sweepStartSeen\":20,\"previousSweepStartSeen\":15}",
+      "entriesSha256": "20bef22917b7c851b4cc5285a934c52a07b0fc3d740df7ca797ed270b06ab838",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:20",
+        "573741001:7907096f51b982b1:20",
+        "573741002:65e778dcfc0c9f29:20"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e2.o900\",\"sweepStartSeen\":20,\"previousSweepStartSeen\":15}",
+      "entriesSha256": "266bf9cfc6bd01173215b70170f8d1fcf14dfb9f362bc3c1a245a2bbc7f1c079",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:21",
+        "573741001:7907096f51b982b1:21",
+        "573741002:65e778dcfc0c9f29:21"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepStartSeen\":20,\"previousSweepStartSeen\":20}",
+      "entriesSha256": "707919508e246e38d33d3593d97e83e7992b62c11f478a4934c4f7481b2352fb",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:22",
+        "573741001:7907096f51b982b1:22",
+        "573741002:65e778dcfc0c9f29:22"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e2.o500\",\"sweepStartSeen\":23,\"previousSweepStartSeen\":20}",
+      "entriesSha256": "e3c060d7c0834082f019a1b3546093500b259016c2553b113ae90abd85bd451c",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:23",
+        "573741001:7907096f51b982b1:23",
+        "573741002:65e778dcfc0c9f29:23"
+      ]
+    },
+    {
+      "action": "fetch",
+      "token": "{\"v\":1,\"inboxId\":\"105902\",\"baselineComplete\":true,\"sweepPageToken\":\"e2.o900\",\"sweepStartSeen\":23,\"previousSweepStartSeen\":20}",
+      "entriesSha256": "bb0164beb4fbb2846aa8de8ccd7946aed9fd5b6de54d1afebbd46cc127b209c3",
+      "entryCount": 1052,
+      "delivered": [],
+      "eventIds": [],
+      "hasMorePages": false,
+      "firstEntries": [
+        "573741000:296a8bc8a0988147:24",
+        "573741001:7907096f51b982b1:24",
+        "573741002:65e778dcfc0c9f29:24"
+      ]
+    }
+  ]
+}

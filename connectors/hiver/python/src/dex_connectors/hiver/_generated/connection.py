@@ -148,7 +148,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.hiver.connection')
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"maxResponseBytes", "requestIntervalMilliseconds"}:
+    if set(value) - {"maxResponseBytes", "requestIntervalMilliseconds", "pollInterval", "pollPagesPerPoll"}:
         raise ValueError("Hiver configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "maxResponseBytes" in value:
@@ -161,4 +161,14 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(request_interval_milliseconds) is int):
             raise ValueError("Hiver configuration requestIntervalMilliseconds has an invalid type")
         config_arguments['request_interval_milliseconds'] = request_interval_milliseconds
+    if "pollInterval" in value:
+        poll_interval = value["pollInterval"]
+        if not (type(poll_interval) is int):
+            raise ValueError("Hiver configuration pollInterval has an invalid type")
+        config_arguments['poll_interval_seconds'] = poll_interval / 1_000_000_000
+    if "pollPagesPerPoll" in value:
+        poll_pages_per_poll = value["pollPagesPerPoll"]
+        if not (type(poll_pages_per_poll) is int):
+            raise ValueError("Hiver configuration pollPagesPerPoll has an invalid type")
+        config_arguments['poll_pages_per_poll'] = poll_pages_per_poll
     return Config(**config_arguments)

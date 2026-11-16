@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AddNoteInput, AddNoteOutput, CreateTicketInput, CreateTicketOutput, Customer, CustomerMatches, FindCustomerByEmailInput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, Ticket, TicketDetails, TicketMessage, TicketRequesterInput, UpdateTicketInput, UpdateTicketOutput
+from ..models import AddNoteInput, AddNoteOutput, CreateTicketInput, CreateTicketOutput, Customer, CustomerMatches, FindCustomerByEmailInput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, Ticket, TicketChangedEvent, TicketChangedTriggerConfiguration, TicketDetails, TicketMessage, TicketRequesterInput, UpdateTicketInput, UpdateTicketOutput
 from .definitions import CONNECTOR_ID, ADDED, ADD_NOTE_DEFINITION, CREATED, CREATE_TICKET_DEFINITION, DEFECT, FIND_CUSTOMER_BY_EMAIL_DEFINITION, FOUND, GET_TICKET_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEARCHED, SEARCH_TICKETS_DEFINITION, UNCERTAIN, UPDATED, UPDATE_TICKET_DEFINITION
 
 def search_tickets_searched(value: SearchTicketsOutput, failure: Failure | None = None) -> Case[SearchTicketsOutput]:

@@ -32,6 +32,10 @@ const (
 	TicketStatusSolved TicketStatus = "solved"
 	// TicketStatusClosed is a solved ticket Zendesk locked; it can no longer be updated.
 	TicketStatusClosed TicketStatus = "closed"
+	// TicketStatusDeleted is the status the incremental ticket export reports for a deleted ticket. It is
+	// not one of TicketStatuses, because no operation accepts it. It is declared in this block so Flow
+	// definitions list TicketStatus values in a stable order.
+	TicketStatusDeleted TicketStatus = "deleted"
 )
 
 // TicketPriority is Zendesk's own ticket priority value.

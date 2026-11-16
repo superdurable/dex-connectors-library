@@ -89,6 +89,24 @@ function encodeFields(fields: Record<string, unknown | null> | null, excluded = 
   return body;
 }
 
+/** Decode one 200 query page as the Go connector does, keeping every field value exact; throws for an invalid page. */
+export function decodeQueryPage(client: SalesforceClient, status: number, body: Uint8Array): QueryRecordsOutput {
+  const document = parseExactJSON(body);
+  if (status !== 200 || !isObject(document) || typeof document.done !== 'boolean') throw new TypeError('query shape');
+  const totalSize = strictInteger(document.totalSize, 'totalSize');
+  if (totalSize < 0) throw new TypeError('totalSize is negative');
+  const records = document.records == null ? [] : document.records;
+  if (!Array.isArray(records)) throw new TypeError('records are invalid');
+  let cursor = '';
+  if (!document.done) {
+    const prefix = client.dataPath('query') + '/';
+    if (typeof document.nextRecordsUrl !== 'string' || !document.nextRecordsUrl.startsWith(prefix) || !locatorPattern.test(document.nextRecordsUrl.slice(prefix.length)))
+      throw new TypeError('nextRecordsUrl is invalid');
+    cursor = document.nextRecordsUrl;
+  }
+  return { records: records.map(decodeRecord), totalSize, isDone: document.done, ...(cursor ? { nextRecordsCursor: cursor } : {}) };
+}
+
 function queryOutcome<T>(client: SalesforceClient, call: Call, outcome: SalesforceOutcome, empty: T, routes: Record<string, string> = {}): QueryAttempt<T> {
   const branch = routes[outcome.route] ?? outcome.route;
   if (branch === 'retry') return newQueryRetry(outcome.failure, outcome.retryAfterMs);
@@ -140,20 +158,7 @@ export class QueryRecordsOperation {
     const receipt = this.client.receipt(call, '', response.apiUsage);
     let output: QueryRecordsOutput;
     try {
-      const document = parseExactJSON(response.body);
-      if (response.status !== 200 || !isObject(document) || typeof document.done !== 'boolean') throw new TypeError('query shape');
-      const totalSize = strictInteger(document.totalSize, 'totalSize');
-      if (totalSize < 0) throw new TypeError('totalSize is negative');
-      const records = document.records == null ? [] : document.records;
-      if (!Array.isArray(records)) throw new TypeError('records are invalid');
-      let cursor = '';
-      if (!document.done) {
-        const prefix = this.client.dataPath('query') + '/';
-        if (typeof document.nextRecordsUrl !== 'string' || !document.nextRecordsUrl.startsWith(prefix) || !locatorPattern.test(document.nextRecordsUrl.slice(prefix.length)))
-          throw new TypeError('nextRecordsUrl is invalid');
-        cursor = document.nextRecordsUrl;
-      }
-      output = { records: records.map(decodeRecord), totalSize, isDone: document.done, ...(cursor ? { nextRecordsCursor: cursor } : {}) };
+      output = decodeQueryPage(this.client, response.status, response.body);
     } catch {
       return newQueryBranch('invalidResponse', empty, receipt, salesforceFailure('queryRecords', 'PROTOCOL', 'Salesforce returned an invalid query page'));
     }

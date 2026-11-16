@@ -12,6 +12,8 @@ from ._generated.models import FindCustomerInput as FindCustomerInput
 from ._generated.models import FindCustomerOutput as FindCustomerOutput
 from ._generated.models import GetInvoiceInput as GetInvoiceInput
 from ._generated.models import Invoice as Invoice
+from ._generated.models import InvoiceChangedEvent as InvoiceChangedEvent
+from ._generated.models import InvoiceChangedTriggerConfiguration as InvoiceChangedTriggerConfiguration
 from ._generated.models import InvoiceLine as InvoiceLine
 from ._generated.models import InvoiceLineInput as InvoiceLineInput
 from ._generated.models import InvoicePage as InvoicePage

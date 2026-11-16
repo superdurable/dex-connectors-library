@@ -6,7 +6,7 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -44,6 +44,9 @@ if TYPE_CHECKING:
     )
 
 API_VERSION = "2026-10"
+MINIMUM_POLL_INTERVAL = timedelta(seconds=30)
+"""Keeps itemChanged polls from spending the account's daily call limit too fast."""
+_DEFAULT_POLL_INTERVAL = timedelta(minutes=5)
 _DEFAULT_ENDPOINT = "https://api.monday.com/v2"
 _REQUEST_ID = re.compile(r"[A-Za-z0-9._:-]{1,128}\Z")
 _RATE_CODES = {
@@ -113,7 +116,9 @@ class Client:
     """Send bounded monday.com requests with call-time OAuth-aware credentials.
 
     The caller owns an injected HTTP client. Close a client constructed here with
-    ``aclose`` after its Worker stops.
+    ``aclose`` after its Worker stops. `poll_interval` is the itemChanged Trigger's delay between polls,
+    from `Config.poll_interval_seconds`; zero uses the manifest's five minutes, and the constructor raises
+    ValueError for an interval under 30 seconds, as Go's New does.
     """
 
     def __init__(
@@ -128,6 +133,17 @@ class Client:
             raise ValueError("monday.com configuration and credential source are required")
         if type(config.max_response_bytes) is not int or config.max_response_bytes < 1:
             raise ValueError("monday.com response limit must be positive")
+        poll_interval_seconds = config.poll_interval_seconds
+        # Go's New replaces a zero interval, such as a stored 0, with the manifest default.
+        if type(poll_interval_seconds) in (int, float) and poll_interval_seconds == 0:
+            poll_interval_seconds = _DEFAULT_POLL_INTERVAL.total_seconds()
+        if (
+            isinstance(poll_interval_seconds, bool)
+            or not isinstance(poll_interval_seconds, int | float)
+            or not poll_interval_seconds >= MINIMUM_POLL_INTERVAL.total_seconds()
+        ):
+            raise ValueError("monday.com pollInterval must be at least 30s")
+        self.poll_interval = timedelta(seconds=poll_interval_seconds)
         self.endpoint = validate_base_url(endpoint)
         self.max_response_bytes = config.max_response_bytes
         self.credentials = credentials

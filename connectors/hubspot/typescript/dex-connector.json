@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-hubspot",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -410,6 +410,16 @@
           "properties"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineCRMObjectChangedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "crmObjectChanged",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

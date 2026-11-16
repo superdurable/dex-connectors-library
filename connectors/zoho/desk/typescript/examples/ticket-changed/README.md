@@ -1,0 +1,15 @@
+# Zoho Desk ticket change Flow
+
+This example polls Zoho Desk ticket search with the `ticketChanged` Trigger and starts one `ZohoDeskTicketChangeTypeScript` Flow per created or changed ticket version in the watched department. `RecordTicketChange` validates and records the delivered change, `ReadChangedTicket` reads the ticket back with `getTicket` for its description and newest threads and comments, which the search page leaves out, and `CompleteTicketChange` completes with the ticket's current state. Only the happy-path `found` branch is wired; a ticket deleted before the read, or a rejected or invalid read, fails the Flow. `main.ts` is the Worker entrypoint; `app.ts` runs the Worker and the durable poll runner on one event loop.
+
+Follow the [Zoho Desk setup](../../../README.md#zoho-setup), then create the static `zoho-desk-ticket-watcher` connection in Dex Web **Connections**: choose `orgId` with the organization picker after Connect, and optionally set `pollInterval`, the delay between polls (at least 15s); every poll spends Zoho Desk API credits. Then open the Flow's `desk-ticket-changes` Trigger binding and pick the **Watched department**, which saves the department ID and name; blank watches every department the connection's agent can see. The first start records the tickets modified in the last five minutes as a baseline and starts no Flow for them; restart the Worker after changing the department, which records a new baseline.
+
+Generate a strict Flow Definition Graph 2.0 with Dex CLI 1.47.3 or newer from a consumer project that has this package and `typescript` installed, importing the package by name:
+
+```sh
+dexcli visualize ./examples/ticket-changed/flow/workflow.ts --schema-version 2.0 --json --out ./build/zoho-desk-ticket-changed
+```
+
+From `connectors/zoho/desk/typescript`, run `npm ci`, then `npx tsx examples/ticket-changed/main.ts`. Set `DEX_FLOW_SERVICE_ADDRESS` for a nondefault Dex endpoint and `LOG_LEVEL=debug` to see every poll and delivery. `ZOHO_DESK_LOCAL_API_BASE_URL` points the Worker at a local Zoho Desk-compatible fake for verification only. Each change is recorded in the binding's project Trigger inbox before the search cursor commits, so a restart neither misses nor repeats a change when the project keeps its poll cursor in project storage; under `dexcli dev` the cursor stays in process memory, so a restart records a new baseline. The Flow ID `zoho-desk-ticket-change-<event ID>` keeps a redelivered change to one Flow.
+
+`npm run test:integration` runs `test/integration/ticket-changed.integration.test.ts` against a running `dexcli dev` and `test/support/desk_search_fake.ts`, a local stand-in for Zoho Desk ticket search and ticket read: recent tickets stay a baseline, each ticket version starts exactly one Flow, the binding searches only its department, changes made while the process is stopped arrive after a restart whose first poll answers 429, and a 422 naming `modifiedTimeRange` records a new baseline. `test/ticket_changed_workflow.test.ts` covers the mappers, the binding's picker unit, and registration without Dex. Live Zoho Desk authorization and search remain unverified.

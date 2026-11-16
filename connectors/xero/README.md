@@ -26,10 +26,11 @@ is optional, and an unwired optional branch fails the Flow. Every operation
 uses async Execute durability and a 30-second Execute timeout. Reads use the one-hour default retry budget; the two writes retry for up to four minutes, which
 keeps every attempt inside Xero's six-minute Idempotency-Key lifetime.
 
-It also has one Go Trigger, `invoiceChanged`, which polls `GET /Invoices` and
+It also has one Trigger, `invoiceChanged`, which polls `GET /Invoices` and
 starts a Flow for each sales invoice or bill created or changed; see
-[invoiceChanged Trigger](#invoicechanged-trigger). The Python and TypeScript
-packages implement no Triggers. There are no Studio pickers; see
+[invoiceChanged Trigger](#invoicechanged-trigger). Both the Python and the
+TypeScript packages implement this Trigger.
+There are no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
 ## Xero setup
@@ -413,8 +414,13 @@ This snippet comes from
 
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) implements all six operations at
-`@superdurable/connector-xero` version `0.1.0`. Its generated OAuth wiring
+The [TypeScript package](typescript/README.md) implements all six operations and
+the `invoiceChanged` Trigger at `@superdurable/connector-xero` version `0.2.0`, on
+the TypeScript poll Trigger kit of `@superdurable/connectors-sdk` `0.12.0`. Its
+cursor documents and Trigger inbox payloads match Go's, so Go and TypeScript
+replicas share a binding's cursor and inbox. The
+[invoice change example](typescript/examples/invoice-changed/README.md) starts one
+`XeroInvoiceChange` Flow per change from the `invoice-changes` binding. Its generated OAuth wiring
 refreshes Custom Connection and web-app credentials, including rotating OAuth
 refresh tokens. The [list contacts example](typescript/examples/list-contacts/README.md)
 is a runnable Dex Flow with a real Dex integration test and the static
@@ -422,7 +428,8 @@ is a runnable Dex Flow with a real Dex integration test and the static
 [`conformance/connectors/xero`](../../conformance/connectors/xero) check the
 TypeScript requests, branches, retries, uncertainty, and outputs.
 
-Live provider behavior remains unverified for this TypeScript port.
+Live provider behavior and live invoice polling remain unverified for this
+TypeScript port.
 
 ## Verification
 
@@ -473,8 +480,11 @@ become visible after its `UpdatedDateUTC`.
 
 ## Python package
 
-`connectors/xero/python` publishes `dex-connector-xero` v0.1.0 with all six
-operations and no Triggers. Its public models and Step factories are generated
+`connectors/xero/python` publishes `dex-connector-xero` v0.2.0 with all six
+operations and the `invoiceChanged` Trigger on the Python poll Trigger kit
+(`dex-connectors-sdk>=0.12.0`). Its cursor documents and Trigger inbox
+payloads match Go's byte for byte, so Go and Python replicas share a binding's
+cursor and inbox. Its public models and Step factories are generated
 from this manifest; its HTTP client and operation invocations retain Xero's
 exact-decimal amounts and Call ID based Idempotency-Key behavior. Both Custom
 Connection and OAuth web app credentials use the generated durable refresh
@@ -482,7 +492,11 @@ wiring and the same Dex Web setup above.
 
 The runnable [contact lookup example](python/examples/contact_lookup/README.md)
 binds the static `xero-books` connection and routes only the `found` branch.
+The [invoice change example](python/examples/invoice_changed/README.md)
+starts one `XeroInvoiceChangePython` Flow per change from the
+`invoice-changes` binding and reads the invoice back with `getInvoice`.
 The [Python package README](python/README.md) covers installation and targeted
 verification. The Go-recorded provider replay and the real Dex Worker/Client
 example use inert local stand-ins. Live Xero authorization, tenant selection,
-and Accounting API behavior are unverified for the Python package.
+Accounting API behavior, and live invoice polling are unverified for the
+Python package.

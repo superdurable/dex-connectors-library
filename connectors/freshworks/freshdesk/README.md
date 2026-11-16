@@ -8,17 +8,27 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/freshworks
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
 
-The TypeScript package `@superdurable/connector-freshdesk` is also available at
-[`typescript/`](typescript/README.md), with Go-recorded conformance and a runnable
-[search example](typescript/examples/search-tickets/README.md). Its live Freshdesk
-behavior has not been verified.
+The TypeScript package `@superdurable/connector-freshdesk` v0.2.0 is also available at
+[`typescript/`](typescript/README.md). It implements all five ticket operations and,
+from 0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with
+Go, sharing its cursor documents byte for byte. It has Go-recorded conformance,
+Go-recorded ticket-list cursors, a runnable
+[search example](typescript/examples/search-tickets/README.md), and a
+[ticket change example](typescript/examples/ticket-changed/README.md) whose real Dex
+integration tests poll a stateful ticket-list fake. Its live Freshdesk behavior has
+not been verified.
 
-The Python package `dex-connector-freshworks-freshdesk` is available at
-[`python/`](python/README.md). It implements all five ticket operations and includes
-a runnable [search Flow](python/examples/search_tickets/README.md). Its provider
-requests replay the Go conformance fixtures, and the search example passed through
-a real local Dex Worker and Client with the generated mock. Live Freshdesk API
-behavior and the Dex Web authorization form remain unverified for Python.
+The Python package `dex-connector-freshworks-freshdesk` v0.2.0 is available at
+[`python/`](python/README.md). It implements all five ticket operations and, from
+0.2.0, the [`ticketChanged`](#ticketchanged-trigger) poll Trigger at parity with Go,
+sharing its cursor documents byte for byte. It includes a runnable
+[search Flow](python/examples/search_tickets/README.md) and a
+[ticket change Flow](python/examples/ticket_changed/README.md). Its provider
+requests replay the Go conformance fixtures, its ticket-list fetches replay
+Go-recorded cursors, and both examples passed through a real local Dex Worker and
+Client, the search with the generated mock and the ticket change Flow against a
+stateful ticket-list fake. Live Freshdesk API behavior and the Dex Web
+authorization form remain unverified for Python.
 
 The Freshdesk Connector reads and writes Freshdesk tickets from Dex Flows
 through Freshdesk API v2. It exposes these operation-specific Dex Step

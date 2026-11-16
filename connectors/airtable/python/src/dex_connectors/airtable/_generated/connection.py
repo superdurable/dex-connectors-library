@@ -132,7 +132,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.airtable.connectio
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"endpoint", "maxResponseBytes"}:
+    if set(value) - {"endpoint", "maxResponseBytes", "pollInterval", "pollPageSize"}:
         raise ValueError("Airtable configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "endpoint" in value:
@@ -145,4 +145,14 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(max_response_bytes) is int):
             raise ValueError("Airtable configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
+    if "pollInterval" in value:
+        poll_interval = value["pollInterval"]
+        if not (type(poll_interval) is int):
+            raise ValueError("Airtable configuration pollInterval has an invalid type")
+        config_arguments['poll_interval_seconds'] = poll_interval / 1_000_000_000
+    if "pollPageSize" in value:
+        poll_page_size = value["pollPageSize"]
+        if not (type(poll_page_size) is int):
+            raise ValueError("Airtable configuration pollPageSize has an invalid type")
+        config_arguments['poll_page_size'] = poll_page_size
     return Config(**config_arguments)

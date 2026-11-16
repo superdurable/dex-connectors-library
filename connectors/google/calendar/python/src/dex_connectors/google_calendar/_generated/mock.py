@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import BusyInterval, CalendarFreeBusy, CreateEventInput, CreateEventOutput, Event, EventAttendee, EventAttendeeInput, EventConference, EventDateTime, FreeBusyError, GetEventInput, ListEventsInput, ListEventsOutput, QueryFreeBusyInput, QueryFreeBusyOutput, UpdateEventInput, UpdateEventOutput
+from ..models import BusyInterval, CalendarFreeBusy, CreateEventInput, CreateEventOutput, Event, EventAttendee, EventAttendeeInput, EventChangedEvent, EventChangedTriggerConfiguration, EventConference, EventDateTime, FreeBusyError, GetEventInput, ListEventsInput, ListEventsOutput, QueryFreeBusyInput, QueryFreeBusyOutput, UpdateEventInput, UpdateEventOutput
 from .definitions import CONNECTOR_ID, PROVIDER, CONFLICT, CREATED, CREATE_EVENT_DEFINITION, DEFECT, FOUND, GET_EVENT_DEFINITION, INCOMPLETE, INVALID_RESPONSE, LISTED, LIST_EVENTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, QUERIED, QUERY_FREE_BUSY_DEFINITION, UPDATED, UPDATE_EVENT_DEFINITION
 
 def list_events_listed(value: ListEventsOutput, failure: Failure | None = None) -> Case[ListEventsOutput]:

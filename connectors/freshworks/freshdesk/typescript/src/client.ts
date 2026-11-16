@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { SecretString, ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { SecretString, ReauthorizationRequiredError, defaultTriggerLogger, type TriggerLogger, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
@@ -15,8 +15,17 @@ const errorFieldPattern = /^[a-z][a-z0-9_]{0,63}$/;
 export interface FreshdeskClientOptions {
   /** Local Freshdesk-compatible endpoint; production derives it from domain. */ apiBaseURL?: string;
   /** Bounded request sender; production uses the SDK transport. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>;
-  /** Receipt and Retry-After clock. */ now?: () => Date;
+  /** Receipt, Retry-After, and ticketChanged baseline clock. */ now?: () => Date;
+  /**
+   * Receives the ticketChanged runner's records: seeds, reseeds after a rejected cursor, failed polls, rate-limit
+   * pauses, and the durable inboxes newProjectTicketTriggerRunner opens. Records carry binding identity and never
+   * ticket contents or credentials. Omitted uses defaultTriggerLogger. Operation Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
+
+// Keeps a ticketChanged poll loop inside Freshdesk's per-minute Tickets List sublimit.
+const minimumPollIntervalMs = 10_000;
 
 /** Classified result of one Freshdesk HTTP exchange. */
 export type Exchange =
@@ -29,6 +38,8 @@ export class FreshdeskClient {
   private readonly maxResponseBytes: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly now: () => Date;
+  /** Delay between ticketChanged polls in milliseconds, at least 10 seconds; one minute by default. */ readonly pollIntervalMs: number;
+  /** Receives the ticketChanged runner's and durable inboxes' records. */ readonly triggerLogger: TriggerLogger;
 
   /** Bind immutable configuration and a live credential source. */
   constructor(config: Config, readonly credentials: CredentialProvider<Credentials>, options: FreshdeskClientOptions = {}) {
@@ -36,6 +47,9 @@ export class FreshdeskClient {
     if (!credentials) throw new TypeError('Freshdesk credential provider is required');
     this.maxResponseBytes = config.maxResponseBytes ?? 4_194_304;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('Freshdesk response limit must be positive');
+    this.pollIntervalMs = config.pollIntervalMs ?? 60_000;
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Freshdesk pollInterval must be at least 10s');
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
     this.apiBaseURL = validateBaseURL(options.apiBaseURL ?? `https://${config.domain}.freshdesk.com/api/v2`);
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
@@ -46,6 +60,8 @@ export class FreshdeskClient {
   /** Bind the ticket creation mutation. */ createTicket(): CreateTicketOperation { return new CreateTicketOperation(this); }
   /** Bind the ticket update mutation. */ updateTicket(): UpdateTicketOperation { return new UpdateTicketOperation(this); }
   /** Bind the note mutation. */ addNote(): AddNoteOperation { return new AddNoteOperation(this); }
+
+  /** Return the current time of the injected clock. */ currentTime(): Date { return this.now(); }
 
   /** Resolve the current API key, classifying terminal credential states. */
   async resolveCredential(call: Call, operation: string): Promise<{ key: string } | { failure: Failure; transient: boolean }> {

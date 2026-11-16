@@ -12,6 +12,8 @@ from dex_connectors.sdk import (
     RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -74,4 +76,14 @@ REPLY_TO_MESSAGE_DEFINITION = MutationDefinition(
     ),
     repeat_on_unknown=RepeatOnUnknown.LIMITED,
     max_sends=3,
+)
+
+MESSAGE_RECEIVED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="messageReceived"),
+    description="Receive a matching message that begins a Gmail thread.",
+)
+
+REPLY_RECEIVED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="replyReceived"),
+    description="Receive a matching reply in an existing Gmail thread.",
 )

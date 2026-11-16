@@ -1,8 +1,8 @@
 {
   "name": "@superdurable/connector-zoho-desk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
-  "description": "Zoho Desk ticket operations for Dex Flows",
+  "description": "Zoho Desk ticket operations and the ticket change Trigger for Dex Flows",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
@@ -41,8 +41,8 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

@@ -367,3 +367,44 @@ class FindContactByEmailOutput:
 FindContactByEmailOutput.__annotations__['contacts'] = tuple[Contact, ...] | None
 FindContactByEmailOutput.__dataclass_fields__['contacts'].type = tuple[Contact, ...] | None
 setattr(FindContactByEmailOutput, '__module__', 'dex_connectors.intercom.models')
+
+
+# ConversationEvent is one verified Intercom conversation webhook notification. The Trigger event's ID
+# is Intercom's notification ID, which a redelivery of the same notification reuses.
+@dataclass(frozen=True, slots=True)
+class ConversationEvent:
+    # NotificationID is Intercom's notification ID, such as notif_ccd8a4d0-f965-11e3-a367-c779cae3e1b3.
+    notification_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'notificationId'})
+    # Topic is the webhook topic, such as conversation.user.created.
+    topic: str = ''
+    # WorkspaceID is Intercom's app_id of the workspace the event happened in. An app installed in
+    # several workspaces receives every workspace's notifications at one URL.
+    workspace_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'workspaceId', 'dex_json_omit_default': True})
+    # Conversation is the conversation as the notification carried it, without its parts or first-message body.
+    conversation: Conversation = _dataclass_field(kw_only=True)
+    # NotifiedAt is when Intercom created the notification. Intercom does not guarantee delivery order,
+    # so compare it, not arrival order. It is also the Trigger event's OccurredAt.
+    notified_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'notifiedAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.notified_at, str):
+            object.__setattr__(self, 'notified_at', parse_go_datetime(self.notified_at, 'notified_at'))
+        elif self.notified_at is not None:
+            validate_go_datetime(self.notified_at, 'notified_at')
+
+
+setattr(ConversationEvent, '__module__', 'dex_connectors.intercom.models')
+
+
+# ConversationEventTriggerConfiguration selects the topics one conversationEvent binding accepts. An
+# empty list accepts every topic ConversationEventTopics returns. A topic the binding rejects is still
+# answered 200. The topics a binding can receive are those subscribed in the Intercom app's Configure >
+# Webhooks page. NewConversationEventTrigger panics for an invalid configuration, so call Validate on
+# untrusted values.
+@dataclass(frozen=True, slots=True)
+class ConversationEventTriggerConfiguration:
+    # Topics lists accepted webhook topics, such as conversation.user.created; empty accepts all supported topics.
+    topics: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+
+
+setattr(ConversationEventTriggerConfiguration, '__module__', 'dex_connectors.intercom.models')

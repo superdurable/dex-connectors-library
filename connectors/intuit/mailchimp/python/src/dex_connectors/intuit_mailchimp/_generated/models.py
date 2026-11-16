@@ -290,3 +290,33 @@ class SendCampaignOutput:
 
 
 setattr(SendCampaignOutput, '__module__', 'dex_connectors.intuit_mailchimp.models')
+
+
+# MemberChangedEvent is one contact added to or changed in the watched audience. Mailchimp reports no
+# change type, so a new contact and an edited one look alike; Member.SignedUpAt, Member.OptedInAt, and
+# Member.Status tell them apart where the application needs it. A contact that changed several times
+# between two polls is delivered once, in its latest state.
+@dataclass(frozen=True, slots=True)
+class MemberChangedEvent:
+    # AudienceID is the watched audience.
+    audience_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'audienceId'})
+    # Member is the contact as Mailchimp listed it after the change; Member.LastChangedAt is the change time.
+    member: Member = _dataclass_field(kw_only=True)
+
+
+setattr(MemberChangedEvent, '__module__', 'dex_connectors.intuit_mailchimp.models')
+
+
+# MemberChangedTriggerConfiguration is the memberChanged binding configuration that the audienceIdEntry
+# and memberStatusPicker units save in Dex Web. Changing the audience of a binding that already polled
+# makes its next poll record a new baseline for the new audience.
+@dataclass(frozen=True, slots=True)
+class MemberChangedTriggerConfiguration:
+    # AudienceID is the watched audience, Mailchimp's list_id, such as 57afe96172. It is required.
+    audience_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'audienceId'})
+    # Statuses keeps only contacts whose status after the change is one of these, such as subscribed;
+    # empty delivers changed contacts in every status. A filtered-out change is still passed by the cursor.
+    statuses: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+
+
+setattr(MemberChangedTriggerConfiguration, '__module__', 'dex_connectors.intuit_mailchimp.models')

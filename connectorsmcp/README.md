@@ -224,7 +224,7 @@ the operation input from the generated metadata. Its `_meta` holds these keys:
 
 | Key | Value |
 | --- | --- |
-| `io.superdurable.dex/effect` | `read` for a Query, `idempotent_write` for a Mutation with `agent.retry: safe`, otherwise `non_idempotent_write`. |
+| `io.superdurable.dex/effect` | `read` for a Query, `idempotent_write` for a Mutation with `agent.retry: safe`, otherwise `non_idempotent_write`, including a `limited` Mutation that the server resends within its cap (see [Bounded resend](#bounded-resend)). |
 | `io.superdurable.dex/approval` | `recommended`, only when the manifest says `agent.approval: recommended`. Otherwise the key is absent, because Dex asks for approval whenever the key is present. |
 | `io.superdurable.connectors/connector` | The connector ID (manifest `metadata.name`), as in `--connection`. |
 | `io.superdurable.connectors/connection` | The Dex Web connection name, exactly as in `connections.json`. |
@@ -307,7 +307,7 @@ Results use these shapes:
 | Listed `rejected` branch | `rejected` | `rejected`; `unknown` once an earlier attempt may have applied | `rejected` |
 | Unlisted Query branch or Query `defect` | `failed` | n/a | n/a |
 | `uncertain`, listed `unknown`, unlisted Mutation branch, Mutation `defect`, or a branch after the Fence may have sent | n/a | `unknown` | `unknown` |
-| Connector Retry | inline retry; at the attempt cap `rejected`; budget spent: bare `-32603` | inline retry; at the cap or the window end `rejected` if proven not sent, else `unknown`; budget spent: bare `-32603`, record left running | no inline retry: `rejected` "not sent; the provider asked to retry later" if proven not sent, else `unknown` |
+| Connector Retry | inline retry; at the attempt cap `rejected`; budget spent: bare `-32603` | inline retry; at the cap or the window end `rejected` if proven not sent, else `unknown`; budget spent: bare `-32603`, record left running | no inline retry: `rejected` "not sent; the provider asked to retry later" if proven not sent, else `unknown`. A `limited` Mutation retries inline instead; see [Bounded resend](#bounded-resend) |
 | Attempt ended without a branch (panic, unencodable result) | bare `-32603` | `unknown`; bare `-32603` if the operation never ran | `unknown`; `rejected` if the operation never ran |
 | Call state unavailable before any send | runs without state | bare `-32603` | `rejected` when no record can exist, else `unknown` |
 | Another attempt of the same key holds it until the client gives up | bare `-32603` | bare `-32603` | `unknown` |
@@ -330,7 +330,9 @@ Results longer than `--max-result-bytes` are cut on a UTF-8 boundary and get
 
 ### Inline retry
 
-Reads and idempotent writes retry a connector Retry inside one call.
+Reads and idempotent writes retry a connector Retry inside one call, and so
+does a `limited` write, with the two exceptions noted below and in
+[Bounded resend](#bounded-resend).
 
 - **Delays.** The delay after attempt `n` is the operation's
   `StepDefaults.ExecuteRetry`, or `DefaultConnectorStepExecuteRetryPolicy`:
@@ -338,11 +340,13 @@ Reads and idempotent writes retry a connector Retry inside one call.
   longer connector `RetryAfter` wins.
 - **Attempt cap.** At most 3 attempts, or the policy's `MaximumAttempts` when
   it is lower. A write counts with the persisted `attempt`, so Dex re-issues
-  never multiply attempts. A read counts per call.
+  never multiply attempts. A read counts per call. A `limited` write's cap is
+  raised by `maxSends` − 1.
 - **Budget.** The first attempt of a call always runs. A later attempt starts
   only when its delay plus the attempt timeout fits in the rest of
   `--call-time-budget`. Otherwise the call returns a bare `-32603` and Dex
-  re-issues it with the same key.
+  re-issues it with the same key. A `limited` write instead settles at once,
+  as it does when the client cancels the delay or the server starts stopping.
 - **Retry window.** It is fixed at a write's first attempt: `firstAttemptAt`
   plus the policy's `TotalDuration` (1 hour when unset), never beyond the
   retention. No attempt starts at or after it.
@@ -354,6 +358,33 @@ Reads and idempotent writes retry a connector Retry inside one call.
 Reads honor client cancellation. A write attempt is never cancelled by the
 client. The operation's Execute timeout bounds it (60 seconds when unset), and
 it runs to a stored result that a re-issue replays.
+
+### Bounded resend
+
+A Mutation whose manifest says `execution.repeatOnUnknown: limited` tolerates a
+duplicate, such as an email or a chat message. Its connector's
+single-dispatch Fence resends an unconfirmed write while the possible sends of
+the call stay below `execution.maxSends`. The server lets it, inside one
+`tools/call`:
+
+- **Cap.** The call pins the manifest `maxSends` when its record is created and
+  passes it with `sdkgo.WithMaxSends` on every attempt. No configuration field,
+  flag, or argument changes it.
+- **Retry.** A connector Retry runs the next attempt as for an idempotent write,
+  with the same delays, budget, and retry window. The attempt cap is raised by
+  one per extra send: 3 + `maxSends` − 1, or the policy's `MaximumAttempts`
+  when it is lower.
+- **End.** At the send cap the connector selects `uncertain`, which answers
+  `unknown`. An attempt cap or retry window reached first answers as the
+  Connector Retry row above. A spent budget or a cancelled delay answers that
+  row's `non_idempotent_write` result at once, because a re-issued key that is
+  still running is finalized from its checkpoint and never resends.
+- **Unchanged.** A definite rejection is never resent. The effect stays
+  `non_idempotent_write`, and approval follows `agent.approval` alone. Every
+  other Mutation gets no send cap option: a `safe` one is an
+  `idempotent_write` and retries inline as before, and any other
+  `non_idempotent_write`, including `unsafe` and metadata from an `sdkgo`
+  release before v0.37.0, keeps one attempt.
 
 ## Call state (`dex-connectors-mcp/call-state/v1`)
 

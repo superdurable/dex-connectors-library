@@ -357,3 +357,37 @@ class AddCommentOutput:
 
 
 setattr(AddCommentOutput, '__module__', 'dex_connectors.atlassian_jira.models')
+
+
+# IssueChangedEvent is one issue created or updated in the watched scope, as Jira's enhanced search
+# returned it. Several edits made between two polls arrive as one change carrying the latest state.
+@dataclass(frozen=True, slots=True)
+class IssueChangedEvent:
+    # CloudID is the Jira site the issue belongs to.
+    cloud_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'cloudId'})
+    # ChangeKind is the derived change kind; see IssueChangeKind.
+    change_kind: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'changeKind'})
+    # Issue is the issue's standard fields from the search page; Description is never set.
+    issue: Issue = _dataclass_field(default_factory=Issue)
+
+
+setattr(IssueChangedEvent, '__module__', 'dex_connectors.atlassian_jira.models')
+
+
+# IssueChangedTriggerConfiguration is the issueChanged binding configuration that the project picker saves
+# in Dex Web. Changing the project of a binding that already polled makes its next poll record a new
+# baseline for the new project.
+@dataclass(frozen=True, slots=True)
+class IssueChangedTriggerConfiguration:
+    # ProjectID is the numeric Jira project ID from the project picker, such as 10000. It is preferred to
+    # ProjectKey because it survives a project key change.
+    project_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'projectId', 'dex_json_omit_default': True})
+    # ProjectKey is the project key, such as OPS. It selects the project when ProjectID is blank, as
+    # when the key was typed instead of picked. Blank ProjectID and ProjectKey watch every project the
+    # connection's account can browse.
+    project_key: str = _dataclass_field(default='', metadata={'dex_json_name': 'projectKey', 'dex_json_omit_default': True})
+    # ProjectName is the picked project's display name, kept for display only.
+    project_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'projectName', 'dex_json_omit_default': True})
+
+
+setattr(IssueChangedTriggerConfiguration, '__module__', 'dex_connectors.atlassian_jira.models')

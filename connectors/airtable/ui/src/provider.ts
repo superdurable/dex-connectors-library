@@ -3,10 +3,13 @@
 
 export interface AirtableBase { id: string; name: string; permissionLevel: string; }
 export interface AirtableBasePage { bases: AirtableBase[]; nextOffset: string; }
-export interface AirtableTable { id: string; name: string; }
+export interface AirtableField { id: string; name: string; }
+/** AirtableTable is one table of a base; lastModifiedTimeFields lists its Last modified time fields that include a time of day. */
+export interface AirtableTable { id: string; name: string; lastModifiedTimeFields: AirtableField[]; }
 
 export const baseIDPattern = /^app[0-9A-Za-z]{14}$/;
 export const tableIDPattern = /^tbl[0-9A-Za-z]{14}$/;
+export const fieldIDPattern = /^fld[0-9A-Za-z]{14}$/;
 
 /** parseAirtableBasePage keeps the reachable bases of one GET /v0/meta/bases page and its offset cursor. */
 export function parseAirtableBasePage(value: Record<string, unknown>): AirtableBasePage {
@@ -18,12 +21,23 @@ export function parseAirtableBasePage(value: Record<string, unknown>): AirtableB
   return {bases, nextOffset: text(value.offset) ? value.offset : ""};
 }
 
-/** parseAirtableTables keeps each table's ID and name from GET /v0/meta/bases/{baseId}/tables, in Airtable's order. */
+/** parseAirtableTables keeps each table's ID, name, and Last modified time fields from GET /v0/meta/bases/{baseId}/tables, in Airtable's order. */
 export function parseAirtableTables(value: Record<string, unknown>): AirtableTable[] {
   if (!Array.isArray(value.tables)) throw new Error(airtableErrorText(value, "Airtable returned no table list"));
   return value.tables.flatMap((item) => {
     if (!record(item) || !text(item.id) || !tableIDPattern.test(item.id) || !text(item.name)) return [];
-    return [{id: item.id, name: item.name}];
+    return [{id: item.id, name: item.name, lastModifiedTimeFields: parseLastModifiedTimeFields(item.fields)}];
+  });
+}
+
+// parseLastModifiedTimeFields keeps lastModifiedTime fields whose value includes a time of day, which the recordChanged Trigger needs.
+function parseLastModifiedTimeFields(fields: unknown): AirtableField[] {
+  if (!Array.isArray(fields)) return [];
+  return fields.flatMap((field) => {
+    if (!record(field) || field.type !== "lastModifiedTime" || !text(field.id) || !fieldIDPattern.test(field.id) || !text(field.name)) return [];
+    const result = record(field.options) && record(field.options.result) ? field.options.result : undefined;
+    if (result && result.type !== "dateTime") return [];
+    return [{id: field.id, name: field.name}];
   });
 }
 

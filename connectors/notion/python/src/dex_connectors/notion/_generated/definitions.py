@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -97,6 +100,8 @@ CREATE_PAGE_DEFINITION = MutationDefinition(
         heartbeat_timeout=timedelta(seconds=120),
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_PAGE_PROPERTIES_DEFINITION = MutationDefinition(
@@ -114,4 +119,10 @@ UPDATE_PAGE_PROPERTIES_DEFINITION = MutationDefinition(
         heartbeat_timeout=timedelta(seconds=90),
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
+)
+
+DATABASE_ROW_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="databaseRowChanged"),
+    description="Receive each row created or edited in one Notion data source, read by polling the data source query sorted by last edited time; the first run records a baseline and delivers no existing rows, and trashed rows are not delivered.",
 )

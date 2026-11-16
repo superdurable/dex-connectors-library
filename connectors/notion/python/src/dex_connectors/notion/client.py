@@ -37,6 +37,9 @@ if TYPE_CHECKING:
     )
 
 NOTION_VERSION = "2026-03-11"
+# Keeps a databaseRowChanged poll loop well inside Notion's query rate limit.
+_MINIMUM_POLL_SECONDS = 5
+_MAXIMUM_POLL_PAGE_SIZE = 100
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +67,12 @@ class Classification:
 
 
 class Client:
-    """Own one Notion transport and resolve private credentials per invocation."""
+    """Own one Notion transport and resolve private credentials per invocation.
+
+    ``poll_interval_seconds`` is the databaseRowChanged Trigger's wait between polls of one binding; zero
+    selects 30 seconds and anything else must be at least 5 seconds. ``poll_page_size`` is the rows per
+    query page, zero for 100, otherwise 1 to 100. Construction raises ValueError for other values.
+    """
 
     def __init__(
         self,
@@ -79,6 +87,12 @@ class Client:
         self.max_response_bytes = config.max_response_bytes or Config().max_response_bytes
         if self.max_response_bytes <= 0:
             raise ValueError("Notion maxResponseBytes must be positive")
+        self.poll_interval_seconds = config.poll_interval_seconds or Config().poll_interval_seconds
+        if isinstance(self.poll_interval_seconds, bool) or self.poll_interval_seconds < _MINIMUM_POLL_SECONDS:
+            raise ValueError("Notion pollInterval must be at least 5s")
+        self.poll_page_size = config.poll_page_size or Config().poll_page_size
+        if isinstance(self.poll_page_size, bool) or not 1 <= self.poll_page_size <= _MAXIMUM_POLL_PAGE_SIZE:
+            raise ValueError("Notion pollPageSize must be between 1 and 100")
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(60)
         self.owns_http_client = http_client is None
