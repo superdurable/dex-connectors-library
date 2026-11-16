@@ -1,0 +1,52 @@
+{
+  "connectorId": "alibaba",
+  "releaseTag": "connectors/alibaba/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-alibaba",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_describe_regions_step",
+      "kind": "query",
+      "operationId": "describeRegions",
+      "inputType": "DescribeRegionsInput",
+      "description": "List ECS region IDs, local names, endpoints, and sale status.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DescribeRegionsInput has no business parameters; the connector lists available ECS regions.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

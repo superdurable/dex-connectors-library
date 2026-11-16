@@ -9,6 +9,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: amap
+  languages:
+    python:
+      version: v0.1.0
+      operations: [geocodeAddress]
+      triggers: []
   codegen:
     go:
       package: amap

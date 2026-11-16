@@ -9,3 +9,7 @@ At [Agora Console](https://console.agora.io), open **Projects**, select a projec
 A missing or invalid local credential selects optional `defect`. Definite HTTP 4xx rejection selects optional `providerRejected`. HTTP 429, HTTP 5xx and transport failures retry. Malformed or oversized JSON selects optional `invalidResponse`. The example leaves optional branches unwired, so these outcomes fail the Flow.
 
 The runnable example is in [`go/examples/agent-list`](go/examples/agent-list). Tests exercise a local HTTP provider and a real Dex stack with the generated mock. Live Agora authorization and current agent discovery remain unverified without a user-controlled project.
+# Python
+
+The [Python package](python/README.md) implements `listRunningAgents` with a
+runnable Dex Flow and Go-recorded provider conformance scenarios.

@@ -7,3 +7,5 @@ Each call uses the documented [OpenAPI signature V3](https://help.aliyun.com/en/
 `describeRegions` selects `fetched`, `providerRejected`, `invalidResponse`, or `defect`. Rate limits, transport failures, and temporary provider failures retry. Optional branches fail the example Flow unless wired by an application.
 
 [Run the regions Flow](go/examples/regions/README.md). The checked-in mock is synthetic; real provider authorization and response behavior require a user-controlled RAM AccessKey pair in Dex Web Connections.
+
+The [Python package](python/) implements the same `describeRegions` Query and includes a [runnable Flow](python/examples/regions/) with a Worker entrypoint. Its provider test reproduces the official ACS3 signing vector; Go-recorded conformance scenarios cover signed requests, provider rejection, throttling, malformed data, 429, 503, and transport failure. The Python integration test ran against a local Dex stack with a fake provider; live RAM authorization and ECS response behavior remain unverified.

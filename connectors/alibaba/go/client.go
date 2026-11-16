@@ -5,11 +5,15 @@
 package alibaba
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
 // Option supplies a non-serializable client dependency to New.
@@ -30,6 +34,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	nonceSource      io.Reader
+	clock            func() time.Time
 }
 
 // New validates local settings without calling Alibaba Cloud. Rotated credentials take effect on the next request.
@@ -52,7 +58,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsedURL.Host == "" {
 		return nil, errors.New("Alibaba Cloud base URL host is invalid")
 	}
-	client := &Client{baseURL: baseURL, endpointHost: parsedURL.Host, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, endpointHost: parsedURL.Host, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, nonceSource: rand.Reader, clock: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Alibaba Cloud client option is required")

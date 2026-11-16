@@ -4,6 +4,8 @@ The Go connector geocodes a structured Chinese address through Amap's
 [Web Service geocoding API](https://lbs.amap.com/api/webservice/guide/api/georegeo).
 It exposes the `GeocodeAddress` Query Step and a runnable
 [`address-lookup` Flow](go/examples/address-lookup/README.md).
+The [Python package](python/README.md) implements the same Query and has a
+checked-in Dex Flow and Worker.
 
 Install `github.com/superdurable/dex-connectors-library/connectors/amap/go@v0.1.0`
 after the first release. Use a Web Service Key from

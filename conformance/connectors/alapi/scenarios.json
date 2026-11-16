@@ -1,0 +1,383 @@
+{
+  "connector": "alapi",
+  "scenarios": [
+    {
+      "callId": "39c3e634-78a8-4cb2-b5c8-a6621da9a278",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"country\":\"中国\",\"province\":\"广东\",\"city\":\"深圳\",\"district\":\"龙岗区\",\"isp\":\"移动\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "深圳",
+          "country": "中国",
+          "district": "龙岗区",
+          "operator": "移动",
+          "province": "广东"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-found",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "5eaabde5-3c10-4523-a447-50a3c310d2ff",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":10002}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-providerRejected",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "70ac3f14-bd8f-4d18-9fb8-d50c6572b490",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"code\":10005}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-quotaExhausted",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "1f34e7b9-0b01-4c57-8daa-f8791270cf8a",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-invalidResponse",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "29ab4ebf-5022-4737-b33a-0af36c16146e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": ""
+      },
+      "name": "lookupIPLocation-defect",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "bf58ba42-2023-4d1c-b8bc-b5c13fb27a21",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-rateLimit429",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "aa65e56d-86c7-4236-8868-830c80afae40",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-availability503",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "90e682fb-6fc4-4954-bf9d-60524a589432",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-transportFailure",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "6f4ec01f-4524-42c2-a041-8991615c46aa",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"country\":\"中国\",\"city\":\"深圳\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/ip",
+          "requestBody": {
+            "ip": "8.8.8.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "city": "",
+          "country": "",
+          "district": "",
+          "operator": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "8.8.8.8"
+      },
+      "name": "lookupIPLocation-oversized",
+      "operation": "lookupIPLocation"
+    }
+  ],
+  "schemaVersion": 1
+}
