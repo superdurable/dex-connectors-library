@@ -7,6 +7,11 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFou
 import type { Config, Credentials } from './generated/models.js';
 import { AddEmployeeOperation, FindEmployeeByEmailOperation, GetEmployeeOperation, ListEmployeeChangesOperation, ListTimeOffRequestsOperation, UpdateEmployeeOperation } from './operations.js';
 
+/** The manifest's default pollInterval, one minute. */
+const defaultPollIntervalMs = 60_000;
+/** Keeps employeeChanged polling from tripping BambooHR's unpublished throttling. */
+export const MinimumPollIntervalMs = 10_000;
+
 /** Sender override for provider replay and local tests. */
 export type BambooHRRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
 
@@ -14,13 +19,13 @@ export type BambooHRRequestSender = (request: ProviderRequest) => Promise<Provid
 export interface BambooHRClientOptions {
   /** Local fake base URL; omit for the company domain. */ apiBaseURL?: string;
   /** Provider HTTP sender. */ send?: BambooHRRequestSender;
-  /** Receipt and retry clock. */ now?: () => Date;
+  /** Receipt, retry, and Trigger seed clock. */ now?: () => Date;
 }
 
 /** One classified provider exchange. */
 export type BambooHRExchange =
   | { kind: 'success'; response: ProviderResponse }
-  | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number };
+  | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status?: number };
 
 /** Credential outcome before any provider request. */
 export type BambooHRCredentialResult = { kind: 'resolved'; key: string } | { kind: 'terminal' | 'transient' };
@@ -29,21 +34,31 @@ export type BambooHRCredentialResult = { kind: 'resolved'; key: string } | { kin
 export class BambooHRClient {
   private readonly endpoint: string;
   private readonly maxResponseBytes: number;
+  /** The employeeChanged Trigger's delay between polls in milliseconds; at least MinimumPollIntervalMs. */
+  readonly pollIntervalMs: number;
   private readonly credentials: CredentialProvider<Credentials>;
   private readonly send: BambooHRRequestSender;
   private readonly now: () => Date;
 
-  /** Validate configuration without contacting BambooHR. */
+  /**
+   * Validate configuration without contacting BambooHR. An omitted or zero pollIntervalMs uses the manifest's
+   * one minute; one under 10 seconds throws, as Go's New does.
+   */
   constructor(config: Config, credentials: CredentialProvider<Credentials>, options: BambooHRClientOptions = {}) {
     if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(config.companyDomain)) throw new TypeError('invalid BambooHR companyDomain');
     if (!credentials) throw new TypeError('BambooHR credential provider is required');
     this.endpoint = validateBaseURL(options.apiBaseURL ?? `https://${config.companyDomain}.bamboohr.com/api/v1`);
     this.maxResponseBytes = config.maxResponseBytes || 4_194_304;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('invalid BambooHR maxResponseBytes');
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < MinimumPollIntervalMs) throw new TypeError('BambooHR pollInterval must be at least 10s');
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
   }
+
+  /** The client clock, used for receipts, Retry-After, and a Trigger seed without a usable Date header. */
+  currentTime(): Date { return this.now(); }
 
   /** Bind the getEmployee Query. */ getEmployee(): GetEmployeeOperation { return new GetEmployeeOperation(this); }
   /** Bind the findEmployeeByEmail Query. */ findEmployeeByEmail(): FindEmployeeByEmailOperation { return new FindEmployeeByEmailOperation(this); }
@@ -102,16 +117,16 @@ export class BambooHRClient {
     const code = errorCode(response.body, key);
     const suffix = code ? ` [${code}]` : '';
     const status = response.status;
-    if (status === 429) return this.failure('rateLimited', operation, 'RATE_LIMIT', `BambooHR rate limited the request (HTTP 429)${suffix}`, retryAfterMs);
-    if (status === 408 || status >= 500) return this.failure('unavailable', operation, 'AVAILABILITY', `BambooHR could not complete the request (HTTP ${status})${suffix}`, retryAfterMs);
-    if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', `BambooHR found no such resource (HTTP 404)${suffix}`);
-    if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `BambooHR redirected the request (HTTP ${status}); check companyDomain`);
+    if (status === 429) return this.failure('rateLimited', operation, 'RATE_LIMIT', `BambooHR rate limited the request (HTTP 429)${suffix}`, retryAfterMs, status);
+    if (status === 408 || status >= 500) return this.failure('unavailable', operation, 'AVAILABILITY', `BambooHR could not complete the request (HTTP ${status})${suffix}`, retryAfterMs, status);
+    if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', `BambooHR found no such resource (HTTP 404)${suffix}`, 0, status);
+    if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `BambooHR redirected the request (HTTP ${status}); check companyDomain`, 0, status);
     const kind: Failure['kind'] = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 409 ? 'CONFLICT' : [400, 406, 422].includes(status) ? 'VALIDATION' : 'PROVIDER_REJECTION';
-    return this.failure('rejected', operation, kind, `BambooHR rejected the request (HTTP ${status})${suffix}`);
+    return this.failure('rejected', operation, kind, `BambooHR rejected the request (HTTP ${status})${suffix}`, 0, status);
   }
 
-  private failure(kind: Exclude<BambooHRExchange['kind'], 'success'>, operation: string, failureKind: Failure['kind'], message: string, retryAfterMs = 0): BambooHRExchange {
-    return { kind, failure: { kind: failureKind, provider: 'bamboohr', operation, message }, retryAfterMs };
+  private failure(kind: Exclude<BambooHRExchange['kind'], 'success'>, operation: string, failureKind: Failure['kind'], message: string, retryAfterMs = 0, status?: number): BambooHRExchange {
+    return { kind, failure: { kind: failureKind, provider: 'bamboohr', operation, message }, retryAfterMs, ...(status !== undefined ? { status } : {}) };
   }
 }
 

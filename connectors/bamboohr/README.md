@@ -65,14 +65,23 @@ OAuth; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) v0.1.0 implements all six
+The [TypeScript package](typescript/README.md) v0.2.0 implements all six
 operations with generated Step factories and a hand-written provider client.
+Install it with `@superdurable/connector-bamboohr@0.2.0`; it requires
+`@superdurable/connectors-sdk` 0.12.0.
 Its [runnable getEmployee Flow](typescript/examples/get-employee/) uses the
 static `bamboohr-employees` connection name. Go-recorded conformance scenarios
 cover provider requests, branches, retries, uncertainty, and duplicate safety;
 the example also ran through a real Dex Worker and Client with a local provider
-fixture. Live BambooHR behavior remains unverified. The TypeScript package
-does not implement the `employeeChanged` Trigger.
+fixture. Live BambooHR behavior remains unverified.
+
+The package also implements the `employeeChanged` Trigger on the TypeScript
+poll Trigger kit at behavior parity with Go: the same settle window, ordering,
+change type filter, event IDs, rate-limit and cursor-reset handling, and a
+cursor document that Go and TypeScript replicas read and write byte for byte.
+The [TypeScript employee-changed example](typescript/examples/employee-changed/)
+starts one Flow per change and reads inserted and updated employees back; live
+BambooHR polling has not been verified.
 
 ## BambooHR setup
 
@@ -502,6 +511,9 @@ terminations through `listEmployeeChanges`, but does not write them.
 - [`python/examples/employee_changed`](python/examples/employee_changed) is the
   same Trigger example in Python, with the same binding, configuration unit,
   and read-back.
+- [`typescript/examples/employee-changed`](typescript/examples/employee-changed)
+  is the same Trigger example in TypeScript, with the same binding,
+  configuration unit, and read-back.
 
 ## Verification
 

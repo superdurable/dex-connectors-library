@@ -13,14 +13,16 @@ connectors/bamboohr/connector.yaml`.
 npm install @superdurable/connector-bamboohr @superdurable/connectors-sdk @superdurable/dex
 ```
 
-Use Node.js 22 or 24 and Dex TypeScript SDK 1.28.0 or later. In Dex Web
+Use Node.js 22 or 24 and Dex TypeScript SDK 1.45.4 or later, which
+`@superdurable/connectors-sdk` 0.12.0 requires. In Dex Web
 Connections, set `companyDomain` to the part before `.bamboohr.com` in the
 company URL. Sign in at https://app.bamboohr.com/login/, open your name's menu
 in the lower left of the BambooHR page, choose **API Keys**, create a key, and
 save it in the private `api_key` field. See the [connector setup
 instructions](../README.md#bamboohr-setup) for account permission and key
 handling details. Leave `maxResponseBytes` blank to use the manifest safety
-limit. The package resolves the current key before every API request and sends
+limit. Leave `pollInterval` blank to keep the displayed delay between
+`employeeChanged` polls, or enter a Go duration of at least `10s`. The package resolves the current key before every API request and sends
 it as the HTTP Basic user name with `x` as the password.
 
 At Worker startup, call `loadFromEnvironment()` and pass the static
@@ -47,6 +49,30 @@ It retries only a confirmed non-application, reads back a known accepted ID,
 and returns `uncertain` when an accepted write cannot be confirmed. Neither
 mutation sends an idempotency header; its Dex Call ID correlates the receipt.
 
+## employeeChanged Trigger
+
+Version `0.2.0` adds the `employeeChanged` poll Trigger on the
+`@superdurable/connectors-sdk` 0.12.0 poll Trigger kit, at behavior parity with
+the Go connector. `newProjectEmployeeChangedTriggerRunner` loads each saved
+binding's change type (an unsaved binding delivers every change) and records
+each change in the binding's project Trigger inbox before its cursor commits;
+`newEmployeeChangedTriggerRunner` takes routes with targets and cursor stores;
+`newEmployeeChangedTrigger` keeps the cursor in memory, as Go's generated
+factory does. Declare the binding with `defineEmployeeChangedTriggerBinding`
+and the `changeTypePicker` unit (`UIUnitChangeTypePicker`), bound to
+`/changeType`.
+
+Each poll makes one `GET /employees/changed` request, delivers changes at
+least 30 seconds old by BambooHR's Date header, oldest first by `lastChanged`
+and numeric employee ID, at most 500 per page, and names each event
+`employee-<id>-<action>-<lastChanged Unix seconds>`. The payload is the Go
+JSON `{employeeId, action, lastChanged}`. A 429 or 503 pauses every binding of
+the connection; a 400 rejecting the cursor starts the binding again at the
+current time. The cursor document is the Go connector's byte for byte, so Go
+and TypeScript replicas share it. `BambooHRClient` rejects a `pollIntervalMs`
+under 10 seconds. The [employee-changed example](examples/employee-changed/)
+starts one Flow per change and reads inserted and updated employees back.
+
 ## Verify
 
 ```sh
@@ -55,10 +81,14 @@ npm run check
 ```
 
 With `dexcli dev` running and `DEX_FLOW_SERVICE_ADDRESS` set, run
-`npm run test:integration`. The test runs the checked-in Flow through a real
-Dex Worker and Client against a local BambooHR HTTP fixture, including an
-unwired authorization failure. The Go-recorded provider scenarios compare
-requests, outputs, branches, retries, uncertainty, and mutation keys.
+`npm run test:integration`. The tests run the checked-in Flows through a real
+Dex Worker and Client against local BambooHR stand-ins, including an unwired
+authorization failure, employee changes across a Trigger restart, a saved
+change type, and a reseed after a rejected cursor. The Go-recorded provider
+scenarios compare requests, outputs, branches, retries, uncertainty, and
+mutation keys, and `test/employee_changed_go_parity.test.ts` replays a
+recording of the Go employeeChanged fetcher's cursors, events, and errors.
 
 Live BambooHR authorization, company-domain routing, field visibility, employee
-writes, time off data, and the Dex Web connection form have not been verified.
+writes, time off data, live polling, and the Dex Web connection form have not
+been verified.
