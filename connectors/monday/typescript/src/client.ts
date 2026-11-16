@@ -11,6 +11,10 @@ import { AddUpdateOperation, CreateItemOperation, GetItemOperation, ListItemsOpe
 const defaultAPIURL = 'https://api.monday.com/v2';
 const defaultMaxResponseBytes = 4_194_304;
 const defaultTimeoutMs = 12_000;
+/** The manifest's default pollInterval, five minutes. */
+const defaultPollIntervalMs = 300_000;
+/** Keeps itemChanged polls from spending the account's daily call limit too fast. */
+export const MinimumPollIntervalMs = 30_000;
 const token = (value: unknown): string => typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 const headerValue = (value: unknown): string => Array.isArray(value) ? token(value[0]) : token(value);
 const codes = (values: string[]) => new Set(values);
@@ -41,16 +45,23 @@ export interface MondayExchange {
 export class MondayClient {
   private readonly apiURL: string;
   private readonly maxResponseBytes: number;
+  /** The itemChanged Trigger's delay between polls in milliseconds; at least MinimumPollIntervalMs. */
+  readonly pollIntervalMs: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly now: () => Date;
   private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'monday.com', auth: Authorization, credentialFields: CredentialFields });
 
-  /** Validate configuration and retain the host credential source. */
+  /**
+   * Validate configuration and retain the host credential source. An omitted or zero pollIntervalMs uses the
+   * manifest's five minutes; one under 30 seconds throws, as Go's New does.
+   */
   constructor(config: Config, private readonly credentials: CredentialSource, options: MondayClientOptions = {}) {
     if (!credentials) throw new TypeError('monday.com credential provider is required');
     this.apiURL = validateBaseURL(options.apiURL || defaultAPIURL);
     this.maxResponseBytes = config.maxResponseBytes || defaultMaxResponseBytes;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('monday.com response limit must be positive');
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < MinimumPollIntervalMs) throw new TypeError('monday.com pollInterval must be at least 30s');
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
   }
@@ -60,6 +71,9 @@ export class MondayClient {
   /** Bind the createItem Mutation. */ createItem(): CreateItemOperation { return new CreateItemOperation(this); }
   /** Bind the updateItemColumnValues Mutation. */ updateItemColumnValues(): UpdateItemColumnValuesOperation { return new UpdateItemColumnValuesOperation(this); }
   /** Bind the addUpdate Mutation. */ addUpdate(): AddUpdateOperation { return new AddUpdateOperation(this); }
+
+  /** The client clock, used for receipts, Retry-After, and the daily-limit pause. */
+  currentTime(): Date { return this.now(); }
 
   /** Make one authenticated exchange, recording the same resend checkpoint as Go for irreversible writes. */
   async exchange(call: Call, operation: string, request: MondayRequest): Promise<MondayExchange> {

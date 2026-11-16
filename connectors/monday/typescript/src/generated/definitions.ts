@@ -104,6 +104,8 @@ export const CreateItemDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 10, totalDurationMs: 300000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createItem. */
 export const CreateItemMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -137,6 +139,7 @@ export const UpdateItemColumnValuesDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateItemColumnValues. */
 export const UpdateItemColumnValuesMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -170,6 +173,8 @@ export const AddUpdateDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 10, totalDurationMs: 300000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for addUpdate. */
 export const AddUpdateMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
