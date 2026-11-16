@@ -11,10 +11,10 @@ spec:
   provider: mailchimp
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-intuit-mailchimp'
       operations: [getMember, listMembers, upsertMember, updateMemberTags, sendCampaign]
-      triggers: []
+      triggers: [memberChanged]
     python:
       version: v0.2.0
       package: dex-connector-intuit-mailchimp
