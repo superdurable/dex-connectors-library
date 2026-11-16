@@ -22,7 +22,7 @@ artifact, and void as compensation.
 | Query | `listEnvelopeRecipients` | Lists every recipient in routing order with status and sent, delivered, signed, and declined times. | Go, Python, TypeScript |
 | Mutation | `voidEnvelope` | Voids a sent or delivered envelope with a reason; an already voided envelope is `voided` again. | Go, Python, TypeScript |
 | Query | `downloadCombinedDocument` | Streams the combined PDF through SHA-256 into an application `CombinedDocumentStore`; the Result holds only size, digest, and location. | Go, Python, TypeScript |
-| Trigger | `envelopeEventReceived` | Receives HMAC-verified Connect `envelope-completed`, `envelope-declined`, and `envelope-voided` events in the JSON SIM format. | Go, TypeScript |
+| Trigger | `envelopeEventReceived` | Receives HMAC-verified Connect `envelope-completed`, `envelope-declined`, and `envelope-voided` events in the JSON SIM format. | Go, TypeScript, Python |
 
 The runnable [`examples/envelope-signing`](go/examples/envelope-signing/README.md)
 application sends an envelope, waits for Connect or a slow status poll, voids
@@ -306,14 +306,21 @@ uses the defaults:
 
 ## Python package
 
-The [Python package](python/README.md) at `v0.1.0` implements all five
-operations with generated OAuth refresh and credential decoding. The Connect
-Trigger is in the Go and TypeScript packages only. The runnable
+The [Python package](python/README.md) at `v0.2.0` implements all five
+operations with generated OAuth refresh and credential decoding, and from
+0.2.0 the `envelopeEventReceived` Trigger at parity with Go on
+`dex-connectors-sdk>=0.11.0`: the same HMAC verification, JSON SIM decoding,
+event ID, binding filter, and durable project inbox, served by
+`new_project_envelope_event_received_endpoint_runner`. A Go or Python replica
+replays the other's stored inbox events. The runnable
 [envelope status Flow](python/examples/envelope_status/flow.py) uses the
-static `docusign-esignature` connection and has a real Dex Worker and Client
-integration test. Go-recorded provider conformance covers its operation
-branches, retries, transport failures, and exact safe outputs. Live DocuSign
-authorization and provider calls remain unverified.
+static `docusign-esignature` connection, and the
+[envelope outcome Flow](python/examples/envelope_outcome/README.md) starts one
+Flow per correlated Connect outcome from the `envelope-outcomes` binding; both
+have real Dex Worker and Client integration tests. Go-recorded provider
+conformance covers the operation branches, retries, transport failures, and
+exact safe outputs. Live DocuSign authorization, provider calls, and Connect
+deliveries remain unverified.
 
 ## Verification
 
