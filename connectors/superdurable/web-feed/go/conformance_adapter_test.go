@@ -24,6 +24,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, _ string,
 		"discoverFeeds":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.DiscoverFeeds(), testConnection),
 		"readSitemap":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ReadSitemap(), testConnection),
 		"readPageMetadata": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ReadPageMetadata(), testConnection),
+		"readPage":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ReadPage(), testConnection),
 	}}
 }
 

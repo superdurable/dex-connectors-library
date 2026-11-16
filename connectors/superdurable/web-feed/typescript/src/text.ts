@@ -112,6 +112,11 @@ export function goTrimSpace(value: string): string {
     .replace(new RegExp(`${goWhitespaceClass}+$`, 'u'), '');
 }
 
+/** Trim trailing Go whitespace, as Go strings.TrimRightFunc with unicode.IsSpace. */
+export function goTrimRight(value: string): string {
+  return value.replace(new RegExp(`${goWhitespaceClass}+$`, 'u'), '');
+}
+
 /** Return the first value that is nonempty after trimming, trimmed. */
 export function firstNonEmpty(...values: string[]): string {
   for (const value of values) {

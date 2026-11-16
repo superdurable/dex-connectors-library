@@ -8,14 +8,15 @@ import {
   parseRequestURL, sendPublicHTTPS, validatorsFromInput,
 } from './document.js';
 import { parseFeedDocument } from './feed.js';
-import { DiscoverFeedsDefinition, ProviderID, ReadFeedDefinition, ReadPageMetadataDefinition, ReadSitemapDefinition } from './generated/definitions.js';
+import { DiscoverFeedsDefinition, ProviderID, ReadFeedDefinition, ReadPageDefinition, ReadPageMetadataDefinition, ReadSitemapDefinition } from './generated/definitions.js';
 import type {
-  Config, DiscoverFeedsInput, DiscoveredFeed, DiscoveredFeeds, Feed, PageMetadata, ReadFeedInput, ReadPageMetadataInput,
-  ReadSitemapInput, Sitemap, StructuredDataMetadata,
+  Config, DiscoverFeedsInput, DiscoveredFeed, DiscoveredFeeds, Feed, Page, PageMetadata, ReadFeedInput, ReadPageInput,
+  ReadPageMetadataInput, ReadSitemapInput, Sitemap, StructuredDataMetadata,
 } from './generated/models.js';
 import { hasRelation, headBaseURL, isHTMLMediaType, scanHTMLHead } from './html_head.js';
+import { decodePageText, extractReadableText, truncateText } from './readable_text.js';
 import { isSitemapMediaType, newSitemapFilter, parseSitemapDocument } from './sitemap.js';
-import { boundedText, firstNonEmpty, maxDescriptionCharacters, maxNameCharacters, maxTitleCharacters, resolveLink } from './text.js';
+import { boundedText, firstNonEmpty, goTrimSpace, maxDescriptionCharacters, maxNameCharacters, maxTitleCharacters, resolveLink } from './text.js';
 import { optionalTimestamp } from './timestamp.js';
 
 /** Default bound on one HTTP request, in milliseconds. */
@@ -31,6 +32,9 @@ const zeroTime = '0001-01-01T00:00:00Z';
 const feedAcceptHeader = 'application/feed+json, application/atom+xml, application/rss+xml, application/rdf+xml;q=0.9, application/xml;q=0.8, text/xml;q=0.8, application/json;q=0.7, */*;q=0.5';
 const sitemapAcceptHeader = 'application/xml, text/xml;q=0.9, application/gzip;q=0.8, */*;q=0.5';
 const pageAcceptHeader = 'text/html, application/xhtml+xml;q=0.9, */*;q=0.1';
+const readablePageAcceptHeader = 'text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1';
+const defaultPageTextCharacters = 20000;
+const maxPageTextCharacters = 100000;
 const maxDiscoveredFeeds = 20;
 const maxStructuredDataNodes = 500;
 const maxStructuredDataDepth = 8;
@@ -82,6 +86,7 @@ export class WebFeedClient {
   /** Bind the discoverFeeds Query. */ discoverFeeds(): DiscoverFeedsOperation { return new DiscoverFeedsOperation(this); }
   /** Bind the readSitemap Query. */ readSitemap(): ReadSitemapOperation { return new ReadSitemapOperation(this); }
   /** Bind the readPageMetadata Query. */ readPageMetadata(): ReadPageMetadataOperation { return new ReadPageMetadataOperation(this); }
+  /** Bind the readPage Query. */ readPage(): ReadPageOperation { return new ReadPageOperation(this); }
 
   /** Request settings for one call; internal to the operations. */
   settings(call: Call): FetchSettings {
@@ -208,11 +213,8 @@ export class ReadPageMetadataOperation implements Query<ReadPageMetadataInput, P
       articlePublishedAt: optionalTimestamp(meta('article:published_time')), articleModifiedAt: optionalTimestamp(meta('article:modified_time')),
       structuredData: readStructuredData(head.structuredScripts), isTruncated: document.isTruncated, fetchedAt: this.client.fetchedAt(),
     }) as PageMetadata;
-    for (const link of head.links) {
-      if (!hasRelation(link.relations, 'canonical')) continue;
-      const canonical = resolveLink(base, link.href);
-      if (canonical) { metadata.canonicalUrl = canonical; break; }
-    }
+    const canonical = canonicalURL(head, base);
+    if (canonical) metadata.canonicalUrl = canonical;
     const publishedAt = metadata.articlePublishedAt ?? metadata.structuredData.datePublished;
     const modifiedAt = metadata.articleModifiedAt ?? metadata.structuredData.dateModified ?? optionalTimestamp(meta('og:updated_time'));
     if (publishedAt) metadata.publishedAt = publishedAt;
@@ -220,6 +222,69 @@ export class ReadPageMetadataOperation implements Query<ReadPageMetadataInput, P
     return newQueryBranch('read', metadata);
   }
 }
+
+/**
+ * Reads the readable text of one HTML or plain-text page per invocation. The whole page, at most
+ * maxDocumentBytes, is read with one GET plus at most five redirect hops; scripts never run and linked resources
+ * are never requested.
+ */
+export class ReadPageOperation implements Query<ReadPageInput, Page> {
+  /** Bind the client. */ constructor(private readonly client: WebFeedClient) {}
+  /** The generated readPage contract. */ definition(): QueryDefinition { return ReadPageDefinition; }
+  /** Read one page and return its readable text; a 304 to a conditional GET selects notModified, and transient failures retry. */
+  async invoke(call: Call, input: ReadPageInput): Promise<QueryAttempt<Page>> {
+    const zero = (): Page => ({ finalUrl: '', statusCode: 0, text: '', isTextTruncated: false, fetchedAt: zeroTime });
+    let request: DocumentRequest;
+    const maxTextCharacters = input.maxTextCharacters || defaultPageTextCharacters;
+    try {
+      const target = parseRequestURL(input.url);
+      const validators = validatorsFromInput(input.etag, input.lastModified);
+      if (!Number.isSafeInteger(maxTextCharacters) || maxTextCharacters < 1 || maxTextCharacters > maxPageTextCharacters) throw new TypeError('maxTextCharacters must be from 1 through 100000');
+      request = { target, accept: readablePageAcceptHeader, validators, maxBytes: this.client.documentBytes(), isPrefixRead: false, mayBeGzip: false, acceptsMediaType: isReadablePageMediaType, expectedContent: 'an HTML or plain-text page' };
+    } catch (error) { return attemptFromFailure('readPage', defectFailure(error), zero()); }
+    const fetched = await fetchDocument(this.client.settings(call), request);
+    if ('failure' in fetched) return attemptFromFailure('readPage', fetched.failure, zero());
+    const document = fetched.document;
+    const response = withValidators<Page>({ ...zero(), finalUrl: document.finalURL.toString(), statusCode: document.statusCode, fetchedAt: this.client.fetchedAt() }, document.validators);
+    if (document.isNotModified) return newQueryBranch('notModified', response);
+    let text: string;
+    let metadata: Partial<Page> = {};
+    if (document.mediaType === 'text/plain') {
+      text = goTrimSpace(decodePageText(document.body, document.charsetLabel ? `text/plain; charset=${document.charsetLabel}` : 'text/plain'));
+      metadata.contentType = 'text/plain';
+    } else {
+      const contentType = htmlContentType(document.charsetLabel);
+      text = extractReadableText(document.body, contentType);
+      const head = scanHTMLHead(document.body, contentType);
+      const meta = (name: string): string => head.metaByName.get(name) ?? '';
+      metadata = omitEmpty({
+        contentType: document.mediaType || 'text/html',
+        title: firstNonEmpty(head.title, boundedText(meta('og:title'), maxTitleCharacters)),
+        description: boundedText(firstNonEmpty(meta('description'), meta('og:description')), maxDescriptionCharacters),
+        siteName: boundedText(meta('og:site_name'), maxNameCharacters),
+        canonicalUrl: canonicalURL(head, headBaseURL(head, document.finalURL)),
+        publishedAt: optionalTimestamp(meta('article:published_time')) ?? readStructuredData(head.structuredScripts).datePublished,
+      });
+    }
+    const [boundedPageText, isTextTruncated] = truncateText(text, maxTextCharacters);
+    return newQueryBranch('read', withValidators<Page>({
+      finalUrl: response.finalUrl, statusCode: response.statusCode, ...metadata, text: boundedPageText, isTextTruncated, fetchedAt: response.fetchedAt,
+    }, document.validators));
+  }
+}
+
+/** Return the first link rel=canonical that resolves to an absolute http or https URL. */
+function canonicalURL(head: ReturnType<typeof scanHTMLHead>, base: Parameters<typeof resolveLink>[0]): string {
+  for (const link of head.links) {
+    if (!hasRelation(link.relations, 'canonical')) continue;
+    const canonical = resolveLink(base, link.href);
+    if (canonical) return canonical;
+  }
+  return '';
+}
+
+/** Accept HTML, XHTML, and plain text; a missing media type reads as HTML. */
+function isReadablePageMediaType(mediaType: string): boolean { return isHTMLMediaType(mediaType) || mediaType === 'text/plain'; }
 
 /** Return the first JSON-LD article node, else the first node with a headline or date; invalid scripts are skipped. */
 function readStructuredData(scripts: string[]): StructuredDataMetadata {

@@ -94,8 +94,8 @@ export function isHTMLMediaType(mediaType: string): boolean {
   return mediaType === '' || mediaType === 'text/html' || mediaType === 'application/xhtml+xml';
 }
 
-// Decode as golang.org/x/net/html/charset does: BOM, HTTP charset, meta prescan, UTF-8 detection, windows-1252.
-function decodeHTMLBytes(body: Uint8Array, contentType: string): string {
+/** Decode as golang.org/x/net/html/charset does: BOM, HTTP charset, meta prescan, UTF-8 detection, windows-1252. */
+export function decodeHTMLBytes(body: Uint8Array, contentType: string): string {
   return new TextDecoder(determineHTMLEncoding(body.subarray(0, 1024), contentType)).decode(body);
 }
 

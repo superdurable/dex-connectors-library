@@ -8,5 +8,5 @@ export { Connection, newConnection, newConnectionWithOperations, type Operations
 export { newProjectConnection } from './project.js';
 export {
   DefaultMaxDocumentBytes, DefaultMaxPageBytes, DefaultTimeoutMs, DefaultUserAgent, DiscoverFeedsOperation, ReadFeedOperation,
-  ReadPageMetadataOperation, ReadSitemapOperation, WebFeedClient, type WebFeedClientOptions,
+  ReadPageMetadataOperation, ReadPageOperation, ReadSitemapOperation, WebFeedClient, type WebFeedClientOptions,
 } from './client.js';

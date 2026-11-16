@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { ReadFeedInput, FeedItem, Feed, DiscoverFeedsInput, DiscoveredFeed, DiscoveredFeeds, ReadSitemapInput, SitemapEntry, ChildSitemap, Sitemap, ReadPageMetadataInput, OpenGraphMetadata, StructuredDataMetadata, PageMetadata } from './models.js';
-import { ReadFeedInputSchema, FeedItemSchema, FeedSchema, DiscoverFeedsInputSchema, DiscoveredFeedSchema, DiscoveredFeedsSchema, ReadSitemapInputSchema, SitemapEntrySchema, ChildSitemapSchema, SitemapSchema, ReadPageMetadataInputSchema, OpenGraphMetadataSchema, StructuredDataMetadataSchema, PageMetadataSchema } from './models.js';
-import { ProviderID, ConnectorID, ReadFeedDefinition, DiscoverFeedsDefinition, ReadSitemapDefinition, ReadPageMetadataDefinition } from './definitions.js';
+import type { ReadFeedInput, FeedItem, Feed, DiscoverFeedsInput, DiscoveredFeed, DiscoveredFeeds, ReadSitemapInput, SitemapEntry, ChildSitemap, Sitemap, ReadPageMetadataInput, OpenGraphMetadata, StructuredDataMetadata, PageMetadata, ReadPageInput, Page } from './models.js';
+import { ReadFeedInputSchema, FeedItemSchema, FeedSchema, DiscoverFeedsInputSchema, DiscoveredFeedSchema, DiscoveredFeedsSchema, ReadSitemapInputSchema, SitemapEntrySchema, ChildSitemapSchema, SitemapSchema, ReadPageMetadataInputSchema, OpenGraphMetadataSchema, StructuredDataMetadataSchema, PageMetadataSchema, ReadPageInputSchema, PageSchema } from './models.js';
+import { ProviderID, ConnectorID, ReadFeedDefinition, DiscoverFeedsDefinition, ReadSitemapDefinition, ReadPageMetadataDefinition, ReadPageDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for ReadFeedInput in scripted cases. */
@@ -79,6 +79,18 @@ export const emptyPageMetadata: PageMetadata = PageMetadataSchema.parse({
   "openGraph": emptyOpenGraphMetadata,
   "structuredData": emptyStructuredDataMetadata,
   "isTruncated": false,
+  "fetchedAt": '0001-01-01T00:00:00Z',
+});
+/** Go zero value for ReadPageInput in scripted cases. */
+export const emptyReadPageInput: ReadPageInput = ReadPageInputSchema.parse({
+  "url": '',
+});
+/** Go zero value for Page in scripted cases. */
+export const emptyPage: Page = PageSchema.parse({
+  "finalUrl": '',
+  "statusCode": 0,
+  "text": '',
+  "isTextTruncated": false,
   "fetchedAt": '0001-01-01T00:00:00Z',
 });
 
@@ -264,12 +276,62 @@ export function readPageMetadataServesImage(): Case<PageMetadata> {
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "readPageMetadata", message: "The URL serves image/png, not an HTML page." });
 }
 
+/** Script the read branch. */
+export function readPageRead(value: Page, failure?: Failure): Case<Page> { return branchCase("read", value, failure); }
+/** Script the notModified branch. */
+export function readPageNotModified(value: Page, failure?: Failure): Case<Page> { return branchCase("notModified", value, failure); }
+/** Script the notFound branch. */
+export function readPageNotFound(value: Page, failure?: Failure): Case<Page> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function readPageProviderRejected(value: Page, failure?: Failure): Case<Page> { return branchCase("providerRejected", value, failure); }
+/** Script the unreachable branch. */
+export function readPageUnreachable(value: Page, failure?: Failure): Case<Page> { return branchCase("unreachable", value, failure); }
+/** Script the invalidResponse branch. */
+export function readPageInvalidResponse(value: Page, failure?: Failure): Case<Page> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function readPageDefect(value: Page, failure?: Failure): Case<Page> { return branchCase("defect", value, failure); }
+/** Script a safe retry of readPage. */
+export function readPageRetry(failure: Failure, retryAfterMs = 0): Case<Page> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario blogPostText for readPage. */
+export function readPageBlogPostText(): Case<Page> {
+  const value = PageSchema.parse({"canonicalUrl":"https://www.example.com/blog/spring-release-notes","contentType":"text/html","description":"Everything the team released this spring, in one place.","etag":"\"3b-9f2c\"","fetchedAt":"2026-11-10T10:00:00Z","finalUrl":"https://www.example.com/blog/spring-release-notes","isTextTruncated":false,"lastModified":"Mon, 09 Nov 2026 18:00:00 GMT","publishedAt":"2026-11-09T17:00:00Z","siteName":"Example","statusCode":200,"text":"Spring release notes\n\nThis spring the team released faster builds, a new dashboard, and clearer error messages.\n\nBuilds now share one remote cache, so a clean build takes half as long.\n\nThe dashboard shows every run on one page, with filters for status and owner.","title":"Spring release notes | Example"});
+  return branchCase("read", value);
+}
+/** Default readPage scenario. */
+export function readPageDefault(): Case<Page> { return readPageBlogPostText(); }
+/** Manifest scenario unchanged for readPage. */
+export function readPageUnchanged(): Case<Page> {
+  const value = PageSchema.parse({"etag":"\"3b-9f2c\"","fetchedAt":"2026-11-10T11:00:00Z","finalUrl":"https://www.example.com/blog/spring-release-notes","isTextTruncated":false,"lastModified":"Mon, 09 Nov 2026 18:00:00 GMT","statusCode":304,"text":""});
+  return branchCase("notModified", value);
+}
+/** Manifest scenario unpublished for readPage. */
+export function readPageUnpublished(): Case<Page> {
+  const value = emptyPage;
+  return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "readPage", message: "The site answered 404 Not Found for the page URL." });
+}
+/** Manifest scenario forbidden for readPage. */
+export function readPageForbidden(): Case<Page> {
+  const value = emptyPage;
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "readPage", message: "The site refused the page request with HTTP 403." });
+}
+/** Manifest scenario hostMissing for readPage. */
+export function readPageHostMissing(): Case<Page> {
+  const value = emptyPage;
+  return branchCase("unreachable", value, { kind: "TRANSPORT", provider: ConnectorID, operation: "readPage", message: "The page host does not exist." });
+}
+/** Manifest scenario servesPDF for readPage. */
+export function readPageServesPDF(): Case<Page> {
+  const value = emptyPage;
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "readPage", message: "The URL serves application/pdf, not an HTML or plain-text page." });
+}
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #readFeed: MockQuery<ReadFeedInput, Feed>;
   readonly #discoverFeeds: MockQuery<DiscoverFeedsInput, DiscoveredFeeds>;
   readonly #readSitemap: MockQuery<ReadSitemapInput, Sitemap>;
   readonly #readPageMetadata: MockQuery<ReadPageMetadataInput, PageMetadata>;
+  readonly #readPage: MockQuery<ReadPageInput, Page>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
@@ -277,6 +339,7 @@ export class GeneratedMock implements Operations {
     this.#discoverFeeds = newQuery<DiscoverFeedsInput, DiscoveredFeeds>(DiscoverFeedsDefinition).default(discoverFeedsDefault());
     this.#readSitemap = newQuery<ReadSitemapInput, Sitemap>(ReadSitemapDefinition).default(readSitemapDefault());
     this.#readPageMetadata = newQuery<ReadPageMetadataInput, PageMetadata>(ReadPageMetadataDefinition).default(readPageMetadataDefault());
+    this.#readPage = newQuery<ReadPageInput, Page>(ReadPageDefinition).default(readPageDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
@@ -285,10 +348,12 @@ export class GeneratedMock implements Operations {
   discoverFeeds(): MockQuery<DiscoverFeedsInput, DiscoveredFeeds> { return this.#discoverFeeds; }
   readSitemap(): MockQuery<ReadSitemapInput, Sitemap> { return this.#readSitemap; }
   readPageMetadata(): MockQuery<ReadPageMetadataInput, PageMetadata> { return this.#readPageMetadata; }
+  readPage(): MockQuery<ReadPageInput, Page> { return this.#readPage; }
   assertNoFailures(): void {
     this.#readFeed.assertNoFailures();
     this.#discoverFeeds.assertNoFailures();
     this.#readSitemap.assertNoFailures();
     this.#readPageMetadata.assertNoFailures();
+    this.#readPage.assertNoFailures();
   }
 }

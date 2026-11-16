@@ -4,7 +4,7 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import type { ReadFeedInput, Feed, DiscoverFeedsInput, DiscoveredFeeds, ReadSitemapInput, Sitemap, ReadPageMetadataInput, PageMetadata } from './models.js';
+import type { ReadFeedInput, Feed, DiscoverFeedsInput, DiscoveredFeeds, ReadSitemapInput, Sitemap, ReadPageMetadataInput, PageMetadata, ReadPageInput, Page } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
@@ -17,6 +17,8 @@ export interface Operations {
   readSitemap(): Query<ReadSitemapInput, Sitemap>;
   /** Invoke readPageMetadata through this connection. */
   readPageMetadata(): Query<ReadPageMetadataInput, PageMetadata>;
+  /** Invoke readPage through this connection. */
+  readPage(): Query<ReadPageInput, Page>;
 }
 
 /** Named connector connection kept outside Flow state. */

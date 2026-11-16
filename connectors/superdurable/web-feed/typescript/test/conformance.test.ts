@@ -5,7 +5,7 @@ import { it } from 'vitest';
 import type { Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { WebFeedClient } from '../src/client.js';
-import { DiscoverFeedsInputSchema, ReadFeedInputSchema, ReadPageMetadataInputSchema, ReadSitemapInputSchema } from '../src/generated/models.js';
+import { DiscoverFeedsInputSchema, ReadFeedInputSchema, ReadPageInputSchema, ReadPageMetadataInputSchema, ReadSitemapInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type HeartbeatContext, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
 const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/superdurable/web-feed/scenarios.json', import.meta.url));
@@ -27,6 +27,7 @@ async function invokeWebFeed(scenario: Scenario, recorder: ExchangeRecorder, con
     case 'discoverFeeds': return client.discoverFeeds().invoke(call, DiscoverFeedsInputSchema.parse(scenario.input));
     case 'readSitemap': return client.readSitemap().invoke(call, ReadSitemapInputSchema.parse(scenario.input));
     case 'readPageMetadata': return client.readPageMetadata().invoke(call, ReadPageMetadataInputSchema.parse(scenario.input));
+    case 'readPage': return client.readPage().invoke(call, ReadPageInputSchema.parse(scenario.input));
   }
   throw new Error(`unknown web-feed operation ${scenario.operation}`);
 }

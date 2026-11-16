@@ -4,9 +4,9 @@
 import { Attribute, StepList, StepRef, forceFail, goTo, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
 import {
-  newDiscoverFeedsStep, newReadFeedStep, newReadPageMetadataStep, newReadSitemapStep, type Connection, type DiscoveredFeeds,
-  type DiscoverFeedsInput, type Feed, type FeedItem, type PageMetadata, type ReadFeedInput, type ReadPageMetadataInput,
-  type ReadSitemapInput, type Sitemap, type SitemapEntry,
+  newDiscoverFeedsStep, newReadFeedStep, newReadPageMetadataStep, newReadPageStep, newReadSitemapStep, type Connection,
+  type DiscoveredFeeds, type DiscoverFeedsInput, type Feed, type FeedItem, type Page, type PageMetadata, type ReadFeedInput,
+  type ReadPageInput, type ReadPageMetadataInput, type ReadSitemapInput, type Sitemap, type SitemapEntry,
 } from '@superdurable/connector-web-feed';
 
 /** Static Dex Web connection of the web-feed connector. */
@@ -19,6 +19,8 @@ const defaultMaxPosts = 5;
 const maxPostsAllowed = 10;
 // Bounds the sitemap and child sitemap reads of one check.
 const maxSitemapReads = 4;
+// Bounds the reported post text, which the report keeps as an excerpt.
+const firstPostTextCharacters = 2000;
 
 /** Blog to check; give siteUrl, feedUrl, or sitemapUrl. */
 export interface CheckRequest {
@@ -30,13 +32,18 @@ export interface CheckRequest {
   /** Reported posts, from 1 through 10; zero selects 5. */ maxPosts?: number;
   /** Feed etag a previous check reported, sent as a conditional GET validator. */ etag?: string;
   /** Feed lastModified a previous check reported, sent as a conditional GET validator. */ lastModified?: string;
+  /** Reads the readable text of the first reported post into the report. */ includeFirstPostText?: boolean;
 }
 
 /** One reported post; title and summary are untrusted provider text. */
 export interface Post { url: string; title?: string; summary?: string; publishedAt?: string }
 
 /** Flow output: the newest posts and the feed validators for the next check. */
-export interface CheckReport { source: string; sourceUrl: string; isUnchanged: boolean; etag?: string; lastModified?: string; posts: Post[] }
+export interface CheckReport {
+  source: string; sourceUrl: string; isUnchanged: boolean; etag?: string; lastModified?: string; posts: Post[];
+  /** Readable text of the first post, at most 2000 code points, when the request set includeFirstPostText; untrusted provider text. */
+  firstPostText?: string;
+}
 
 interface CheckState {
   request: CheckRequest & { maxPosts: number };
@@ -59,6 +66,7 @@ export class BlogPostCheck implements Flow<CheckRequest> {
   private readonly completeUnchangedFeed = new CompleteUnchangedFeed();
   private readonly collectSitemapEntries = new CollectSitemapEntries();
   private readonly collectPostPage = new CollectPostPage();
+  private readonly collectFirstPostText = new CollectFirstPostText();
 
   /** Bind the static web-feed connection. */
   constructor(private readonly connection: Connection) {
@@ -98,6 +106,12 @@ export class BlogPostCheck implements Flow<CheckRequest> {
         notFound: this.collectPostPage,
       }),
       this.collectPostPage,
+      newReadPageStep<ReadPageInput>({
+        stepType: 'ReadFirstPostText', connection: this.connection, connectionName: ConnectionName, mapToOperationInput: input => input,
+        annotations: { groupId: 'text', groupLabel: 'Post text', explanation: 'Read the readable text of the first reported post.' },
+        read: this.collectFirstPostText,
+      }),
+      this.collectFirstPostText,
     );
   }
 
@@ -143,12 +157,16 @@ class CollectFeedPosts implements Step<QueryResult<Feed>> {
   getStepType(): string { return 'CollectFeedPosts'; }
   execute(context: Context, result: QueryResult<Feed>): StepDecision {
     const state = checkStateAttribute.get(context);
-    const report: CheckReport = {
+    state.report = {
       source: SourceFeed, sourceUrl: result.value.finalUrl, isUnchanged: false,
       ...validators(result.value), posts: selectFeedPosts(result.value.items ?? [], state.publishedAfter, state.request.maxPosts),
     };
-    reportAttribute.set(context, report);
-    return gracefulComplete(report);
+    if (shouldReadFirstPostText(state)) {
+      checkStateAttribute.set(context, state);
+      return goTo(new StepRef('ReadFirstPostText'), firstPostTextInput(state));
+    }
+    reportAttribute.set(context, state.report);
+    return gracefulComplete(state.report);
   }
 }
 
@@ -183,6 +201,10 @@ class CollectSitemapEntries implements Step<QueryResult<Sitemap>> {
     checkStateAttribute.set(context, state);
     const firstPage = state.pendingPages[0];
     if (!firstPage) {
+      if (shouldReadFirstPostText(state)) {
+        checkStateAttribute.set(context, state);
+        return goTo(new StepRef('ReadFirstPostText'), firstPostTextInput(state));
+      }
       reportAttribute.set(context, state.report);
       return gracefulComplete(state.report);
     }
@@ -203,6 +225,24 @@ class CollectPostPage implements Step<QueryResult<PageMetadata>> {
     checkStateAttribute.set(context, state);
     const nextPage = state.pendingPages[0];
     if (nextPage) return goTo(new StepRef('ReadPostPage'), { url: nextPage.url } satisfies ReadPageMetadataInput);
+    if (shouldReadFirstPostText(state)) {
+      checkStateAttribute.set(context, state);
+      return goTo(new StepRef('ReadFirstPostText'), firstPostTextInput(state));
+    }
+    reportAttribute.set(context, state.report);
+    return gracefulComplete(state.report);
+  }
+}
+
+// dex:group group-id:text group-label:"Post text"
+// dex:explanation text:"Add the first post's readable text to the report and complete."
+class CollectFirstPostText implements Step<QueryResult<Page>> {
+  readonly inputCodec = jsonCodec<QueryResult<Page>>();
+  getStepType(): string { return 'CollectFirstPostText'; }
+  execute(context: Context, result: QueryResult<Page>): StepDecision {
+    const state = checkStateAttribute.get(context);
+    if (!state.report) throw new Error('blog post check state has no report');
+    state.report.firstPostText = result.value.text;
     reportAttribute.set(context, state.report);
     return gracefulComplete(state.report);
   }
@@ -221,6 +261,16 @@ export function newCheckState(request: CheckRequest): CheckState {
     state.publishedAfter = new Date(request.publishedAfter).toISOString().replace('.000Z', 'Z');
   }
   return state;
+}
+
+/** Whether the request asked for the first post's text and a post has a URL. */
+function shouldReadFirstPostText(state: CheckState): boolean {
+  return Boolean(state.request.includeFirstPostText && state.report?.posts[0]?.url);
+}
+
+/** Read the first reported post's text within the report's bound; exported for deterministic tests. */
+export function firstPostTextInput(state: CheckState): ReadPageInput {
+  return { url: state.report?.posts[0]?.url ?? '', maxTextCharacters: firstPostTextCharacters };
 }
 
 function feedInput(state: CheckState, url: string): ReadFeedInput {

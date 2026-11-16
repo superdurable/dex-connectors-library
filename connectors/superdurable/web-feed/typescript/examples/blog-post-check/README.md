@@ -4,7 +4,8 @@ This Flow, `BlogPostCheck`, is the TypeScript form of the
 [Go example](../../../go/examples/blog-post-check/README.md) and uses the same
 static `web-feed-public` connection, Step types, and branch wiring: it reads a
 blog's advertised feed with a conditional GET, or its sitemap and the newest
-post pages when it has none. `notModified` completes an unchanged check, and
+post pages when it has none, and with `includeFirstPostText` reads the first
+reported post's text with `readPage`. `notModified` completes an unchanged check, and
 `notFound` on a post page skips that post; every other optional branch fails
 the Flow.
 
@@ -55,3 +56,7 @@ Checks started with `example:start` completed for `https://go.dev/blog/` and
 `https://www.postgresql.org/` with `/about/news/` (no feed; sitemap and page
 metadata), and `https://kubernetes.io/sitemap.xml` (a sitemap index). A
 loopback feed URL failed on `unreachable` and a missing feed on `notFound`.
+
+The `includeFirstPostText` path was added later the same day. It runs on real
+Dex with the generated mock in the integration tests and has not yet run
+through Dex Web against a public site.

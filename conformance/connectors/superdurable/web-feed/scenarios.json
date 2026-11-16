@@ -2538,6 +2538,605 @@
       },
       "name": "readPageMetadata-transport-failure",
       "operation": "readPageMetadata"
+    },
+    {
+      "callId": "a855aa45-5946-525b-8be1-fa16f037ac46",
+      "exchanges": [
+        {
+          "body": "\u003c!DOCTYPE html\u003e\n\u003chtml lang=\"en\"\u003e\u003chead\u003e\n\u003cmeta charset=\"utf-8\"\u003e\n\u003ctitle\u003eFaster builds with a shared cache | Example\u003c/title\u003e\n\u003cmeta name=\"description\" content=\"How the team   cut clean build times in half.\"\u003e\n\u003cmeta property=\"og:site_name\" content=\"Example Engineering\"\u003e\n\u003cmeta property=\"article:published_time\" content=\"2026-11-09T17:00:00+00:00\"\u003e\n\u003clink rel=\"canonical\" href=\"/blog/faster-builds\"\u003e\n\u003cstyle\u003ebody { color: black; }\u003c/style\u003e\n\u003cscript\u003ewindow.analytics = \"\u003cp\u003enot text\u003c/p\u003e\";\u003c/script\u003e\n\u003c/head\u003e\u003cbody\u003e\n\u003cheader\u003e\u003ca href=\"/\"\u003eExample\u003c/a\u003e\u003cnav\u003e\u003ca href=\"/blog\"\u003eBlog\u003c/a\u003e \u003ca href=\"/about\"\u003eAbout\u003c/a\u003e\u003c/nav\u003e\u003c/header\u003e\n\u003cmain\u003e\n\u003carticle class=\"related\"\u003e\u003ch2\u003eRelated: Release notes\u003c/h2\u003e\u003cp\u003eShort teaser.\u003c/p\u003e\u003c/article\u003e\n\u003carticle\u003e\n  \u003cheader\u003e\u003cp class=\"byline\"\u003eBy Avery Chen\u003c/p\u003e\u003c/header\u003e\n  \u003ch1\u003eFaster builds with a shared cache\u003c/h1\u003e\n  \u003cp\u003eClean builds used to take   twenty minutes.\n     Now they take \u003cem\u003eten\u003c/em\u003e\u0026nbsp;minutes \u0026amp; less.\u003c/p\u003e\n  \u003cfigure\u003e\u003cimg src=\"/chart.png\" alt=\"Build times\"\u003e\u003cfigcaption\u003eBuild times by week.\u003c/figcaption\u003e\u003c/figure\u003e\n  \u003cp\u003eFirst line\u003cbr\u003eSecond line\u003c/p\u003e\n  \u003cul\u003e\u003cli\u003eShare one remote cache.\u003c/li\u003e\u003cli\u003eKey entries by inputs.\u003c/li\u003e\u003c/ul\u003e\n  \u003caside\u003eSubscribe to the newsletter.\u003c/aside\u003e\n  \u003cnoscript\u003e\u003cp\u003eEnable scripts.\u003c/p\u003e\u003c/noscript\u003e\n  \u003csvg\u003e\u003ctext\u003eChart label\u003c/text\u003e\u003c/svg\u003e\n  \u003cform\u003e\u003cbutton\u003eCopy link\u003c/button\u003e\u003clabel\u003eTopic \u003cselect\u003e\u003coption\u003eAll\u003c/option\u003e\u003c/select\u003e\u003c/label\u003e\u003c/form\u003e\n\u003c/article\u003e\n\u003c/main\u003e\n\u003cfooter\u003e\u003cp\u003e\u0026copy; 2026 Example\u003c/p\u003e\u003c/footer\u003e\n\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Content-Type": "text/html; charset=utf-8",
+            "ETag": "\"a1\"",
+            "Last-Modified": "Mon, 09 Nov 2026 18:00:00 GMT"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/faster-builds",
+          "query": {
+            "utm_source": [
+              "feed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "canonicalUrl": "https://www.example.com/blog/faster-builds",
+          "contentType": "text/html",
+          "description": "How the team cut clean build times in half.",
+          "etag": "\"a1\"",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/blog/faster-builds?utm_source=feed",
+          "isTextTruncated": false,
+          "lastModified": "Mon, 09 Nov 2026 18:00:00 GMT",
+          "publishedAt": "2026-11-09T17:00:00Z",
+          "siteName": "Example Engineering",
+          "statusCode": 200,
+          "text": "Faster builds with a shared cache\n\nClean builds used to take twenty minutes. Now they take ten minutes \u0026 less.\n\nBuild times by week.\n\nFirst line\nSecond line\n\nShare one remote cache.\n\nKey entries by inputs.\n\nTopic",
+          "title": "Faster builds with a shared cache | Example"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "maxTextCharacters": 5000,
+        "url": "https://www.example.com/blog/faster-builds?utm_source=feed"
+      },
+      "name": "readPage-article",
+      "operation": "readPage"
+    },
+    {
+      "callId": "bc473aa7-f5af-546b-af9e-150c4ffd7d8d",
+      "exchanges": [
+        {
+          "body": "\u003chtml xmlns=\"http://www.w3.org/1999/xhtml\"\u003e\u003chead\u003e\u003ctitle\u003eRelease notes\u003c/title\u003e\u003c/head\u003e\u003cbody\u003e\u003cdiv\u003eOutside main.\u003c/div\u003e\u003cmain\u003e\u003ch1\u003eInside main\u003c/h1\u003e\u003cdiv\u003eSecond block \u003cb\u003ebold\u003c/b\u003etext.\u003c/div\u003e\u003c/main\u003e\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Content-Type": "application/xhtml+xml"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "contentType": "application/xhtml+xml",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/notes",
+          "isTextTruncated": false,
+          "statusCode": 200,
+          "text": "Inside main\n\nSecond block boldtext.",
+          "title": "Release notes"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/notes"
+      },
+      "name": "readPage-main-xhtml",
+      "operation": "readPage"
+    },
+    {
+      "callId": "d7b57dd9-d4cd-54a2-a0b2-99d23227b620",
+      "exchanges": [
+        {
+          "body": "\u003chtml\u003e\u003chead\u003e\u003cmeta property=\"og:title\" content=\"Notes \u0026amp; news\"\u003e\u003cmeta property=\"og:description\" content=\"Weekly notes.\"\u003e\u003cscript type=\"application/ld+json\"\u003e{\"@type\": \"NewsArticle\", \"datePublished\": \"2026-11-01T08:00:00Z\"}\u003c/script\u003e\u003c/head\u003e\n\u003cbody\u003e\u003caside\u003e\u003cnav\u003e\u003ca\u003eMenu\u003c/a\u003e\u003cnav\u003e\u003ca\u003eMore\u003c/a\u003e\u003c/aside\u003e\n\u003cdiv\u003ePlain   body\u003cbr/\u003etext with caf\u0026eacute; \u0026#x2014; done.\u003cp\u003eImplied one\u003cp\u003eImplied two\u003c/nav\u003e\n\u003cdiv/\u003eAfter a self-closing div.\u003csvg\u003e\u003cpath/\u003e\u003ctitle\u003eIcon\u003c/title\u003e\u003c/svg\u003e\n\u003c/body\u003e\u003c/html\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/weekly",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "contentType": "text/html",
+          "description": "Weekly notes.",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/weekly",
+          "isTextTruncated": false,
+          "publishedAt": "2026-11-01T08:00:00Z",
+          "statusCode": 200,
+          "text": "Plain body\ntext with café — done.\n\nImplied one\n\nImplied two\n\nAfter a self-closing div.",
+          "title": "Notes \u0026 news"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/weekly"
+      },
+      "name": "readPage-malformed-body",
+      "operation": "readPage"
+    },
+    {
+      "callId": "4ecc77e1-e738-5fce-a8db-57babc3670ce",
+      "exchanges": [
+        {
+          "body": "﻿\n  Release notes\n\n- faster builds with a shared cache\n  - indented detail\n\n",
+          "headers": {
+            "Content-Type": "text/plain; charset=utf-8"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes.txt",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "contentType": "text/plain",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/notes.txt",
+          "isTextTruncated": true,
+          "statusCode": 200,
+          "text": "Release notes\n\n- faster builds with a…"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "maxTextCharacters": 40,
+        "url": "https://www.example.com/notes.txt"
+      },
+      "name": "readPage-plain-text-truncated",
+      "operation": "readPage"
+    },
+    {
+      "callId": "70e1730b-dc00-5ba4-b413-6578aa5483c5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "http://www.example.com/blog/post"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 301
+        },
+        {
+          "body": "\u003carticle\u003e\u003cp\u003eMoved post.\u003c/p\u003e\u003c/article\u003e",
+          "headers": {
+            "Content-Type": "text/html"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "contentType": "text/html",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/blog/post",
+          "isTextTruncated": false,
+          "statusCode": 200,
+          "text": "Moved post."
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "http://old.example.com/post"
+      },
+      "name": "readPage-redirect-upgrades-http",
+      "operation": "readPage"
+    },
+    {
+      "callId": "3f0a80da-2b36-55ea-a93b-fe0e86027cfb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "ETag": "\"a2\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/faster-builds",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "If-Modified-Since": [
+              "Mon, 09 Nov 2026 18:00:00 GMT"
+            ],
+            "If-None-Match": [
+              "\"a1\""
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 304
+        }
+      ],
+      "expected": {
+        "branch": "notModified",
+        "failureKind": "",
+        "output": {
+          "etag": "\"a2\"",
+          "fetchedAt": "2026-11-10T10:00:00Z",
+          "finalUrl": "https://www.example.com/blog/faster-builds",
+          "isTextTruncated": false,
+          "lastModified": "Mon, 09 Nov 2026 18:00:00 GMT",
+          "statusCode": 304,
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "etag": "\"a1\"",
+        "lastModified": "Mon, 09 Nov 2026 18:00:00 GMT",
+        "url": "https://www.example.com/blog/faster-builds"
+      },
+      "name": "readPage-not-modified",
+      "operation": "readPage"
+    },
+    {
+      "callId": "1fc3e740-f40b-520e-a95f-72c4d9003d3c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/removed",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTextTruncated": false,
+          "statusCode": 0,
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/blog/removed"
+      },
+      "name": "readPage-not-found",
+      "operation": "readPage"
+    },
+    {
+      "callId": "48327f9c-2c4c-5861-8feb-6714c6720097",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTextTruncated": false,
+          "statusCode": 0,
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/blog/post"
+      },
+      "name": "readPage-forbidden",
+      "operation": "readPage"
+    },
+    {
+      "callId": "abcd400f-c344-5b59-8771-d966ce14bcef",
+      "exchanges": [],
+      "expected": {
+        "branch": "unreachable",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTextTruncated": false,
+          "statusCode": 0,
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://10.0.0.5/blog/post"
+      },
+      "name": "readPage-private-literal",
+      "operation": "readPage"
+    },
+    {
+      "callId": "1856525c-2616-518b-b938-5442df8cd958",
+      "exchanges": [
+        {
+          "body": "%PDF-1.7",
+          "headers": {
+            "Content-Type": "application/pdf"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/report.pdf",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTextTruncated": false,
+          "statusCode": 0,
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/report.pdf"
+      },
+      "name": "readPage-pdf",
+      "operation": "readPage"
+    },
+    {
+      "callId": "7597eefd-9e99-586e-bcec-05827a685ae6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fetchedAt": "0001-01-01T00:00:00Z",
+          "finalUrl": "",
+          "isTextTruncated": false,
+          "statusCode": 0,
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "maxTextCharacters": 100001,
+        "url": "https://www.example.com/blog/post"
+      },
+      "name": "readPage-text-limit-out-of-range",
+      "operation": "readPage"
+    },
+    {
+      "callId": "f026f8f5-c2cf-58ed-8ada-dc4f3cf49cd6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/blog/post"
+      },
+      "name": "readPage-rate-limited",
+      "operation": "readPage"
+    },
+    {
+      "callId": "884625c6-5241-5d98-bef6-a9416d46442c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/blog/post"
+      },
+      "name": "readPage-server-error",
+      "operation": "readPage"
+    },
+    {
+      "callId": "da66f408-83f3-544a-b829-eb39ecc9e3d6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/blog/post",
+          "requestHeaders": {
+            "Accept": [
+              "text/html, application/xhtml+xml;q=0.9, text/plain;q=0.8, */*;q=0.1"
+            ],
+            "User-Agent": [
+              "Mozilla/5.0 (compatible; DexWebFeed; +https://connectors.superdurable.io)"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-10T10:00:00Z",
+      "input": {
+        "url": "https://www.example.com/blog/post"
+      },
+      "name": "readPage-transport-failure",
+      "operation": "readPage"
     }
   ],
   "schemaVersion": 1

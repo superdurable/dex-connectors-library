@@ -49,6 +49,7 @@ export interface DocumentRequest {
 /** A successful read, or a 304 answer to a conditional GET. */
 export interface FetchedDocument {
   finalURL: GoURL;
+  statusCode: number;
   mediaType: string;
   charsetLabel: string;
   body: Uint8Array;
@@ -142,7 +143,7 @@ function readResponse(settings: FetchSettings, response: ProviderResponse, prefi
     const refreshed = readValidators(response.headers);
     if (refreshed.etag === '') refreshed.etag = request.validators.etag;
     if (refreshed.lastModified === '') refreshed.lastModified = request.validators.lastModified;
-    return { document: { finalURL, mediaType: '', charsetLabel: '', body: new Uint8Array(), isTruncated: false, isNotModified: true, validators: refreshed } };
+    return { document: { finalURL, statusCode: status, mediaType: '', charsetLabel: '', body: new Uint8Array(), isTruncated: false, isNotModified: true, validators: refreshed } };
   }
   if (status === 404 || status === 410) return { failure: { class: 'notFound', kind: 'NOT_FOUND', message: `the site answered HTTP ${status}`, retryAfterMs: 0 } };
   if (status === 429) return { failure: { class: 'retry', kind: 'RATE_LIMIT', message: 'the site answered HTTP 429', retryAfterMs: retryAfter(settings, response) } };
@@ -168,7 +169,7 @@ function readResponse(settings: FetchSettings, response: ProviderResponse, prefi
       if (body.length > request.maxBytes) return { failure: tooLarge(request.expectedContent) };
     }
   }
-  return { document: { finalURL, mediaType, charsetLabel, body, isTruncated, isNotModified: false, validators: readValidators(response.headers) } };
+  return { document: { finalURL, statusCode: status, mediaType, charsetLabel, body, isTruncated, isNotModified: false, validators: readValidators(response.headers) } };
 }
 
 function retryAfter(settings: FetchSettings, response: ProviderResponse): number {

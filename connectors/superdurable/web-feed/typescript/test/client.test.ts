@@ -8,6 +8,7 @@ import { ProviderTransportError, type ProviderRequest, type ProviderResponse } f
 import { WebFeedClient } from '../src/client.js';
 import { refusedAddressLiteralReason } from '../src/document.js';
 import { parseGoURL } from '../src/go_url.js';
+import { extractReadableText, truncateText } from '../src/readable_text.js';
 import { collapseWhitespace, plainTextFromHTML, truncateCharacters } from '../src/text.js';
 import { optionalTimestamp } from '../src/timestamp.js';
 
@@ -119,6 +120,41 @@ describe('page reads', () => {
     expect(await client.discoverFeeds().invoke(call, { url: 'https://www.example.com/' })).toMatchObject({
       branch: 'discovered', value: { pageTitle: 'Café', feeds: [{ url: 'https://www.example.com/feed', mediaType: 'application/atom+xml' }] },
     });
+  });
+});
+
+describe('readPage', () => {
+  it('extracts the same text as the Go connector from unusual markup', () => {
+    const cases: [string, string][] = [
+      ['<article><nav>Only nav</nav></article><p>Body text.</p>', 'Body text.'],
+      ['<article><p>Outer.</p><article><p>Inner.</p></article></article><article><p>x</p></article>', 'Outer.\n\nInner.'],
+      ['<article><p>One.</p></article><article><p>Two.</p></article>', 'One.'],
+      ['<p>Above<hr/>Below<br/>next</p>', 'Above\n\nBelow\nnext'],
+      ['<p>Caf&eacute; &lt;tag&gt; &#x2014; done</p>', 'Café <tag> — done'],
+      ['<p>Visible<!-- hidden --> text</p>', 'Visible text'],
+      ['<aside><nav><a>Menu</a><nav><a>More</a></aside><main><p>Kept.</p></main>', 'Kept.'],
+      ['<main><p>One</nav></p><p>Two</p></main>', 'One\n\nTwo'],
+      ['<p>One<p>Two<div>Three</div>', 'One\n\nTwo\n\nThree'],
+      ['<svg><path/><title>Icon</title></svg><article><div/>Kept.</article>', 'Kept.'],
+    ];
+    for (const [html, text] of cases) expect(extractReadableText(Buffer.from(html), 'text/html; charset=utf-8')).toBe(text);
+    expect(extractReadableText(Buffer.from([0x3c, 0x70, 0x3e, 0x63, 0x61, 0x66, 0xe9, 0x3c, 0x2f, 0x70, 0x3e]), 'text/html; charset=iso-8859-1')).toBe('café');
+  });
+
+  it('cuts text at a late boundary and reports the cut', () => {
+    expect(truncateText('first paragraph\n\nsecond', 18)).toEqual(['first paragraph…', true]);
+    expect(truncateText('abcdef', 1)).toEqual(['…', true]);
+    expect(truncateText('short', 5)).toEqual(['short', false]);
+  });
+
+  it('rejects an oversize page and invalid input before parsing', async () => {
+    const { client, requests } = clientFor({ 'https://www.example.com/large': ok('text/html', '<p>' + 'a'.repeat(2048) + '</p>') }, { maxDocumentBytes: 1024 });
+    expect(await client.readPage().invoke(call, { url: 'https://www.example.com/large' }))
+      .toMatchObject({ branch: 'invalidResponse', failure: { kind: 'RESPONSE_TOO_LARGE', operation: 'readPage' } });
+    for (const input of [{ url: 'post.html' }, { url: 'https://www.example.com/post', maxTextCharacters: -1 }, { url: 'https://www.example.com/post', etag: '"café"' }]) {
+      expect(await client.readPage().invoke(call, input)).toMatchObject({ branch: 'defect', failure: { kind: 'VALIDATION' } });
+    }
+    expect(requests).toHaveLength(1);
   });
 });
 

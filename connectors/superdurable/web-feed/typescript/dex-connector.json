@@ -334,6 +334,93 @@
         ],
         "type": "object"
       }
+    },
+    {
+      "name": "newReadPageStep",
+      "kind": "query",
+      "operationId": "readPage",
+      "inputType": "ReadPageInput",
+      "description": "Read the readable text of one web page, such as a blog post or news article URL, without its navigation, headers, footers, scripts, and styles. Supply the page url; optionally maxTextCharacters from 1 through 100000 (default 20000). Returns the text with a blank line between paragraphs, isTextTruncated when it was cut, and the page title, description, site name, publication time in UTC, and canonical URL. Use the Web Feeds read_page_metadata tool when only the title and dates are needed. Pass etag and lastModified only to repeat an earlier read of the same page; an unchanged page then returns no text.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "invalidResponse": "rejected",
+          "notFound": "rejected",
+          "notModified": "rejected",
+          "providerRejected": "rejected",
+          "unreachable": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "read",
+          "field": "read",
+          "optional": false
+        },
+        {
+          "id": "notModified",
+          "field": "notModified",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "unreachable",
+          "field": "unreachable",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReadPageInput selects one article page and, optionally, the validators of a previous read of it.",
+        "properties": {
+          "etag": {
+            "description": "ETag is the etag a previous read of this page returned. The connector sends it as If-None-Match. Empty sends no If-None-Match header.",
+            "type": "string"
+          },
+          "lastModified": {
+            "description": "LastModified is the lastModified a previous read of this page returned, an HTTP date. The connector sends it as If-Modified-Since. Empty sends no If-Modified-Since header.",
+            "type": "string"
+          },
+          "maxTextCharacters": {
+            "description": "MaxTextCharacters bounds Text in Unicode code points, from 1 through 100000. Zero selects 20000.",
+            "type": "integer"
+          },
+          "url": {
+            "description": "URL is the absolute http or https URL of one article or blog post page, such as a post URL from readFeed or readSitemap. An http URL is requested over https at the same host; a fragment is ignored.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

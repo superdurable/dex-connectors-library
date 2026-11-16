@@ -164,3 +164,44 @@ export const ReadPageMetadataDefinition: QueryDefinition = {
 };
 /** Manifest metadata for readPageMetadata. */
 export const ReadPageMetadataMetadata = { kind: "query", idempotency: "none", authorization: "none" } as const;
+
+/** Branch IDs for readPage. */
+export const ReadPageBranch = {
+  Read: "read",
+  NotModified: "notModified",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  Unreachable: "unreachable",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** The page was downloaded and its readable text extracted; the result holds the text, the page metadata, and the validators for the next conditional GET. */
+export const ReadPageBranchRead = ReadPageBranch.Read;
+/** The site answered 304 Not Modified to the conditional GET; the result holds only the refreshed validators and no text. */
+export const ReadPageBranchNotModified = ReadPageBranch.NotModified;
+/** The site answered 404 Not Found or 410 Gone for the page URL or its redirect target. */
+export const ReadPageBranchNotFound = ReadPageBranch.NotFound;
+/** The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed. */
+export const ReadPageBranchProviderRejected = ReadPageBranch.ProviderRejected;
+/** The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read. */
+export const ReadPageBranchUnreachable = ReadPageBranch.Unreachable;
+/** The response is not an HTML or plain-text page: another media type, a page larger than maxDocumentBytes, or a broken or overlong redirect chain. */
+export const ReadPageBranchInvalidResponse = ReadPageBranch.InvalidResponse;
+/** The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http, or a maxTextCharacters out of range; nothing was sent. */
+export const ReadPageBranchDefect = ReadPageBranch.Defect;
+/** Manifest definition for readPage. */
+export const ReadPageDefinition: QueryDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "readPage" },
+  branches: [
+    { id: "read", description: "The page was downloaded and its readable text extracted; the result holds the text, the page metadata, and the validators for the next conditional GET." },
+    { id: "notModified", description: "The site answered 304 Not Modified to the conditional GET; the result holds only the refreshed validators and no text.", optional: true },
+    { id: "notFound", description: "The site answered 404 Not Found or 410 Gone for the page URL or its redirect target.", optional: true },
+    { id: "providerRejected", description: "The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed.", optional: true },
+    { id: "unreachable", description: "The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read.", optional: true },
+    { id: "invalidResponse", description: "The response is not an HTML or plain-text page: another media type, a page larger than maxDocumentBytes, or a broken or overlong redirect chain.", optional: true },
+    { id: "defect", description: "The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http, or a maxTextCharacters out of range; nothing was sent.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+};
+/** Manifest metadata for readPage. */
+export const ReadPageMetadata = { kind: "query", idempotency: "none", authorization: "none" } as const;

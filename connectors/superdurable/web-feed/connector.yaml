@@ -13,7 +13,7 @@ spec:
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-web-feed'
-      operations: [readFeed, discoverFeeds, readSitemap, readPageMetadata]
+      operations: [readFeed, discoverFeeds, readSitemap, readPageMetadata, readPage]
       triggers: []
   codegen:
     go:

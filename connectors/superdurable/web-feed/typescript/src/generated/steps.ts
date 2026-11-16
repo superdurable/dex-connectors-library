@@ -5,7 +5,7 @@
 import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { ReadFeedInput, Feed, DiscoverFeedsInput, DiscoveredFeeds, ReadSitemapInput, Sitemap, ReadPageMetadataInput, PageMetadata } from './models.js';
+import type { ReadFeedInput, Feed, DiscoverFeedsInput, DiscoveredFeeds, ReadSitemapInput, Sitemap, ReadPageMetadataInput, PageMetadata, ReadPageInput, Page } from './models.js';
 
 /** Configuration for the readFeed connector Step. */
 export interface ReadFeedStepConfig<StepInput, OperationInput = ReadFeedInput, OperationOutput = Feed> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -141,6 +141,43 @@ export function newReadPageMetadataStep<StepInput, OperationInput = ReadPageMeta
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.readPageMetadata(), connection: connection.reference, branches: [
     goToBranch("read", read),
+    ...(notFound ? [goToBranch("notFound", notFound)] : []),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(unreachable ? [goToBranch("unreachable", unreachable)] : []),
+    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the readPage connector Step. */
+export interface ReadPageStepConfig<StepInput, OperationInput = ReadPageInput, OperationOutput = Page> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ readPage(): Query<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** The page was downloaded and its readable text extracted; the result holds the text, the page metadata, and the validators for the next conditional GET. */
+  read: StepTarget<QueryResult<OperationOutput>>;
+  /** The site answered 304 Not Modified to the conditional GET; the result holds only the refreshed validators and no text. */
+  notModified?: StepTarget<QueryResult<OperationOutput>>;
+  /** The site answered 404 Not Found or 410 Gone for the page URL or its redirect target. */
+  notFound?: StepTarget<QueryResult<OperationOutput>>;
+  /** The site refused the request with another 4xx status, such as 401, 403, or 451; nothing was parsed. */
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
+  /** The host does not exist, resolves to a private, loopback, or link-local address the connector never connects to, or presents a certificate that fails TLS verification; nothing was read. */
+  unreachable?: StepTarget<QueryResult<OperationOutput>>;
+  /** The response is not an HTML or plain-text page: another media type, a page larger than maxDocumentBytes, or a broken or overlong redirect chain. */
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
+  /** The input is invalid, such as a URL that is not absolute http or https, carries user information, or names a port for plain http, or a maxTextCharacters out of range; nothing was sent. */
+  defect?: StepTarget<QueryResult<OperationOutput>>;
+}
+
+/** Build the readPage Step from a named connection. */
+export function newReadPageStep<StepInput, OperationInput = ReadPageInput, OperationOutput = Page>(configuration: ReadPageStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, read, notModified, notFound, providerRejected, unreachable, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.readPage(), connection: connection.reference, branches: [
+    goToBranch("read", read),
+    ...(notModified ? [goToBranch("notModified", notModified)] : []),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(unreachable ? [goToBranch("unreachable", unreachable)] : []),

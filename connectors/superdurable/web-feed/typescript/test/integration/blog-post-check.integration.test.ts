@@ -51,6 +51,20 @@ it('reads the advertised feed through real Dex', async () => {
   expect(mock.readFeed().calls()[before]?.input.url).toBe('https://blog.example.com/feed.xml');
 }, 90_000);
 
+it('reads the first post text through real Dex', async () => {
+  const before = mock.readPage().calls().length;
+  const result = await runCheck({ feedUrl: 'https://blog.example.com/feed.xml', includeFirstPostText: true });
+  expect(result.status, result.error).toBe('completed');
+  expect(result.report?.posts).toHaveLength(2);
+  expect(result.report?.firstPostText?.startsWith('Spring release notes\n\n')).toBe(true);
+  const calls = mock.readPage().calls();
+  expect(calls).toHaveLength(before + 1);
+  expect(calls.at(-1)?.input).toEqual({ url: 'https://blog.example.com/posts/faster-builds', maxTextCharacters: 2000 });
+  const withoutText = await runCheck({ feedUrl: 'https://blog.example.com/feed.xml' });
+  expect(withoutText.report?.firstPostText).toBeUndefined();
+  expect(mock.readPage().calls()).toHaveLength(before + 1);
+}, 90_000);
+
 it('completes an unchanged feed through the wired notModified branch', async () => {
   mock.readFeed().respond(readFeedUnchanged());
   const result = await runCheck({ feedUrl: 'https://blog.example.com/feed.xml', etag: '"6f1e-5c2a"' });

@@ -257,7 +257,7 @@ its own.
 
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) implements all four operations
+The [TypeScript package](typescript/README.md) implements all five operations
 with the same branches, limits, address policy, and redirect handling. It
 replays every Go-recorded scenario in
 `conformance/connectors/superdurable/web-feed/scenarios.json`, exports the
@@ -290,8 +290,8 @@ every format and branch, redirects across hosts, `http` upgrades, the
 redirect limit, refused addresses at the first hop and after a redirect,
 `NXDOMAIN`, a certificate mismatch, gzip limits, charsets, and the timestamp
 spellings above, and readable-text extraction from article, `main`, and
-body regions, plain text, truncation, and malformed markup. The integration tests need a running `dexcli dev -durability
-process-crash-safe` and use `DEX_FLOW_SERVICE_ADDRESS` when it is not
+body regions, plain text, truncation, and malformed markup. The integration
+tests need a running `dexcli dev -durability process-crash-safe` and use `DEX_FLOW_SERVICE_ADDRESS` when it is not
 `127.0.0.1:8801`; they run the example on real Dex with the generated
 `webfeedmock` connection, including a Dex retry, the `notModified` wiring, a
 sitemap index with two children, a skipped removed page, and the first

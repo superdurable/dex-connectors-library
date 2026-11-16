@@ -43,7 +43,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Maximum duration of one HTTP request, from connecting to reading the last byte, as a Go duration of at least one second, such as 10s or 1m. Each redirect hop is a separate request, and the Step's 30-second Execute timeout bounds them all. Blank uses the displayed default; raise it only for a slow site that a poll must still read. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Largest feed or sitemap, in bytes after decompression, that readFeed and readSitemap accept, as a positive integer; a larger document selects invalidResponse instead of being parsed. Blank uses the displayed default, which fits typical full-content feeds; raise it only for a sitemap or feed that is known to be larger. */
+  /** Largest feed, sitemap, or page, in bytes after decompression, that readFeed, readSitemap, and readPage accept, as a positive integer; a larger document selects invalidResponse instead of being parsed. Blank uses the displayed default, which fits typical full-content feeds and article pages; raise it only for a sitemap, feed, or page that is known to be larger. */
   maxDocumentBytes?: number;
   /** Number of bytes of an HTML page that discoverFeeds and readPageMetadata read, as a positive integer. They read only that prefix and report isTruncated when the page is longer, because head metadata comes first. Blank uses the displayed default; raise it only for a site whose head or JSON-LD sits beyond it. */
   maxPageBytes?: number;
@@ -301,6 +301,59 @@ export interface PageMetadata {
   /** FetchedAt is the UTC time the Worker read the page. */
   "fetchedAt": string;
 }
+/** ReadPageInput selects one article page and, optionally, the validators of a previous read of it. */
+export interface ReadPageInput {
+  /** URL is the absolute http or https URL of one article or blog post page, such as a post URL from
+   * readFeed or readSitemap. An http URL is requested over https at the same host; a fragment is ignored. */
+  "url": string;
+  /** ETag is the etag a previous read of this page returned. The connector sends it as If-None-Match.
+   * Empty sends no If-None-Match header. */
+  "etag"?: string | undefined;
+  /** LastModified is the lastModified a previous read of this page returned, an HTTP date. The connector
+   * sends it as If-Modified-Since. Empty sends no If-Modified-Since header. */
+  "lastModified"?: string | undefined;
+  /** MaxTextCharacters bounds Text in Unicode code points, from 1 through 100000. Zero selects 20000. */
+  "maxTextCharacters"?: number | undefined;
+}
+/** Page is the readable text and head metadata of one page, or only the refreshed validators when the
+   * branch is notModified. Text fields are untrusted provider text with HTML removed; escape them before
+   * rendering as HTML. */
+export interface Page {
+  /** FinalURL is the https URL that served the page after redirects. */
+  "finalUrl": string;
+  /** StatusCode is the HTTP status of the final response: a 2xx status, or 304 for notModified. */
+  "statusCode": number;
+  /** ContentType is the media type the page was read as: text/html, application/xhtml+xml, or text/plain.
+   * A response without a Content-Type header is read as text/html. It is empty for notModified. */
+  "contentType"?: string | undefined;
+  /** Title is the page's title element as plain text, else its og:title, at most 500 code points. */
+  "title"?: string | undefined;
+  /** Description is the meta name=description content, else og:description, at most 1000 code points. */
+  "description"?: string | undefined;
+  /** SiteName is the og:site_name property, at most 200 code points. */
+  "siteName"?: string | undefined;
+  /** CanonicalURL is the absolute link rel=canonical URL. */
+  "canonicalUrl"?: string | undefined;
+  /** PublishedAt is the article:published_time property in UTC, else the JSON-LD article datePublished. */
+  "publishedAt"?: string | null | undefined;
+  /** Text is the page's readable text with paragraphs separated by one blank line and a line break inside
+   * a paragraph kept as one newline. HTML text comes from the article element with the most text, else
+   * the main element with the most text, else the whole page, without script, style, noscript, template,
+   * svg, math, iframe, title, nav, header, footer, aside, button, select, and textarea content; other
+   * whitespace runs collapse to one space. A plain-text page is returned with only its surrounding
+   * whitespace trimmed. Text is cut to maxTextCharacters, preferring a word boundary, and a cut text ends
+   * with an ellipsis that counts toward the bound. */
+  "text": string;
+  /** IsTextTruncated reports that Text was cut to maxTextCharacters. */
+  "isTextTruncated": boolean;
+  /** ETag is the response's ETag header. Pass it as the next read's etag. Empty when the site sent none. */
+  "etag"?: string | undefined;
+  /** LastModified is the response's Last-Modified header. Pass it as the next read's lastModified. Empty
+   * when the site sent none. */
+  "lastModified"?: string | undefined;
+  /** FetchedAt is the UTC time the Worker read the page. */
+  "fetchedAt": string;
+}
 
 /** Runtime validator for ReadFeedInput. */
 export const ReadFeedInputSchema = z.strictObject({
@@ -435,3 +488,28 @@ export const PageMetadataSchema = z.strictObject({
   "isTruncated": z.boolean(),
   "fetchedAt": GoTimeJSONSchema,
 }) satisfies z.ZodType<PageMetadata>;
+
+/** Runtime validator for ReadPageInput. */
+export const ReadPageInputSchema = z.strictObject({
+  "url": z.string(),
+  "etag": z.string().optional(),
+  "lastModified": z.string().optional(),
+  "maxTextCharacters": z.number().int().optional(),
+}) satisfies z.ZodType<ReadPageInput>;
+
+/** Runtime validator for Page. */
+export const PageSchema = z.strictObject({
+  "finalUrl": z.string(),
+  "statusCode": z.number().int(),
+  "contentType": z.string().optional(),
+  "title": z.string().optional(),
+  "description": z.string().optional(),
+  "siteName": z.string().optional(),
+  "canonicalUrl": z.string().optional(),
+  "publishedAt": GoTimeJSONSchema.nullable().optional(),
+  "text": z.string(),
+  "isTextTruncated": z.boolean(),
+  "etag": z.string().optional(),
+  "lastModified": z.string().optional(),
+  "fetchedAt": GoTimeJSONSchema,
+}) satisfies z.ZodType<Page>;
