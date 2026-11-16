@@ -439,3 +439,33 @@ class UpdatePagePropertiesOutput:
 
 
 setattr(UpdatePagePropertiesOutput, '__module__', 'dex_connectors.notion.models')
+
+
+# DatabaseRowChangedEvent is one row created or edited in the watched data source. Edits of one row that
+# Notion reports with the same last edited time arrive once, and a row moved to the trash is not delivered.
+@dataclass(frozen=True, slots=True)
+class DatabaseRowChangedEvent:
+    # DataSourceID is the watched data source.
+    data_source_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'dataSourceId'})
+    # ChangeKind is the derived change kind; see DatabaseRowChangeKind.
+    change_kind: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'changeKind'})
+    # Row is the row with its property values as the data source query returned it.
+    row: Page = _dataclass_field(kw_only=True)
+
+
+setattr(DatabaseRowChangedEvent, '__module__', 'dex_connectors.notion.models')
+
+
+# DatabaseRowChangedTriggerConfiguration is the databaseRowChanged binding configuration that the
+# dataSourcePicker unit saves in Dex Web. Changing the data source of a binding that already polled makes
+# its next poll record a new baseline for the new data source.
+@dataclass(frozen=True, slots=True)
+class DatabaseRowChangedTriggerConfiguration:
+    # DataSourceID is the watched data source, a Notion ID such as
+    # 2a4d6f80-1b3c-4d5e-8f70-112233445566; the picker resolves it from a database link. It is required.
+    data_source_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'dataSourceId', 'dex_json_omit_default': True})
+    # DataSourceName is the picked data source's name, kept for display only.
+    data_source_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'dataSourceName', 'dex_json_omit_default': True})
+
+
+setattr(DatabaseRowChangedTriggerConfiguration, '__module__', 'dex_connectors.notion.models')

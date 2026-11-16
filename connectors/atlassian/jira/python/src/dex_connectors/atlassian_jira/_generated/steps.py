@@ -138,6 +138,7 @@ def new_create_issue_step(
     defect: dex.StepTarget[MutationResult[CreateIssueOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CreateIssueOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateIssueInput, CreateIssueOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Jira Step connection name must match its connection reference")
@@ -169,6 +170,7 @@ def new_create_issue_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -190,6 +192,7 @@ def new_transition_issue_step(
     defect: dex.StepTarget[MutationResult[TransitionIssueOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[TransitionIssueOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, TransitionIssueInput, TransitionIssueOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Jira Step connection name must match its connection reference")
@@ -225,6 +228,7 @@ def new_transition_issue_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -245,6 +249,7 @@ def new_add_comment_step(
     defect: dex.StepTarget[MutationResult[AddCommentOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[AddCommentOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, AddCommentInput, AddCommentOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Jira Step connection name must match its connection reference")
@@ -278,6 +283,7 @@ def new_add_comment_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

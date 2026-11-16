@@ -5,7 +5,7 @@
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
@@ -58,13 +58,22 @@ class Exchange:
     reflects_secret: bool = False
 
 
+MINIMUM_POLL_INTERVAL = timedelta(seconds=30)
+"""Keeps one meetingChanged binding under Zoom's Free-plan Medium daily limit."""
+
+
 def _encode_query(values: dict[str, str]) -> str:
     """Match Go url.Values.Encode for sorted query pairs."""
     return urlencode(sorted(values.items()))
 
 
 class Client:
-    """Resolve Zoom credentials per attempt and own optional provider transport."""
+    """Resolve Zoom credentials per attempt and own optional provider transport.
+
+    `poll_interval` is the meetingChanged Trigger's delay between polls, from
+    `Config.poll_interval_seconds` (blank or zero uses the manifest's two minutes). The constructor raises
+    ValueError for an interval under 30 seconds, as Go's New does.
+    """
 
     def __init__(
         self,
@@ -79,6 +88,14 @@ class Client:
         self.max_response_bytes = config.max_response_bytes or Config().max_response_bytes
         if type(self.max_response_bytes) is not int or self.max_response_bytes < 1:
             raise ValueError("Zoom maxResponseBytes must be positive")
+        poll_interval_seconds = config.poll_interval_seconds or Config().poll_interval_seconds
+        if (
+            isinstance(poll_interval_seconds, bool)
+            or not isinstance(poll_interval_seconds, int | float)
+            or not poll_interval_seconds >= MINIMUM_POLL_INTERVAL.total_seconds()
+        ):
+            raise ValueError("Zoom pollInterval must be at least 30s")
+        self.poll_interval = timedelta(seconds=poll_interval_seconds)
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(20)
         self.owns_http_client = http_client is None

@@ -394,3 +394,37 @@ class AddCommentOutput:
 
 
 setattr(AddCommentOutput, '__module__', 'dex_connectors.zoho_desk.models')
+
+
+# TicketChangedEvent is one created or changed ticket read from Zoho Desk ticket search. Several changes
+# to one ticket between two polls arrive as one delivery of its latest version. Tickets moved to the
+# trash, deleted, or archived leave the search results and are not delivered.
+@dataclass(frozen=True, slots=True)
+class TicketChangedEvent:
+    # OrgID is the connection's Zoho Desk organization.
+    org_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'orgId'})
+    # DepartmentID is the watched department, or empty when the binding watches every department.
+    department_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'departmentId', 'dex_json_omit_default': True})
+    # ChangeKind is the derived change kind; see TicketChangeKind.
+    change_kind: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'changeKind'})
+    # Ticket is the ticket as the search returned it, without its DescriptionHTML. Read it with getTicket
+    # for the description, threads, and comments.
+    ticket: Ticket = _dataclass_field(kw_only=True)
+
+
+setattr(TicketChangedEvent, '__module__', 'dex_connectors.zoho_desk.models')
+
+
+# TicketChangedTriggerConfiguration is the ticketChanged binding configuration that the department picker
+# saves in Dex Web. Changing the department of a binding that already polled makes its next poll record a
+# new baseline for the new department.
+@dataclass(frozen=True, slots=True)
+class TicketChangedTriggerConfiguration:
+    # DepartmentID is the watched department's numeric Zoho Desk ID from the department picker, such as
+    # 1892000000006907; blank watches every department the connection's agent can see.
+    department_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'departmentId', 'dex_json_omit_default': True})
+    # DepartmentName is the picked department's name, kept for display only.
+    department_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'departmentName', 'dex_json_omit_default': True})
+
+
+setattr(TicketChangedTriggerConfiguration, '__module__', 'dex_connectors.zoho_desk.models')

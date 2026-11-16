@@ -386,3 +386,32 @@ class FindContactByEmailOutput:
 FindContactByEmailOutput.__annotations__['contacts'] = tuple[Contact, ...] | None
 FindContactByEmailOutput.__dataclass_fields__['contacts'].type = tuple[Contact, ...] | None
 setattr(FindContactByEmailOutput, '__module__', 'dex_connectors.reamaze.models')
+
+
+# ConversationCreatedEvent is one conversation created in the watched brand or channel. Conversation is
+# the list entry Re:amaze returned when the poll first saw it, including archived and spam conversations,
+# so an application filters on Conversation.Status when it needs to.
+@dataclass(frozen=True, slots=True)
+class ConversationCreatedEvent:
+    # Brand is the connection's Re:amaze brand subdomain, such as acme for https://acme.reamaze.io.
+    brand: str = ''
+    # Channel is the watched channel slug, or empty when the binding watches every channel.
+    channel: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # Conversation is the new conversation with its first message, cut at MaxTextBytes.
+    conversation: Conversation = _dataclass_field(kw_only=True)
+
+
+setattr(ConversationCreatedEvent, '__module__', 'dex_connectors.reamaze.models')
+
+
+# ConversationCreatedTriggerConfiguration is the conversationCreated binding configuration that the
+# channel slug entry saves in Dex Web. Changing the channel of a binding that already polled makes its
+# next poll record a new baseline for the new channel.
+@dataclass(frozen=True, slots=True)
+class ConversationCreatedTriggerConfiguration:
+    # Channel is the slug of the watched Re:amaze channel, Re:amaze's category, such as support; blank
+    # watches every channel of the connection's brand.
+    channel: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(ConversationCreatedTriggerConfiguration, '__module__', 'dex_connectors.reamaze.models')

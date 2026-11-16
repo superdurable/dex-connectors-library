@@ -108,6 +108,8 @@ function decodeInvoiceLine(wire: Record<string, unknown>): InvoiceLine {
   return omitEmptyOptionalFields({ detailType, ...optional(!!wire.Id, 'lineId', string(wire.Id)), ...optional(!!wire.Description, 'description', string(wire.Description)), ...optional(wire.Amount != null, 'amount', decimal(wire.Amount)),
     ...(detail ? { ...optional(detail.ItemRef != null, 'itemId', reference(detail.ItemRef)), ...optional(detail.ItemRef != null && !!object(detail.ItemRef).name, 'itemName', string(detail.ItemRef == null ? '' : object(detail.ItemRef).name)), ...optional(detail.Qty != null, 'quantity', decimal(detail.Qty)), ...optional(detail.UnitPrice != null, 'unitPrice', decimal(detail.UnitPrice)), ...optional(detail.TaxCodeRef != null, 'taxCodeId', reference(detail.TaxCodeRef)), ...optional(!!detail.ServiceDate, 'serviceDate', string(detail.ServiceDate)) } : {}) });
 }
+/** Decode one QuickBooks invoice query page at parity with the Go connector; throws TypeError when invalid. */
+export function decodeInvoiceQueryPage(body: Uint8Array): Invoice[] { return entities(body, 'Invoice').map(decodeInvoice); }
 function decodeInvoice(wire: Record<string, unknown>): Invoice {
   const id = string(wire.Id), customer = reference(wire.CustomerRef); validID('invoice Id', id); validID('CustomerRef', customer);
   const total = decimal(wire.TotalAmt, true), balance = decimal(wire.Balance, true);

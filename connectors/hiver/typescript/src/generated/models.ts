@@ -46,12 +46,18 @@ export interface Config {
   maxResponseBytes?: number;
   /** Shortest time, in milliseconds, between two Hiver API requests from this connection in one Worker. Hiver limits every account to one request per second and answers 429 above it, as https://developer.hiverhq.com/hiver-api describes. Leave blank to keep the displayed spacing. Enter an integer from 1 to 60000: a larger value leaves room for other integrations on the same account, and a smaller one only makes sense after Hiver support has raised your account's rate limit. */
   requestIntervalMilliseconds?: number;
+  /** Delay between conversationReceived Trigger polls of each picked shared inbox, as a Go duration of at least 1s such as 2m or 10m. Each poll makes pollPagesPerPoll Hiver requests, and Hiver allows 5000 requests per day per account across every connection, Step, and binding, as https://developer.hiverhq.com/hiver-api describes. Leave blank to keep the displayed interval; lower it only for an account with spare daily requests, and raise it when several bindings or busy Flows share the account. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
+  /** Pages of 100 conversations that one conversationReceived poll reads, from 2 to 5: the first page of the inbox list on every poll, plus the next pages of a sweep that walks the whole list across polls. Leave blank to keep the displayed count. A larger value finds conversations that Hiver lists deep in a big inbox sooner and uses more of the daily request limit. */
+  pollPagesPerPoll?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "maxResponseBytes": z.number().int().optional(),
   "requestIntervalMilliseconds": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
+  "pollPagesPerPoll": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

@@ -16,7 +16,7 @@ const emptyCampaign: Campaign = { id: '', type: '', status: '', recipientCount: 
 const emptySend: SendCampaignOutput = { campaign: emptyCampaign };
 const readableStatuses = new Set(['subscribed', 'unsubscribed', 'pending', 'transactional', 'cleaned', 'archived']);
 const writableStatuses = new Set(['subscribed', 'unsubscribed', 'pending', 'transactional']);
-const memberFields = 'members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items';
+export const memberFields = 'members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items';
 const campaignFields = 'id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count';
 
 /** Read one audience contact. */
@@ -243,7 +243,7 @@ function validateTagsInput(input: UpdateMemberTagsInput): string {
   }
   return '';
 }
-function parseObject(body: Uint8Array): Record<string, unknown> {
+export function parseObject(body: Uint8Array): Record<string, unknown> {
   const value: unknown = JSON.parse(Buffer.from(body).toString('utf8'));
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid object');
   return value as Record<string, unknown>;
@@ -274,7 +274,7 @@ function object(object: Record<string, unknown>, key: string): Record<string, un
 }
 function timestamp(value: string): string | undefined { return value ? goRFC3339UTC(value) : undefined; }
 function decodeMember(body: Uint8Array, hash: string): Member { return decodeMemberObject(parseObject(body), hash); }
-function decodeMemberObject(value: unknown, expectedHash: string): Member {
+export function decodeMemberObject(value: unknown, expectedHash: string): Member {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid contact');
   const wire = value as Record<string, unknown>; const id = text(wire, 'id');
   if (!/^[0-9a-f]{32}$/.test(id) || expectedHash && id !== expectedHash || !text(wire, 'email_address') || !text(wire, 'status')) throw new Error('invalid contact');

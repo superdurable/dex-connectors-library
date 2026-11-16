@@ -53,6 +53,13 @@ _ASSIGNEE_TYPE = re.compile(r"^[a-z_]{1,32}$")
 _GMAIL_ID = re.compile(r"^[A-Za-z0-9]{1,64}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
+MAXIMUM_PAGE_SIZE = 100
+"""Hiver's largest list page, which every conversationReceived poll request asks for."""
+MINIMUM_POLL_PAGES_PER_POLL = 2
+"""Leaves room for the list's first page plus one sweep page in each conversationReceived poll."""
+MAXIMUM_POLL_PAGES_PER_POLL = 5
+"""Keeps one conversationReceived poll within the poll kit's 500 events per page."""
+
 
 @dataclass(frozen=True, slots=True)
 class Exchange:
@@ -67,7 +74,13 @@ class Exchange:
 
 
 class Client:
-    """Use one bearer credential source and pace all requests of this connection."""
+    """Use one bearer credential source and pace all requests of this connection.
+
+    `poll_interval` and `poll_pages_per_poll` configure the conversationReceived Trigger: the delay
+    between polls of each binding, from `Config.poll_interval_seconds`, and the list pages one poll reads.
+    Zero keeps the manifest defaults of five minutes and three pages. The constructor raises ValueError
+    for an interval under one second or a page count outside 2 to 5, as Go's New does.
+    """
 
     def __init__(
         self,
@@ -92,6 +105,25 @@ class Client:
             raise ValueError("Hiver response limit must be positive")
         if not 1 <= request_interval_milliseconds <= 60000:
             raise ValueError("Hiver request interval must be between 1 and 60000 milliseconds")
+        poll_interval_seconds = config.poll_interval_seconds or Config().poll_interval_seconds
+        if (
+            isinstance(poll_interval_seconds, bool)
+            or not isinstance(poll_interval_seconds, int | float)
+            or not poll_interval_seconds >= 1
+        ):
+            raise ValueError("Hiver pollInterval must be at least one second")
+        poll_pages_per_poll = config.poll_pages_per_poll or Config().poll_pages_per_poll
+        if (
+            isinstance(poll_pages_per_poll, bool)
+            or not isinstance(poll_pages_per_poll, int)
+            or not MINIMUM_POLL_PAGES_PER_POLL <= poll_pages_per_poll <= MAXIMUM_POLL_PAGES_PER_POLL
+        ):
+            raise ValueError(
+                f"Hiver pollPagesPerPoll must be from {MINIMUM_POLL_PAGES_PER_POLL} "
+                f"to {MAXIMUM_POLL_PAGES_PER_POLL}"
+            )
+        self.poll_interval = timedelta(seconds=poll_interval_seconds)
+        self.poll_pages_per_poll = poll_pages_per_poll
         self.api_base_url = validate_base_url(api_base_url or "https://api2.hiverhq.com/v1")
         self.max_response_bytes = max_response_bytes
         self.request_interval = request_interval_milliseconds / 1000
@@ -187,6 +219,13 @@ class Client:
                 ),
             )
         return await self._send(call, token, operation, method, path, query, payload, fields, fenced)
+
+    async def exchange_poll_request(
+        self, call: Call, token: str, operation: str, path: str, query: dict[str, str]
+    ) -> Exchange:
+        """Pace and send one Trigger poll GET; a cancelled wait for the request slot propagates."""
+        await self._wait_for_slot()
+        return await self._send(call, token, operation, "GET", path, query, None, None, False)
 
     async def _send(
         self,
@@ -380,6 +419,11 @@ def validate_page(token: str, size: int) -> None:
         raise ValueError("pageSize must be zero or from 10 to 100")
     if token and (len(token.encode()) > 4096 or not _PAGE_TOKEN.fullmatch(token)):
         raise ValueError("pageToken must be a next-page token exactly as Hiver returned it")
+
+
+def is_page_token(token: str) -> bool:
+    """Accept Hiver's base64 next_page tokens of at most 4096 bytes."""
+    return len(token.encode()) <= 4096 and _PAGE_TOKEN.fullmatch(token) is not None
 
 
 def page_query(token: str, size: int) -> dict[str, str]:

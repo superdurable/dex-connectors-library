@@ -2,7 +2,7 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go@v0.24.0`.
 
-The Python package `dex-connector-atlassian-trello` implements all five operations at `v0.1.0`; see its [package README](python/README.md) and [runnable card-read Flow](python/examples/approved_request_card/README.md). Go-recorded provider scenarios cover Python requests, retries, branches, and output encoding. The Python example ran through a local Dex Worker and Client with a fake Trello HTTP service; live Trello authorization and provider behavior remain unverified for Python.
+The Python package `dex-connector-atlassian-trello` implements all five operations and the `cardChanged` Trigger at `v0.2.0`; see its [package README](python/README.md), [runnable card-read Flow](python/examples/approved_request_card/README.md), and [card-changed Flow](python/examples/card_changed/README.md). Go-recorded provider scenarios cover Python requests, retries, branches, and output encoding, and Go-generated fixtures check the Python Trigger's requests, cursor tokens, and events byte for byte. The Python examples ran through a local Dex Worker and Client with a fake Trello HTTP service; live Trello authorization and provider behavior remain unverified for Python.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/trello`.
 
@@ -41,7 +41,7 @@ release; see [Not in this release](#not-in-this-release).
 
 ## TypeScript package
 
-Install `@superdurable/connector-atlassian-trello@0.1.2` for TypeScript Flows. It implements all five operations listed above with the same branches and non-idempotent create and comment checkpoint behavior. The [runnable approved board Flow](typescript/examples/approved-board-cards/README.md) uses the static `trello-approved-board` connection. The package replays Go-recorded provider scenarios; live Trello behavior for TypeScript remains unverified.
+Install `@superdurable/connector-atlassian-trello@0.2.0` for TypeScript Flows. It implements all five operations listed above with the same branches and non-idempotent create and comment checkpoint behavior, and the `cardChanged` Trigger. The [runnable approved board Flow](typescript/examples/approved-board-cards/README.md) uses the static `trello-approved-board` connection, and the [card-changed Flow](typescript/examples/card-changed/README.md) is started by `cardChanged`. The package replays Go-recorded provider scenarios, and Go-generated fixtures check the Trigger's requests, cursor tokens, and events byte for byte; live Trello behavior for TypeScript remains unverified.
 
 ## Authentication
 

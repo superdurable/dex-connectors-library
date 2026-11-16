@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-gmail",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "factories": [
     {
@@ -82,7 +82,9 @@
         "branches": {
           "defect": "unknown",
           "providerRejected": "rejected"
-        }
+        },
+        "repeatOnUnknown": "limited",
+        "maxSends": 3
       },
       "fields": {
         "stepType": "step_type",
@@ -155,7 +157,9 @@
           "defect": "unknown",
           "invalidResponse": "rejected",
           "providerRejected": "rejected"
-        }
+        },
+        "repeatOnUnknown": "limited",
+        "maxSends": 3
       },
       "fields": {
         "stepType": "step_type",
@@ -207,6 +211,26 @@
           "textBody"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_message_received_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "messageReceived",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
+      }
+    },
+    {
+      "name": "define_reply_received_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "replyReceived",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

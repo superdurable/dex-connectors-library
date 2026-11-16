@@ -3,23 +3,23 @@ kind: Connector
 metadata:
   name: hiver
   displayName: Hiver
-  description: "List Hiver shared inboxes and their conversations, read one conversation, set its status, assignee, and tags, add internal notes, and create shared reply drafts, keeping Hiver's own open, pending, and closed statuses."
+  description: "List Hiver shared inboxes and their conversations, read one conversation, set its status, assignee, and tags, add internal notes, create shared reply drafts, and start Flows when a conversation arrives in a shared inbox, keeping Hiver's own open, pending, and closed statuses."
   company: Hiver
   categories: [customer-support, communication]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: hiver
   languages:
     python:
       package: dex-connector-hiver
-      version: v0.1.0
+      version: v0.2.0
       operations: [listInboxes, listConversations, getConversation, updateConversation, addNote, createSharedDraft]
-      triggers: []
+      triggers: [conversationReceived]
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-hiver"
       operations: [listInboxes, listConversations, getConversation, updateConversation, addNote, createSharedDraft]
-      triggers: []
+      triggers: [conversationReceived]
   codegen:
     go:
       package: hiver
@@ -37,6 +37,18 @@ spec:
         description: "Shortest time, in milliseconds, between two Hiver API requests from this connection in one Worker. Hiver limits every account to one request per second and answers 429 above it, as https://developer.hiverhq.com/hiver-api describes. Leave blank to keep the displayed spacing. Enter an integer from 1 to 60000: a larger value leaves room for other integrations on the same account, and a smaller one only makes sense after Hiver support has raised your account's rate limit."
         required: false
         default: 1000
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: "Delay between conversationReceived Trigger polls of each picked shared inbox, as a Go duration of at least 1s such as 2m or 10m. Each poll makes pollPagesPerPoll Hiver requests, and Hiver allows 5000 requests per day per account across every connection, Step, and binding, as https://developer.hiverhq.com/hiver-api describes. Leave blank to keep the displayed interval; lower it only for an account with spare daily requests, and raise it when several bindings or busy Flows share the account."
+        required: false
+        default: 5m
+      - name: pollPagesPerPoll
+        goName: PollPagesPerPoll
+        type: integer
+        description: "Pages of 100 conversations that one conversationReceived poll reads, from 2 to 5: the first page of the inbox list on every poll, plus the next pages of a sweep that walks the whole list across polls. Leave blank to keep the displayed count. A larger value finds conversations that Hiver lists deep in a big inbox sooner and uses more of the daily request limit."
+        required: false
+        default: 3
   auth:
     type: apiKey
     connectionKind: hiver-api-key
@@ -54,6 +66,37 @@ spec:
         - "Enter an app name such as Dex, choose Create and generate API key, turn on the app's toggle to enable it, and copy the key with the copy icon into api_key below."
         - "Hiver allows one request per second and 5000 requests per day per account; the connector spaces its own requests, and a busier account asks Hiver support for a higher limit."
         - "To revoke access, delete the app's API key under Admin Panel > Integrations > Developer APIs; requests with a deleted key are rejected."
+  studio:
+    setup:
+      entrypoint: index.html
+      hostApiRange: ">=0.2.0 <0.3.0"
+      backendCapabilities: [use.configuration.write, hiver.inboxes-list]
+      mockScenarios: [not-configured, connected]
+      icon: icon.svg
+    commands:
+      - id: listInboxes
+        capability: hiver.inboxes-list
+        request:
+          method: GET
+          url: https://api2.hiverhq.com/v1/inboxes
+          credential: {field: api_key, scheme: bearer}
+          fixedQuery:
+            limit: "100"
+          parameters:
+            - {name: next_page, location: query, target: next_page}
+    units:
+      - id: inboxPicker
+        goName: InboxPicker
+        description: "Select one Hiver shared inbox, listed live from GET https://api2.hiverhq.com/v1/inboxes with the connection's API key, or enter its ID; the unit stores the Hiver inbox ID, such as 105902, that every conversation operation and the conversationReceived Trigger take."
+        backendCapabilities: [hiver.inboxes-list]
+        outputs:
+          - {name: inboxId, goName: InboxID, type: string}
+  triggers:
+    - name: conversationReceived
+      goName: ConversationReceived
+      eventType: ConversationReceivedEvent
+      configurationType: ConversationReceivedTriggerConfiguration
+      description: "Receive each conversation that newly appears in one picked Hiver shared inbox, found by polling the inbox's conversation list; conversations already in the inbox when the binding first polls are never delivered."
   operations:
     - name: listInboxes
       goName: ListInboxes
@@ -176,6 +219,8 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: async
+        # The PATCH sets an absolute status and assignee and applies tag sets, so a repeat leaves one result.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedDefaultAnswer
           branch: updated

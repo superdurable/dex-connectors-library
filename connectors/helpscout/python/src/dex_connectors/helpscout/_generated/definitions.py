@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -78,6 +81,8 @@ REPLY_TO_CONVERSATION_DEFINITION = MutationDefinition(
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
@@ -94,6 +99,8 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 FIND_CUSTOMER_BY_EMAIL_DEFINITION = QueryDefinition(
@@ -110,4 +117,9 @@ FIND_CUSTOMER_BY_EMAIL_DEFINITION = QueryDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+)
+
+CONVERSATION_EVENT_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="conversationEvent"),
+    description="Receive a signed Help Scout conversation webhook, such as convo.created or convo.customer.reply.created, filtered by event and inbox.",
 )

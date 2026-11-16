@@ -12,6 +12,8 @@ from dex_connectors.sdk import (
     RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -21,8 +23,10 @@ LIST_CHANNELS_OPERATION_ID = "listChannels"
 GET_WORKSPACE_IDENTITY_OPERATION_ID = "getWorkspaceIdentity"
 LIST_THREAD_MESSAGES_OPERATION_ID = "listThreadMessages"
 GET_THREAD_REPLY_OPERATION_ID = "getThreadReply"
+LIST_CHANNEL_MESSAGES_OPERATION_ID = "listChannelMessages"
 POST_CHANNEL_MESSAGE_OPERATION_ID = "postChannelMessage"
 POST_THREAD_REPLY_OPERATION_ID = "postThreadReply"
+POST_BUTTON_MESSAGE_OPERATION_ID = "postButtonMessage"
 DEFECT = "defect"
 FOUND = "found"
 INVALID_RESPONSE = "invalidResponse"
@@ -94,6 +98,21 @@ GET_THREAD_REPLY_DEFINITION = QueryDefinition(
     ),
 )
 
+LIST_CHANNEL_MESSAGES_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, LIST_CHANNEL_MESSAGES_OPERATION_ID),
+    (
+        BranchDefinition(READ, "The channel history page was read.", False),
+        BranchDefinition(PROVIDER_REJECTED, "Slack conclusively rejected the channel history query.", True),
+        BranchDefinition(INVALID_RESPONSE, "Slack returned an invalid or oversized channel history response.", True),
+        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
+
 POST_CHANNEL_MESSAGE_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, POST_CHANNEL_MESSAGE_OPERATION_ID),
     (
@@ -126,4 +145,36 @@ POST_THREAD_REPLY_DEFINITION = MutationDefinition(
     ),
     repeat_on_unknown=RepeatOnUnknown.LIMITED,
     max_sends=3,
+)
+
+POST_BUTTON_MESSAGE_DEFINITION = MutationDefinition(
+    OperationRef(CONNECTOR_ID, POST_BUTTON_MESSAGE_OPERATION_ID),
+    (
+        BranchDefinition(SENT, "Slack accepted the message.", False),
+        BranchDefinition(PROVIDER_REJECTED, "Slack conclusively rejected the message.", True),
+        BranchDefinition(UNCERTAIN, "The dispatched message outcome cannot be confirmed.", True),
+        BranchDefinition(DEFECT, "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        1,
+        execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 10, timedelta(seconds=300)),
+    ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
+)
+
+CHANNEL_THREAD_CREATED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="channelThreadCreated"),
+    description="Receive a matching top-level channel message.",
+)
+
+THREAD_REPLY_CREATED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="threadReplyCreated"),
+    description="Receive a matching thread reply.",
+)
+
+BUTTON_CLICKED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="buttonClicked"),
+    description="Receive a matching click on a message button that postButtonMessage posted, through Socket Mode.",
 )

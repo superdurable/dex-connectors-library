@@ -146,6 +146,7 @@ def new_upsert_row_step(
     defect: dex.StepTarget[MutationResult[UpsertRowOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpsertRowOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpsertRowInput, UpsertRowOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Google Sheets Step connection name must match its connection reference")
@@ -181,6 +182,7 @@ def new_upsert_row_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

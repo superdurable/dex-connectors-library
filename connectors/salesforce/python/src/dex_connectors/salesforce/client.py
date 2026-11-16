@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
     RejectedCredentialRefreshingProvider,
+    TriggerLogger,
     resolve_credential,
     resolve_credential_after_rejection,
 )
@@ -115,7 +116,13 @@ class Outcome:
 
 
 class Client:
-    """Run Salesforce REST operations with one optional 401 refresh and bounded reads."""
+    """Run Salesforce REST operations with one optional 401 refresh and bounded reads.
+
+    ``poll_interval_seconds`` must be at least 5 and ``poll_page_size`` from 1 to 500; both apply only to
+    the recordModifiedPolled Trigger. ``logger`` receives that Trigger runner's records, which carry
+    binding identity and never record values or credentials; None uses the standard logging adapter.
+    Operation Steps do not log. A caller-supplied ``http_client`` remains caller owned.
+    """
 
     def __init__(
         self,
@@ -123,6 +130,7 @@ class Client:
         credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
         now: Callable[[], datetime] | None = None,
+        logger: TriggerLogger | None = None,
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("Salesforce configuration and credential provider are required")
@@ -133,9 +141,16 @@ class Client:
             raise ValueError("Salesforce maxResponseBytes must be positive")
         if type(config.query_batch_size) is not int or not 200 <= config.query_batch_size <= 2000:
             raise ValueError("Salesforce queryBatchSize must be from 200 to 2000")
+        if isinstance(config.poll_interval_seconds, bool) or not config.poll_interval_seconds >= 5:
+            raise ValueError("Salesforce pollInterval must be at least 5s")
+        if type(config.poll_page_size) is not int or not 1 <= config.poll_page_size <= 500:
+            raise ValueError("Salesforce pollPageSize must be from 1 to 500")
         self.api_version = config.api_version
         self.max_response_bytes = config.max_response_bytes
         self.query_batch_size = config.query_batch_size
+        self.poll_interval_seconds = float(config.poll_interval_seconds)
+        self.poll_page_size = config.poll_page_size
+        self.trigger_logger = logger
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(25)
         self._owns_http_client = http_client is None

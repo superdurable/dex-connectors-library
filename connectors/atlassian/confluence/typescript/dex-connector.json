@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-atlassian-confluence",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -411,6 +411,16 @@
           "pageId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "definePageChangedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "pageChanged",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

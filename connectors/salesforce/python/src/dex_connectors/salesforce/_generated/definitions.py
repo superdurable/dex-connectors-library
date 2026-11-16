@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -78,6 +81,7 @@ UPSERT_RECORD_BY_EXTERNAL_ID_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 UPDATE_RECORD_DEFINITION = MutationDefinition(
@@ -94,4 +98,10 @@ UPDATE_RECORD_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
+)
+
+RECORD_MODIFIED_POLLED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="recordModifiedPolled"),
+    description="Receive each record of one object that was created or modified after the Trigger first started, read by polling SOQL on SystemModstamp and Id; the first run records a baseline and delivers no existing records, and deletions are not delivered.",
 )

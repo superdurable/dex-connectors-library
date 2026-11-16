@@ -100,6 +100,8 @@ export const UpsertRecordsDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for upsertRecords. */
 export const UpsertRecordsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -133,6 +135,8 @@ export const UpdateRecordsDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for updateRecords. */
 export const UpdateRecordsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

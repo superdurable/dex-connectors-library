@@ -8,3 +8,4 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newProjectConnection } from './project.js';
 export { AirtableClient, type AirtableClientOptions, type AirtableRequestSender } from './client.js';
 export { GetRecordOperation, ListRecordsOperation, UpdateRecordsOperation, UpsertRecordsOperation } from './operations.js';
+export * from './trigger.js';

@@ -1,0 +1,187 @@
+{
+  "pages": [
+    {
+      "cursor": "{\"sObjectType\":\"Opportunity\",\"systemModstamp\":\"2026-03-02T08:59:01Z\",\"recordId\":\"006RM0000000001AAA\"}",
+      "events": [
+        {
+          "id": "sfdc-0c1a7c970b998bb6d0b3ed38dc0f74e7",
+          "occurredAt": "2026-03-02T08:59:02Z",
+          "payload": {
+            "sObjectType": "Opportunity",
+            "recordId": "006RM0000000002AAA",
+            "changeKind": "created",
+            "systemModstamp": "2026-03-02T08:59:02Z",
+            "record": {
+              "type": "Opportunity",
+              "id": "006RM0000000002AAA",
+              "fields": {
+                "CreatedDate": "2026-03-02T08:59:02.000+0000",
+                "Id": "006RM0000000002AAA",
+                "LastModifiedDate": "2026-03-02T08:59:02.000+0000",
+                "Name": "Expansion",
+                "StageName": "Qualification",
+                "SystemModstamp": "2026-03-02T08:59:02.000+0000"
+              }
+            }
+          }
+        },
+        {
+          "id": "sfdc-860b54a79874f3d6c7ace51e62f8936b",
+          "occurredAt": "2026-03-02T08:59:03Z",
+          "payload": {
+            "sObjectType": "Opportunity",
+            "recordId": "006RM0000000001AAA",
+            "changeKind": "updated",
+            "systemModstamp": "2026-03-02T08:59:03Z",
+            "record": {
+              "type": "Opportunity",
+              "id": "006RM0000000001AAA",
+              "fields": {
+                "CreatedDate": "2026-03-02T08:59:01.000+0000",
+                "Id": "006RM0000000001AAA",
+                "LastModifiedDate": "2026-03-02T08:59:03.000+0000",
+                "Name": "Renewal",
+                "StageName": "Closed Won",
+                "SystemModstamp": "2026-03-02T08:59:03.000+0000"
+              }
+            }
+          }
+        }
+      ],
+      "next": "{\"sObjectType\":\"Opportunity\",\"systemModstamp\":\"2026-03-02T08:59:03Z\",\"recordId\":\"006RM0000000001AAA\"}",
+      "hasMorePages": true
+    },
+    {
+      "cursor": "{\"sObjectType\":\"Opportunity\",\"systemModstamp\":\"2026-03-02T08:59:03Z\",\"recordId\":\"006RM0000000001AAA\"}",
+      "events": [
+        {
+          "id": "sfdc-8f0aec4d9147202d979cf6ffe2160ab2",
+          "occurredAt": "2026-03-02T08:59:04Z",
+          "payload": {
+            "sObjectType": "Opportunity",
+            "recordId": "006RM0000000003AAA",
+            "changeKind": "created",
+            "systemModstamp": "2026-03-02T08:59:04Z",
+            "record": {
+              "type": "Opportunity",
+              "id": "006RM0000000003AAA",
+              "fields": {
+                "CreatedDate": "2026-03-02T08:59:04.000+0000",
+                "Id": "006RM0000000003AAA",
+                "LastModifiedDate": "2026-03-02T08:59:04.000+0000",
+                "Name": "Bulk",
+                "StageName": null,
+                "SystemModstamp": "2026-03-02T08:59:04.000+0000"
+              }
+            }
+          }
+        },
+        {
+          "id": "sfdc-470150fb1af7ed656f11ddb5c0616d76",
+          "occurredAt": "2026-03-02T08:59:04Z",
+          "payload": {
+            "sObjectType": "Opportunity",
+            "recordId": "006RM0000000004AAA",
+            "changeKind": "created",
+            "systemModstamp": "2026-03-02T08:59:04Z",
+            "record": {
+              "type": "Opportunity",
+              "id": "006RM0000000004AAA",
+              "fields": {
+                "CreatedDate": "2026-03-02T08:59:04.000+0000",
+                "Id": "006RM0000000004AAA",
+                "LastModifiedDate": "2026-03-02T08:59:04.000+0000",
+                "Name": "Bulk",
+                "StageName": null,
+                "SystemModstamp": "2026-03-02T08:59:04.000+0000"
+              }
+            }
+          }
+        }
+      ],
+      "next": "{\"sObjectType\":\"Opportunity\",\"systemModstamp\":\"2026-03-02T08:59:04Z\",\"recordId\":\"006RM0000000004AAA\"}",
+      "hasMorePages": true
+    },
+    {
+      "cursor": "{\"sObjectType\":\"Opportunity\",\"systemModstamp\":\"2026-03-02T08:59:04Z\",\"recordId\":\"006RM0000000004AAA\"}",
+      "events": [
+        {
+          "id": "sfdc-0dc391098fd582f46a7c455e92958a48",
+          "occurredAt": "2026-03-02T08:59:04Z",
+          "payload": {
+            "sObjectType": "Opportunity",
+            "recordId": "006RM0000000005AAA",
+            "changeKind": "created",
+            "systemModstamp": "2026-03-02T08:59:04Z",
+            "record": {
+              "type": "Opportunity",
+              "id": "006RM0000000005AAA",
+              "fields": {
+                "CreatedDate": "2026-03-02T08:59:04.000+0000",
+                "Id": "006RM0000000005AAA",
+                "LastModifiedDate": "2026-03-02T08:59:04.000+0000",
+                "Name": "Bulk",
+                "StageName": null,
+                "SystemModstamp": "2026-03-02T08:59:04.000+0000"
+              }
+            }
+          }
+        }
+      ],
+      "next": "{\"sObjectType\":\"Opportunity\",\"systemModstamp\":\"2026-03-02T08:59:04Z\",\"recordId\":\"006RM0000000005AAA\"}",
+      "hasMorePages": false
+    },
+    {
+      "cursor": "{\"sobjecttype\":\"Opportunity\",\"SystemModstamp\":\"2026-03-02T08:59:01Z\",\"recordId\":null}",
+      "events": [
+        {
+          "id": "sfdc-0c1a7c970b998bb6d0b3ed38dc0f74e7",
+          "occurredAt": "2026-03-02T08:59:02Z",
+          "payload": {
+            "sObjectType": "Opportunity",
+            "recordId": "006RM0000000002AAA",
+            "changeKind": "created",
+            "systemModstamp": "2026-03-02T08:59:02Z",
+            "record": {
+              "type": "Opportunity",
+              "id": "006RM0000000002AAA",
+              "fields": {
+                "CreatedDate": "2026-03-02T08:59:02.000+0000",
+                "Id": "006RM0000000002AAA",
+                "LastModifiedDate": "2026-03-02T08:59:02.000+0000",
+                "Name": "Expansion",
+                "StageName": "Qualification",
+                "SystemModstamp": "2026-03-02T08:59:02.000+0000"
+              }
+            }
+          }
+        },
+        {
+          "id": "sfdc-860b54a79874f3d6c7ace51e62f8936b",
+          "occurredAt": "2026-03-02T08:59:03Z",
+          "payload": {
+            "sObjectType": "Opportunity",
+            "recordId": "006RM0000000001AAA",
+            "changeKind": "updated",
+            "systemModstamp": "2026-03-02T08:59:03Z",
+            "record": {
+              "type": "Opportunity",
+              "id": "006RM0000000001AAA",
+              "fields": {
+                "CreatedDate": "2026-03-02T08:59:01.000+0000",
+                "Id": "006RM0000000001AAA",
+                "LastModifiedDate": "2026-03-02T08:59:03.000+0000",
+                "Name": "Renewal",
+                "StageName": "Closed Won",
+                "SystemModstamp": "2026-03-02T08:59:03.000+0000"
+              }
+            }
+          }
+        }
+      ],
+      "next": "{\"sObjectType\":\"Opportunity\",\"systemModstamp\":\"2026-03-02T08:59:03Z\",\"recordId\":\"006RM0000000001AAA\"}",
+      "hasMorePages": true
+    }
+  ],
+  "seed": "{\"sObjectType\":\"Opportunity\",\"systemModstamp\":\"2026-03-02T08:59:01Z\",\"recordId\":\"006RM0000000001AAA\"}"
+}

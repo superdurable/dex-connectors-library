@@ -24,7 +24,8 @@ function requireSendUpdates(value: string | undefined): void { if (value && !['n
 function eventPath(calendarId: string, eventId: string): string { return `/calendars/${pathEscape(calendarId)}/events/${pathEscape(eventId)}`; }
 function calendarEventsPath(calendarId: string): string { return `/calendars/${pathEscape(calendarId)}/events`; }
 
-function reason(response: CalendarResponse): string {
+/** Return the first reportable Google error reason in a response body, or an empty string. */
+export function googleErrorReason(response: CalendarResponse): string {
   try {
     const envelope = object(jsonBody(response));
     const error = object(envelope.error);
@@ -36,8 +37,9 @@ function reason(response: CalendarResponse): string {
   return '';
 }
 
-function classify(operation: string, response: CalendarResponse): { retry: boolean; delay: number; failure: Failure } {
-  const code = reason(response);
+/** Classify a non-success response with the Go connector's status policy: retry, its delay in milliseconds, and the failure. */
+export function classifyFailureStatus(operation: string, response: CalendarResponse): { retry: boolean; delay: number; failure: Failure } {
+  const code = googleErrorReason(response);
   const describe = (text: string) => text + (code ? ` (${code})` : '');
   const isRate = response.status === 429 || (response.status === 403 && ['rateLimitExceeded', 'userRateLimitExceeded'].includes(code));
   const isUnavailable = response.status === 408 || response.status >= 500;
@@ -59,7 +61,7 @@ async function readEvent(client: CalendarClient, call: Call, token: string, oper
   if (response.isTooLarge) return { kind: 'invalid', event: zeroEvent, response, failure: failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'), delay: 0 };
   if (response.status === 404 || response.status === 410) return { kind: 'missing', event: zeroEvent, response, failure: failure(operation, 'NOT_FOUND', 'calendar or event was not found'), delay: 0 };
   if (response.status < 200 || response.status >= 300) {
-    const result = classify(operation, response);
+    const result = classifyFailureStatus(operation, response);
     return { kind: result.retry ? 'retry' : 'rejected', event: zeroEvent, response, failure: result.failure, delay: result.delay };
   }
   try { return { kind: 'found', event: decodeEvent(jsonBody(response), calendarId), response, delay: 0 }; }
@@ -88,7 +90,7 @@ export class ListEventsOperation implements Query<ListEventsInput, ListEventsOut
     const receipt = this.client.receipt(call, response);
     if (response.isTooLarge) return newQueryBranch('invalidResponse', zeroList, receipt, failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
     if (response.status === 404 || response.status === 410) return newQueryBranch('notFound', zeroList, receipt, failure(operation, 'NOT_FOUND', 'calendar was not found'));
-    if (response.status < 200 || response.status >= 300) { const result = classify(operation, response); return result.retry ? newQueryRetry(result.failure, result.delay) : newQueryBranch('providerRejected', zeroList, receipt, result.failure); }
+    if (response.status < 200 || response.status >= 300) { const result = classifyFailureStatus(operation, response); return result.retry ? newQueryRetry(result.failure, result.delay) : newQueryBranch('providerRejected', zeroList, receipt, result.failure); }
     try {
       const page = object(jsonBody(response));
       const timeZone = stringField(page, 'timeZone');
@@ -149,7 +151,7 @@ export class CreateEventOperation implements Mutation<CreateEventInput, CreateEv
     const receipt = this.client.receipt(call, response, eventId);
     if (response.isTooLarge) return newMutationBranch('invalidResponse', zeroCreate, receipt, failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
     if (response.status === 409) return this.existing(call, await readEvent(this.client, call, token, operation, input.calendarId, eventId), eventId);
-    if (response.status < 200 || response.status >= 300) { const result = classify(operation, response); return result.retry ? newMutationRetry(result.failure, result.delay) : newMutationBranch('providerRejected', zeroCreate, receipt, result.failure); }
+    if (response.status < 200 || response.status >= 300) { const result = classifyFailureStatus(operation, response); return result.retry ? newMutationRetry(result.failure, result.delay) : newMutationBranch('providerRejected', zeroCreate, receipt, result.failure); }
     try { const event = decodeEvent(jsonBody(response), input.calendarId); if (event.id !== eventId) throw new Error('provider returned an event with another ID'); return newMutationBranch('created', { event, wasAlreadyCreated: false }, receipt); }
     catch (error) { return newMutationBranch('invalidResponse', zeroCreate, receipt, failure(operation, 'PROTOCOL', `provider returned an invalid event: ${message(error)}`)); }
   }
@@ -195,7 +197,7 @@ export class UpdateEventOperation implements Mutation<UpdateEventInput, UpdateEv
     if (response.isTooLarge) return newMutationBranch('invalidResponse', zeroUpdate, receipt, failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
     if (response.status === 412) return newMutationRetry(failure(operation, 'CONFLICT', 'event changed after it was read'));
     if (response.status === 404 || response.status === 410) return newMutationBranch('notFound', zeroUpdate, receipt, failure(operation, 'NOT_FOUND', 'calendar or event was not found'));
-    if (response.status < 200 || response.status >= 300) { const result = classify(operation, response); return result.retry ? newMutationRetry(result.failure, result.delay) : newMutationBranch('providerRejected', zeroUpdate, receipt, result.failure); }
+    if (response.status < 200 || response.status >= 300) { const result = classifyFailureStatus(operation, response); return result.retry ? newMutationRetry(result.failure, result.delay) : newMutationBranch('providerRejected', zeroUpdate, receipt, result.failure); }
     try { return newMutationBranch('updated', { event: decodeEvent(jsonBody(response), input.calendarId), wasAlreadyApplied: false }, receipt); }
     catch (error) { return newMutationBranch('invalidResponse', zeroUpdate, receipt, failure(operation, 'PROTOCOL', `provider returned an invalid event: ${message(error)}`)); }
   }
@@ -226,7 +228,7 @@ export class QueryFreeBusyOperation implements Query<QueryFreeBusyInput, QueryFr
     catch { return newQueryRetry(failure(operation, 'AVAILABILITY', 'provider is unavailable')); }
     const receipt = this.client.receipt(call, response);
     if (response.isTooLarge) return newQueryBranch('invalidResponse', zeroBusy, receipt, failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
-    if (response.status < 200 || response.status >= 300) { const result = classify(operation, response); return result.retry ? newQueryRetry(result.failure, result.delay) : newQueryBranch('providerRejected', zeroBusy, receipt, result.failure); }
+    if (response.status < 200 || response.status >= 300) { const result = classifyFailureStatus(operation, response); return result.retry ? newQueryRetry(result.failure, result.delay) : newQueryBranch('providerRejected', zeroBusy, receipt, result.failure); }
     try {
       const data = object(jsonBody(response));
       const providerCalendars = data.calendars == null ? {} : object(data.calendars);

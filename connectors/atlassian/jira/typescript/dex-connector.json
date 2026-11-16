@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-atlassian-jira",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -418,6 +418,16 @@
           "issueIdOrKey"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineIssueChangedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "issueChanged",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

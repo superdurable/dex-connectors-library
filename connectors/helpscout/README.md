@@ -6,6 +6,9 @@ conversation and customer operations and, from `0.2.0`, the signed
 `0.2.0`. See the [TypeScript README](typescript/README.md), its
 [runnable search example](typescript/examples/search-conversations/README.md),
 and its [new-conversation tagging example](typescript/examples/tag-new-conversations/README.md).
+The Python package `dex-connector-helpscout` adds the same Trigger in `0.2.0`;
+see the [Python README](python/README.md) and its
+[new-conversation tagging example](python/examples/tag_new_conversations/README.md).
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/helpscout/go@v0.24.0`.
 
@@ -32,7 +35,7 @@ Language support:
 | Capability | Go | Python | TypeScript |
 | --- | --- | --- | --- |
 | `searchConversations`, `getConversation`, `replyToConversation`, `updateConversation`, `findCustomerByEmail` | v0.24.0 | 0.1.0 | 0.1.0 |
-| `conversationEvent` Trigger | v0.24.0 | Not available | 0.2.0 |
+| `conversationEvent` Trigger | v0.24.0 | 0.2.0 | 0.2.0 |
 
 Every other branch is optional: `notFound`, `providerRejected`,
 `invalidResponse`, and `defect`. `getConversation` adds `merged`;
@@ -382,10 +385,11 @@ Worker loss or a retry following an accepted provider write.
 
 ## Python package
 
-The [`python/`](python/) package `dex-connector-helpscout` v0.1.0 implements
+The [`python/`](python/) package `dex-connector-helpscout` v0.2.0 implements
 `searchConversations`, `getConversation`, `replyToConversation`,
 `updateConversation`, and `findCustomerByEmail` with generated client-credentials
-refresh wiring. Its checked-in [conversation search Flow](python/examples/conversation_search/flow.py)
-provides Dex Worker and Client verification. The signed `conversationEvent`
-Trigger is not yet available in Python. See the [Python README](python/README.md) for
-installation, connection setup, and behavior.
+refresh wiring, and the signed `conversationEvent` webhook Trigger at parity with
+Go. Its checked-in [conversation search Flow](python/examples/conversation_search/flow.py)
+and [new-conversation tagging example](python/examples/tag_new_conversations/README.md)
+provide real Dex Worker and Client verification. See the
+[Python README](python/README.md) for installation, connection setup, and behavior.

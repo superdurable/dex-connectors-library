@@ -14,15 +14,15 @@ spec:
       package: freshdesk
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-freshworks-freshdesk
       operations: [searchTickets, getTicket, createTicket, updateTicket, addNote]
-      triggers: []
+      triggers: [ticketChanged]
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-freshdesk"
       operations: [searchTickets, getTicket, createTicket, updateTicket, addNote]
-      triggers: []
+      triggers: [ticketChanged]
   configuration:
     fields:
       - name: domain

@@ -316,3 +316,47 @@ class CombinedDocument:
 
 
 setattr(CombinedDocument, '__module__', 'dex_connectors.docusign.models')
+
+
+# EnvelopeEvent is one HMAC-verified Connect envelope event in the JSON SIM format. Its Trigger event ID
+# is the envelope ID and the event name, such as 93be49ab-0000-0000-0000-f752070d71ec:envelope-completed,
+# so a Connect retry or a second Connect configuration delivering the same outcome keeps one ID.
+@dataclass(frozen=True, slots=True)
+class EnvelopeEvent:
+    # Event is envelope-completed, envelope-declined, or envelope-voided.
+    event: str = ''
+    # EnvelopeID is the envelope's GUID.
+    envelope_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'envelopeId'})
+    # AccountID is the sender's DocuSign API account.
+    account_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'accountId'})
+    # GeneratedAt is when Connect generated the message, or when the endpoint received it if Connect
+    # left the time blank.
+    generated_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'generatedAt', 'dex_json_format': 'rfc3339'})
+    # Status is the envelope summary's status; blank unless the Connect configuration includes envelope data.
+    status: str | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
+    # VoidedReason is the envelope summary's void reason for an envelope-voided event, when included.
+    voided_reason: str = _dataclass_field(default='', metadata={'dex_json_name': 'voidedReason', 'dex_json_omit_default': True})
+    # CustomFields are the envelope's text custom fields; empty unless the Connect configuration's
+    # Include Data lists Custom Fields.
+    custom_fields: tuple[EnvelopeCustomField, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'customFields', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.generated_at, str):
+            object.__setattr__(self, 'generated_at', parse_go_datetime(self.generated_at, 'generated_at'))
+        elif self.generated_at is not None:
+            validate_go_datetime(self.generated_at, 'generated_at')
+
+
+setattr(EnvelopeEvent, '__module__', 'dex_connectors.docusign.models')
+
+
+# EnvelopeEventReceivedTriggerConfiguration filters the Connect events one binding records. The zero
+# value records every envelope-completed, envelope-declined, and envelope-voided event. It reduces what a
+# binding stores; the application's TriggerFilter remains its admission rule.
+@dataclass(frozen=True, slots=True)
+class EnvelopeEventReceivedTriggerConfiguration:
+    # Events lists envelope-completed, envelope-declined, and envelope-voided; empty accepts all three.
+    events: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+
+
+setattr(EnvelopeEventReceivedTriggerConfiguration, '__module__', 'dex_connectors.docusign.models')

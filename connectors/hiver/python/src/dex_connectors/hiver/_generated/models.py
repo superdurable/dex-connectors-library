@@ -312,3 +312,29 @@ class SharedDraft:
 
 
 setattr(SharedDraft, '__module__', 'dex_connectors.hiver.models')
+
+
+# ConversationReceivedEvent is one conversation that newly appeared in the polled shared inbox.
+@dataclass(frozen=True, slots=True)
+class ConversationReceivedEvent:
+    # InboxID is the polled shared inbox ID.
+    inbox_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'inboxId'})
+    # Conversation is the conversation as the inbox's conversation list reported it when the poll found
+    # it: its status, assignee, tag IDs, Gmail thread ID, and private permalink. Hiver's list carries no
+    # subject, requester, message, or timestamp; read the conversation with getConversation for its
+    # message IDs.
+    conversation: Conversation = _dataclass_field(kw_only=True)
+
+
+setattr(ConversationReceivedEvent, '__module__', 'dex_connectors.hiver.models')
+
+
+# ConversationReceivedTriggerConfiguration selects the shared inbox a conversationReceived binding polls.
+# Dex Web saves it from the inboxPicker unit.
+@dataclass(frozen=True, slots=True)
+class ConversationReceivedTriggerConfiguration:
+    # InboxID is the Hiver shared inbox ID, such as 105902, stored by the inboxPicker unit. Required.
+    inbox_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'inboxId'})
+
+
+setattr(ConversationReceivedTriggerConfiguration, '__module__', 'dex_connectors.hiver.models')

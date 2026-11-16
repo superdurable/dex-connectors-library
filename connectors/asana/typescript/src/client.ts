@@ -1,17 +1,26 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, Credentials } from './generated/models.js';
 import { ListTasksOperation, GetTaskOperation, CreateTaskOperation, UpdateTaskOperation, AddCommentOperation } from './operations.js';
 
 const publicEndpoint = 'https://app.asana.com/api/1.0';
+/** Keeps taskChanged polls from spending the Asana user's per-minute request quota. */
+const minimumPollIntervalMs = 5_000;
 
 /** Injectable transport and clock for deterministic provider tests. */
 export interface ClientOptions {
   /** Provider request sender; the default pins DNS and refuses redirects. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>;
-  /** Receipt and Retry-After clock. */ now?: () => Date;
+  /** Receipt, Retry-After, and Trigger event clock. */ now?: () => Date;
+  /**
+   * Receives the taskChanged Trigger runner's records: seeds, reseeds after an expired sync token, failed
+   * polls, rate-limit pauses, and the durable inboxes newProjectTaskTriggerRunner opens. Records carry binding
+   * identity, never event payloads or credentials. Omitted uses the SDK's default Trigger logger; operation
+   * Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
 
 /** Bounded provider exchange, including failures before or after dispatch. */
@@ -19,10 +28,16 @@ export type Exchange =
   | { response: ProviderResponse; isTooLarge: boolean; reflectsSecret: boolean }
   | { error: 'beforeSend' | 'afterSend' | 'notBuilt' | 'interrupted' };
 
-/** Authenticated Asana API client shared by operation-specific Step factories. */
+/**
+ * Authenticated Asana API client shared by operation-specific Step factories and the taskChanged Trigger.
+ * The constructor throws TypeError for an invalid endpoint, a non-positive maxResponseBytes, or a
+ * pollIntervalMs under 5000.
+ */
 export class Client {
   readonly endpoint: string;
   readonly maxResponseBytes: number;
+  /** Delay between taskChanged polls of one binding, in milliseconds; at least 5000, 30000 by default. */ readonly pollIntervalMs: number;
+  /** The taskChanged Trigger logger from ClientOptions, or undefined for the SDK default. */ readonly triggerLogger: TriggerLogger | undefined;
   private readonly credentials: CredentialProvider<Credentials>;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly now: () => Date;
@@ -33,6 +48,9 @@ export class Client {
     this.endpoint = validateBaseURL(config.endpoint || publicEndpoint);
     this.maxResponseBytes = config.maxResponseBytes || 4_194_304;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('Asana maxResponseBytes must be positive');
+    this.pollIntervalMs = config.pollIntervalMs || 30_000;
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Asana pollInterval must be at least 5s');
+    this.triggerLogger = options.logger;
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
@@ -81,6 +99,9 @@ export class Client {
       return { error: 'afterSend' };
     }
   }
+
+  /** Return the current time from the client's clock. */
+  currentTime(): Date { return this.now(); }
 
   /** Build a secret-free receipt, with no Asana request ID header. */
   receipt(call: Call, providerObjectId = ''): ReceiptDraft {

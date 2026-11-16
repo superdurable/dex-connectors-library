@@ -315,3 +315,34 @@ class AddCommentOutput:
 
 
 setattr(AddCommentOutput, '__module__', 'dex_connectors.atlassian_confluence.models')
+
+
+# PageChangedEvent is one page created or updated since the previous poll. A page edited several times
+# between two polls arrives once, at the version current when the poll read it.
+@dataclass(frozen=True, slots=True)
+class PageChangedEvent:
+    # CloudID is the Confluence site the page belongs to.
+    cloud_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'cloudId'})
+    # ChangeKind is the derived change kind; see PageChangeKind.
+    change_kind: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'changeKind'})
+    # Page identifies the page and its delivered version. Read its body with getPage.
+    page: PageSummary = _dataclass_field(default_factory=PageSummary)
+
+
+setattr(PageChangedEvent, '__module__', 'dex_connectors.atlassian_confluence.models')
+
+
+# PageChangedTriggerConfiguration is the pageChanged binding configuration that the space picker saves in
+# Dex Web. Changing the space of a binding that already polled makes its next poll record a new baseline.
+@dataclass(frozen=True, slots=True)
+class PageChangedTriggerConfiguration:
+    # SpaceID is the picked space's numeric ID, kept for display only.
+    space_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'spaceId', 'dex_json_omit_default': True})
+    # SpaceKey limits the Trigger to pages in this space, such as OPS or ~5b10ac8d82e05b22cc7d4ef5; blank
+    # watches every space the connection can view.
+    space_key: str = _dataclass_field(default='', metadata={'dex_json_name': 'spaceKey', 'dex_json_omit_default': True})
+    # SpaceName is the picked space's display name, kept for display only.
+    space_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'spaceName', 'dex_json_omit_default': True})
+
+
+setattr(PageChangedTriggerConfiguration, '__module__', 'dex_connectors.atlassian_confluence.models')

@@ -11,13 +11,13 @@ from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvid
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, GET_THREAD_REPLY_DEFINITION, GET_WORKSPACE_IDENTITY_DEFINITION, LIST_CHANNELS_DEFINITION, LIST_THREAD_MESSAGES_DEFINITION, POST_CHANNEL_MESSAGE_DEFINITION, POST_THREAD_REPLY_DEFINITION
+from .definitions import CONNECTOR_ID, GET_THREAD_REPLY_DEFINITION, GET_WORKSPACE_IDENTITY_DEFINITION, LIST_CHANNELS_DEFINITION, LIST_CHANNEL_MESSAGES_DEFINITION, LIST_THREAD_MESSAGES_DEFINITION, POST_BUTTON_MESSAGE_DEFINITION, POST_CHANNEL_MESSAGE_DEFINITION, POST_THREAD_REPLY_DEFINITION
 from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS
-from ..models import GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput
+from ..models import GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelMessagesInput, ListChannelMessagesOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, PostButtonMessageInput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput
 
 class Connection:
 
-    __slots__ = ('_list_channels', '_get_workspace_identity', '_list_thread_messages', '_get_thread_reply', '_post_channel_message', '_post_thread_reply', '_client', 'reference')
+    __slots__ = ('_list_channels', '_get_workspace_identity', '_list_thread_messages', '_get_thread_reply', '_list_channel_messages', '_post_channel_message', '_post_thread_reply', '_post_button_message', '_client', 'reference')
 
     def __init__(self,
         reference: ConnectionRef,
@@ -25,12 +25,14 @@ class Connection:
         get_workspace_identity: Query[GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput],
         list_thread_messages: Query[ListThreadMessagesInput, ListThreadMessagesOutput],
         get_thread_reply: Query[GetThreadReplyInput, GetThreadReplyOutput],
+        list_channel_messages: Query[ListChannelMessagesInput, ListChannelMessagesOutput],
         post_channel_message: Mutation[PostChannelMessageInput, PostMessageOutput],
         post_thread_reply: Mutation[PostThreadReplyInput, PostMessageOutput],
+        post_button_message: Mutation[PostButtonMessageInput, PostMessageOutput],
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or list_channels is None or get_workspace_identity is None or list_thread_messages is None or get_thread_reply is None or post_channel_message is None or post_thread_reply is None:
+        if reference.provider != CONNECTOR_ID or list_channels is None or get_workspace_identity is None or list_thread_messages is None or get_thread_reply is None or list_channel_messages is None or post_channel_message is None or post_thread_reply is None or post_button_message is None:
             raise ValueError("Slack connection provider and operations are required")
         if list_channels.definition().operation != LIST_CHANNELS_DEFINITION.operation:
             raise ValueError("Slack connection operation identity differs")
@@ -40,17 +42,23 @@ class Connection:
             raise ValueError("Slack connection operation identity differs")
         if get_thread_reply.definition().operation != GET_THREAD_REPLY_DEFINITION.operation:
             raise ValueError("Slack connection operation identity differs")
+        if list_channel_messages.definition().operation != LIST_CHANNEL_MESSAGES_DEFINITION.operation:
+            raise ValueError("Slack connection operation identity differs")
         if post_channel_message.definition().operation != POST_CHANNEL_MESSAGE_DEFINITION.operation:
             raise ValueError("Slack connection operation identity differs")
         if post_thread_reply.definition().operation != POST_THREAD_REPLY_DEFINITION.operation:
+            raise ValueError("Slack connection operation identity differs")
+        if post_button_message.definition().operation != POST_BUTTON_MESSAGE_DEFINITION.operation:
             raise ValueError("Slack connection operation identity differs")
         self.reference = reference
         self._list_channels = list_channels
         self._get_workspace_identity = get_workspace_identity
         self._list_thread_messages = list_thread_messages
         self._get_thread_reply = get_thread_reply
+        self._list_channel_messages = list_channel_messages
         self._post_channel_message = post_channel_message
         self._post_thread_reply = post_thread_reply
+        self._post_button_message = post_button_message
         self._client = client
 
     def list_channels(self) -> Query[ListChannelsInput, ListChannelsOutput]:
@@ -65,11 +73,17 @@ class Connection:
     def get_thread_reply(self) -> Query[GetThreadReplyInput, GetThreadReplyOutput]:
         return self._get_thread_reply
 
+    def list_channel_messages(self) -> Query[ListChannelMessagesInput, ListChannelMessagesOutput]:
+        return self._list_channel_messages
+
     def post_channel_message(self) -> Mutation[PostChannelMessageInput, PostMessageOutput]:
         return self._post_channel_message
 
     def post_thread_reply(self) -> Mutation[PostThreadReplyInput, PostMessageOutput]:
         return self._post_thread_reply
+
+    def post_button_message(self) -> Mutation[PostButtonMessageInput, PostMessageOutput]:
+        return self._post_button_message
 
     async def aclose(self) -> None:
         if self._client is not None:
@@ -87,7 +101,7 @@ setattr(Connection, '__module__', 'dex_connectors.slack.connection')
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("Slack client is required")
-    return Connection(reference, client.list_channels(), client.get_workspace_identity(), client.list_thread_messages(), client.get_thread_reply(), client.post_channel_message(), client.post_thread_reply(), client)
+    return Connection(reference, client.list_channels(), client.get_workspace_identity(), client.list_thread_messages(), client.get_thread_reply(), client.list_channel_messages(), client.post_channel_message(), client.post_thread_reply(), client.post_button_message(), client)
 
 setattr(new_connection, '__module__', 'dex_connectors.slack.connection')
 
@@ -97,11 +111,13 @@ def new_connection_with_operations(
     get_workspace_identity: Query[GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput],
     list_thread_messages: Query[ListThreadMessagesInput, ListThreadMessagesOutput],
     get_thread_reply: Query[GetThreadReplyInput, GetThreadReplyOutput],
+    list_channel_messages: Query[ListChannelMessagesInput, ListChannelMessagesOutput],
     post_channel_message: Mutation[PostChannelMessageInput, PostMessageOutput],
     post_thread_reply: Mutation[PostThreadReplyInput, PostMessageOutput],
+    post_button_message: Mutation[PostButtonMessageInput, PostMessageOutput],
     reference: ConnectionRef,
 ) -> Connection:
-    return Connection(reference, list_channels, get_workspace_identity, list_thread_messages, get_thread_reply, post_channel_message, post_thread_reply)
+    return Connection(reference, list_channels, get_workspace_identity, list_thread_messages, get_thread_reply, list_channel_messages, post_channel_message, post_thread_reply, post_button_message)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.slack.connection')
 

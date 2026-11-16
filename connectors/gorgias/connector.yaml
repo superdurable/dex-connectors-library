@@ -11,15 +11,15 @@ spec:
   provider: gorgias
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-gorgias
       operations: [searchTickets, getTicket, findCustomerByEmail, createTicket, updateTicket, addNote]
-      triggers: []
+      triggers: [ticketChanged]
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       package: "@superdurable/connector-gorgias"
       operations: [searchTickets, getTicket, findCustomerByEmail, createTicket, updateTicket, addNote]
-      triggers: []
+      triggers: [ticketChanged]
   codegen:
     go:
       package: gorgias

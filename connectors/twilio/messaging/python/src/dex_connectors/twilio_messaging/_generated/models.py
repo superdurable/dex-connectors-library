@@ -90,3 +90,35 @@ class GetMessageInput:
 
 
 setattr(GetMessageInput, '__module__', 'dex_connectors.twilio_messaging.models')
+
+
+# MessageReceivedEvent is one inbound message read from the Twilio Messages list.
+#
+# Unlike operation results, it carries the message text, because acting on an inbound message needs it.
+# Media URLs, Twilio error text, and credentials are never included. The Trigger event ID is
+# "twilio-message-" followed by the message SID.
+@dataclass(frozen=True, slots=True)
+class MessageReceivedEvent:
+    # Message is the safe message view: SID, account, sender (From), receiving number (To), status
+    # (received, or receiving when processing outlasted the hold limit), direction, segment and media
+    # counts, and timestamps. SentAt is when Twilio received the message.
+    message: Message = _dataclass_field(default_factory=Message)
+    # Body is the inbound text, empty for a media-only MMS; Twilio may redact it per the account's
+    # retention settings.
+    body: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(MessageReceivedEvent, '__module__', 'dex_connectors.twilio_messaging.models')
+
+
+# MessageReceivedTriggerConfiguration is the messageReceived binding configuration that the
+# receivingAddressInput unit saves in Dex Web. Changing it for a binding that already polled makes its next
+# poll record a new baseline.
+@dataclass(frozen=True, slots=True)
+class MessageReceivedTriggerConfiguration:
+    # To is the receiving Twilio number in E.164 form, such as +14155550100, or a WhatsApp sender written
+    # whatsapp:+14155550100. Blank receives every inbound message of the connection's account.
+    to: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(MessageReceivedTriggerConfiguration, '__module__', 'dex_connectors.twilio_messaging.models')

@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-google-sheets",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Google Sheets operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -42,10 +42,11 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:upsert": "npm run build && tsx examples/upsert-contact/main.ts",
-    "example:upsert:start": "npm run build && tsx examples/upsert-contact/start.ts"
+    "example:upsert:start": "npm run build && tsx examples/upsert-contact/start.ts",
+    "example:new-row-intake": "npm run build && tsx examples/new-row-intake/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },

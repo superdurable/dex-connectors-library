@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 from urllib.parse import quote, urlsplit
 
 import httpx
@@ -20,6 +20,7 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.pollingtrigger import MAXIMUM_CHANGES_PER_PAGE
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -37,13 +38,16 @@ if TYPE_CHECKING:
 
 _PATH_SAFE = "-._~$&+=:@"
 
+MAXIMUM_ROW_ADDED_POLL_PAGE_SIZE: Final = MAXIMUM_CHANGES_PER_PAGE
+"""The largest `Config.poll_page_size`, which keeps one rowAdded poll page within the poll kit's bound."""
+
 
 def escape_path(value: str) -> str:
     """Escape a single path segment with Go url.PathEscape's safe set."""
     return quote(value, safe=_PATH_SAFE)
 
 
-def encode_query(values: dict[str, str]) -> str:
+def encode_query(values: Mapping[str, str | Sequence[str]]) -> str:
     """Encode sorted query values like Go url.Values.Encode."""
     return encode_query_values(values)
 
@@ -78,10 +82,13 @@ class Client:
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("Google Sheets configuration and credential provider are required")
+        defaults = Config()
         config = Config(
-            config.endpoint or Config().endpoint,
-            config.max_response_bytes or Config().max_response_bytes,
-            config.max_rows or Config().max_rows,
+            config.endpoint or defaults.endpoint,
+            config.max_response_bytes or defaults.max_response_bytes,
+            config.max_rows or defaults.max_rows,
+            config.poll_interval_seconds or defaults.poll_interval_seconds,
+            config.poll_page_size or defaults.poll_page_size,
         )
         endpoint = urlsplit(config.endpoint)
         if not endpoint.scheme or not endpoint.hostname:
@@ -90,6 +97,12 @@ class Client:
             raise ValueError("Google Sheets endpoint must use HTTPS")
         if config.max_response_bytes < 1 or config.max_rows < 2:
             raise ValueError("Google Sheets response and row limits must be positive")
+        if config.poll_interval_seconds < 1:
+            raise ValueError("Google Sheets pollInterval must be at least one second")
+        if not 1 <= config.poll_page_size <= MAXIMUM_ROW_ADDED_POLL_PAGE_SIZE:
+            raise ValueError(
+                f"Google Sheets pollPageSize must be from 1 to {MAXIMUM_ROW_ADDED_POLL_PAGE_SIZE}"
+            )
         self.config = config
         self.endpoint = config.endpoint.rstrip("/")
         self.credentials = credentials
@@ -159,7 +172,7 @@ class Client:
         method: str,
         spreadsheet_id: str,
         suffix: str,
-        query: dict[str, str],
+        query: Mapping[str, str | Sequence[str]],
         payload: Mapping[str, object] | None = None,
         *,
         refresh: bool = True,

@@ -24,6 +24,18 @@ function unitTarget(unitId: string, value: Record<string, unknown>): ConnectorSt
   };
 }
 
+function fieldTarget(value: Record<string, unknown>): ConnectorStudioConfigurationUnitTarget {
+  return {
+    kind: "configurationUnit",
+    scope: {kind: "trigger", triggerName: "recordChanged", bindingName: "intake-record-changed", flowType: "AirtableRecordChangedIntake"},
+    instanceId: "intakeLastModified", unitId: "lastModifiedTimeFieldPicker", label: "Last modified time field",
+    description: "Started from the recordChanged Trigger; the picker stores the field ID and name.",
+    required: true,
+    bindings: [{port: "baseId", jsonPointer: "/baseId"}, {port: "tableId", jsonPointer: "/tableId"}, {port: "fieldId", jsonPointer: "/fieldId"}, {port: "fieldName", jsonPointer: "/fieldName"}],
+    value,
+  };
+}
+
 describe("Airtable connection surface", () => {
   it("confirms a saved token without rendering any credential", () => {
     const markup = renderToStaticMarkup(<AirtableSetupView connection={{state: "connected", grantedScopes: [], authMethodIds: []}}/>);
@@ -80,13 +92,43 @@ describe("Airtable configuration units", () => {
 
     const withBase = renderToStaticMarkup(<AirtableConfigurationUnit
       onLoadBases={ignore} onLoadTables={ignore} onSave={ignore}
-      tables={[{id: "tblPolicies000001", name: "Policies"}, {id: "tblDecisionLog001", name: "Decision Log"}]}
+      tables={[{id: "tblPolicies000001", name: "Policies", lastModifiedTimeFields: []}, {id: "tblDecisionLog001", name: "Decision Log", lastModifiedTimeFields: []}]}
       target={unitTarget("tablePicker", {baseId: "appRefundBase0001", tableId: "tblPolicies000001", tableName: "Policies"})}
     />);
     expect(withBase).not.toContain('disabled="">Load tables');
     expect(withBase).toContain('<option value="tblPolicies000001" selected="">Policies</option>');
     expect(withBase).toContain("<strong>Table:</strong> Policies");
     expect(withBase).toContain('class="studio-surface"');
+  });
+
+  it("lists a saved table's Last modified time fields and saves only a valid field ID", () => {
+    const withoutTable = renderToStaticMarkup(<AirtableConfigurationUnit
+      onLoadBases={ignore} onLoadTables={ignore} onSave={ignore}
+      target={fieldTarget({baseId: "appIntakeBase0001"})}
+    />);
+    expect(withoutTable).toContain('type="button" disabled="">Load fields');
+    expect(withoutTable).toContain("Save a base and table first to list their Last modified time fields.");
+    expect(withoutTable).toContain("https://airtable.com/ followed by the base ID and /api/docs");
+    expect(withoutTable).toContain('disabled="">Save');
+
+    const withFields = renderToStaticMarkup(<AirtableConfigurationUnit
+      onLoadBases={ignore} onLoadTables={ignore} onSave={ignore}
+      tables={[{id: "tblIntakeLeads001", name: "Leads", lastModifiedTimeFields: [{id: "fldLastModified01", name: "Last Modified"}]}]}
+      target={fieldTarget({baseId: "appIntakeBase0001", tableId: "tblIntakeLeads001", fieldId: "fldLastModified01", fieldName: "Last Modified"})}
+    />);
+    expect(withFields).not.toContain('disabled="">Load fields');
+    expect(withFields).toContain('<option value="fldLastModified01" selected="">Last Modified</option>');
+    expect(withFields).toContain("<strong>Field:</strong> Last Modified");
+    expect(withFields).not.toContain('disabled="">Save');
+    expect(withFields).toContain("Started from the recordChanged Trigger");
+
+    const noFields = renderToStaticMarkup(<AirtableConfigurationUnit
+      onLoadBases={ignore} onLoadTables={ignore} onSave={ignore}
+      tables={[{id: "tblIntakeLeads001", name: "Leads", lastModifiedTimeFields: []}]}
+      target={fieldTarget({baseId: "appIntakeBase0001", tableId: "tblIntakeLeads001", fieldId: "Last Modified"})}
+    />);
+    expect(noFields).toContain("turn on Include time");
+    expect(noFields).toContain("A field ID starts with fld followed by 14 letters and digits.");
   });
 
   it("reports an unknown unit instead of rendering a field", () => {

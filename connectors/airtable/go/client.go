@@ -17,6 +17,9 @@
 // could both create a record; UpsertRecords therefore uses sync durability,
 // which never runs two attempts of one Step at once.
 //
+// The recordChanged Trigger polls one table for records whose Last modified
+// time field moved past a durable cursor; see NewProjectRecordChangedTriggerRunner.
+//
 // A connection authenticates with an Airtable personal access token. Requests
 // to one base are spaced to Airtable's limit of 5 requests per second within
 // one process, and a 429 response holds that base back for Airtable's
@@ -25,10 +28,12 @@ package airtable
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -58,6 +63,7 @@ type Option func(*clientOptions)
 type clientOptions struct {
 	httpClient *http.Client
 	now        func() time.Time
+	logger     *slog.Logger
 }
 
 // WithHTTPClient replaces the HTTP client used for Airtable API calls. The
@@ -68,6 +74,14 @@ func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
 }
 
+// WithLogger sends the recordChanged Trigger runners' records to logger: seeded and committed cursors,
+// failed polls, cursor resets, and delivery outcomes. Without the option, or with a nil logger, records go
+// to slog.Default() as of each record. Records carry the connector, connection, Trigger, and binding,
+// never record fields, field names, or the personal access token.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
+}
+
 // Client executes authenticated Airtable Web API calls. It is safe for
 // concurrent use by several Steps, which share its per-base request pacing.
 type Client struct {
@@ -76,6 +90,9 @@ type Client struct {
 	credentials      sdkgo.CredentialProvider[Credentials]
 	maxResponseBytes int64
 	pacer            *baseRequestPacer
+	pollInterval     time.Duration
+	pollPageSize     int
+	logger           *slog.Logger
 	now              func() time.Time
 }
 
@@ -138,6 +155,12 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	if config.MaxResponseBytes <= 0 {
 		return nil, errors.New("Airtable maxResponseBytes must be positive")
 	}
+	if config.PollInterval < time.Second {
+		return nil, errors.New("Airtable pollInterval must be at least one second")
+	}
+	if config.PollPageSize < 1 || config.PollPageSize > maximumRecordChangedPollPageSize {
+		return nil, fmt.Errorf("Airtable pollPageSize must be from 1 to %d", maximumRecordChangedPollPageSize)
+	}
 	if credentials == nil {
 		return nil, errors.New("Airtable credential provider is required")
 	}
@@ -154,7 +177,8 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	return &Client{
 		baseURL: baseURL, httpClient: providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
 		credentials: credentials, maxResponseBytes: config.MaxResponseBytes,
-		pacer: newBaseRequestPacer(dependencies.now), now: dependencies.now,
+		pacer: newBaseRequestPacer(dependencies.now), pollInterval: config.PollInterval, pollPageSize: int(config.PollPageSize),
+		logger: dependencies.logger, now: dependencies.now,
 	}, nil
 }
 
@@ -180,7 +204,12 @@ func (client *Client) UpdateRecords() UpdateRecordsOperation {
 
 // exchange paces, authenticates, and sends one request, then classifies any non-2xx outcome.
 func (client *Client) exchange(call sdkgo.Call, operation string, request providerRequest, objectID string) (providerResponse, *providerOutcome) {
-	pacingDelay, err := client.pacer.waitForRequestSlot(call.Context, request.baseID)
+	return client.exchangeWithContext(call.Context, call, operation, request, objectID)
+}
+
+// exchangeWithContext is exchange for a caller outside a Dex Step, such as a Trigger poll, whose call has no Dex context.
+func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, operation string, request providerRequest, objectID string) (providerResponse, *providerOutcome) {
+	pacingDelay, err := client.pacer.waitForRequestSlot(ctx, request.baseID)
 	if err != nil {
 		return providerResponse{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "the Step ended while waiting for an Airtable request slot", sdkgo.Receipt{})
 	}
@@ -189,11 +218,11 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 		outcome.retryAfter = pacingDelay
 		return providerResponse{}, outcome
 	}
-	credentials, outcome := client.resolveCredentials(call, operation)
+	credentials, outcome := client.resolveCredentials(ctx, call, operation)
 	if outcome != nil {
 		return providerResponse{}, outcome
 	}
-	response, err := client.send(call, credentials, request)
+	response, err := client.send(ctx, credentials, request)
 	receipt := client.receipt(call, objectID)
 	switch {
 	case errors.Is(err, errRequestNotBuilt):
@@ -213,12 +242,12 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 	return response, &classified
 }
 
-func (client *Client) send(call sdkgo.Call, credentials Credentials, request providerRequest) (providerResponse, error) {
+func (client *Client) send(ctx context.Context, credentials Credentials, request providerRequest) (providerResponse, error) {
 	var body io.Reader
 	if request.body != nil {
 		body = bytes.NewReader(request.body)
 	}
-	httpRequest, err := http.NewRequestWithContext(call.Context, request.method, client.baseURL+request.path, body)
+	httpRequest, err := http.NewRequestWithContext(ctx, request.method, client.baseURL+request.path, body)
 	if err != nil {
 		return providerResponse{}, errRequestNotBuilt
 	}
@@ -241,11 +270,11 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, request pro
 }
 
 // resolveCredentials separates a revoked grant from a missing or malformed token.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *providerOutcome) {
+func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, *providerOutcome) {
 	var credentials Credentials
 	var err error
-	if contextProvider, ok := client.credentials.(sdkgo.ContextCredentialProvider[Credentials]); ok && call.Context != nil {
-		credentials, err = contextProvider.ResolveContext(call.Context, call)
+	if contextProvider, ok := client.credentials.(sdkgo.ContextCredentialProvider[Credentials]); ok && ctx != nil {
+		credentials, err = contextProvider.ResolveContext(ctx, call)
 	} else {
 		credentials, err = client.credentials.Resolve(call)
 	}

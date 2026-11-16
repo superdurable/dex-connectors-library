@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import Contact, ContactPage, CreateInvoiceInput, CreateInvoiceOutput, FindContactByEmailInput, FindContactByEmailOutput, GetInvoiceInput, Invoice, InvoiceContact, InvoiceLineItem, InvoiceLineItemInput, InvoicePage, InvoicePayment, ListContactsInput, ListInvoicesInput, Payment, PaymentAccount, PaymentInvoice, RecordPaymentInput, RecordPaymentOutput
+from ..models import Contact, ContactPage, CreateInvoiceInput, CreateInvoiceOutput, FindContactByEmailInput, FindContactByEmailOutput, GetInvoiceInput, Invoice, InvoiceChangedEvent, InvoiceChangedTriggerConfiguration, InvoiceContact, InvoiceLineItem, InvoiceLineItemInput, InvoicePage, InvoicePayment, ListContactsInput, ListInvoicesInput, Payment, PaymentAccount, PaymentInvoice, RecordPaymentInput, RecordPaymentOutput
 from .definitions import CONNECTOR_ID, AMBIGUOUS, CREATED, CREATE_INVOICE_DEFINITION, DAILY_LIMIT_REACHED, DEFECT, FIND_CONTACT_BY_EMAIL_DEFINITION, FOUND, GET_INVOICE_DEFINITION, INVALID_RESPONSE, LISTED, LIST_CONTACTS_DEFINITION, LIST_INVOICES_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, RECORDED, RECORD_PAYMENT_DEFINITION, UNCERTAIN
 
 def list_contacts_listed(value: ContactPage, failure: Failure | None = None) -> Case[ContactPage]:

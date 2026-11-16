@@ -87,6 +87,7 @@ def new_send_message_step(
     defect: dex.StepTarget[MutationResult[SendMessageOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[SendMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, SendMessageInput, SendMessageOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Gmail Step connection name must match its connection reference")
@@ -116,6 +117,7 @@ def new_send_message_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -135,6 +137,7 @@ def new_reply_to_message_step(
     defect: dex.StepTarget[MutationResult[SendMessageOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[SendMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, ReplyToMessageInput, SendMessageOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Gmail Step connection name must match its connection reference")
@@ -166,6 +169,7 @@ def new_reply_to_message_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

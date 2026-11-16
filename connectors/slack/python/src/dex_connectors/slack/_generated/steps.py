@@ -17,7 +17,7 @@ from dex_connectors.sdk import (
 )
 
 from ..connection import Connection
-from ..models import GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput
+from ..models import GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelMessagesInput, ListChannelMessagesOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, PostButtonMessageInput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput
 
 StepInput = TypeVar("StepInput")
 
@@ -224,6 +224,56 @@ def new_get_thread_reply_step(
 
 setattr(new_get_thread_reply_step, '__module__', 'dex_connectors.slack.steps')
 
+def new_list_channel_messages_step(
+    *,
+    step_type: str,
+    step_input_type: type[StepInput],
+    annotations: StepAnnotations | Mapping[str, str],
+    connection: Connection,
+    connection_name: str,
+    map_to_operation_input: Callable[[StepInput], ListChannelMessagesInput],
+    read: dex.StepTarget[QueryResult[ListChannelMessagesOutput]],
+    provider_rejected: dex.StepTarget[QueryResult[ListChannelMessagesOutput]] | None = None,
+    invalid_response: dex.StepTarget[QueryResult[ListChannelMessagesOutput]] | None = None,
+    defect: dex.StepTarget[QueryResult[ListChannelMessagesOutput]] | None = None,
+    result_attribute: dex.Attribute[QueryResult[ListChannelMessagesOutput]] | None = None,
+    step_options_override: dex.StepOptions | None = None,
+) -> QueryStep[StepInput, ListChannelMessagesInput, ListChannelMessagesOutput]:
+    if connection is None or connection.reference.name != connection_name:
+        raise ValueError("Slack Step connection name must match its connection reference")
+    if isinstance(annotations, StepAnnotations):
+        step_annotations = annotations
+    else:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
+            raise ValueError("Slack Step annotations require groupId, groupLabel, and explanation")
+        if any(not isinstance(value, str) for value in annotations.values()):
+            raise ValueError("Slack Step annotations must be strings")
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
+    branches = {
+        "read": read,
+    }
+    if provider_rejected is not None:
+        branches["providerRejected"] = provider_rejected
+    if invalid_response is not None:
+        branches["invalidResponse"] = invalid_response
+    if defect is not None:
+        branches["defect"] = defect
+    return QueryStep(
+        QueryStepConfig(
+            step_type=step_type,
+            step_input_type=step_input_type,
+            annotations=step_annotations,
+            operation=_bound_operation(connection, "list_channel_messages"),
+            connection=connection.reference,
+            map_to_operation_input=map_to_operation_input,
+            branches=branches,
+            result_attribute=result_attribute,
+            step_options_override=step_options_override,
+        )
+    )
+
+setattr(new_list_channel_messages_step, '__module__', 'dex_connectors.slack.steps')
+
 def new_post_channel_message_step(
     *,
     step_type: str,
@@ -327,6 +377,58 @@ def new_post_thread_reply_step(
     )
 
 setattr(new_post_thread_reply_step, '__module__', 'dex_connectors.slack.steps')
+
+def new_post_button_message_step(
+    *,
+    step_type: str,
+    step_input_type: type[StepInput],
+    annotations: StepAnnotations | Mapping[str, str],
+    connection: Connection,
+    connection_name: str,
+    map_to_operation_input: Callable[[StepInput], PostButtonMessageInput],
+    sent: dex.StepTarget[MutationResult[PostMessageOutput]],
+    provider_rejected: dex.StepTarget[MutationResult[PostMessageOutput]] | None = None,
+    uncertain: dex.StepTarget[MutationResult[PostMessageOutput]] | None = None,
+    defect: dex.StepTarget[MutationResult[PostMessageOutput]] | None = None,
+    result_attribute: dex.Attribute[MutationResult[PostMessageOutput]] | None = None,
+    step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
+) -> MutationStep[StepInput, PostButtonMessageInput, PostMessageOutput]:
+    if connection is None or connection.reference.name != connection_name:
+        raise ValueError("Slack Step connection name must match its connection reference")
+    if isinstance(annotations, StepAnnotations):
+        step_annotations = annotations
+    else:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
+            raise ValueError("Slack Step annotations require groupId, groupLabel, and explanation")
+        if any(not isinstance(value, str) for value in annotations.values()):
+            raise ValueError("Slack Step annotations must be strings")
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
+    branches = {
+        "sent": sent,
+    }
+    if provider_rejected is not None:
+        branches["providerRejected"] = provider_rejected
+    if uncertain is not None:
+        branches["uncertain"] = uncertain
+    if defect is not None:
+        branches["defect"] = defect
+    return MutationStep(
+        MutationStepConfig(
+            step_type=step_type,
+            step_input_type=step_input_type,
+            annotations=step_annotations,
+            operation=_bound_operation(connection, "post_button_message"),
+            connection=connection.reference,
+            map_to_operation_input=map_to_operation_input,
+            branches=branches,
+            result_attribute=result_attribute,
+            step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
+        )
+    )
+
+setattr(new_post_button_message_step, '__module__', 'dex_connectors.slack.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:

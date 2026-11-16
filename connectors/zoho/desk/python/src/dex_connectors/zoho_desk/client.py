@@ -8,6 +8,7 @@ import asyncio
 import ipaddress
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -43,6 +44,8 @@ _CREDITS = re.compile(r"[0-9]{1,12}\Z")
 _ERROR_CODE = re.compile(r"[A-Z][A-Z0-9_]{0,63}\Z")
 _FIELD_NAME = re.compile(r"/[A-Za-z][A-Za-z0-9_]{0,63}(?:/[A-Za-z0-9_]{1,64}){0,3}\Z")
 _ERROR_TYPE = re.compile(r"[a-z][A-Za-z_]{0,31}\Z")
+# Keeps ticketChanged polls from spending the organization's daily API credits.
+_MINIMUM_POLL_INTERVAL_SECONDS = 15
 
 
 @dataclass(frozen=True)
@@ -55,6 +58,7 @@ class Exchange:
     headers: httpx.Headers | None = None
     failure: Failure | None = None
     retry_after_seconds: float = 0
+    field_errors: tuple[str, ...] = ()
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -107,15 +111,13 @@ def _with_summary(message: str, body: bytes) -> str:
     return message + (" [" + "; ".join(parts) + "]" if parts else "")
 
 
-def _retry_after(headers: httpx.Headers) -> float:
-    return parse_retry_after(headers.get("Retry-After", ""), datetime.now(UTC))
-
-
 class Client:
     """Resolve Zoho OAuth credentials at dispatch and send bounded Desk requests.
 
     The injected HTTP client remains owned by the caller. A default client is
-    owned by this connector and closed by ``aclose``.
+    owned by this connector and closed by ``aclose``. ``now`` replaces the wall
+    clock that ticketChanged polls and Retry-After dates read; it defaults to
+    ``datetime.now(UTC)``. A ``pollInterval`` under 15 seconds raises ValueError.
     """
 
     def __init__(
@@ -124,6 +126,7 @@ class Client:
         credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
         api_base_url: str = "",
+        now: Callable[[], datetime] | None = None,
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("Zoho Desk configuration and credentials are required")
@@ -131,6 +134,8 @@ class Client:
             raise ValueError("Zoho Desk orgId must be the organization's numeric ID")
         if config.max_response_bytes <= 0:
             raise ValueError("Zoho Desk response limit must be positive")
+        if config.poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError("Zoho Desk pollInterval must be at least 15s")
         if api_base_url:
             parsed = urlsplit(api_base_url)
             if (
@@ -149,6 +154,7 @@ class Client:
         self.http_client = http_client or new_provider_http_client(10)
         self._owns_http_client = http_client is None
         self._operation_deadlines: dict[str, float] = {}
+        self._now = now or (lambda: datetime.now(UTC))
 
     def _remaining_seconds(self, call: Call) -> float:
         clock = asyncio.get_running_loop()
@@ -354,8 +360,8 @@ class Client:
             body = b""
         if 200 <= status < 300:
             return Exchange("success", status, body, response_headers)
-        code, _ = _summary(body)
-        delay = _retry_after(response_headers)
+        code, field_errors = _summary(body)
+        delay = parse_retry_after(response_headers.get("Retry-After", ""), self._now())
         if status == 429:
             return Exchange(
                 "rate_limited",
@@ -424,6 +430,7 @@ class Client:
             status,
             headers=response_headers,
             failure=failure(operation, kind, _with_summary(message, body)),
+            field_errors=tuple(field_errors),
         )
 
     def receipt(self, call: Call, exchange: Exchange, object_id: str = "") -> Receipt:

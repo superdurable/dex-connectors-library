@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-intuit-mailchimp",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -424,6 +424,16 @@
           "campaignId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_member_changed_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "memberChanged",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

@@ -1,10 +1,10 @@
 {
   "connectorId": "google-sheets",
-  "releaseTag": "connectors/google/spreadsheet/go/v0.25.0",
+  "releaseTag": "connectors/google/spreadsheet/go/v0.26.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-spreadsheet",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -223,6 +223,16 @@
           "values"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_row_added_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "rowAdded",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

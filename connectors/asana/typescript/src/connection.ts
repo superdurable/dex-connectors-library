@@ -17,8 +17,13 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   if (!project || !connectionName.trim()) throw new TypeError('Asana project connection is required');
   const selected = project.configuration.connections.find(entry => entry.connectorId === 'asana' && entry.connectionName === connectionName);
   if (!selected || selected.provider !== 'asana') throw new TypeError('Asana project connection is not configured');
-  const settings = z.object({ endpoint: z.string().optional(), maxResponseBytes: z.number().int().optional() }).parse(selected.configuration);
-  const config: Config = { ...(settings.endpoint !== undefined ? { endpoint: settings.endpoint } : {}), ...(settings.maxResponseBytes !== undefined ? { maxResponseBytes: settings.maxResponseBytes } : {}) };
+  // pollInterval is a Go time.Duration, stored as integer nanoseconds.
+  const settings = z.object({ endpoint: z.string().optional(), maxResponseBytes: z.number().int().optional(), pollInterval: z.number().int().nonnegative().optional() }).parse(selected.configuration);
+  const config: Config = {
+    ...(settings.endpoint !== undefined ? { endpoint: settings.endpoint } : {}),
+    ...(settings.maxResponseBytes !== undefined ? { maxResponseBytes: settings.maxResponseBytes } : {}),
+    ...(settings.pollInterval ? { pollIntervalMs: Math.ceil(settings.pollInterval / 1_000_000) } : {}),
+  };
   const credentials: CredentialProvider<Credentials> = {
     async resolve(_call: Call, signal?: AbortSignal): Promise<Credentials> {
       const fields = z.object({ access_token: z.string().min(1) }).parse(await project.resolveCredential('asana', connectionName, signal));

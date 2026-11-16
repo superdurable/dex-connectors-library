@@ -30,13 +30,25 @@ export interface MailchimpExchange {
 export function mailchimpFailure(operation: string, kind: Failure['kind'], message: string): Failure {
   return { kind, provider: 'mailchimp', operation, message };
 }
-/** Authenticated Mailchimp Marketing API client. */
+/** The manifest's default memberChanged pollInterval, 30 seconds. */
+const defaultPollIntervalMs = 30_000;
+/** Keeps a memberChanged poll loop from occupying Mailchimp's per-user request slots. */
+export const MinimumPollIntervalMs = 5_000;
+
+/**
+ * Authenticated Mailchimp Marketing API client. pollIntervalMs is the memberChanged Trigger's delay between
+ * polls of each audience, from Config.pollIntervalMs (omitted or zero uses 30 seconds); the constructor
+ * throws for an interval under 5 seconds, as Go's New does.
+ */
 export class MailchimpClient {
+  /** The memberChanged Trigger's delay between polls, in milliseconds. */
+  readonly pollIntervalMs: number;
+  /** Receipt and Retry-After clock. */
+  readonly now: () => Date;
   private readonly maxResponseBytes: number;
   private readonly credentials: CredentialProvider<Credentials>;
   private readonly apiBaseURL: string | undefined;
   private readonly send: MailchimpRequestSender;
-  private readonly now: () => Date;
 
   /** Validate configuration and retain immutable dependencies. */
   constructor(config: Config, credentials: CredentialProvider<Credentials>, options: MailchimpClientOptions = {}) {
@@ -44,6 +56,9 @@ export class MailchimpClient {
     const maximum = config.maxResponseBytes ?? 4_194_304;
     if (!Number.isSafeInteger(maximum) || maximum < 1) throw new TypeError('Mailchimp response limit must be positive');
     this.maxResponseBytes = maximum;
+    const pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(pollIntervalMs) || pollIntervalMs < MinimumPollIntervalMs) throw new TypeError('Mailchimp pollInterval must be at least 5s');
+    this.pollIntervalMs = pollIntervalMs;
     this.credentials = credentials;
     this.apiBaseURL = options.apiBaseURL ? validateBaseURL(options.apiBaseURL) : undefined;
     this.send = options.send ?? sendProviderRequest;

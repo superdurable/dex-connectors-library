@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
@@ -12,11 +12,15 @@ const defaultEndpoint = 'https://api.atlassian.com';
 const cloudIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const confluenceScopes = /confluence/;
 const encoder = new TextEncoder();
+const defaultPollIntervalMs = 60_000;
+/** Keeps a pageChanged poll loop from spending the app's Confluence rate-limit quota. */
+const minimumPollIntervalMs = 10_000;
 
-/** Injectable provider transport and clock for deterministic connector tests. */
+/** Injectable provider transport and clock for deterministic connector tests, and the Trigger's log destination. */
 export interface ConfluenceClientOptions {
-  send?: (request: ProviderRequest) => Promise<ProviderResponse>;
-  now?: () => Date;
+  /** Sends one provider request; omitted uses the SDK's bounded provider HTTP client. */ send?: (request: ProviderRequest) => Promise<ProviderResponse>;
+  /** Current time for receipts, Retry-After, and pageChanged scan windows; omitted uses the system clock. */ now?: () => Date;
+  /** Receives the pageChanged runner's seed, reseed, failed-poll, and rate-limit records and its durable inbox records; never payloads or credentials. Omitted uses the SDK default logger. */ triggerLogger?: TriggerLogger;
 }
 
 /** One Confluence or gateway exchange with secret-safe transport evidence. */
@@ -51,6 +55,8 @@ export class ConfluenceClient {
   readonly endpoint: string;
   readonly configuredCloudId: string;
   readonly maxResponseBytes: number;
+  /** Delay between pageChanged polls, in milliseconds. */ readonly pollIntervalMs: number;
+  /** Receives pageChanged Trigger records; undefined uses the SDK default logger. */ readonly triggerLogger: TriggerLogger | undefined;
   readonly now: () => Date;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Atlassian', auth: Authorization, credentialFields: CredentialFields });
@@ -64,6 +70,10 @@ export class ConfluenceClient {
     if (this.configuredCloudId && !cloudIdPattern.test(this.configuredCloudId)) throw new TypeError('Confluence cloudId must be a site UUID');
     this.maxResponseBytes = config.maxResponseBytes || 8_388_608;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('Confluence maxResponseBytes must be positive');
+    // Zero keeps the displayed default, as the Go connector's configuration defaults do.
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Confluence pollInterval must be at least 10s');
+    this.triggerLogger = options.triggerLogger;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
   }
@@ -78,6 +88,9 @@ export class ConfluenceClient {
   updatePage(): UpdatePageOperation { return new UpdatePageOperation(this); }
   /** Bind the footer comment Mutation. */
   addComment(): AddCommentOperation { return new AddCommentOperation(this); }
+
+  /** Report that the next session sends the accessible-resources request. */
+  needsSiteLookup(): boolean { return !this.configuredCloudId && !this.resolvedCloudId; }
 
   /** Resolve the OAuth token and the single selected Confluence Cloud site. */
   async startSession(call: Call, operation: string): Promise<ConfluenceSessionResult> {

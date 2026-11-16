@@ -58,7 +58,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"subdomain", "maxResponseBytes", "email", "api_token"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"subdomain", "maxResponseBytes", "pollInterval", "email", "api_token"}, names, "a new visible field needs its own guidance review")
 
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
@@ -99,6 +99,19 @@ func TestAPITokenGuideCoversEnablementCreationRevocationAndPhaseOut(t *testing.T
 	} {
 		require.Contains(t, guide, instruction)
 	}
+}
+
+// TestTicketChangedGuidanceNamesTheAdministratorRequirementAndTheExportLimit covers the copy a ticketChanged
+// binding depends on, since the binding has no configuration unit to carry it.
+func TestTicketChangedGuidanceNamesTheAdministratorRequirementAndTheExportLimit(t *testing.T) {
+	manifest := readGuidanceManifest(t)
+	descriptions := map[string]string{}
+	for _, field := range append(manifest.Spec.Configuration.Fields, manifest.Spec.Auth.Fields...) {
+		descriptions[field.Name] = field.Description
+	}
+	require.Contains(t, descriptions["pollInterval"], "Go duration of at least 5s")
+	require.Contains(t, descriptions["pollInterval"], "10 requests per minute")
+	require.Contains(t, descriptions["email"], "ticketChanged Trigger reads Zendesk's incremental ticket export, which Zendesk allows only for administrators")
 }
 
 // TestManifestDeclaresNoStudioBundle records that Studio commands can reach neither a

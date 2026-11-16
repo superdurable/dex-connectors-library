@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -79,6 +82,7 @@ CREATE_EVENT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 UPDATE_EVENT_DEFINITION = MutationDefinition(
@@ -95,6 +99,7 @@ UPDATE_EVENT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 QUERY_FREE_BUSY_DEFINITION = QueryDefinition(
@@ -111,4 +116,9 @@ QUERY_FREE_BUSY_DEFINITION = QueryDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+)
+
+EVENT_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="eventChanged"),
+    description="Receive each event created, updated, or cancelled on one calendar, read through Google Calendar incremental sync; the first run records a baseline and delivers no existing events.",
 )

@@ -10,6 +10,9 @@ import { ListEventsOperation, GetEventOperation, CreateEventOperation, UpdateEve
 
 const defaultEndpoint = 'https://www.googleapis.com/calendar/v3';
 const defaultMaxResponseBytes = 4_194_304;
+const defaultPollIntervalMs = 30_000;
+/** Keeps an eventChanged poll loop from spending the Calendar API quota. */
+const minimumPollIntervalMs = 5_000;
 
 /** A provider response with the status retained when its body is oversized. */
 export interface CalendarResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; isTooLarge: boolean; }
@@ -24,6 +27,8 @@ export interface CalendarClientOptions {
 export class CalendarClient {
   private readonly endpoint: string;
   private readonly maxResponseBytes: number;
+  /** Delay between eventChanged polls in milliseconds: pollIntervalMs, 30000 when omitted or zero, at least 5000. */
+  readonly pollIntervalMs: number;
   private readonly timeoutMs: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly now: () => Date;
@@ -37,6 +42,8 @@ export class CalendarClient {
     if (parsedEndpoint.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(parsedEndpoint.hostname)) throw new TypeError('Google Calendar endpoint must use HTTPS');
     this.maxResponseBytes = config.maxResponseBytes || defaultMaxResponseBytes;
     this.timeoutMs = config.timeout ?? 25_000;
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Google Calendar pollInterval must be at least 5s');
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('Google Calendar response limit must be positive');
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs < 1) throw new TypeError('Google Calendar timeout must be positive');
     this.send = options.send ?? sendProviderRequest;

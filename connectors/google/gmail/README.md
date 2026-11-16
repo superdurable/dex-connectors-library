@@ -11,7 +11,7 @@ Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [Ty
 | Capability | Go | Python | TypeScript |
 | --- | --- | --- | --- |
 | `getMessage`, `sendMessage`, `replyToMessage` | yes | yes | yes |
-| `messageReceived`, `replyReceived` Triggers | yes | no | yes, from 0.3.0 |
+| `messageReceived`, `replyReceived` Triggers | yes | yes, from 0.3.0 | yes, from 0.3.0 |
 
 The Gmail Connector receives root messages and replies, reads one message, and
 sends new messages or replies from the verified primary address.
@@ -287,6 +287,15 @@ and `replyToMessage` branches and retry policy as this connector manifest.
 Dex CLI/Web 1.28.0 supports Python FDG 2.0 analysis and Dex Web connection
 discovery through this package's generated `dex-connector.json`. The example's
 Worker and real Dex integration test cover the connector operations.
+
+From 0.3.0 the Python package also implements the `messageReceived` and
+`replyReceived` Triggers at parity with Go: one ordered poller per connection
+(`new_project_message_trigger_runner`) that lists replies before roots and
+delivers every root before any reply, durable project inboxes that Go and
+Python replicas share, and a retry of a failed event that survives newer mail
+pushing it off the page. The
+[Trigger thread reply example](python/examples/trigger_thread_reply/README.md)
+mirrors the Go `thread-reply` example.
 
 ## Verification
 

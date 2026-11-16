@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import urlsplit
 
 from dex_connectors.sdk import (
     Call,
@@ -30,6 +30,7 @@ from ._generated.definitions import (
     UPDATE_PAGE_DEFINITION,
 )
 from ._generated.timestamps import parse_go_datetime
+from ._go_url import read_next_cursor
 from .client import (
     Classification,
     Client,
@@ -343,9 +344,7 @@ class SearchPagesOperation:
             decoded = decode_object(response)
             links = _object(decoded, "_links")
             next_link = _string(links, "next")
-            next_cursor = parse_qs(urlsplit(next_link).query).get("cursor", [""])[0] if next_link else ""
-            if next_link and (not next_cursor or not re.fullmatch(r"[\x21-\x7e]+", next_cursor)):
-                raise ValueError("invalid search cursor")
+            next_cursor = read_next_cursor(next_link)
             resources = decoded.get("results", [])
             if not isinstance(resources, list):
                 raise ValueError("invalid search page")

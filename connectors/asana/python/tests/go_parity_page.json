@@ -1,0 +1,8 @@
+{"data":[
+ {"action":"changed","created_at":"2026-11-01T10:00:00.123Z","user":{"gid":"11","name":"A"},"resource":{"gid":"100","name":"Té","resource_type":"task","resource_subtype":"default_task"},"parent":null,"change":{"field":"custom_fields","action":"changed","new_value":{ "GID" : "77", "x":1 },"added_value": [ 1.0e+2 , " <&>" , {"gid":5} ],"removed_value":null}},
+ {"action":"changed","created_at":"2026-11-01T10:00:00Z","resource":{"gid":"100","resource_type":"task"},"change":{"field":"name","action":"changed","new_value":"café 😀","added_value":{"gid":"","name":"z"}}},
+ {"action":"changed","created_at":"2026-11-01T10:00:00Z","resource":{"gid":"100","resource_type":"task"},"change":{"field":"name","action":"changed","new_value":"café 😀","added_value":{"gid":"","name":"z"}}},
+ {"action":"added","created_at":" 2026-11-01T10:00:01+02:00 ","Resource":{"GID":"101","resource_type":"task"},"parent":{"gid":"9","resource_type":"section","name":"S"}, "user":{"gid":"x1"}},
+ {"action":"added","created_at":"bad","resource":{"gid":"1","resource_type":"story"}},
+ {"action":"deleted","created_at":"2026-11-01T10:00:02Z","resource":{"gid":"102","resource_type":"task"},"change":{"field":"f","action":"a","new_value":{"gid":"1","gid":"2"},"added_value":true}}
+],"sync":"s<&> é","has_more":true}

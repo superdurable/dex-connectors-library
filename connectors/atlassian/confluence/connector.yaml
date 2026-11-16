@@ -11,15 +11,15 @@ spec:
   provider: atlassian
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-atlassian-confluence'
       operations: [searchPages, getPage, createPage, updatePage, addComment]
-      triggers: []
+      triggers: [pageChanged]
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-atlassian-confluence
       operations: [searchPages, getPage, createPage, updatePage, addComment]
-      triggers: []
+      triggers: [pageChanged]
   codegen:
     go:
       package: confluence

@@ -8,7 +8,7 @@ import ipaddress
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode, urlsplit
@@ -50,6 +50,9 @@ _REALM = re.compile(r"[1-9][0-9]{0,24}\Z")
 _TID = re.compile(r"[A-Za-z0-9-]{1,64}\Z")
 _FAULT_TYPE = re.compile(r"[A-Za-z]{1,64}\Z")
 _FAULT_CODE = re.compile(r"[0-9]{1,10}\Z")
+# Keeps an invoiceChanged poll loop well inside QuickBooks's 500 requests per minute per company.
+_MINIMUM_POLL_INTERVAL_SECONDS = 5
+_DEFAULT_POLL_INTERVAL_SECONDS = 30
 
 
 @dataclass(slots=True)
@@ -265,7 +268,7 @@ def _resolve_realm(credentials: Credentials, configured: str) -> str:
 
 
 class Client:
-    """Execute seven QuickBooks operations with call-time OAuth credentials."""
+    """Execute seven QuickBooks operations and invoiceChanged polls with call-time OAuth credentials."""
 
     def __init__(
         self,
@@ -281,6 +284,11 @@ class Client:
             raise ValueError("QuickBooks configuration is invalid")
         if config.realm_id.strip() and not _REALM.fullmatch(config.realm_id.strip()):
             raise ValueError("QuickBooks realmId must be a company ID")
+        if config.poll_interval_seconds == 0:
+            # A zero pollInterval, as a saved project may hold, keeps the default, as Go's defaults do.
+            config = replace(config, poll_interval_seconds=_DEFAULT_POLL_INTERVAL_SECONDS)
+        if config.poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError("QuickBooks pollInterval must be at least 5s")
         if local_provider_url:
             parsed = urlsplit(local_provider_url)
             try:

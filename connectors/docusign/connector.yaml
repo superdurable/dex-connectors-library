@@ -11,10 +11,10 @@ spec:
   provider: docusign
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-docusign
       operations: [createEnvelopeFromTemplate, getEnvelope, listEnvelopeRecipients, voidEnvelope, downloadCombinedDocument]
-      triggers: []
+      triggers: [envelopeEventReceived]
     typescript:
       version: v0.2.0
       package: '@superdurable/connector-docusign'

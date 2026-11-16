@@ -1,7 +1,7 @@
 {
   "name": "@superdurable/connector-hubspot",
-  "version": "0.1.0",
-  "description": "HubSpot CRM operations for Dex Flows",
+  "version": "0.2.0",
+  "description": "HubSpot CRM operations and record change Triggers for Dex Flows",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
@@ -42,11 +42,12 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:search": "npm run build && tsx examples/search-deals/main.ts",
-    "example:search:start": "npm run build && tsx examples/search-deals/start.ts"
+    "example:search:start": "npm run build && tsx examples/search-deals/start.ts",
+    "example:changes": "npm run build && tsx examples/crm-object-changed/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

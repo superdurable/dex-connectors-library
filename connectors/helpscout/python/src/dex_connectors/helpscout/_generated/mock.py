@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import Conversation, ConversationDetails, ConversationReply, Customer, CustomerMatches, FindCustomerByEmailInput, GetConversationInput, Person, ReplyToConversationInput, SearchConversationsInput, SearchConversationsOutput, Thread, UpdateConversationInput, UpdateConversationOutput
+from ..models import Conversation, ConversationDetails, ConversationEvent, ConversationEventTriggerConfiguration, ConversationReply, Customer, CustomerMatches, FindCustomerByEmailInput, GetConversationInput, Person, ReplyToConversationInput, SearchConversationsInput, SearchConversationsOutput, Thread, UpdateConversationInput, UpdateConversationOutput
 from .definitions import CONNECTOR_ID, DEFECT, FIND_CUSTOMER_BY_EMAIL_DEFINITION, FOUND, GET_CONVERSATION_DEFINITION, INVALID_RESPONSE, MERGED, NOT_FOUND, PROVIDER_REJECTED, REPLIED, REPLY_TO_CONVERSATION_DEFINITION, SEARCHED, SEARCH_CONVERSATIONS_DEFINITION, UNCERTAIN, UPDATED, UPDATE_CONVERSATION_DEFINITION
 
 def search_conversations_searched(value: SearchConversationsOutput, failure: Failure | None = None) -> Case[SearchConversationsOutput]:

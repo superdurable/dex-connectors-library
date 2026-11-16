@@ -3,21 +3,21 @@ kind: Connector
 metadata:
   name: airtable
   displayName: Airtable
-  description: List, read, idempotently upsert, and update typed Airtable records, with base and table pickers.
+  description: List, read, idempotently upsert, and update typed Airtable records, and start Flows when records are created or changed, with base, table, and field pickers.
   company: Airtable
   categories: [productivity, databases-storage]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: airtable
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listRecords, getRecord, upsertRecords, updateRecords]
-      triggers: []
+      triggers: [recordChanged]
     typescript:
-      version: v0.1.2
+      version: v0.2.0
       operations: [listRecords, getRecord, upsertRecords, updateRecords]
-      triggers: []
+      triggers: [recordChanged]
   codegen:
     go:
       package: airtable
@@ -35,6 +35,18 @@ spec:
         description: Maximum complete Airtable API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of records carries very long text or many attachments. Oversized responses select invalidResponse.
         required: false
         default: 4194304
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: Delay between recordChanged Trigger polls of each picked table, as a Go duration of at least 1s such as 15s or 2m; leave blank for the shown interval, and lengthen it when many bindings share one base. Each poll normally makes one Airtable list request, and Airtable allows 5 requests per second per base and 50 per second per personal access token across every binding and Step.
+        required: false
+        default: 30s
+      - name: pollPageSize
+        goName: PollPageSize
+        type: integer
+        description: Records one recordChanged poll request reads, a whole number from 1 up to Airtable's largest page of one hundred records; leave blank for a full page, and lower it only when records carry so much text or so many attachments that a page exceeds maxResponseBytes, since further changed records are read by an immediate follow-up request.
+        required: false
+        default: 100
   auth:
     type: apiKey
     connectionKind: airtable-personal-access-token
@@ -49,7 +61,7 @@ spec:
       steps:
         - Sign in as an Airtable user with editor access to every base the Flows use, open the personal access tokens page at https://airtable.com/create/tokens, and choose Create new token.
         - Name the token after this Dex application; Airtable shows the name in record revision history.
-        - Under Scopes, add data.records:read and data.records:write for the record operations and schema.bases:read for the base and table pickers.
+        - Under Scopes, add data.records:read and data.records:write for the record operations and schema.bases:read for the base, table, and field pickers and for the recordChanged Trigger, which reads the table schema to find its Last modified time field.
         - Under Access, choose Add a base and add each base the Flows use, or the workspace that holds them; the token reaches only the bases and workspaces listed there.
         - Choose Create token and copy the token Airtable shows once into the secret field below. Regenerating or deleting it on the same page rejects the old value, so paste any replacement here.
   studio:
@@ -93,6 +105,22 @@ spec:
         outputs:
           - {name: tableId, goName: TableID, type: string}
           - {name: tableName, goName: TableName, type: string}
+      - id: lastModifiedTimeFieldPicker
+        goName: LastModifiedTimeFieldPicker
+        description: Select a Last modified time field of the chosen table, loaded from the base schema; save the base and table first. The unit stores the stable field ID, such as fld followed by 14 letters and digits, which keeps working after a rename, and the field name. Only Last modified time fields that include a time of day are listed.
+        backendCapabilities: [airtable.tables-list]
+        inputs:
+          - {name: baseId, goName: BaseID, type: string}
+          - {name: tableId, goName: TableID, type: string}
+        outputs:
+          - {name: fieldId, goName: FieldID, type: string}
+          - {name: fieldName, goName: FieldName, type: string}
+  triggers:
+    - name: recordChanged
+      goName: RecordChanged
+      eventType: RecordChangedEvent
+      configurationType: RecordChangedTriggerConfiguration
+      description: Receive each record of one picked table that is created or changed after the last processed change, as reported by a picked Last modified time field.
   operations:
     - name: listRecords
       goName: ListRecords

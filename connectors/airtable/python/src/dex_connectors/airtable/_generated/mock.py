@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import FieldEqualityFilter, GetRecordInput, ListRecordsInput, Record, RecordPage, RecordSort, RecordUpdate, RecordUpsert, UpdateRecordsInput, UpdatedRecords, UpsertRecordsInput, UpsertedRecords
+from ..models import FieldEqualityFilter, GetRecordInput, ListRecordsInput, Record, RecordChangedEvent, RecordChangedTriggerConfiguration, RecordPage, RecordSort, RecordUpdate, RecordUpsert, UpdateRecordsInput, UpdatedRecords, UpsertRecordsInput, UpsertedRecords
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_RECORD_DEFINITION, INVALID_RESPONSE, LISTED, LIST_RECORDS_DEFINITION, NOT_FOUND, OFFSET_EXPIRED, PROVIDER_REJECTED, UPDATED, UPDATE_RECORDS_DEFINITION, UPSERTED, UPSERT_RECORDS_DEFINITION
 
 def list_records_listed(value: RecordPage, failure: Failure | None = None) -> Case[RecordPage]:

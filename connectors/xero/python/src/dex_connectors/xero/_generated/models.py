@@ -512,3 +512,34 @@ class RecordPaymentOutput:
 
 
 setattr(RecordPaymentOutput, '__module__', 'dex_connectors.xero.models')
+
+
+# InvoiceChangedEvent is one sales invoice or bill as Xero listed it after a change. Xero reports no
+# change type in a list, so a creation and an update look alike: compare Invoice.Status with the
+# application's own record when the difference matters.
+@dataclass(frozen=True, slots=True)
+class InvoiceChangedEvent:
+    # Invoice is the invoice with its line items, exact decimal totals, and UpdatedAt, the
+    # UpdatedDateUTC instant of this change.
+    invoice: Invoice
+    # TenantID is the Xero-Tenant-Id an OAuth connection read the invoice with; blank for a Custom
+    # Connection, which reaches exactly one organisation.
+    tenant_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'tenantId', 'dex_json_omit_default': True})
+
+
+setattr(InvoiceChangedEvent, '__module__', 'dex_connectors.xero.models')
+
+
+# InvoiceChangedTriggerConfiguration is the invoiceChanged binding configuration that the
+# invoiceChangeFilter unit saves in Dex Web. Both filters are optional and combine. Changing the filter
+# of a binding that already polled makes its next poll record a new baseline for the new filter.
+@dataclass(frozen=True, slots=True)
+class InvoiceChangedTriggerConfiguration:
+    # Type keeps only ACCREC sales invoices or ACCPAY bills; blank keeps both.
+    type: str | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
+    # Statuses keeps invoices whose status after the change is one of these Xero statuses; empty keeps
+    # every status, including DELETED and VOIDED.
+    statuses: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+
+
+setattr(InvoiceChangedTriggerConfiguration, '__module__', 'dex_connectors.xero.models')

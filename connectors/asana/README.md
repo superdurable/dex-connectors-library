@@ -1,6 +1,6 @@
 # Asana Connector
 
-TypeScript: install `@superdurable/connector-asana@0.1.1`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
+TypeScript: install `@superdurable/connector-asana@0.2.0`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations, and its [task-changed example](typescript/examples/task-changed/README.md) covers the `taskChanged` Trigger. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/asana/go@v0.24.0`.
 
@@ -13,13 +13,13 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/asana`.
 This module lists, reads, creates, and updates Asana tasks and comments on them
 through the Asana REST API, `https://app.asana.com/api/1.0`:
 
-| Operation | Kind | Asana endpoint | Durability | Happy branch | Other branches |
-| --- | --- | --- | --- | --- | --- |
-| `listTasks` | Query | `GET /tasks?project=` or `?section=` | async | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `getTask` | Query | `GET /tasks/{task_gid}` | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `createTask` | Mutation | `POST /tasks`, recovery `GET /tasks/{task_gid}` | sync | `created` | `providerRejected`, `uncertain`, `defect` |
-| `updateTask` | Mutation | `POST /sections/{section_gid}/addTask`, then `PUT /tasks/{task_gid}` | async | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `addComment` | Mutation | `POST /tasks/{task_gid}/stories`, recovery `GET /stories/{story_gid}` | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
+| Operation | Kind | Asana endpoint | Durability | Happy branch | Other branches | Languages |
+| --- | --- | --- | --- | --- | --- | --- |
+| `listTasks` | Query | `GET /tasks?project=` or `?section=` | async | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` | Go, Python, TypeScript |
+| `getTask` | Query | `GET /tasks/{task_gid}` | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` | Go, Python, TypeScript |
+| `createTask` | Mutation | `POST /tasks`, recovery `GET /tasks/{task_gid}` | sync | `created` | `providerRejected`, `uncertain`, `defect` | Go, Python, TypeScript |
+| `updateTask` | Mutation | `POST /sections/{section_gid}/addTask`, then `PUT /tasks/{task_gid}` | async | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` | Go, Python, TypeScript |
+| `addComment` | Mutation | `POST /tasks/{task_gid}/stories`, recovery `GET /stories/{story_gid}` | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` | Go, Python, TypeScript |
 
 Asana's only task status is `completed`; section membership carries the
 workflow state, so moving a task between sections is its status change.
@@ -33,12 +33,16 @@ such as `Asana rejected the task with HTTP 400`, because Asana's messages are
 free text that can repeat task content. Related users carry a gid and a display
 name, never an email address.
 
-It also exposes one Go Trigger:
+It also exposes one Trigger:
+
+| Trigger | Source | Languages |
+| --- | --- | --- |
+| `taskChanged` | `GET /events?resource=<project gid>&sync=` | Go, Python, TypeScript |
 
 - `taskChanged` delivers each task, subtasks included, added to, changed in,
   removed from, deleted from, or restored to one project, read through the
   Asana Events API. See [taskChanged Trigger](#taskchanged-trigger). The
-  Python and TypeScript packages do not implement it.
+  Python and TypeScript packages implement it from 0.2.0.
 
 ## Authentication
 
@@ -371,9 +375,11 @@ deleted task completes without a read.
 
 ## Python package
 
-The `python/` package releases independently as `dex-connector-asana` v0.1.0.
+The `python/` package releases independently as `dex-connector-asana` v0.2.0.
 It implements `listTasks`, `getTask`, `createTask`, `updateTask`, and
-`addComment`; it declares no Triggers. Import `dex_connectors.asana` and bind
+`addComment`, and, from 0.2.0, the `taskChanged` Trigger at parity with Go on
+the Python Connector SDK's poll Trigger kit (`dex-connectors-sdk` 0.12.0 or
+newer). Import `dex_connectors.asana` and bind
 the generated operation-specific Step factories to one `Connection` or
 `new_project_connection`. The package resolves the personal access token for
 each call and never sends its Call ID as an Asana idempotency header.
@@ -386,9 +392,18 @@ Asana endpoint. See the [example instructions](python/examples/approved_task/REA
 for setup and commands. The Go-recorded provider replay scenarios under
 `conformance/connectors/asana/` verify exact Python requests and outcomes.
 
+[`python/examples/task_changed`](python/examples/task_changed/README.md) is the
+Python Trigger example: `new_project_task_trigger_runner` starts one
+`AsanaTaskChangePython` Flow per task event. The Python fetcher sends the same
+requests, commits the same cursor documents byte for byte, and derives the same
+Trigger event IDs as Go, so Go and Python replicas can share one binding's
+cursor and inbox. Its real Dex integration tests repeat the Go example's
+restart, 429, and 412 scenarios against a local Events API stand-in.
+
 The Python package has not been tested against a live Asana account. In
-particular, the five real endpoint responses, rate-limit behavior, and
-read-back after a lost create or comment result remain unverified live.
+particular, the five real endpoint responses, rate-limit behavior,
+read-back after a lost create or comment result, and the Events API behavior
+listed below remain unverified live.
 
 ## Verification
 

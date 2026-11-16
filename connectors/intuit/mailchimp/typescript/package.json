@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-intuit-mailchimp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mailchimp audience and campaign operations for Dex Flows",
   "license": "MIT",
   "repository": {
@@ -43,11 +43,12 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:get": "npm run build && tsx examples/get-member/main.ts",
-    "example:get:start": "npm run build && tsx examples/get-member/start.ts"
+    "example:get:start": "npm run build && tsx examples/get-member/start.ts",
+    "example:member-changed": "npm run build && tsx examples/member-changed/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.1",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

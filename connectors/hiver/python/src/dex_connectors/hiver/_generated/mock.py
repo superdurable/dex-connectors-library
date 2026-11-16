@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AddNoteInput, AddNoteOutput, Conversation, ConversationAssignee, ConversationDetails, ConversationMessage, CreateSharedDraftInput, GetConversationInput, Inbox, ListConversationsInput, ListConversationsOutput, ListInboxesInput, ListInboxesOutput, Note, SharedDraft, Tag, UpdateConversationInput, UpdateConversationOutput
+from ..models import AddNoteInput, AddNoteOutput, Conversation, ConversationAssignee, ConversationDetails, ConversationMessage, ConversationReceivedEvent, ConversationReceivedTriggerConfiguration, CreateSharedDraftInput, GetConversationInput, Inbox, ListConversationsInput, ListConversationsOutput, ListInboxesInput, ListInboxesOutput, Note, SharedDraft, Tag, UpdateConversationInput, UpdateConversationOutput
 from .definitions import CONNECTOR_ID, ADDED, ADD_NOTE_DEFINITION, CREATED, CREATE_SHARED_DRAFT_DEFINITION, DEFECT, FOUND, GET_CONVERSATION_DEFINITION, INVALID_RESPONSE, LISTED, LIST_CONVERSATIONS_DEFINITION, LIST_INBOXES_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, UNCERTAIN, UPDATED, UPDATE_CONVERSATION_DEFINITION
 
 def list_inboxes_listed(value: ListInboxesOutput, failure: Failure | None = None) -> Case[ListInboxesOutput]:

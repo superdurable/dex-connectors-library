@@ -1,0 +1,1455 @@
+{
+ "comment": "Recorded from the Go notion connector's databaseRowChanged fetcher (connectors/notion/go): each step's provider exchanges, committed cursor tokens, and Trigger events. Do not edit by hand.",
+ "scenarios": [
+  {
+   "name": "baselineThenNewVersions",
+   "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+   "pageSize": 100,
+   "steps": [
+    {
+     "call": "seed",
+     "exchanges": [
+      {
+       "requestBody": {
+        "sorts": [
+         {
+          "direction": "descending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000b2\",\"created_time\":\"2026-11-02T09:10:00.000Z\",\"last_edited_time\":\"2026-11-02T09:10:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"Existing newest\"},\"plain_text\":\"Existing newest\"}]}}}],\"next_cursor\":\"rows-1\",\"has_more\":true,\"type\":\"page_or_data_source\"}"
+      },
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:08:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000b2\",\"created_time\":\"2026-11-02T09:10:00.000Z\",\"last_edited_time\":\"2026-11-02T09:10:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"Existing newest\"},\"plain_text\":\"Existing newest\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:10:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:10:00Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]}]}"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:10:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:10:00Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:08:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000b2\",\"created_time\":\"2026-11-02T09:10:00.000Z\",\"last_edited_time\":\"2026-11-02T09:10:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"Existing newest\"},\"plain_text\":\"Existing newest\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:10:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:10:00Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]}]}"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:10:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:10:00Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:08:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000b2\",\"created_time\":\"2026-11-02T09:10:00.000Z\",\"last_edited_time\":\"2026-11-02T09:10:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"Existing newest\"},\"plain_text\":\"Existing newest\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000c3\",\"created_time\":\"2026-11-02T09:11:00.000Z\",\"last_edited_time\":\"2026-11-02T09:11:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"New\"},\"plain_text\":\"New\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:00:00.000Z\",\"last_edited_time\":\"2026-11-02T09:12:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"Existing edited\"},\"plain_text\":\"Existing edited\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:12:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:10:00Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:11:00Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]},{\"at\":\"2026-11-02T09:12:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "events": [
+      {
+       "id": "notion-row-ac84dab9431d911469e129f5407444ff",
+       "occurredAt": "2026-11-02T09:11:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000c3",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3",
+         "title": "New",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:11:00.000Z",
+         "lastEditedTime": "2026-11-02T09:11:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "New",
+           "plainText": "New"
+          }
+         }
+        }
+       }
+      },
+      {
+       "id": "notion-row-6aa765c1e869449e7d5c98c20c95932c",
+       "occurredAt": "2026-11-02T09:12:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "updated",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000a1",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1",
+         "title": "Existing edited",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:00:00.000Z",
+         "lastEditedTime": "2026-11-02T09:12:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "Existing edited",
+           "plainText": "Existing edited"
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:10:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:10:00Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:08:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000b2\",\"created_time\":\"2026-11-02T09:10:00.000Z\",\"last_edited_time\":\"2026-11-02T09:10:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"Existing newest\"},\"plain_text\":\"Existing newest\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000c3\",\"created_time\":\"2026-11-02T09:11:00.000Z\",\"last_edited_time\":\"2026-11-02T09:11:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"New\"},\"plain_text\":\"New\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:00:00.000Z\",\"last_edited_time\":\"2026-11-02T09:12:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"Existing edited\"},\"plain_text\":\"Existing edited\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:12:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:10:00Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:11:00Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]},{\"at\":\"2026-11-02T09:12:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "events": [
+      {
+       "id": "notion-row-ac84dab9431d911469e129f5407444ff",
+       "occurredAt": "2026-11-02T09:11:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000c3",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3",
+         "title": "New",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:11:00.000Z",
+         "lastEditedTime": "2026-11-02T09:11:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "New",
+           "plainText": "New"
+          }
+         }
+        }
+       }
+      },
+      {
+       "id": "notion-row-6aa765c1e869449e7d5c98c20c95932c",
+       "occurredAt": "2026-11-02T09:12:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "updated",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000a1",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1",
+         "title": "Existing edited",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:00:00.000Z",
+         "lastEditedTime": "2026-11-02T09:12:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "Existing edited",
+           "plainText": "Existing edited"
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:12:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:10:00Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:11:00Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]},{\"at\":\"2026-11-02T09:12:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:10:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000b2\",\"created_time\":\"2026-11-02T09:10:00.000Z\",\"last_edited_time\":\"2026-11-02T09:10:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"Existing newest\"},\"plain_text\":\"Existing newest\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000c3\",\"created_time\":\"2026-11-02T09:11:00.000Z\",\"last_edited_time\":\"2026-11-02T09:11:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"New\"},\"plain_text\":\"New\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:00:00.000Z\",\"last_edited_time\":\"2026-11-02T09:12:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"Existing edited\"},\"plain_text\":\"Existing edited\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:12:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:10:00Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:11:00Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]},{\"at\":\"2026-11-02T09:12:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}"
+    }
+   ]
+  },
+  {
+   "name": "sharedTimestampsAndLateIndexedRow",
+   "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+   "pageSize": 100,
+   "steps": [
+    {
+     "call": "seed",
+     "exchanges": [
+      {
+       "requestBody": {
+        "sorts": [
+         {
+          "direction": "descending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      },
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "1970-01-01T00:00:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"1970-01-01T00:02:00Z\"}"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"1970-01-01T00:02:00Z\"}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "1970-01-01T00:00:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:31:00.000Z\",\"last_edited_time\":\"2026-11-02T09:31:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"A\"},\"plain_text\":\"A\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "events": [
+      {
+       "id": "notion-row-e0e716fa48c2158e8ccee9565192273e",
+       "occurredAt": "2026-11-02T09:31:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000a1",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1",
+         "title": "A",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:31:00.000Z",
+         "lastEditedTime": "2026-11-02T09:31:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "A",
+           "plainText": "A"
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:29:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:31:00.000Z\",\"last_edited_time\":\"2026-11-02T09:31:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"A\"},\"plain_text\":\"A\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000c3\",\"created_time\":\"2026-11-02T09:32:00.000Z\",\"last_edited_time\":\"2026-11-02T09:32:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"C\"},\"plain_text\":\"C\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:32:00Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "events": [
+      {
+       "id": "notion-row-9cdf70f7db81962f386f2cda2267fb21",
+       "occurredAt": "2026-11-02T09:32:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000c3",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3",
+         "title": "C",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:32:00.000Z",
+         "lastEditedTime": "2026-11-02T09:32:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "C",
+           "plainText": "C"
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:32:00Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:30:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:31:00.000Z\",\"last_edited_time\":\"2026-11-02T09:31:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"A\"},\"plain_text\":\"A\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000b2\",\"created_time\":\"2026-11-02T09:31:00.000Z\",\"last_edited_time\":\"2026-11-02T09:31:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"B late\"},\"plain_text\":\"B late\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000c3\",\"created_time\":\"2026-11-02T09:32:00.000Z\",\"last_edited_time\":\"2026-11-02T09:32:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"C\"},\"plain_text\":\"C\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\",\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:32:00Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "events": [
+      {
+       "id": "notion-row-9b390803f5e5ef9cd0fca30ff137c4ae",
+       "occurredAt": "2026-11-02T09:31:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000b2",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2",
+         "title": "B late",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:31:00.000Z",
+         "lastEditedTime": "2026-11-02T09:31:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "B late",
+           "plainText": "B late"
+          }
+         }
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "pagedBurstAndStaleStartCursor",
+   "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+   "pageSize": 1,
+   "steps": [
+    {
+     "call": "seed",
+     "exchanges": [
+      {
+       "requestBody": {
+        "sorts": [
+         {
+          "direction": "descending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      },
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "1970-01-01T00:00:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"1970-01-01T00:02:00Z\"}"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"1970-01-01T00:02:00Z\"}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "1970-01-01T00:00:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:31:00.000Z\",\"last_edited_time\":\"2026-11-02T09:31:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"A\"},\"plain_text\":\"A\"}]}}}],\"next_cursor\":\"rows-1\",\"has_more\":true,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"queryFrom\":\"1970-01-01T00:00:00Z\",\"startCursor\":\"rows-1\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "hasMorePages": true,
+     "events": [
+      {
+       "id": "notion-row-e0e716fa48c2158e8ccee9565192273e",
+       "occurredAt": "2026-11-02T09:31:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000a1",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1",
+         "title": "A",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:31:00.000Z",
+         "lastEditedTime": "2026-11-02T09:31:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "A",
+           "plainText": "A"
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"queryFrom\":\"1970-01-01T00:00:00Z\",\"startCursor\":\"rows-1\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "1970-01-01T00:00:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "start_cursor": "rows-1",
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 400,
+       "responseBody": "{\"object\":\"error\",\"status\":400,\"code\":\"validation_error\",\"request_id\":\"fake-request\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "hasMorePages": true
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:29:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:31:00.000Z\",\"last_edited_time\":\"2026-11-02T09:31:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"A\"},\"plain_text\":\"A\"}]}}}],\"next_cursor\":\"rows-1\",\"has_more\":true,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"queryFrom\":\"2026-11-02T09:29:00Z\",\"startCursor\":\"rows-1\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "hasMorePages": true
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"queryFrom\":\"2026-11-02T09:29:00Z\",\"startCursor\":\"rows-1\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:29:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "start_cursor": "rows-1",
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000b2\",\"created_time\":\"2026-11-02T09:31:00.000Z\",\"last_edited_time\":\"2026-11-02T09:31:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"B\"},\"plain_text\":\"B\"}]}}}],\"next_cursor\":\"rows-2\",\"has_more\":true,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"queryFrom\":\"2026-11-02T09:29:00Z\",\"startCursor\":\"rows-2\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\",\"XWkmvS41F8l9JW2t\"]}]}",
+     "hasMorePages": true,
+     "events": [
+      {
+       "id": "notion-row-9b390803f5e5ef9cd0fca30ff137c4ae",
+       "occurredAt": "2026-11-02T09:31:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000b2",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000b2",
+         "title": "B",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:31:00.000Z",
+         "lastEditedTime": "2026-11-02T09:31:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "B",
+           "plainText": "B"
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"queryFrom\":\"2026-11-02T09:29:00Z\",\"startCursor\":\"rows-2\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\",\"XWkmvS41F8l9JW2t\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:29:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "start_cursor": "rows-2",
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000c3\",\"created_time\":\"2026-11-02T09:31:00.000Z\",\"last_edited_time\":\"2026-11-02T09:31:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"C\"},\"plain_text\":\"C\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\",\"XWkmvS41F8l9JW2t\",\"ml4iJtCzQV_-byZH\"]}]}",
+     "events": [
+      {
+       "id": "notion-row-6c9e51e3b3cffa94c3350362490ae512",
+       "occurredAt": "2026-11-02T09:31:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000c3",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000c3",
+         "title": "C",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:31:00.000Z",
+         "lastEditedTime": "2026-11-02T09:31:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "C",
+           "plainText": "C"
+          }
+         }
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "trashedRowAndFailures",
+   "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+   "pageSize": 100,
+   "steps": [
+    {
+     "call": "seed",
+     "exchanges": [
+      {
+       "requestBody": {
+        "sorts": [
+         {
+          "direction": "descending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:00:00.000Z\",\"last_edited_time\":\"2026-11-02T09:00:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"A\"},\"plain_text\":\"A\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      },
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T08:58:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:00:00.000Z\",\"last_edited_time\":\"2026-11-02T09:00:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"A\"},\"plain_text\":\"A\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:00:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:00:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:00:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:00:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T08:58:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:00:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:00:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:00:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:00:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T08:58:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 429,
+       "retryAfter": "7",
+       "responseBody": "{\"object\":\"error\",\"status\":429,\"code\":\"rate_limited\",\"request_id\":\"fake-request\"}"
+      }
+     ],
+     "error": "rateLimited",
+     "retryAfterSeconds": 7
+    },
+    {
+     "call": "fetch",
+     "cursor": "not json",
+     "exchanges": null,
+     "error": "cursorInvalid"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-999999999999\",\"highWater\":\"2026-11-02T09:00:00Z\"}",
+     "exchanges": null,
+     "error": "cursorInvalid"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":9,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:00:00Z\"}",
+     "exchanges": null,
+     "error": "cursorInvalid"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\"}",
+     "exchanges": null,
+     "error": "cursorInvalid"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1.0,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:00:00Z\"}",
+     "exchanges": null,
+     "error": "cursorInvalid"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T9:00:00Z\"}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T08:58:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:00:00Z\"}"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:00:00Z\",\"seen\":[{\"at\":\"x\",\"rows\":[]}]}",
+     "exchanges": null,
+     "error": "cursorInvalid"
+    }
+   ]
+  },
+  {
+   "name": "unsharedDataSource",
+   "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-999999999999",
+   "pageSize": 100,
+   "steps": [
+    {
+     "call": "seed",
+     "exchanges": [
+      {
+       "requestBody": {
+        "sorts": [
+         {
+          "direction": "descending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 404,
+       "responseBody": "{\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"request_id\":\"fake-request\"}"
+      }
+     ],
+     "error": "failed"
+    }
+   ]
+  },
+  {
+   "name": "emptyDataSourceStartsAtTheEpoch",
+   "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+   "pageSize": 100,
+   "steps": [
+    {
+     "call": "seed",
+     "exchanges": [
+      {
+       "requestBody": {
+        "sorts": [
+         {
+          "direction": "descending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 1,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      },
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "1970-01-01T00:00:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"1970-01-01T00:02:00Z\"}"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"1970-01-01T00:02:00Z\"}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "1970-01-01T00:00:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T09:31:00.000Z\",\"last_edited_time\":\"2026-11-02T09:31:00.000Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445500\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"First row\"},\"plain_text\":\"First row\"}]}}}],\"next_cursor\":null,\"has_more\":false,\"type\":\"page_or_data_source\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]}]}",
+     "events": [
+      {
+       "id": "notion-row-e0e716fa48c2158e8ccee9565192273e",
+       "occurredAt": "2026-11-02T09:31:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000a1",
+         "url": "https://www.notion.so/2a4d6f801b3c4d5e8f700000000000a1",
+         "title": "First row",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "databaseId": "2a4d6f80-1b3c-4d5e-8f70-112233445500"
+         },
+         "createdTime": "2026-11-02T09:31:00.000Z",
+         "lastEditedTime": "2026-11-02T09:31:00.000Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "First row",
+           "plainText": "First row"
+          }
+         }
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "scriptedCursorEncoding",
+   "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+   "pageSize": 100,
+   "steps": [
+    {
+     "call": "fetch",
+     "cursor": "{\"V\":1,\"datasourceid\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T10:30:00+01:00\",\"queryFrom\":\"2026-11-02T10:28:00+01:00\",\"startCursor\":\"a<b\",\"seen\":[{\"at\":\"2026-11-02T09:29:00Z\",\"rows\":[\"zz\",\"aa\"]},{\"at\":\"2026-11-02T09:20:00Z\",\"rows\":[\"old\"]}],\"extra\":true}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:28:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "start_cursor": "a<b",
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 400,
+       "responseBody": "{\"object\":\"error\",\"status\":400,\"code\":\"validation_error\"}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T10:30:00+01:00\",\"seen\":[{\"at\":\"2026-11-02T09:29:00Z\",\"rows\":[\"zz\",\"aa\"]},{\"at\":\"2026-11-02T09:20:00Z\",\"rows\":[\"old\"]}]}",
+     "hasMorePages": true
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T10:30:00+01:00\",\"seen\":[{\"at\":\"2026-11-02T09:29:00Z\",\"rows\":[\"zz\",\"aa\"]},{\"at\":\"2026-11-02T09:20:00Z\",\"rows\":[\"old\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:28:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000a1\",\"created_time\":\"2026-11-02T10:31:00.000+01:00\",\"last_edited_time\":\"2026-11-02T10:31:00.000+01:00\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/x\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"T<&>\"},\"plain_text\":\"T<&>\"}]}}},{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000b2\",\"created_time\":\"2026-11-02T09:31:00.123Z\",\"last_edited_time\":\"2026-11-02T09:31:00.123456789Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/x\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"T<&>\"},\"plain_text\":\"T<&>\"}]}}}],\"next_cursor\":\"x<y&z>\",\"has_more\":true}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00.123456789Z\",\"queryFrom\":\"2026-11-02T10:28:00+01:00\",\"startCursor\":\"x\\u003cy\\u0026z\\u003e\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]}]}",
+     "hasMorePages": true,
+     "events": [
+      {
+       "id": "notion-row-e0e716fa48c2158e8ccee9565192273e",
+       "occurredAt": "2026-11-02T09:31:00Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "created",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000a1",
+         "url": "https://www.notion.so/x",
+         "title": "T<&>",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
+         },
+         "createdTime": "2026-11-02T10:31:00.000+01:00",
+         "lastEditedTime": "2026-11-02T10:31:00.000+01:00",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "T<&>",
+           "plainText": "T<&>"
+          }
+         }
+        }
+       }
+      },
+      {
+       "id": "notion-row-6fd04aee08b0b41d31877c1cd18f3703",
+       "occurredAt": "2026-11-02T09:31:00.123456789Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "updated",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000b2",
+         "url": "https://www.notion.so/x",
+         "title": "T<&>",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
+         },
+         "createdTime": "2026-11-02T09:31:00.123Z",
+         "lastEditedTime": "2026-11-02T09:31:00.123456789Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "T<&>",
+           "plainText": "T<&>"
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:31:00.123456789Z\",\"queryFrom\":\"2026-11-02T10:28:00+01:00\",\"startCursor\":\"x\\u003cy\\u0026z\\u003e\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:28:00Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "start_cursor": "x<y&z>",
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000c3\",\"created_time\":\"2026-11-02T09:00:00Z\",\"last_edited_time\":\"2026-11-02T09:32:00,5Z\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/x\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"T<&>\"},\"plain_text\":\"T<&>\"}]}}}],\"next_cursor\":null,\"has_more\":false}"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00.5Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:32:00.5Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "events": [
+      {
+       "id": "notion-row-326a0bff75daba110ddbfcf82a10a74e",
+       "occurredAt": "2026-11-02T09:32:00.5Z",
+       "payload": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "changeKind": "updated",
+        "row": {
+         "id": "2a4d6f80-1b3c-4d5e-8f70-0000000000c3",
+         "url": "https://www.notion.so/x",
+         "title": "T<&>",
+         "parent": {
+          "type": "data_source_id",
+          "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
+         },
+         "createdTime": "2026-11-02T09:00:00Z",
+         "lastEditedTime": "2026-11-02T09:32:00,5Z",
+         "inTrash": false,
+         "archived": false,
+         "properties": {
+          "Name": {
+           "id": "title",
+           "type": "title",
+           "text": "T<&>",
+           "plainText": "T<&>"
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00.5Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:32:00.5Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:30:00.5Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 529,
+       "retryAfter": "3",
+       "responseBody": "{\"object\":\"error\",\"status\":529,\"code\":\"service_overload\"}"
+      }
+     ],
+     "error": "rateLimited",
+     "retryAfterSeconds": 3
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00.5Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:32:00.5Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:30:00.5Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 429,
+       "responseBody": "{\"object\":\"error\",\"status\":429,\"code\":\"rate_limited\",\"additional_data\":{\"rate_limit_reason\":\"public_api_request_blocked\"}}"
+      }
+     ],
+     "error": "failed"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00.5Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:32:00.5Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:30:00.5Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[{\"object\":\"page\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-0000000000c3\",\"created_time\":\"2026-11-02T09:00:00Z\",\"last_edited_time\":\"not a time\",\"in_trash\":false,\"is_archived\":false,\"url\":\"https://www.notion.so/x\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"text\":{\"content\":\"T<&>\"},\"plain_text\":\"T<&>\"}]}}}],\"next_cursor\":null,\"has_more\":false}"
+      }
+     ],
+     "error": "failed"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00.5Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:32:00.5Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:30:00.5Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "{\"object\":\"list\",\"results\":[],\"next_cursor\":\"bad cursor\",\"has_more\":false}"
+      }
+     ],
+     "error": "failed"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00.5Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:32:00.5Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:30:00.5Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 503,
+       "responseBody": "{\"object\":\"error\",\"status\":503,\"code\":\"service_unavailable\"}"
+      }
+     ],
+     "error": "failed"
+    },
+    {
+     "call": "fetch",
+     "cursor": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00.5Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:32:00.5Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}",
+     "exchanges": [
+      {
+       "requestBody": {
+        "filter": {
+         "last_edited_time": {
+          "on_or_after": "2026-11-02T09:30:00.5Z"
+         },
+         "timestamp": "last_edited_time"
+        },
+        "sorts": [
+         {
+          "direction": "ascending",
+          "timestamp": "last_edited_time"
+         }
+        ],
+        "page_size": 100,
+        "result_type": "page"
+       },
+       "status": 200,
+       "responseBody": "null"
+      }
+     ],
+     "token": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:32:00.5Z\",\"seen\":[{\"at\":\"2026-11-02T09:31:00Z\",\"rows\":[\"8iza_2_n-T3g2isf\"]},{\"at\":\"2026-11-02T09:31:00.123456789Z\",\"rows\":[\"XWkmvS41F8l9JW2t\"]},{\"at\":\"2026-11-02T09:32:00.5Z\",\"rows\":[\"ml4iJtCzQV_-byZH\"]}]}"
+    }
+   ]
+  }
+ ],
+ "seenRows": [
+  {
+   "name": "sharedSeconds",
+   "highWater": "2026-11-02T09:01:00Z",
+   "tokenBytes": 41459,
+   "tokenSha256": "4e0f0213eef07ed1e00262f843bfbbbbf069bf5e914f4f077e50c85ca861b577",
+   "tokenPrefix": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:01:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:00:04Z\",\"rows\":[\"-sKqBmHVQtPQXSmf\",\"3q3JfRL2wLZs-H7r\",\"4Feg7qnvRBKVyRon\",\"4a-3Y6nuU0jc6o5w\",\"5Uf9vVRafn84thyj\",\"7LBPqmAWSpfX58X_\",\"ApcRUxTVCjUPb05Z\",\"BqIJSBtlFP-zHGiT\",\"DWbS88bJm90SWWfk\",\"F9IseYjkgT_6Ybfi\",\"GHhVLkHLyl5ACbyf\",\"HFkhnBw_NRhbcn2-\",\"Jw0fQkVPMUQqj39k\",\"MIjH9QoeEzt"
+  },
+  {
+   "name": "distinctMilliseconds",
+   "highWater": "2026-11-02T09:02:00Z",
+   "tokenBytes": 48425,
+   "tokenSha256": "2f987ae306fe75f5f36a4b4d76934b5e5b240c7b7b88105b7862ba4cfb51fefc",
+   "tokenPrefix": "{\"v\":1,\"dataSourceId\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"highWater\":\"2026-11-02T09:02:00Z\",\"seen\":[{\"at\":\"2026-11-02T09:01:00Z\",\"rows\":[\"QLb_HozVI089sMVK\"]},{\"at\":\"2026-11-02T09:01:00.05Z\",\"rows\":[\"rY6EfnxybEpZqaRo\"]},{\"at\":\"2026-11-02T09:01:00.1Z\",\"rows\":[\"4HGJVtaPIuT4Ih2H\"]},{\"at\":\"2026-11-02T09:01:00.15Z\",\"rows\":[\"6D1hlWkyHxME97QP\"]},{\"at\":\"2026-11-02T09:01:00.2Z\",\"rows\":[\"BQSMO0V05eoFQ2xe"
+  }
+ ]
+}

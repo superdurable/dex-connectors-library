@@ -109,6 +109,8 @@ type toolCall struct {
 	// knownEffect is the effect a failure answer must respect.
 	knownEffect sdkgo.AgentToolEffect
 	attempt     int32
+	// sendCap is pinned when the write starts and passed on every attempt; see pinnedSendCap.
+	sendCap int32
 }
 
 // callAnswer is either a result or a JSON-RPC error.
@@ -375,6 +377,7 @@ func (call *toolCall) resumeRecordedCall(ctx context.Context, lock *callstate.Ke
 		call.executor.logger.Error("call state cannot be written", "key", call.keyPrefix(), "error", err)
 		return callAnswer{err: interruptedError("call state cannot be written; nothing was sent by this call")}
 	}
+	call.sendCap = pinnedSendCap(recordBinding.metadata)
 	return call.runWriteAttempts(ctx, lock, record, recordBinding, key)
 }
 
@@ -421,13 +424,16 @@ func (call *toolCall) startWrite(ctx context.Context, lock *callstate.KeyLock, k
 		return callAnswer{result: rejectedResult("call state cannot be written; nothing was sent")}
 	}
 	call.executor.observeProtocolPoint(ProtocolPointAfterRecordCreate, request.OperationID)
+	call.sendCap = pinnedSendCap(binding.metadata)
 	return call.runWriteAttempts(ctx, lock, &record, binding, key)
 }
 
-// runWriteAttempts retries an idempotent write while the cap, window, and budget allow.
+// runWriteAttempts retries an idempotent write, and a limited write whose
+// pinned cap allows a resend, while the cap, window, and budget allow.
 func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyLock, record *callstate.Record, binding *toolBinding, key string) callAnswer {
 	policy := retryPolicyOf(binding.metadata)
-	limit := attemptLimit(policy, call.executor.config.maximumInlineAttempts)
+	limit := writeAttemptLimit(policy, call.executor.config.maximumInlineAttempts, call.sendCap)
+	isBoundedResend := record.Effect != sdkgo.AgentToolEffectIdempotentWrite && allowsBoundedResend(call.sendCap)
 	for {
 		attempt, runErr := call.runWriteAttempt(ctx, lock, record, binding, key)
 		call.executor.observeProtocolPoint(ProtocolPointAfterAttempt, record.Request.OperationID)
@@ -447,7 +453,7 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 			return call.finalize(lock, record, call.writeBranchResult(binding, attempt, record))
 		}
 		detail := retryDetail(attempt)
-		if record.Effect != sdkgo.AgentToolEffectIdempotentWrite {
+		if record.Effect != sdkgo.AgentToolEffectIdempotentWrite && !isBoundedResend {
 			return call.finalizeRetryLater(lock, record, detail)
 		}
 		if record.Attempt >= limit {
@@ -459,10 +465,17 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 			return call.finalizeFromCheckpoint(lock, record, "its retry window ends before the next attempt ("+detail+")")
 		}
 		call.persistObservation(lock, record)
+		// A reissued limited write settles from its checkpoint, so it settles now instead.
 		if delay+binding.attemptTimeout() > call.remainingBudget(now) {
+			if isBoundedResend {
+				return call.finalizeRetryLater(lock, record, detail)
+			}
 			return callAnswer{err: interruptedError(binding.operationLabel() + " asked to retry and the call budget is spent; repeat the call with the same idempotency key")}
 		}
 		if !call.executor.clock.Sleep(ctx, delay) || call.executor.isDraining.Load() {
+			if isBoundedResend {
+				return call.finalizeRetryLater(lock, record, detail)
+			}
 			return callAnswer{err: interruptedError("the call ended while waiting to retry; repeat it with the same idempotency key")}
 		}
 		if !call.executor.clock.Now().Before(record.RetryWindowEndsAt) {
@@ -561,7 +574,7 @@ func (call *toolCall) runWriteAttempt(ctx context.Context, lock *callstate.KeyLo
 		return sdkgo.AgentToolAttempt{}, err
 	}
 	call.executor.observeProtocolPoint(ProtocolPointBeforeAttempt, record.Request.OperationID)
-	return binding.tool.RunAttempt(dexContext, call.arguments)
+	return binding.tool.RunAttemptWithOptions(dexContext, call.arguments, sendCapRunOptions(call.sendCap)...)
 }
 
 // writeBranchResult maps a write's branch; once any attempt may have applied,

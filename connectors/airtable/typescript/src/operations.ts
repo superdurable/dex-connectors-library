@@ -245,7 +245,8 @@ function decodeObject(body: Uint8Array): Record<string, unknown> {
 function isObject(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function requireString(value: unknown): string { if (typeof value !== 'string') throw new Error('expected string'); return value; }
 
-function decodeRecord(value: unknown): AirtableRecord {
+/** Validate one provider record and convert it, as Go's convertProviderRecord does. */
+export function decodeRecord(value: unknown): AirtableRecord {
   if (!isObject(value) || typeof value.id !== 'string' || !recordIdPattern.test(value.id) || typeof value.createdTime !== 'string') throw new Error('record is invalid');
   const timestamp = Date.parse(value.createdTime);
   if (!Number.isFinite(timestamp)) throw new Error('createdTime is invalid');

@@ -66,7 +66,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 	for _, field := range visibleFields {
 		names = append(names, field.Name)
 	}
-	require.Equal(t, []string{"endpoint", "maxResponseBytes", "personal_access_token"}, names, "a new visible field needs its own guidance review")
+	require.Equal(t, []string{"endpoint", "maxResponseBytes", "pollInterval", "pollPageSize", "personal_access_token"}, names, "a new visible field needs its own guidance review")
 	for _, field := range visibleFields {
 		t.Run(field.Name, func(t *testing.T) {
 			require.GreaterOrEqual(t, len(field.Description), 120, "a label-length description is not guidance")
@@ -79,7 +79,7 @@ func TestEveryVisibleConnectionFieldGuidesTheUser(t *testing.T) {
 			}
 		})
 	}
-	token := visibleFields[2]
+	token := visibleFields[4]
 	require.True(t, token.Required)
 	for _, text := range []string{"https://airtable.com/create/tokens", "Create new token", "starts with pat"} {
 		require.Contains(t, token.Description, text)

@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-intuit-mailchimp",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -424,6 +424,16 @@
           "campaignId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineMemberChangedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "memberChanged",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

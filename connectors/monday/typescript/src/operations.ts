@@ -10,8 +10,10 @@ import type { MondayClient, MondayExchange, MondayRequest } from './client.js';
 
 const itemFields = 'id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value }';
 const createdItemFields = 'id name state created_at updated_at url creator_id board { id } group { id title }';
-const listDocument = `query ListBoardItems($boardIds: [ID!], $limit: Int!, $queryParams: ItemsQuery, $columnIds: [String!]) {\n  boards(ids: $boardIds) { id items_page(limit: $limit, query_params: $queryParams) { cursor items { ${itemFields} } } }\n}`;
-const nextDocument = `query ListNextBoardItems($cursor: String!, $limit: Int!, $columnIds: [String!]) {\n  next_items_page(cursor: $cursor, limit: $limit) { cursor items { ${itemFields} } }\n}`;
+/** The listItems first-page GraphQL document, which the itemChanged poll also sends. */
+export const listDocument = `query ListBoardItems($boardIds: [ID!], $limit: Int!, $queryParams: ItemsQuery, $columnIds: [String!]) {\n  boards(ids: $boardIds) { id items_page(limit: $limit, query_params: $queryParams) { cursor items { ${itemFields} } } }\n}`;
+/** The listItems continuation GraphQL document, which the itemChanged poll also sends. */
+export const nextDocument = `query ListNextBoardItems($cursor: String!, $limit: Int!, $columnIds: [String!]) {\n  next_items_page(cursor: $cursor, limit: $limit) { cursor items { ${itemFields} } }\n}`;
 const getDocument = `query GetItem($itemIds: [ID!], $excludeNonactive: Boolean, $columnIds: [String!]) {\n  items(ids: $itemIds, exclude_nonactive: $excludeNonactive) { ${itemFields} }\n}`;
 const createDocument = `mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { ${createdItemFields} }\n}`;
 const changeDocument = `mutation UpdateItemColumnValues($boardId: ID!, $itemId: ID, $columnValues: JSON!, $createLabelsIfMissing: Boolean, $columnIds: [String!]) {\n  change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { ${itemFields} }\n}`;

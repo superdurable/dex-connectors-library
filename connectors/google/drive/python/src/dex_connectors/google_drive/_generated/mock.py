@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import File, FileSummary, FileUser, GetFileInput, ReadFileTextInput, ReadFileTextOutput, SearchFilesInput, SearchFilesOutput, ShortcutTarget, UploadFileInput, UploadFileOutput
+from ..models import File, FileEvent, FileSummary, FileTriggerConfiguration, FileUser, GetFileInput, ReadFileTextInput, ReadFileTextOutput, SearchFilesInput, SearchFilesOutput, ShortcutTarget, UploadFileInput, UploadFileOutput
 from .definitions import CONNECTOR_ID, PROVIDER, DEFECT, FOUND, GET_FILE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, READ, READ_FILE_TEXT_DEFINITION, SEARCH_FILES_DEFINITION, TOO_LARGE, UNCERTAIN, UNSUPPORTED_CONTENT, UPLOADED, UPLOAD_FILE_DEFINITION
 
 def search_files_found(value: SearchFilesOutput, failure: Failure | None = None) -> Case[SearchFilesOutput]:

@@ -79,6 +79,40 @@ func attemptLimit(policy *dex.RetryPolicy, maximumInlineAttempts int32) int32 {
 	return maximumInlineAttempts
 }
 
+// pinnedSendCap is the send cap one write call passes on every attempt: the
+// manifest MaxSends of a limited Mutation, 1 for a limited tool without a
+// usable cap, and 0, meaning no send-cap option, for every other tool.
+func pinnedSendCap(metadata sdkgo.AgentToolMetadata) int32 {
+	if metadata.Kind != sdkgo.AgentOperationKindMutation || metadata.RepeatOnUnknown != sdkgo.RepeatOnUnknownLimited {
+		return 0
+	}
+	return min(max(metadata.MaxSends, 1), sdkgo.MaxSendsCeiling)
+}
+
+// allowsBoundedResend reports whether a pinned send cap lets a non-idempotent
+// write run another attempt after a Retry.
+func allowsBoundedResend(sendCap int32) bool { return sendCap >= 2 }
+
+// sendCapRunOptions passes a limited tool's pinned cap explicitly, so that
+// RunAttempt never falls back to a cap the host did not choose. WithMaxSends
+// on any other tool is an error that would refuse the write.
+func sendCapRunOptions(sendCap int32) []sdkgo.RunOption {
+	if sendCap == 0 {
+		return nil
+	}
+	return []sdkgo.RunOption{sdkgo.WithMaxSends(sendCap)}
+}
+
+// writeAttemptLimit is attemptLimit with the inline maximum raised by one
+// attempt per extra send of a bounded resend; a policy's MaximumAttempts
+// still lowers it, as the SDK keeps a definition policy at the definition cap.
+func writeAttemptLimit(policy *dex.RetryPolicy, maximumInlineAttempts int32, sendCap int32) int32 {
+	if !allowsBoundedResend(sendCap) {
+		return attemptLimit(policy, maximumInlineAttempts)
+	}
+	return attemptLimit(policy, maximumInlineAttempts+sendCap-1)
+}
+
 // retryWindow is TotalDuration, or one hour, capped at retention.
 func retryWindow(policy *dex.RetryPolicy, retention time.Duration) time.Duration {
 	window := policy.TotalDuration

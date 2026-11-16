@@ -45,6 +45,8 @@ function truncated(value: string): { text: string; isTruncated: boolean } {
   while (end > 0 && (bytes[end]! & 0xc0) === 0x80) end--;
   return { text: bytes.subarray(0, end).toString('utf8'), isTruncated: true };
 }
+/** Decode one Freshdesk ticket object at parity with the Go connector; throws TypeError when invalid. */
+export function decodeTicketWire(value: unknown, expectedID = 0): Ticket { return ticket(value, expectedID); }
 function ticket(value: unknown, expectedID = 0): Ticket {
   const wire = object(value);
   const id = number(wire.id);

@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Dex-native Trello card and comment operations."""
+"""Dex-native Trello card and comment operations and the cardChanged Trigger."""
 
 from ._generated.config import Config, Credentials
 from ._generated.definitions import (
@@ -18,9 +18,13 @@ from ._generated.definitions import (
 from .client import Client
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
 from .models import (
+    ActionCard,
+    ActionList,
     AddCommentInput,
     AddCommentOutput,
     Card,
+    CardChangedEvent,
+    CardChangedTriggerConfiguration,
     CreateCardInput,
     CreateCardOutput,
     GetCardInput,
@@ -44,6 +48,30 @@ from .steps import (
     new_get_card_step,
     new_list_cards_step,
     new_update_card_step,
+)
+from .triggers import (
+    CARD_ACTION_COMMENTED,
+    CARD_ACTION_CONVERTED_FROM_CHECK_ITEM,
+    CARD_ACTION_COPIED,
+    CARD_ACTION_CREATED,
+    CARD_ACTION_DELETED,
+    CARD_ACTION_EMAILED,
+    CARD_ACTION_MOVED_TO_BOARD,
+    CARD_ACTION_UPDATED,
+    CARD_CHANGED_TRIGGER_DEFINITION,
+    WATCHED_CARD_ACTION_TYPES,
+    CardChangedTriggerRoute,
+    CardTriggerRunner,
+    CardTriggerRunnerConfig,
+    ProjectCardChangedTriggerRoute,
+    card_change_event_id,
+    decode_card_changed_event_payload,
+    decode_card_changed_trigger_configuration,
+    define_card_changed_trigger_binding,
+    new_card_changed_trigger,
+    new_card_trigger_runner,
+    new_project_card_trigger_runner,
+    validate_card_changed_trigger_configuration,
 )
 
 __all__ = [
@@ -86,4 +114,30 @@ __all__ = [
     "PROVIDER_REJECTED",
     "UNCERTAIN",
     "UPDATED",
+    "ActionCard",
+    "ActionList",
+    "CardChangedEvent",
+    "CardChangedTriggerConfiguration",
+    "CARD_ACTION_COMMENTED",
+    "CARD_ACTION_CONVERTED_FROM_CHECK_ITEM",
+    "CARD_ACTION_COPIED",
+    "CARD_ACTION_CREATED",
+    "CARD_ACTION_DELETED",
+    "CARD_ACTION_EMAILED",
+    "CARD_ACTION_MOVED_TO_BOARD",
+    "CARD_ACTION_UPDATED",
+    "CARD_CHANGED_TRIGGER_DEFINITION",
+    "WATCHED_CARD_ACTION_TYPES",
+    "CardChangedTriggerRoute",
+    "CardTriggerRunner",
+    "CardTriggerRunnerConfig",
+    "ProjectCardChangedTriggerRoute",
+    "card_change_event_id",
+    "decode_card_changed_event_payload",
+    "decode_card_changed_trigger_configuration",
+    "define_card_changed_trigger_binding",
+    "new_card_changed_trigger",
+    "new_card_trigger_runner",
+    "new_project_card_trigger_runner",
+    "validate_card_changed_trigger_configuration",
 ]

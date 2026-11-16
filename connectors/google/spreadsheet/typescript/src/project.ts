@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
+import { z } from 'zod';
 import { ConfigSchema, decodeCredentials, decodeSharedCredentials, type Credentials } from './generated/models.js';
 import { newProjectConnection as newGeneratedProjectConnection, newProjectCredentialProvider } from './generated/connection.js';
 import { SpreadsheetClient, type SpreadsheetClientOptions } from './client.js';
@@ -21,10 +22,14 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'google-sheets' && entry.connectionName === name);
     if (!selected) throw new TypeError('Google Sheets project connection is not configured');
     const settings = ConfigSchema.parse(selected.configuration);
+    // Dex Web stores pollInterval as Go time.Duration nanoseconds.
+    const pollInterval = z.number().int().optional().parse((selected.configuration as Record<string, unknown>).pollInterval);
     const config = {
       ...(settings.endpoint !== undefined ? { endpoint: settings.endpoint } : {}),
       ...(settings.maxResponseBytes !== undefined ? { maxResponseBytes: settings.maxResponseBytes } : {}),
       ...(settings.maxRows !== undefined ? { maxRows: settings.maxRows } : {}),
+      ...(pollInterval !== undefined ? { pollIntervalMs: pollInterval / 1_000_000 } : {}),
+      ...(settings.pollPageSize !== undefined ? { pollPageSize: settings.pollPageSize } : {}),
     };
     return new SpreadsheetClient(config, newProjectCredentialProvider(loadedProject, name, decodeCredentials, encodeCredentials, decodeSharedCredentials), options);
   });

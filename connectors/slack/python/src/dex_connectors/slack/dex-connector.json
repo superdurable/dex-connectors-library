@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-slack",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "factories": [
     {
@@ -271,6 +271,82 @@
       }
     },
     {
+      "name": "new_list_channel_messages_step",
+      "kind": "query",
+      "operationId": "listChannelMessages",
+      "inputType": "ListChannelMessagesInput",
+      "description": "Read one page of recent top-level messages in a Slack channel, newest first; thread replies are not included, so use the Slack list_thread_messages tool for a thread. Supply the channel ID, optionally oldestTimestamp and latestTimestamp Slack message timestamps to bound the time range, isInclusive true to include messages at exactly those timestamps, a pageSize of 1 through 15 (blank or 0 reads 15), and the cursor from the previous page to continue while nextCursor is present. When the user names a channel, such as #general, first find its channelId with the Slack list_channels tool for the same connection. The app must be a member of the channel.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "read",
+          "field": "read",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListChannelMessagesInput selects one page of a Slack channel's top-level message history.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID is the Slack channel identifier, such as C0123456789, from listChannels or the channel picker.",
+            "type": "string"
+          },
+          "cursor": {
+            "description": "Cursor is the nextCursor from the previous page. Blank reads the newest page.",
+            "type": "string"
+          },
+          "isInclusive": {
+            "description": "IsInclusive also keeps messages whose timestamp equals OldestTimestamp or LatestTimestamp. Slack ignores it when both timestamps are blank.",
+            "type": "boolean"
+          },
+          "latestTimestamp": {
+            "description": "LatestTimestamp keeps only messages before this Slack message timestamp, such as 1710000099.000100. Blank reads up to the newest message.",
+            "type": "string"
+          },
+          "oldestTimestamp": {
+            "description": "OldestTimestamp keeps only messages after this Slack message timestamp, such as 1710000000.000100. Blank reads from the start of the channel's history.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the maximum number of messages on this page: 1 through 15; blank or 0 reads 15, the most Slack returns to a non-Marketplace app. Slack may return fewer messages while NextCursor continues the history.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "channelId"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "new_post_channel_message_step",
       "kind": "mutation",
       "operationId": "postChannelMessage",
@@ -403,6 +479,141 @@
           "threadTimestamp"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "new_post_button_message_step",
+      "kind": "mutation",
+      "operationId": "postButtonMessage",
+      "inputType": "PostButtonMessageInput",
+      "description": "Post one message with Block Kit buttons to a Slack channel, or as a reply when threadTimestamp is set. Clicks reach the buttonClicked Trigger. Synchronous durability preserves the shared single-dispatch fence after retry or Worker loss.",
+      "agent": {
+        "exposed": false
+      },
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "sent",
+          "field": "sent",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "$defs": {
+          "MessageButton": {
+            "additionalProperties": false,
+            "description": "MessageButton is one Block Kit button in a message that postButtonMessage posts.",
+            "properties": {
+              "actionId": {
+                "description": "ActionID identifies the button in the buttonClicked Trigger's ButtonClickEvent.ActionID and in its ActionIDs filter. It is required, unique within the message, and at most 255 characters.",
+                "type": "string"
+              },
+              "style": {
+                "description": "Style is ButtonStylePrimary, ButtonStyleDanger, or empty for Slack's default style.",
+                "enum": [
+                  "danger",
+                  "primary"
+                ],
+                "type": "string"
+              },
+              "text": {
+                "description": "Text is the required plain-text button label, at most 75 characters; Slack may truncate it near 30.",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value is returned unchanged in ButtonClickEvent.Value, such as an order ID, at most 2000 characters. Empty sends no value. Like message text, every member who can see the message can read it, and a click delivers it to the Flow and records it in the durable inbox, so it must never be a secret or token.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "actionId",
+              "text"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "PostButtonMessageInput contains the provider request fields for post button message.",
+        "properties": {
+          "buttons": {
+            "description": "Buttons are the 1 through 25 buttons shown below the text, in order.",
+            "items": {
+              "$ref": "#/$defs/MessageButton"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "channelId": {
+            "description": "ChannelID is the Slack channel identifier.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the required Slack mrkdwn message shown above the buttons and used in notifications, at most 3000 characters and the connection's maxMessageCharacters.",
+            "type": "string"
+          },
+          "threadTimestamp": {
+            "description": "ThreadTimestamp is the parent message timestamp to reply in that thread; empty posts a top-level message.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "buttons",
+          "channelId",
+          "text"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "define_channel_thread_created_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "channelThreadCreated",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
+      }
+    },
+    {
+      "name": "define_thread_reply_created_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "threadReplyCreated",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
+      }
+    },
+    {
+      "name": "define_button_clicked_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "buttonClicked",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]

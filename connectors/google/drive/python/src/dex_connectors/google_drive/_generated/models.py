@@ -234,3 +234,75 @@ class UploadFileOutput:
 
 
 setattr(UploadFileOutput, '__module__', 'dex_connectors.google_drive.models')
+
+
+# FileEvent is the metadata of one Drive file that a file Trigger delivers. It never carries content.
+@dataclass(frozen=True, slots=True)
+class FileEvent:
+    # FileID is the Drive file ID, usable with GetFile and ReadFileText.
+    file_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'fileId'})
+    # Name is the file name, which is not unique within a folder.
+    name: str = ''
+    # MimeType is the file's MIME type.
+    mime_type: str = _dataclass_field(default='', metadata={'dex_json_name': 'mimeType'})
+    # Parents holds the file's direct parent folder ID; Drive allows at most one.
+    parents: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+    # DriveID is the shared drive ID, or blank for a My Drive file.
+    drive_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'driveId', 'dex_json_omit_default': True})
+    # CreatedTime is when the file was created.
+    created_time: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdTime', 'dex_json_format': 'rfc3339'})
+    # ModifiedTime is when anyone last modified the file.
+    modified_time: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'modifiedTime', 'dex_json_format': 'rfc3339'})
+    # TrashedTime is when the file was trashed; Drive reports it only for shared drive files, so it is
+    # zero for a My Drive file.
+    trashed_time: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'trashedTime', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+    # ChangeTime is the time of the Drive change record that reported the file.
+    change_time: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'changeTime', 'dex_json_format': 'rfc3339'})
+    # IsTrashed reports that the file is in the trash, explicitly or through a trashed parent folder.
+    is_trashed: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isTrashed'})
+    # SizeBytes is the size of blob and Google Workspace editor files; zero when Drive omits it.
+    size_bytes: int = _dataclass_field(default=0, metadata={'dex_json_name': 'sizeBytes', 'dex_json_omit_default': True})
+    # MD5Checksum is the content checksum of blob files; blank for Google Workspace files.
+    md5_checksum: str = _dataclass_field(default='', metadata={'dex_json_name': 'md5Checksum', 'dex_json_omit_default': True})
+    # WebViewLink opens the file in a browser.
+    web_view_link: str = _dataclass_field(default='', metadata={'dex_json_name': 'webViewLink', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_time, str):
+            object.__setattr__(self, 'created_time', parse_go_datetime(self.created_time, 'created_time'))
+        elif self.created_time is not None:
+            validate_go_datetime(self.created_time, 'created_time')
+        if isinstance(self.modified_time, str):
+            object.__setattr__(self, 'modified_time', parse_go_datetime(self.modified_time, 'modified_time'))
+        elif self.modified_time is not None:
+            validate_go_datetime(self.modified_time, 'modified_time')
+        if isinstance(self.trashed_time, str):
+            object.__setattr__(self, 'trashed_time', parse_go_datetime(self.trashed_time, 'trashed_time'))
+        elif self.trashed_time is not None:
+            validate_go_datetime(self.trashed_time, 'trashed_time')
+        if isinstance(self.change_time, str):
+            object.__setattr__(self, 'change_time', parse_go_datetime(self.change_time, 'change_time'))
+        elif self.change_time is not None:
+            validate_go_datetime(self.change_time, 'change_time')
+
+
+setattr(FileEvent, '__module__', 'dex_connectors.google_drive.models')
+
+
+# FileTriggerConfiguration filters the files a fileCreated, fileUpdated, or fileTrashed binding
+# receives. Every non-blank field must match.
+@dataclass(frozen=True, slots=True)
+class FileTriggerConfiguration:
+    # FolderID limits events to files whose direct parent is this Drive folder or shared drive ID, as
+    # the folderPicker unit saves it. Blank matches files in every folder the connection can see.
+    # Subfolders are not searched, because Drive reports only a file's direct parent.
+    folder_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'folderId', 'dex_json_omit_default': True})
+    # FolderName is the display name the folderPicker unit saves beside FolderID. It is informational
+    # and never used for matching.
+    folder_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'folderName', 'dex_json_omit_default': True})
+    # MimeType limits events to files of exactly this MIME type, such as application/pdf or
+    # application/vnd.google-apps.document. Blank matches every type, including folders.
+    mime_type: str = _dataclass_field(default='', metadata={'dex_json_name': 'mimeType', 'dex_json_omit_default': True})
+
+
+setattr(FileTriggerConfiguration, '__module__', 'dex_connectors.google_drive.models')
