@@ -5,9 +5,10 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode, urlsplit
 
 import httpx
@@ -28,6 +29,7 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
+    is_header_safe_credential,
     new_provider_http_client,
     parse_retry_after,
     read_bounded_body,
@@ -73,6 +75,18 @@ from .models import (
     PostMessageOutput,
     PostThreadReplyInput,
 )
+
+if TYPE_CHECKING:
+    from .button_message import PostButtonMessageOperation
+    from .channel_history import ListChannelMessagesOperation
+
+_LOCAL_SOCKET_URL = re.compile(r"ws://(127\.0\.0\.1|localhost)(:[0-9]+)?/")
+_SLACK_CODE = re.compile(r"[a-z0-9_]{1,64}")
+
+
+def slack_code(code: str) -> str:
+    """Return a short snake_case Slack code, or "unknown", so records never carry response text."""
+    return code if _SLACK_CODE.fullmatch(code) else "unknown"
 
 
 @dataclass(slots=True)
@@ -243,6 +257,59 @@ class Client:
         """Bind the thread reply Mutation."""
         return PostThreadReplyOperation(self)
 
+    def list_channel_messages(self) -> ListChannelMessagesOperation:
+        """Bind the channel history page Query."""
+        from .channel_history import ListChannelMessagesOperation
+
+        return ListChannelMessagesOperation(self)
+
+    def post_button_message(self) -> PostButtonMessageOperation:
+        """Bind the button message Mutation."""
+        from .button_message import PostButtonMessageOperation
+
+        return PostButtonMessageOperation(self)
+
+    async def resolve_trigger_credentials(self, call: Call) -> Credentials:
+        """Read the credential for a Trigger source outside a Dex Step, refreshing it when due."""
+        return await self.credentials.resolve(call)
+
+    async def open_socket_mode_connection(self, app_token: str) -> str:
+        """Ask Slack for a Socket Mode WebSocket URL with the app-level token.
+
+        Raises ValueError naming Slack's error code and HTTP status, never the token or the URL.
+        """
+        if not app_token or not is_header_safe_credential(app_token):
+            raise ValueError("Slack Socket Mode credentials are unavailable: credential app_token is invalid")
+        request = self.http_client.build_request(
+            "POST", self.endpoint + "/apps.connections.open", headers={"Authorization": "Bearer " + app_token}
+        )
+        try:
+            response, _ = await send_traced(self.http_client, request)
+        except ProviderTransportError as error:
+            raise ValueError("open Slack Socket Mode connection: transport failure") from error
+        try:
+            body = await read_bounded_body(response, self.config.max_response_bytes)
+        except (BodyTooLargeError, ProviderTransportError) as error:
+            raise ValueError("read Slack Socket Mode open response") from error
+        is_success_status = 200 <= response.status_code < 300
+        try:
+            decoded: Any = json.loads(body)
+        except (UnicodeError, ValueError):
+            decoded = None
+        if is_success_status and not isinstance(decoded, dict):
+            raise ValueError("decode Slack Socket Mode open response")
+        fields = decoded if isinstance(decoded, dict) else {}
+        url = fields.get("url")
+        if not is_success_status or fields.get("ok") is not True or not isinstance(url, str) or not url:
+            code = fields.get("error")
+            raise ValueError(
+                "Slack rejected the Socket Mode connection: "
+                f"{slack_code(code if isinstance(code, str) else '')} (HTTP {response.status_code})"
+            )
+        if not url.startswith("wss://") and _LOCAL_SOCKET_URL.match(url) is None:
+            raise ValueError("Slack returned an invalid Socket Mode URL")
+        return url
+
     async def _resolve(self, call: Call, token_field: str) -> tuple[Credentials | None, bool]:
         try:
             credentials = await self.credentials.resolve(call)
@@ -261,7 +328,7 @@ class Client:
         api_method: str,
         *,
         query: dict[str, str] | None = None,
-        payload: dict[str, str] | None = None,
+        payload: dict[str, Any] | None = None,
         form: dict[str, str] | None = None,
     ) -> _Response:
         url = self.endpoint + "/" + api_method
@@ -814,7 +881,13 @@ async def _read_back(
 
 
 async def _post_message(
-    client: Client, call: Call, operation: str, channel: str, thread: str, text: str
+    client: Client,
+    call: Call,
+    operation: str,
+    channel: str,
+    thread: str,
+    text: str,
+    blocks: list[dict[str, Any]] | None = None,
 ) -> MutationAttempt[PostMessageOutput]:
     if not channel.strip() or not text.strip() or len(text) > client.config.max_message_characters:
         return MutationAttempt.branch_result(
@@ -875,9 +948,11 @@ async def _post_message(
                 "Slack credentials are temporarily unavailable; no message was sent",
             )
         )
-    payload = {"channel": channel, "text": text, "client_msg_id": str(call.idempotency_key)}
+    payload: dict[str, Any] = {"channel": channel, "text": text, "client_msg_id": str(call.idempotency_key)}
     if thread:
         payload["thread_ts"] = thread
+    if blocks is not None:
+        payload["blocks"] = blocks
     try:
         response = await fence.dispatch(
             lambda deadline: client._request(

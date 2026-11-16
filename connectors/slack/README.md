@@ -7,16 +7,15 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
 This module finds Slack channels, identifies the connected workspace, reads
 recent channel history, reads and writes Slack channel threads, and receives Slack Events
 API messages through Socket Mode, or from a host that relays them for a shared
-connection (see [Relayed events](#relayed-events)). In Go and TypeScript it
+connection (see [Relayed events](#relayed-events)). In Go, TypeScript, and Python it
 also posts messages with Block Kit buttons and receives their clicks through
 Socket Mode (see [Buttons](#buttons)). It supports public and private channels, not direct
 messages.
 
 ## Agent tools
 
-The Go and TypeScript packages offer all seven operations to Dex agent hosts,
-and the Python package offers the six other than `listChannelMessages`. Both
-posts recommend approval and claim no safe retry, so a host runs each post
+The Go, TypeScript, and Python packages offer all seven operations to Dex agent
+hosts. Both posts recommend approval and claim no safe retry, so a host runs each post
 once. The reads need no approval:
 
 - `slack_list_channels` (`listChannels`) finds channel IDs from a name such as
@@ -487,14 +486,24 @@ with the request and button Triggers on one shared runner.
 
 ## Python package
 
-The [Python package](python/README.md) provides all six Slack operations:
-`listChannels`, `getWorkspaceIdentity`, `listThreadMessages`, `getThreadReply`,
-`postChannelMessage`, and `postThreadReply`. It uses generated OAuth credential decoding and refresh for
-private or shared Dex project connections. Triggers are not in the Python package.
-The runnable [thread messages example](python/examples/thread_messages/README.md)
-posts through a Mutation Step and reads the new thread through a Query Step.
-Its integration test uses a real Dex Worker and Client with a local Slack HTTP
-stand-in; live Slack authorization and Web API behavior are unverified.
+`dex-connector-slack==0.5.0` implements every Go operation and Trigger for
+Python Dex Flows: the channel discovery, channel history and thread reads, the
+channel, thread, and button message posts, the `channelThreadCreated` and
+`threadReplyCreated` Triggers through Socket Mode or a host's relay, and the
+`buttonClicked` Trigger through Socket Mode. One `MessageTriggerRunner` per
+connection receives every route, as in Go. It uses generated OAuth credential
+decoding and refresh for private or shared Dex project connections.
+
+The runnable [thread approval example](python/examples/thread_approval/README.md)
+starts a Flow from a root message and approves it from a reply, the
+[button approval example](python/examples/button_approval/README.md) decides it
+from a button click, the [channel history example](python/examples/channel_messages/README.md)
+reads one `listChannelMessages` page, and the
+[thread messages example](python/examples/thread_messages/README.md) posts and
+reads back a thread. Their integration tests use a real Dex Worker and Client
+with local stand-ins for Slack's Socket Mode, the Slack Web API, and a host's
+relay and credential broker; live Slack authorization, Socket Mode, and relay
+delivery are unverified.
 
 ## Verification
 

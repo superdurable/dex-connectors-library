@@ -1,35 +1,57 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Public Slack operation models generated from the Go connector."""
+"""Public Slack operation and Trigger models generated from the Go connector."""
 
 from ._generated.models import (
+    ButtonClickedTriggerConfiguration,
+    ButtonClickEvent,
     Channel,
+    ChannelMessage,
+    ChannelThreadCreatedTriggerConfiguration,
     GetThreadReplyInput,
     GetThreadReplyOutput,
     GetWorkspaceIdentityInput,
     GetWorkspaceIdentityOutput,
+    ListChannelMessagesInput,
+    ListChannelMessagesOutput,
     ListChannelsInput,
     ListChannelsOutput,
     ListThreadMessagesInput,
     ListThreadMessagesOutput,
     Message,
+    MessageButton,
+    MessageEvent,
+    MessageMatcher,
+    PostButtonMessageInput,
     PostChannelMessageInput,
     PostMessageOutput,
     PostThreadReplyInput,
+    ThreadReplyCreatedTriggerConfiguration,
 )
 
 __all__ = [
+    "ButtonClickEvent",
+    "ButtonClickedTriggerConfiguration",
     "Channel",
+    "ChannelMessage",
+    "ChannelThreadCreatedTriggerConfiguration",
     "GetThreadReplyInput",
     "GetThreadReplyOutput",
     "GetWorkspaceIdentityInput",
     "GetWorkspaceIdentityOutput",
+    "ListChannelMessagesInput",
+    "ListChannelMessagesOutput",
     "ListChannelsInput",
     "ListChannelsOutput",
     "ListThreadMessagesInput",
     "ListThreadMessagesOutput",
     "Message",
+    "MessageButton",
+    "MessageEvent",
+    "MessageMatcher",
+    "PostButtonMessageInput",
     "PostChannelMessageInput",
     "PostMessageOutput",
     "PostThreadReplyInput",
+    "ThreadReplyCreatedTriggerConfiguration",
 ]
