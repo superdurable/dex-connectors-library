@@ -13,7 +13,7 @@ spec:
     typescript:
       version: v0.2.0
       package: '@superdurable/connector-github'
-      operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits, listIssues, createIssue, setIssueState]
+      operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits, listIssues, createIssue, setIssueState, replaceIssueLabels, createIssueComment]
       triggers: []
     python:
       version: v0.1.0

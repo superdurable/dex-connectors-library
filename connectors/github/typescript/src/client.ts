@@ -8,11 +8,11 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, CredentialSource } from './generated/models.js';
 import { GetAuthenticatedProfileOperation, ListPublicRepositoriesOperation, ListMergedPullRequestsOperation, ListPullRequestFilesOperation, ListReleasesOperation, ListCommitsOperation } from './operations.js';
-import { CreateIssueOperation, ListIssuesOperation, SetIssueStateOperation } from './issues.js';
+import { CreateIssueCommentOperation, CreateIssueOperation, ListIssuesOperation, ReplaceIssueLabelsOperation, SetIssueStateOperation } from './issues.js';
 
 /** Default authorization method: read:user and user:email, so GitHub serves only public repository data. */
 export const PublicAuthMethodID = 'github-oauth';
-/** Authorization method granting the repo scope that createIssue and setIssueState require. */
+/** Authorization method granting the repo scope that the issue writes require. */
 export const RepositoryAuthMethodID = 'github-oauth-repository';
 
 const publicOAuthScopes = ['read:user', 'user:email'];
@@ -104,6 +104,10 @@ export class GitHubClient {
   createIssue(): CreateIssueOperation { return new CreateIssueOperation(this); }
   /** Bind the issue close and reopen Mutation. */
   setIssueState(): SetIssueStateOperation { return new SetIssueStateOperation(this); }
+  /** Bind the issue label replacement Mutation. */
+  replaceIssueLabels(): ReplaceIssueLabelsOperation { return new ReplaceIssueLabelsOperation(this); }
+  /** Bind the fenced issue comment creation Mutation. */
+  createIssueComment(): CreateIssueCommentOperation { return new CreateIssueCommentOperation(this); }
 
   /** Resolve the call's access token and authorization method once; a blank method is the default. */
   async resolveAccess(call: Call, operation: string): Promise<GitHubAccess | Extract<GitHubExchange, { failure: Failure }>> {
@@ -128,7 +132,7 @@ export class GitHubClient {
    * Resolve credentials, send one request, and classify the result. A 401 is sent once more with a refreshed
    * token, so only reads and repeat-safe writes use it.
    */
-  async sendRequest(call: Call, operation: string, method: 'GET' | 'PATCH', path: string, query: Record<string, string> = {}, payload?: Uint8Array): Promise<GitHubExchange> {
+  async sendRequest(call: Call, operation: string, method: 'GET' | 'PATCH' | 'PUT', path: string, query: Record<string, string> = {}, payload?: Uint8Array): Promise<GitHubExchange> {
     const access = await this.resolveAccess(call, operation);
     if ('failure' in access) return access;
     let token = access.token;

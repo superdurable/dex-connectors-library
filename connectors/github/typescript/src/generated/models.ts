@@ -568,6 +568,54 @@ export interface UpdatedIssueState {
   /** UpdatedAt is the issue's last update time in UTC. */
   "updatedAt"?: string | null | undefined;
 }
+/** ReplaceIssueLabelsInput names one existing issue and the complete label set it should carry. */
+export interface ReplaceIssueLabelsInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** IssueNumber is the positive issue number within the repository. */
+  "issueNumber": number;
+  /** Labels names up to 100 labels of 1 through 50 characters that replace every current label; surrounding
+   * whitespace is trimmed and an empty list removes all labels. GitHub creates a named label the repository
+   * lacks. */
+  "labels": Array<string> | null;
+}
+/** ReplacedIssueLabels is the issue's label set after the replacement. On every other branch only Number is
+   * set, echoing the requested issue number. */
+export interface ReplacedIssueLabels {
+  /** Number is the issue number within its repository. */
+  "number": number;
+  /** Labels lists the label names GitHub reports on the issue, each bounded to 256 bytes. */
+  "labels": Array<string> | null;
+  /** URL is the issue's GitHub web URL, derived from the configured base URL for GitHub.com or a GitHub
+   * Enterprise Server /api/v3 URL, and empty otherwise. */
+  "url"?: string | undefined;
+}
+/** CreateIssueCommentInput describes one comment to add to an existing issue. */
+export interface CreateIssueCommentInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** IssueNumber is the positive issue number within the repository. */
+  "issueNumber": number;
+  /** Body is the nonblank Markdown comment. The connector appends a hidden HTML comment that marks the
+   * comment for read-back, so Body holds at most 65536 characters less that marker. */
+  "body": string;
+}
+/** CreatedIssueComment identifies the created comment. On every other branch only IssueNumber is set,
+   * echoing the request so the application can reconcile. */
+export interface CreatedIssueComment {
+  /** IssueNumber echoes the requested issue number. */
+  "issueNumber": number;
+  /** CommentID is GitHub's numeric REST ID for the comment. */
+  "commentId"?: number | undefined;
+  /** URL is the comment's GitHub web URL, or empty when GitHub returns an unsafe URL. */
+  "url"?: string | undefined;
+  /** CreatedAt is the creation time in UTC. */
+  "createdAt"?: string | null | undefined;
+}
 
 /** Runtime validator for GetAuthenticatedProfileInput. */
 export const GetAuthenticatedProfileInputSchema = z.strictObject({
@@ -822,3 +870,34 @@ export const UpdatedIssueStateSchema = z.strictObject({
   "stateReason": z.string().optional(),
   "updatedAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<UpdatedIssueState>;
+
+/** Runtime validator for ReplaceIssueLabelsInput. */
+export const ReplaceIssueLabelsInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "issueNumber": z.number().int(),
+  "labels": z.array(z.string()).nullable(),
+}) satisfies z.ZodType<ReplaceIssueLabelsInput>;
+
+/** Runtime validator for ReplacedIssueLabels. */
+export const ReplacedIssueLabelsSchema = z.strictObject({
+  "number": z.number().int(),
+  "labels": z.array(z.string()).nullable(),
+  "url": z.string().optional(),
+}) satisfies z.ZodType<ReplacedIssueLabels>;
+
+/** Runtime validator for CreateIssueCommentInput. */
+export const CreateIssueCommentInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "issueNumber": z.number().int(),
+  "body": z.string(),
+}) satisfies z.ZodType<CreateIssueCommentInput>;
+
+/** Runtime validator for CreatedIssueComment. */
+export const CreatedIssueCommentSchema = z.strictObject({
+  "issueNumber": z.number().int(),
+  "commentId": z.number().int().optional(),
+  "url": z.string().optional(),
+  "createdAt": GoTimeJSONSchema.nullable().optional(),
+}) satisfies z.ZodType<CreatedIssueComment>;
