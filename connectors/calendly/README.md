@@ -21,7 +21,7 @@ The Calendly connector connects a Dex application to the
 | `cancelScheduledEvent` | Mutation | Cancels a scheduled event; an already-canceled event is `canceled` too | `canceled` | Go, TypeScript, Python |
 | `createSchedulingLink` | Mutation | One single-use booking link for an event type | `created` | Go, TypeScript, Python |
 | `createWebhookSubscription` | Mutation | Subscribes a callback URL to invitee webhooks, reusing an existing subscription | `subscribed` | Go, TypeScript, Python |
-| `inviteeEventReceived` | Trigger | A signed `invitee.created` or `invitee.canceled` webhook | | Go, TypeScript |
+| `inviteeEventReceived` | Trigger | A signed `invitee.created` or `invitee.canceled` webhook | | Go, TypeScript, Python |
 
 Every other branch is optional: `notFound`, `providerRejected`,
 `invalidResponse`, and `defect`; `createSchedulingLink` has `uncertain` in
@@ -250,4 +250,4 @@ an accepted provider call.
 
 ## Python
 
-The Python `dex-connector-calendly` package implements the six Calendly operations with generated OAuth wiring and a [runnable scheduled event lookup](python/examples/scheduled_event/README.md). The signed invitee webhook Trigger is available in Go and TypeScript, not Python. The Python example uses the static `calendly-scheduling` connection name.
+The Python `dex-connector-calendly` package v0.2.0 implements the six Calendly operations with generated OAuth wiring and, from 0.2.0, the `inviteeEventReceived` Trigger at parity with Go. Its [runnable scheduled event lookup](python/examples/scheduled_event/README.md) reads one event, and its [invitee recorder](python/examples/invitee_recorder/README.md) starts one Flow per signed booking. Both Python examples use the static `calendly-scheduling` connection name. See the [Python package README](python/README.md).

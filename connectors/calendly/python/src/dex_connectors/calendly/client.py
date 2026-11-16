@@ -5,7 +5,7 @@
 import json
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote_plus
 
 import httpx
@@ -35,6 +35,12 @@ from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 from ._generated.refresh import AUTHORIZATION, CREDENTIAL_FIELDS
 
+if TYPE_CHECKING:
+    from dex_connectors.sdk import ConnectionRef
+    from dex_connectors.sdk.webhooktrigger import WebhookEndpoint
+
+    from ._generated.models import InviteeEvent
+
 API_BASE = "https://api.calendly.com"
 
 
@@ -56,8 +62,7 @@ def failure(operation: str, kind: FailureKind, message: str) -> Failure:
 def query_encode(values: dict[str, str]) -> str:
     """Encode sorted query pairs as Go url.Values.Encode does."""
     return "&".join(
-        f"{quote_plus(key, safe='')}={quote_plus(value, safe='')}"
-        for key, value in sorted(values.items())
+        f"{quote_plus(key, safe='')}={quote_plus(value, safe='')}" for key, value in sorted(values.items())
     )
 
 
@@ -96,6 +101,8 @@ class Client:
         self.refresh_driver = ManifestCredentialRefreshDriver[Credentials](
             "Calendly", AUTHORIZATION, CREDENTIAL_FIELDS, self.http_client
         )
+        # Each connection's shared inviteeEventReceived webhook endpoint, created by its first Trigger.
+        self.invitee_event_endpoints: dict[ConnectionRef, WebhookEndpoint[Credentials, InviteeEvent]] = {}
 
     async def aclose(self) -> None:
         """Close the transport this client created."""

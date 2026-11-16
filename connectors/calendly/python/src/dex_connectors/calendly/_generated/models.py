@@ -423,3 +423,43 @@ class WebhookSubscription:
 WebhookSubscription.__annotations__['events'] = tuple[str, ...] | None
 WebhookSubscription.__dataclass_fields__['events'].type = tuple[str, ...] | None
 setattr(WebhookSubscription, '__module__', 'dex_connectors.calendly.models')
+
+
+# InviteeEvent is one verified invitee.created or invitee.canceled webhook. The Trigger event ID is the
+# webhook event followed by the scheduled event and invitee IDs from the invitee's stable URI, such as
+# invitee.created:GBGBDCAADAEDCRZ2:AAAAAAAAAAAAAAAA, so a redelivery of one webhook keeps its ID.
+@dataclass(frozen=True, slots=True)
+class InviteeEvent:
+    # Event is invitee.created or invitee.canceled.
+    event: str = ''
+    # CreatedAt is when Calendly created the webhook event.
+    created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_format': 'rfc3339'})
+    # Invitee is the invitee who booked or canceled. A reschedule sends invitee.canceled for the old
+    # invitee, with Rescheduled set, and invitee.created for the new one.
+    invitee: Invitee = _dataclass_field(default_factory=Invitee)
+    # ScheduledEvent is the scheduled event as the webhook described it.
+    scheduled_event: ScheduledEvent = _dataclass_field(default_factory=ScheduledEvent, metadata={'dex_json_name': 'scheduledEvent'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+
+
+setattr(InviteeEvent, '__module__', 'dex_connectors.calendly.models')
+
+
+# InviteeEventReceivedTriggerConfiguration filters the Calendly webhook events one binding records. The
+# zero value records every invitee.created and invitee.canceled event. It reduces what a binding stores;
+# the application's TriggerFilter remains its admission rule.
+@dataclass(frozen=True, slots=True)
+class InviteeEventReceivedTriggerConfiguration:
+    # Events lists invitee.created and invitee.canceled; empty accepts both.
+    events: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+    # EventTypeURI accepts only invitees of this Calendly event type, such as the eventTypePicker unit's
+    # eventTypeUri; blank accepts every event type.
+    event_type_uri: str = _dataclass_field(default='', metadata={'dex_json_name': 'eventTypeUri', 'dex_json_omit_default': True})
+
+
+setattr(InviteeEventReceivedTriggerConfiguration, '__module__', 'dex_connectors.calendly.models')

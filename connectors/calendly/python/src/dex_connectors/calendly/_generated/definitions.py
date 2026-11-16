@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -95,6 +98,8 @@ CANCEL_SCHEDULED_EVENT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 CREATE_SCHEDULING_LINK_DEFINITION = MutationDefinition(
@@ -110,6 +115,8 @@ CREATE_SCHEDULING_LINK_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 CREATE_WEBHOOK_SUBSCRIPTION_DEFINITION = MutationDefinition(
@@ -126,4 +133,11 @@ CREATE_WEBHOOK_SUBSCRIPTION_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
+)
+
+INVITEE_EVENT_RECEIVED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="inviteeEventReceived"),
+    description="Receive a signed Calendly invitee.created or invitee.canceled webhook, with the invitee's stable URI as its event ID.",
 )
