@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AuthenticatedProfile, GetAuthenticatedProfileInput
+from ..models import AuthenticatedProfile, GetAuthenticatedProfileInput, ProfileChangedEvent, ProfileChangedTriggerConfiguration, ProfileClaims
 from .definitions import CONNECTOR_ID, AUTHORIZATION_REVOKED, DEFECT, GET_AUTHENTICATED_PROFILE_DEFINITION, INSUFFICIENT_SCOPE, INVALID_RESPONSE, NOT_FOUND, PROFILE_LOADED, PROVIDER_REJECTED, VERIFIED_EMAIL_REQUIRED
 
 def get_authenticated_profile_profile_loaded(value: AuthenticatedProfile, failure: Failure | None = None) -> Case[AuthenticatedProfile]:

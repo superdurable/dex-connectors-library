@@ -1,0 +1,478 @@
+{
+  "description": "Go profileChanged fetcher outputs; each fetch reads the previous step's committed cursor unless the step names one. ${ACCESS_TOKEN} stands for the fake bearer token.",
+  "observedAt": "2036-02-23T17:00:00Z",
+  "steps": [
+    {
+      "result": {
+        "next": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e033d989b1b18683998ed854c8e2cc83\",\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=1\\u0026v=beta\\u0026t=first\",\"locale\":\"en-US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "seed",
+        "operation": "seed",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\",\"name\":\"Ada \u003cb\u003e\u0026amp;\u003c/b\u003e\u2028Lovelace 😀\",\"given_name\":\" Ada \",\"family_name\":\"Lovelace\",\"picture\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=1\u0026v=beta\u0026t=first\",\"locale\":{\"country\":\"US\",\"language\":\"en\"},\"email\":\"  Ada@Example.COM \",\"email_verified\":true}"
+      }
+    },
+    {
+      "result": {
+        "events": [],
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e033d989b1b18683998ed854c8e2cc83\",\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=1\\u0026v=beta\\u0026t=first\",\"locale\":\"en-US\"}}",
+        "next": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e033d989b1b18683998ed854c8e2cc83\",\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=1\\u0026v=beta\\u0026t=first\",\"locale\":\"en-US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "unchanged",
+        "operation": "fetch",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\",\"name\":\"Ada \u003cb\u003e\u0026amp;\u003c/b\u003e\u2028Lovelace 😀\",\"given_name\":\" Ada \",\"family_name\":\"Lovelace\",\"picture\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=1\u0026v=beta\u0026t=first\",\"locale\":{\"country\":\"US\",\"language\":\"en\"},\"email\":\"  Ada@Example.COM \",\"email_verified\":true}"
+      }
+    },
+    {
+      "result": {
+        "events": [],
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e033d989b1b18683998ed854c8e2cc83\",\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=1\\u0026v=beta\\u0026t=first\",\"locale\":\"en-US\"}}",
+        "next": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e033d989b1b18683998ed854c8e2cc83\",\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second#x\",\"locale\":\"en-US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "picture re-signed",
+        "operation": "fetch",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\",\"name\":\"Ada \u003cb\u003e\u0026amp;\u003c/b\u003e\u2028Lovelace 😀\",\"given_name\":\" Ada \",\"family_name\":\"Lovelace\",\"picture\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\u0026v=beta\u0026t=second#x\",\"locale\":{\"country\":\"US\",\"language\":\"en\"},\"email\":\"ada@example.com\",\"email_verified\":true}"
+      }
+    },
+    {
+      "result": {
+        "events": [
+          {
+            "id": "linkedin-profile-598ab76080efb1ebc1820b1fd959f9fa",
+            "occurredAt": "2036-02-23T17:00:00Z",
+            "payload": "{\"subject\":\"782bbtaQ\",\"previous\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second#x\",\"locale\":\"en-US\"},\"current\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"},\"changedFields\":[\"name\",\"familyName\",\"emailVerified\",\"locale\"]}"
+          }
+        ],
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e033d989b1b18683998ed854c8e2cc83\",\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second#x\",\"locale\":\"en-US\"}}",
+        "next": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":1,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "renamed and unverified",
+        "operation": "fetch",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\",\"name\":\"Ada King\",\"given_name\":\"Ada\",\"family_name\":\"King\",\"picture\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\u0026v=beta\u0026t=second\",\"locale\":\"en_US\",\"email\":\"ada@example.com\",\"email_verified\":false}"
+      }
+    },
+    {
+      "result": {
+        "events": [
+          {
+            "id": "linkedin-profile-598ab76080efb1ebc1820b1fd959f9fa",
+            "occurredAt": "2036-02-23T17:00:00Z",
+            "payload": "{\"subject\":\"782bbtaQ\",\"previous\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second#x\",\"locale\":\"en-US\"},\"current\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"},\"changedFields\":[\"name\",\"familyName\",\"emailVerified\",\"locale\"]}"
+          }
+        ],
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e033d989b1b18683998ed854c8e2cc83\",\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second#x\",\"locale\":\"en-US\"}}",
+        "next": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":1,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "refetch keeps the event ID",
+        "operation": "fetch",
+        "cursorFromStep": 2,
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\",\"name\":\"Ada King\",\"given_name\":\"Ada\",\"family_name\":\"King\",\"picture\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\u0026v=beta\u0026t=second\",\"locale\":\"en_US\",\"email\":\"ada@example.com\",\"email_verified\":false}"
+      }
+    },
+    {
+      "result": {
+        "events": [
+          {
+            "id": "linkedin-profile-24c2eeb41544b42033601278d46385dc",
+            "occurredAt": "2036-02-23T17:00:00Z",
+            "payload": "{\"subject\":\"782bbtaQ\",\"previous\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"},\"current\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=3\\u0026v=beta\\u0026t=third\",\"locale\":\"en-US\"},\"changedFields\":[\"name\",\"familyName\",\"emailVerified\",\"locale\"]}"
+          }
+        ],
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":1,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "next": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e033d989b1b18683998ed854c8e2cc83\",\"sequence\":2,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=3\\u0026v=beta\\u0026t=third\",\"locale\":\"en-US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "edited back",
+        "operation": "fetch",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\",\"name\":\"Ada \u003cb\u003e\u0026amp;\u003c/b\u003e\u2028Lovelace 😀\",\"given_name\":\" Ada \",\"family_name\":\"Lovelace\",\"picture\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=3\u0026v=beta\u0026t=third\",\"locale\":{\"country\":\"US\",\"language\":\"en\"},\"email\":\"ada@example.com\",\"email_verified\":true}"
+      }
+    },
+    {
+      "result": {
+        "events": [
+          {
+            "id": "linkedin-profile-360e84ee5c6c2953d78aa27d37f8704a",
+            "occurredAt": "2036-02-23T17:00:00Z",
+            "payload": "{\"subject\":\"782bbtaQ\",\"previous\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=3\\u0026v=beta\\u0026t=third\",\"locale\":\"en-US\"},\"current\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"},\"changedFields\":[\"name\",\"familyName\",\"emailVerified\",\"locale\"]}"
+          }
+        ],
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e033d989b1b18683998ed854c8e2cc83\",\"sequence\":2,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada \\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\\u2028Lovelace 😀\",\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"email\":\"ada@example.com\",\"emailVerified\":true,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=3\\u0026v=beta\\u0026t=third\",\"locale\":\"en-US\"}}",
+        "next": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "edited forth again",
+        "operation": "fetch",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\",\"name\":\"Ada King\",\"given_name\":\"Ada\",\"family_name\":\"King\",\"picture\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\u0026v=beta\u0026t=second\",\"locale\":\"en_US\",\"email\":\"ada@example.com\",\"email_verified\":false}"
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "rateLimited",
+          "message": "LinkedIn rate limit was reached",
+          "retryAfterSeconds": 120
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "429 with Retry-After",
+        "operation": "fetch",
+        "status": 429,
+        "retryAfter": "120",
+        "body": ""
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "rateLimited",
+          "message": "LinkedIn rate limit was reached",
+          "retryAfterSeconds": 0
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "429 without Retry-After",
+        "operation": "fetch",
+        "status": 429,
+        "body": ""
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "failed",
+          "message": "LinkedIn UserInfo request returned HTTP 500"
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "500",
+        "operation": "fetch",
+        "status": 500,
+        "body": "{}"
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "failed",
+          "message": "LinkedIn authorization is forbidden or lacks the openid or profile scope"
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "403",
+        "operation": "fetch",
+        "status": 403,
+        "body": ""
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "failed",
+          "message": "LinkedIn authorization is invalid or revoked; reconnect the connection"
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "401 without refresh",
+        "operation": "fetch",
+        "status": 401,
+        "body": ""
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "failed",
+          "message": "LinkedIn UserInfo request returned HTTP 400"
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "400",
+        "operation": "fetch",
+        "status": 400,
+        "body": ""
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "failed",
+          "message": "LinkedIn returned a UserInfo response without a valid sub claim"
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "missing sub",
+        "operation": "fetch",
+        "status": 200,
+        "body": "{\"name\":\"Ada\"}"
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "failed",
+          "message": "LinkedIn returned an invalid UserInfo response"
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "wrong claim type",
+        "operation": "fetch",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\",\"email_verified\":\"true\"}"
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "cursorInvalid"
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"e55d31f1953bf4277f2155d8dcbc32bb\",\"sequence\":3,\"profile\":{\"subject\":\"782bbtaQ\",\"name\":\"Ada King\",\"givenName\":\"Ada\",\"familyName\":\"King\",\"email\":\"ada@example.com\",\"emailVerified\":false,\"pictureUrl\":\"https://media.licdn.com/dms/image/v2/ada/profile-displayphoto-shrink_100_100/0/1?e=2\\u0026v=beta\\u0026t=second\",\"locale\":\"en_US\"}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "another member",
+        "operation": "fetch",
+        "status": 200,
+        "body": "{\"sub\":\"other-member\",\"name\":\"Grace Hopper\"}"
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "cursorInvalid"
+        },
+        "input": "not json",
+        "requests": null
+      },
+      "step": {
+        "name": "undecodable cursor",
+        "operation": "fetch",
+        "cursor": "not json",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\"}"
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "cursorInvalid"
+        },
+        "input": "{\"version\":1.0,\"subject\":\"782bbtaQ\",\"hash\":\"00\",\"profile\":{\"subject\":\"782bbtaQ\"}}",
+        "requests": null
+      },
+      "step": {
+        "name": "float version",
+        "operation": "fetch",
+        "cursor": "{\"version\":1.0,\"subject\":\"782bbtaQ\",\"hash\":\"00\",\"profile\":{\"subject\":\"782bbtaQ\"}}",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\"}"
+      }
+    },
+    {
+      "result": {
+        "error": {
+          "kind": "cursorInvalid"
+        },
+        "input": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"00\",\"profile\":{\"subject\":\"someone\"}}",
+        "requests": null
+      },
+      "step": {
+        "name": "subject mismatch inside cursor",
+        "operation": "fetch",
+        "cursor": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"00\",\"profile\":{\"subject\":\"someone\"}}",
+        "status": 200,
+        "body": "{\"sub\":\"782bbtaQ\"}"
+      }
+    },
+    {
+      "result": {
+        "events": [
+          {
+            "id": "linkedin-profile-91cf0efd664c061aaf3de8362807a27c",
+            "occurredAt": "2036-02-23T17:00:00Z",
+            "payload": "{\"subject\":\"782bbtaQ\",\"previous\":{\"subject\":\"782bbtaQ\",\"name\":\"Old \\u003cname\\u003e\",\"givenName\":\"Old\",\"emailVerified\":false},\"current\":{\"subject\":\"782bbtaQ\",\"givenName\":\"Ada �\",\"familyName\":\"Lovelace\",\"emailVerified\":false},\"changedFields\":[\"name\",\"givenName\",\"familyName\"]}"
+          }
+        ],
+        "input": "{\"VERSION\":1,\"subject\":\"782bbtaQ\",\"Hash\":\"00\",\"sequence\":41,\"profile\":{\"SUBJECT\":\"782bbtaQ\",\"NAME\":\"Old \u003cname\u003e\",\"emailVerified\":null},\"profile\":{\"givenName\":\"Old\",\"unknown\":[1]},\"extra\":{}}",
+        "next": "{\"version\":1,\"subject\":\"782bbtaQ\",\"hash\":\"9f30ffad3be3e7cba4dccc1bf93dff98\",\"sequence\":42,\"profile\":{\"subject\":\"782bbtaQ\",\"givenName\":\"Ada �\",\"familyName\":\"Lovelace\",\"emailVerified\":false}}",
+        "requests": [
+          {
+            "Method": "GET",
+            "Path": "/v2/userinfo",
+            "Authorization": "Bearer ${ACCESS_TOKEN}",
+            "Accept": "application/json",
+            "UserAgent": "superdurable-dex-linkedin-connector/0.1"
+          }
+        ]
+      },
+      "step": {
+        "name": "folded keys and repeated profile merge",
+        "operation": "fetch",
+        "cursor": "{\"VERSION\":1,\"subject\":\"782bbtaQ\",\"Hash\":\"00\",\"sequence\":41,\"profile\":{\"SUBJECT\":\"782bbtaQ\",\"NAME\":\"Old \u003cname\u003e\",\"emailVerified\":null},\"profile\":{\"givenName\":\"Old\",\"unknown\":[1]},\"extra\":{}}",
+        "status": 200,
+        "body": "{\"sub\":\" 782bbtaQ \",\"name\":null,\"given_name\":\"Ada \\ud800\",\"family_name\":\"Lovelace\",\"picture\":\"http://insecure.example/p.png\",\"locale\":7,\"email\":\"not an address\",\"email_verified\":null}"
+      }
+    }
+  ]
+}
