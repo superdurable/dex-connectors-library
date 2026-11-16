@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-reamaze",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Re:amaze conversation operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -42,11 +42,12 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:search": "npm run build && tsx examples/search-conversations/main.ts",
-    "example:search:start": "npm run build && tsx examples/search-conversations/start.ts"
+    "example:search:start": "npm run build && tsx examples/search-conversations/start.ts",
+    "example:new-conversation": "npm run build && tsx examples/new-conversation/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.1",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

@@ -16,7 +16,7 @@ const zeroCreate: CreateConversationOutput = { conversation: zeroConversation };
 const zeroUpdate: UpdateConversationOutput = { conversation: zeroConversation };
 const zeroFind: FindContactByEmailOutput = { contacts: [] };
 const conversationIdPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$/;
-const channelPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+export const channelPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const tagPattern = /^[A-Za-z0-9](?:[A-Za-z0-9 _./+:#&-]{0,62}[A-Za-z0-9_./+:#&-])?$/;
 
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'reamaze', operation, message }; }
