@@ -3,8 +3,8 @@
 
 import { Buffer } from 'node:buffer';
 import {
-  ReauthorizationRequiredError, SecretString, type Call, type Failure,
-  type ReceiptDraft,
+  ReauthorizationRequiredError, SecretString, defaultTriggerLogger, type Call, type Failure,
+  type ReceiptDraft, type TriggerLogger,
 } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import {
@@ -70,6 +70,8 @@ export interface SalesforceOutcome {
   retryAfterMs: number;
   providerErrors: ProviderError[];
   apiUsage: string;
+  /** The Date header of the classified HTTP response; absent when no response arrived. */
+  responseDate?: string;
 }
 
 /** Provider transport and clock seams; production uses the SDK HTTP sender. */
@@ -80,6 +82,12 @@ export interface SalesforceClientOptions {
   now?: () => Date;
   /** Per-request timeout; defaults to Go's 25 seconds. */
   timeoutMs?: number;
+  /**
+   * Receives the recordModifiedPolled Trigger runner's records: seeds, reseeds after an unusable cursor, failed
+   * polls, rate-limit pauses, and the durable inboxes newProjectRecordTriggerRunner opens. Records carry binding
+   * identity and never record values or credentials. Omitted uses defaultTriggerLogger. Operation Steps do not log.
+   */
+  logger?: TriggerLogger;
 }
 
 /** Keep provider diagnostics out of one Dex Failure. */
@@ -117,13 +125,20 @@ export class SalesforceClient {
   readonly apiVersion: string;
   readonly maxResponseBytes: number;
   readonly queryBatchSize: number;
+  /** Delay between recordModifiedPolled polls in milliseconds. */ readonly pollIntervalMs: number;
+  /** Most records one recordModifiedPolled poll request reads, the SOQL LIMIT. */ readonly pollPageSize: number;
+  /** Trigger record destination. */ readonly triggerLogger: TriggerLogger;
   readonly now: () => Date;
   private readonly credentials: CredentialSource;
   private readonly refreshDriver: ManifestCredentialRefreshDriver<Credentials>;
   private readonly sendRequest: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly timeoutMs: number;
 
-  /** Validate the configuration and bind generated OAuth and JWT bearer grants. */
+  /**
+   * Validate the configuration and bind generated OAuth and JWT bearer grants. An omitted pollIntervalMs uses 30
+   * seconds and must otherwise be at least 5 seconds; an omitted pollPageSize uses 200 and must otherwise be from
+   * 1 to 500.
+   */
   constructor(config: Config, credentials: CredentialSource, options: SalesforceClientOptions = {}) {
     if (!credentials) throw new TypeError('Salesforce credential provider is required');
     const apiVersion = config.apiVersion || 'v62.0';
@@ -133,11 +148,18 @@ export class SalesforceClient {
     if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1) throw new TypeError('Salesforce maxResponseBytes must be positive');
     const queryBatchSize = config.queryBatchSize ?? 200;
     if (!Number.isSafeInteger(queryBatchSize) || queryBatchSize < 200 || queryBatchSize > 2000) throw new TypeError('Salesforce queryBatchSize must be from 200 to 2000');
+    const pollIntervalMs = config.pollIntervalMs ?? 30_000;
+    if (!Number.isFinite(pollIntervalMs) || pollIntervalMs < 5_000) throw new TypeError('Salesforce pollInterval must be at least 5s');
+    const pollPageSize = config.pollPageSize ?? 200;
+    if (!Number.isSafeInteger(pollPageSize) || pollPageSize < 1 || pollPageSize > 500) throw new TypeError('Salesforce pollPageSize must be from 1 to 500');
     const timeoutMs = options.timeoutMs ?? 25_000;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw new TypeError('Salesforce request timeout must be positive');
     this.apiVersion = apiVersion;
     this.maxResponseBytes = maxResponseBytes;
     this.queryBatchSize = queryBatchSize;
+    this.pollIntervalMs = pollIntervalMs;
+    this.pollPageSize = pollPageSize;
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
     this.credentials = credentials;
     this.now = options.now ?? (() => new Date());
     this.timeoutMs = timeoutMs;
@@ -277,7 +299,7 @@ export class SalesforceClient {
     const retryAfter = parseRetryAfter(firstHeader(response.headers['retry-after']), this.now());
     const result = (
       route: SalesforceOutcome['route'], kind: Failure['kind'], description: string, delay = 0,
-    ) => this.outcome(route, operation, kind, message(description), delay, providerErrors, response.apiUsage);
+    ) => ({ ...this.outcome(route, operation, kind, message(description), delay, providerErrors, response.apiUsage), responseDate: firstHeader(response.headers.date) });
     if (code === 'REQUEST_LIMIT_EXCEEDED' || response.status === 429) return result('retry', 'RATE_LIMIT', 'Salesforce API request limit was reached', retryAfter);
     if (code === 'UNABLE_TO_LOCK_ROW') return result('retry', 'CONFLICT', 'Salesforce could not lock the record', retryAfter);
     if (code === 'DUPLICATE_VALUE' && duplicateRetry) return result('retry', 'CONFLICT', 'a concurrent write holds the unique value');

@@ -33,10 +33,18 @@ export function newProjectConnection(
       ...(typeof selected.configuration.apiVersion === 'string' ? { apiVersion: selected.configuration.apiVersion } : {}),
       ...(typeof selected.configuration.maxResponseBytes === 'number' ? { maxResponseBytes: selected.configuration.maxResponseBytes } : {}),
       ...(typeof selected.configuration.queryBatchSize === 'number' ? { queryBatchSize: selected.configuration.queryBatchSize } : {}),
+      ...(selected.configuration.pollInterval == null ? {} : { pollIntervalMs: pollIntervalMilliseconds(selected.configuration.pollInterval) }),
+      ...(typeof selected.configuration.pollPageSize === 'number' ? { pollPageSize: selected.configuration.pollPageSize } : {}),
     };
     const provider = newProjectCredentialProvider<Credentials>(
       loaded, name, decodeCredentials, encodeCredentials, decodeSharedCredentials,
     );
     return new SalesforceClient(config, provider, options);
   });
+}
+
+/** Convert the saved pollInterval, Go time.Duration nanoseconds, to whole milliseconds, rounding down. */
+function pollIntervalMilliseconds(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new TypeError('Salesforce configuration pollInterval must be a whole number of nanoseconds');
+  return Math.floor(value / 1_000_000);
 }
