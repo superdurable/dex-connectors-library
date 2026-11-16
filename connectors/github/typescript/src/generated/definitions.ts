@@ -342,3 +342,45 @@ export const CreateIssueDefinition: MutationDefinition = {
 };
 /** Manifest metadata for createIssue. */
 export const CreateIssueMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
+
+/** Branch IDs for setIssueState. */
+export const SetIssueStateBranch = {
+  Updated: "updated",
+  InsufficientScope: "insufficientScope",
+  AuthorizationRevoked: "authorizationRevoked",
+  NotFound: "notFound",
+  ProviderRejected: "providerRejected",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** GitHub set the issue to the requested state, or it already had that state and reason. */
+export const SetIssueStateBranchUpdated = SetIssueStateBranch.Updated;
+/** The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; the issue is unchanged. */
+export const SetIssueStateBranchInsufficientScope = SetIssueStateBranch.InsufficientScope;
+/** The OAuth grant is invalid or revoked; the issue is unchanged. */
+export const SetIssueStateBranchAuthorizationRevoked = SetIssueStateBranch.AuthorizationRevoked;
+/** The repository or issue was not found, or the connection cannot reach it; nothing was changed. */
+export const SetIssueStateBranchNotFound = SetIssueStateBranch.NotFound;
+/** GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged. */
+export const SetIssueStateBranchProviderRejected = SetIssueStateBranch.ProviderRejected;
+/** GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed. */
+export const SetIssueStateBranchInvalidResponse = SetIssueStateBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const SetIssueStateBranchDefect = SetIssueStateBranch.Defect;
+/** Manifest definition for setIssueState. */
+export const SetIssueStateDefinition: MutationDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "setIssueState" },
+  branches: [
+    { id: "updated", description: "GitHub set the issue to the requested state, or it already had that state and reason." },
+    { id: "insufficientScope", description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; the issue is unchanged.", optional: true },
+    { id: "authorizationRevoked", description: "The OAuth grant is invalid or revoked; the issue is unchanged.", optional: true },
+    { id: "notFound", description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", optional: true },
+    { id: "providerRejected", description: "GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged.", optional: true },
+    { id: "invalidResponse", description: "GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },
+  repeatOnUnknown: "safe",
+};
+/** Manifest metadata for setIssueState. */
+export const SetIssueStateMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

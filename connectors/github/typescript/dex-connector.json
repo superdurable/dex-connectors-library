@@ -680,6 +680,89 @@
         ],
         "type": "object"
       }
+    },
+    {
+      "name": "newSetIssueStateStep",
+      "kind": "mutation",
+      "operationId": "setIssueState",
+      "inputType": "SetIssueStateInput",
+      "description": "Close or reopen one existing issue in a public or private repository, with an optional state reason, on a github-oauth-repository connection. Setting an absolute state is safe to repeat, so an unknown outcome sends the same update again.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "updated",
+          "field": "updated",
+          "optional": false
+        },
+        {
+          "id": "insufficientScope",
+          "field": "insufficientScope",
+          "optional": true
+        },
+        {
+          "id": "authorizationRevoked",
+          "field": "authorizationRevoked",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SetIssueStateInput names one existing issue and the state to set.",
+        "properties": {
+          "issueNumber": {
+            "description": "IssueNumber is the positive issue number within the repository.",
+            "type": "integer"
+          },
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner, such as hello-world.",
+            "type": "string"
+          },
+          "state": {
+            "description": "State is open or closed.",
+            "type": "string"
+          },
+          "stateReason": {
+            "description": "StateReason is completed or not_planned with State closed, or reopened with State open. Empty lets GitHub choose: completed for a close and reopened for a reopen. Setting the same state with another reason changes only the reason.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueNumber",
+          "owner",
+          "repository",
+          "state"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

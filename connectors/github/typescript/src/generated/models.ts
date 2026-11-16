@@ -539,6 +539,35 @@ export interface CreatedIssue {
   /** Assignees lists the logins GitHub assigned. */
   "assignees"?: Array<string> | undefined;
 }
+/** SetIssueStateInput names one existing issue and the state to set. */
+export interface SetIssueStateInput {
+  /** Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored. */
+  "owner": string;
+  /** Repository is the repository name without its owner, such as hello-world. */
+  "repository": string;
+  /** IssueNumber is the positive issue number within the repository. */
+  "issueNumber": number;
+  /** State is open or closed. */
+  "state": string;
+  /** StateReason is completed or not_planned with State closed, or reopened with State open. Empty lets
+   * GitHub choose: completed for a close and reopened for a reopen. Setting the same state with another
+   * reason changes only the reason. */
+  "stateReason"?: string | undefined;
+}
+/** UpdatedIssueState is the issue's state after the update. On every other branch only Number is set,
+   * echoing the requested issue number. */
+export interface UpdatedIssueState {
+  /** Number is the issue number within its repository. */
+  "number": number;
+  /** URL is the issue's GitHub web URL, or empty when GitHub returns an unsafe URL. */
+  "url"?: string | undefined;
+  /** State is open or closed as GitHub returned it. */
+  "state"?: string | undefined;
+  /** StateReason is GitHub's reason for the state, such as completed, not_planned, or reopened, when set. */
+  "stateReason"?: string | undefined;
+  /** UpdatedAt is the issue's last update time in UTC. */
+  "updatedAt"?: string | null | undefined;
+}
 
 /** Runtime validator for GetAuthenticatedProfileInput. */
 export const GetAuthenticatedProfileInputSchema = z.strictObject({
@@ -775,3 +804,21 @@ export const CreatedIssueSchema = z.strictObject({
   "labels": z.array(z.string()).optional(),
   "assignees": z.array(z.string()).optional(),
 }) satisfies z.ZodType<CreatedIssue>;
+
+/** Runtime validator for SetIssueStateInput. */
+export const SetIssueStateInputSchema = z.strictObject({
+  "owner": z.string(),
+  "repository": z.string(),
+  "issueNumber": z.number().int(),
+  "state": z.string(),
+  "stateReason": z.string().optional(),
+}) satisfies z.ZodType<SetIssueStateInput>;
+
+/** Runtime validator for UpdatedIssueState. */
+export const UpdatedIssueStateSchema = z.strictObject({
+  "number": z.number().int(),
+  "url": z.string().optional(),
+  "state": z.string().optional(),
+  "stateReason": z.string().optional(),
+  "updatedAt": GoTimeJSONSchema.nullable().optional(),
+}) satisfies z.ZodType<UpdatedIssueState>;

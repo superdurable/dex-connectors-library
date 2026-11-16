@@ -5,7 +5,7 @@
 import { ConnectionRefSchema, type ConnectionRef, type Mutation, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { newRefreshingCredentialProvider, type CredentialDecoder, type CredentialEncoder, type SharedCredentialDecoder } from '@superdurable/connectors-sdk/projectconfig';
-import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFilePage, ListReleasesInput, ReleasePage, ListCommitsInput, CommitPage, ListIssuesInput, IssuePage, CreateIssueInput, CreatedIssue } from './models.js';
+import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFilePage, ListReleasesInput, ReleasePage, ListCommitsInput, CommitPage, ListIssuesInput, IssuePage, CreateIssueInput, CreatedIssue, SetIssueStateInput, UpdatedIssueState } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
@@ -26,6 +26,8 @@ export interface Operations {
   listIssues(): Query<ListIssuesInput, IssuePage>;
   /** Invoke createIssue through this connection. */
   createIssue(): Mutation<CreateIssueInput, CreatedIssue>;
+  /** Invoke setIssueState through this connection. */
+  setIssueState(): Mutation<SetIssueStateInput, UpdatedIssueState>;
 }
 
 /** Named connector connection kept outside Flow state. */

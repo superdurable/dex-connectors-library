@@ -6,7 +6,7 @@ import { RetryError, runMutation, SecretString, StaticCredentialProvider, type C
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type HeartbeatContext, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { GitHubClient, PublicAuthMethodID, RepositoryAuthMethodID } from '../src/client.js';
-import { CreateIssueInputSchema, type Credentials, type GetAuthenticatedProfileInput, type ListPublicRepositoriesInput, type ListMergedPullRequestsInput, type ListPullRequestFilesInput, type ListReleasesInput, type ListCommitsInput, type ListIssuesInput } from '../src/generated/models.js';
+import { CreateIssueInputSchema, SetIssueStateInputSchema, type Credentials, type GetAuthenticatedProfileInput, type ListPublicRepositoriesInput, type ListMergedPullRequestsInput, type ListPullRequestFilesInput, type ListReleasesInput, type ListCommitsInput, type ListIssuesInput } from '../src/generated/models.js';
 
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/github/scenarios.json', import.meta.url));
 const connection = { provider: 'github', name: 'signup' };
@@ -25,8 +25,9 @@ async function invokeGitHub(scenario: Scenario, recorder: ExchangeRecorder, cont
     return response;
   };
   const accessToken = scenario.name === 'getAuthenticatedProfile-defect' ? '' : scenario.name === 'getAuthenticatedProfile-refresh-after-rejection' ? 'rejected-token' : 'manifest-access-token';
-  // The Go adapter selects the repository method for createIssue and for listIssues scenarios named after it.
-  const isRepositoryMethod = scenario.operation === 'createIssue' && !scenario.name.endsWith('-public-method') || scenario.name.endsWith('-repository-method');
+  // The Go adapter selects the repository method for the issue writes and for listIssues scenarios named after it.
+  const isIssueWrite = scenario.operation === 'createIssue' || scenario.operation === 'setIssueState';
+  const isRepositoryMethod = isIssueWrite && !scenario.name.endsWith('-public-method') || scenario.name.endsWith('-repository-method');
   const initialCredentials: Credentials = { authMethodId: isRepositoryMethod ? RepositoryAuthMethodID : PublicAuthMethodID, accessToken: new SecretString(accessToken), oauthClientId: 'client-id', oauthClientSecret: new SecretString('client-secret') };
   const credentials = new StaticCredentialProvider([[connection, initialCredentials]]);
   const credentialSource = scenario.name === 'getAuthenticatedProfile-refresh-after-rejection'
@@ -50,6 +51,10 @@ async function invokeGitHub(scenario: Scenario, recorder: ExchangeRecorder, cont
       // The single-dispatch fence reads and writes the scenario's heartbeats across attempts.
       const fencedCall = scenarioCall(scenario, connection, 'github', context) as Call;
       return productionMutation(client.createIssue(), fencedCall, CreateIssueInputSchema.parse(scenario.input), scenario.idempotencyKey!);
+    }
+    case 'setIssueState': {
+      const mutationCall = scenarioCall(scenario, connection, 'github', context) as Call;
+      return productionMutation(client.setIssueState(), mutationCall, SetIssueStateInputSchema.parse(scenario.input), scenario.idempotencyKey!);
     }
     default: throw new TypeError(`unknown GitHub operation ${scenario.operation}`);
   }

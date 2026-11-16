@@ -1,9 +1,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { Attribute, StepList, StepRef, goTo, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
+import { Attribute, StepList, StepRef, forceFail, goTo, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { MutationResult, QueryResult } from '@superdurable/connectors-sdk';
-import { newCreateIssueStep, newListIssuesStep, type Connection, type CreatedIssue, type Issue, type IssuePage } from '@superdurable/connector-github';
+import { IssueStateClosed, IssueStateReasonCompleted, IssueStateReasonNotPlanned, newCreateIssueStep, newListIssuesStep, newSetIssueStateStep, type Connection, type CreatedIssue, type Issue, type IssuePage, type UpdatedIssueState } from '@superdurable/connector-github';
 
 /** Static GitHub connection selected in Dex Web; it must use the github-oauth-repository method. */
 export const ConnectionName = 'github-issue-filing';
@@ -12,18 +12,24 @@ export const OpenIssuePageSize = 100;
 /** Open issue pages checked for a matching title before creating. */
 export const MaxOpenIssuePages = 3;
 
-/** The repository and the issue to file unless an open issue with its title already exists. */
-export interface IssueFilingInput { owner: string; repository: string; title: string; body?: string; labels?: string[] }
+/**
+ * The repository and the issue to file unless an open issue with its title already exists. closeWithStateReason,
+ * completed or not_planned, closes the created issue at once, filing a problem that is already resolved.
+ */
+export interface IssueFilingInput { owner: string; repository: string; title: string; body?: string; labels?: string[]; closeWithStateReason?: string }
+/** Durable input of closing the created issue. */
+export interface CloseIssueRequest { owner: string; repository: string; issueNumber: number; stateReason: string }
 /** Durable input of one open issue page read. */
 export interface OpenIssuePageRequest { owner: string; repository: string; labels?: string[]; page: number }
 /** Durable record of one issue filing that the Flow returns. */
 export interface IssueFilingReport {
   input: IssueFilingInput;
-  status: 'checkingOpenIssues' | 'creatingIssue' | 'alreadyTracked' | 'created';
+  status: 'checkingOpenIssues' | 'creatingIssue' | 'alreadyTracked' | 'created' | 'closingIssue' | 'closed';
   openIssuePagesRead: number;
   /** Open issues beyond MaxOpenIssuePages were not checked. */ hasUncheckedOpenIssues: boolean;
   existingIssue?: Issue;
   createdIssue?: CreatedIssue;
+  closedIssue?: UpdatedIssueState;
 }
 
 const report = new Attribute<IssueFilingReport>('github-issue-filing-report', jsonCodec<IssueFilingReport>());
@@ -33,9 +39,10 @@ export class IssueFilingFlow implements Flow<IssueFilingInput> {
   private readonly start = new StartIssueFiling();
   private readonly record = new RecordOpenIssues();
   private readonly complete = new CompleteIssueFiling();
+  private readonly recordClosed = new RecordClosedIssue();
   /** Bind the static provider connection. */ constructor(private readonly connection: Connection) { if (!connection) throw new TypeError('GitHub connection is required'); }
   /** Stable Flow identity. */ getFlowType(): string { return 'GitHubIssueFilingFlow'; }
-  /** Register the duplicate check, creation, and completion Steps. */
+  /** Register the duplicate check, creation, optional closing, and completion Steps. */
   getSteps(): StepList<IssueFilingInput> {
     return StepList.startStep(this.start).otherSteps(
       newListIssuesStep({
@@ -54,6 +61,14 @@ export class IssueFilingFlow implements Flow<IssueFilingInput> {
         created: this.complete,
       }),
       this.complete,
+      newSetIssueStateStep({
+        stepType: 'CloseGitHubIssue',
+        annotations: { groupId: 'issue-closing', groupLabel: 'Issue closing', explanation: 'Close the created issue with the requested reason; a repeat sets the same state again.' },
+        connection: this.connection, connectionName: ConnectionName,
+        mapToOperationInput: (request: CloseIssueRequest) => ({ owner: request.owner, repository: request.repository, issueNumber: request.issueNumber, state: IssueStateClosed, stateReason: request.stateReason }),
+        updated: this.recordClosed,
+      }),
+      this.recordClosed,
     );
   }
   /** Register the filing report. */ getPersistenceSchema(): PersistenceSchema { return { attributes: [report] }; }
@@ -66,6 +81,8 @@ export class StartIssueFiling implements Step<IssueFilingInput> {
   /** Stable Step identity. */ getStepType(): string { return 'StartGitHubIssueFiling'; }
   /** Persist the request before any provider call. */
   execute(context: Context, input: IssueFilingInput): StepDecision {
+    // Rejecting the reason before filing avoids creating an issue the close Step cannot close.
+    if (!isClosingStateReason(input.closeWithStateReason)) return forceFail('closeWithStateReason must be completed, not_planned, or empty');
     report.set(context, { input, status: 'checkingOpenIssues', openIssuePagesRead: 0, hasUncheckedOpenIssues: false });
     return goTo(new StepRef('ListOpenGitHubIssues'), openIssuePageRequest(input, 1));
   }
@@ -96,16 +113,40 @@ export class RecordOpenIssues implements Step<QueryResult<IssuePage>> {
 }
 
 // dex:group group-id:issue-creation group-label:"Issue creation"
-// dex:explanation text:"Record the created issue and complete the filing."
-/** Complete the Flow with the created issue. */
+// dex:explanation text:"Record the created issue, then complete the filing or close the issue when requested."
+/** Complete the Flow with the created issue, or close it first when the input names a close reason. */
 export class CompleteIssueFiling implements Step<MutationResult<CreatedIssue>> {
   /** Stable Step identity. */ getStepType(): string { return 'CompleteGitHubIssueFiling'; }
   /** Persist the created issue's identity. */
   execute(context: Context, result: MutationResult<CreatedIssue>): StepDecision {
     const created: IssueFilingReport = { ...report.get(context), createdIssue: result.value, status: 'created' };
+    const stateReason = created.input.closeWithStateReason;
+    if (stateReason && result.value.number) {
+      report.set(context, { ...created, status: 'closingIssue' });
+      const request: CloseIssueRequest = { owner: created.input.owner, repository: created.input.repository, issueNumber: result.value.number, stateReason };
+      return goTo(new StepRef('CloseGitHubIssue'), request);
+    }
     report.set(context, created);
     return gracefulComplete(created);
   }
+}
+
+// dex:group group-id:issue-closing group-label:"Issue closing"
+// dex:explanation text:"Record the closed issue and complete the filing."
+/** Complete the Flow with the closed issue. */
+export class RecordClosedIssue implements Step<MutationResult<UpdatedIssueState>> {
+  /** Stable Step identity. */ getStepType(): string { return 'RecordClosedGitHubIssue'; }
+  /** Persist the closed issue's state. */
+  execute(context: Context, result: MutationResult<UpdatedIssueState>): StepDecision {
+    const closed: IssueFilingReport = { ...report.get(context), closedIssue: result.value, status: 'closed' };
+    report.set(context, closed);
+    return gracefulComplete(closed);
+  }
+}
+
+/** Report whether a close reason is empty, completed, or not_planned. */
+export function isClosingStateReason(stateReason: string | undefined): boolean {
+  return !stateReason || stateReason === IssueStateReasonCompleted || stateReason === IssueStateReasonNotPlanned;
 }
 
 /** Return the first issue whose title matches, ignoring case and surrounding whitespace. */

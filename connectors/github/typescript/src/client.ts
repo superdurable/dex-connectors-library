@@ -8,11 +8,11 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, CredentialSource } from './generated/models.js';
 import { GetAuthenticatedProfileOperation, ListPublicRepositoriesOperation, ListMergedPullRequestsOperation, ListPullRequestFilesOperation, ListReleasesOperation, ListCommitsOperation } from './operations.js';
-import { CreateIssueOperation, ListIssuesOperation } from './issues.js';
+import { CreateIssueOperation, ListIssuesOperation, SetIssueStateOperation } from './issues.js';
 
 /** Default authorization method: read:user and user:email, so GitHub serves only public repository data. */
 export const PublicAuthMethodID = 'github-oauth';
-/** Authorization method granting the repo scope that createIssue requires. */
+/** Authorization method granting the repo scope that createIssue and setIssueState require. */
 export const RepositoryAuthMethodID = 'github-oauth-repository';
 
 const publicOAuthScopes = ['read:user', 'user:email'];
@@ -102,6 +102,8 @@ export class GitHubClient {
   listIssues(): ListIssuesOperation { return new ListIssuesOperation(this); }
   /** Bind the fenced issue creation Mutation. */
   createIssue(): CreateIssueOperation { return new CreateIssueOperation(this); }
+  /** Bind the issue close and reopen Mutation. */
+  setIssueState(): SetIssueStateOperation { return new SetIssueStateOperation(this); }
 
   /** Resolve the call's access token and authorization method once; a blank method is the default. */
   async resolveAccess(call: Call, operation: string): Promise<GitHubAccess | Extract<GitHubExchange, { failure: Failure }>> {
@@ -119,6 +121,14 @@ export class GitHubClient {
 
   /** Resolve credentials, send a single GitHub GET, and classify the result. */
   async get(call: Call, operation: string, path: string, query: Record<string, string> = {}): Promise<GitHubExchange> {
+    return this.sendRequest(call, operation, 'GET', path, query);
+  }
+
+  /**
+   * Resolve credentials, send one request, and classify the result. A 401 is sent once more with a refreshed
+   * token, so only reads and repeat-safe writes use it.
+   */
+  async sendRequest(call: Call, operation: string, method: 'GET' | 'PATCH', path: string, query: Record<string, string> = {}, payload?: Uint8Array): Promise<GitHubExchange> {
     const access = await this.resolveAccess(call, operation);
     if ('failure' in access) return access;
     let token = access.token;
@@ -128,15 +138,17 @@ export class GitHubClient {
       let response: ProviderResponse;
       try {
         response = await this.send({
-          url, method: 'GET', headers: {
+          url, method, headers: {
             Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`,
+            ...(payload ? { 'Content-Type': 'application/json' } : {}),
             'User-Agent': userAgent, 'X-GitHub-Api-Version': this.apiVersion,
-          }, addressPolicy: 'unrestricted',
+          }, ...(payload ? { body: payload } : {}), addressPolicy: 'unrestricted',
           maxResponseBytes: this.maxResponseBytes, timeoutMs: this.timeoutMs,
           signal: call.context.cancellationSignal,
         });
       } catch (error) {
         if (error instanceof BodyTooLargeError) return { branch: 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', `${operation === 'getAuthenticatedProfile' ? path === '/user/emails' ? 'GitHub email' : 'GitHub profile' : operation === 'listPublicRepositories' ? 'GitHub repository' : 'GitHub'} response exceeds the configured size limit`), receipt: requestReceipt(error.headers ?? {}) };
+        if (method !== 'GET') return { failure: failure(operation, 'TRANSPORT', 'GitHub request did not complete'), retryAfterMs: 0, receipt: {}, isTransportFailure: true };
         return { failure: failure(operation, 'AVAILABILITY', 'GitHub is unavailable'), retryAfterMs: 0, receipt: {}, isTransportFailure: true };
       }
       const receipt = requestReceipt(response.headers);
@@ -154,6 +166,11 @@ export class GitHubClient {
       if (response.status === 401) return { branch: 'authorizationRevoked', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is invalid or revoked'), receipt };
       if (response.status === 403) return { branch: 'insufficientScope', failure: failure(operation, 'AUTHORIZATION', 'GitHub authorization is forbidden or lacks scope'), receipt };
       if (response.status === 404) return { branch: 'notFound', failure: failure(operation, 'NOT_FOUND', 'GitHub resource was not found'), receipt };
+      if (method !== 'GET') {
+        // A write names the rejected status; 400 and 422 report invalid input.
+        const kind = response.status === 400 || response.status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION';
+        return { branch: 'providerRejected', failure: failure(operation, kind, `GitHub rejected the ${operation} request with HTTP ${response.status}`), receipt };
+      }
       return { branch: 'providerRejected', failure: failure(operation, 'PROVIDER_REJECTION', 'GitHub rejected the request'), receipt };
     }
     throw new Error('GitHub authenticated request retry was exhausted');

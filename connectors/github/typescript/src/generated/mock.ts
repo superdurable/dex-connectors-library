@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, Repository, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequest, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFile, PullRequestFilePage, ListReleasesInput, Release, ReleasePage, ListCommitsInput, CommitSummary, CommitPage, ListIssuesInput, Issue, IssuePage, CreateIssueInput, CreatedIssue } from './models.js';
-import { GetAuthenticatedProfileInputSchema, AuthenticatedProfileSchema, ListPublicRepositoriesInputSchema, RepositorySchema, PublicRepositoriesSchema, ListMergedPullRequestsInputSchema, MergedPullRequestSchema, MergedPullRequestPageSchema, ListPullRequestFilesInputSchema, PullRequestFileSchema, PullRequestFilePageSchema, ListReleasesInputSchema, ReleaseSchema, ReleasePageSchema, ListCommitsInputSchema, CommitSummarySchema, CommitPageSchema, ListIssuesInputSchema, IssueSchema, IssuePageSchema, CreateIssueInputSchema, CreatedIssueSchema } from './models.js';
-import { ProviderID, ConnectorID, GetAuthenticatedProfileDefinition, ListPublicRepositoriesDefinition, ListMergedPullRequestsDefinition, ListPullRequestFilesDefinition, ListReleasesDefinition, ListCommitsDefinition, ListIssuesDefinition, CreateIssueDefinition } from './definitions.js';
+import type { GetAuthenticatedProfileInput, AuthenticatedProfile, ListPublicRepositoriesInput, Repository, PublicRepositories, ListMergedPullRequestsInput, MergedPullRequest, MergedPullRequestPage, ListPullRequestFilesInput, PullRequestFile, PullRequestFilePage, ListReleasesInput, Release, ReleasePage, ListCommitsInput, CommitSummary, CommitPage, ListIssuesInput, Issue, IssuePage, CreateIssueInput, CreatedIssue, SetIssueStateInput, UpdatedIssueState } from './models.js';
+import { GetAuthenticatedProfileInputSchema, AuthenticatedProfileSchema, ListPublicRepositoriesInputSchema, RepositorySchema, PublicRepositoriesSchema, ListMergedPullRequestsInputSchema, MergedPullRequestSchema, MergedPullRequestPageSchema, ListPullRequestFilesInputSchema, PullRequestFileSchema, PullRequestFilePageSchema, ListReleasesInputSchema, ReleaseSchema, ReleasePageSchema, ListCommitsInputSchema, CommitSummarySchema, CommitPageSchema, ListIssuesInputSchema, IssueSchema, IssuePageSchema, CreateIssueInputSchema, CreatedIssueSchema, SetIssueStateInputSchema, UpdatedIssueStateSchema } from './models.js';
+import { ProviderID, ConnectorID, GetAuthenticatedProfileDefinition, ListPublicRepositoriesDefinition, ListMergedPullRequestsDefinition, ListPullRequestFilesDefinition, ListReleasesDefinition, ListCommitsDefinition, ListIssuesDefinition, CreateIssueDefinition, SetIssueStateDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for GetAuthenticatedProfileInput in scripted cases. */
@@ -154,6 +154,17 @@ export const emptyCreatedIssue: CreatedIssue = CreatedIssueSchema.parse({
   "owner": '',
   "repository": '',
   "title": '',
+});
+/** Go zero value for SetIssueStateInput in scripted cases. */
+export const emptySetIssueStateInput: SetIssueStateInput = SetIssueStateInputSchema.parse({
+  "owner": '',
+  "repository": '',
+  "issueNumber": 0,
+  "state": '',
+});
+/** Go zero value for UpdatedIssueState in scripted cases. */
+export const emptyUpdatedIssueState: UpdatedIssueState = UpdatedIssueStateSchema.parse({
+  "number": 0,
 });
 
 /** Script the profileLoaded branch. */
@@ -657,6 +668,69 @@ export function createIssueDefectFailure(): Case<CreatedIssue> {
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "createIssue", message: "GitHub issue title is required." });
 }
 
+/** Script the updated branch. */
+export function setIssueStateUpdated(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("updated", value, failure); }
+/** Script the insufficientScope branch. */
+export function setIssueStateInsufficientScope(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("insufficientScope", value, failure); }
+/** Script the authorizationRevoked branch. */
+export function setIssueStateAuthorizationRevoked(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("authorizationRevoked", value, failure); }
+/** Script the notFound branch. */
+export function setIssueStateNotFound(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
+export function setIssueStateProviderRejected(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function setIssueStateInvalidResponse(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function setIssueStateDefect(value: UpdatedIssueState, failure?: Failure): Case<UpdatedIssueState> { return branchCase("defect", value, failure); }
+/** Script a safe retry of setIssueState. */
+export function setIssueStateRetry(failure: Failure, retryAfterMs = 0): Case<UpdatedIssueState> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario closedCompleted for setIssueState. */
+export function setIssueStateClosedCompleted(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42,"state":"closed","stateReason":"completed","updatedAt":"2026-03-08T09:30:00Z","url":"https://github.com/octocat/hello-world/issues/42"});
+  return branchCase("updated", value);
+}
+/** Default setIssueState scenario. */
+export function setIssueStateDefault(): Case<UpdatedIssueState> { return setIssueStateClosedCompleted(); }
+/** Manifest scenario reopened for setIssueState. */
+export function setIssueStateReopened(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42,"state":"open","stateReason":"reopened","updatedAt":"2026-03-09T14:00:00Z","url":"https://github.com/octocat/hello-world/issues/42"});
+  return branchCase("updated", value);
+}
+/** Manifest scenario rateLimited for setIssueState. */
+export function setIssueStateRateLimited(): Case<UpdatedIssueState> {
+  return retryCase({ kind: "RATE_LIMIT", provider: ConnectorID, operation: "setIssueState", message: "GitHub rate limit was reached." }, 1000);
+}
+/** Manifest scenario insufficientScopeFailure for setIssueState. */
+export function setIssueStateInsufficientScopeFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("insufficientScope", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "setIssueState", message: "The connection does not use the github-oauth-repository method." });
+}
+/** Manifest scenario authorizationRevokedFailure for setIssueState. */
+export function setIssueStateAuthorizationRevokedFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("authorizationRevoked", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "setIssueState", message: "The OAuth grant is invalid or revoked." });
+}
+/** Manifest scenario notFoundFailure for setIssueState. */
+export function setIssueStateNotFoundFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":4242});
+  return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "setIssueState", message: "The repository or issue was not found or the connection cannot reach it." });
+}
+/** Manifest scenario issueDeletedRejection for setIssueState. */
+export function setIssueStateIssueDeletedRejection(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "setIssueState", message: "GitHub rejected the issue state update with HTTP 410." });
+}
+/** Manifest scenario invalidResponseFailure for setIssueState. */
+export function setIssueStateInvalidResponseFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "setIssueState", message: "GitHub returned an invalid issue." });
+}
+/** Manifest scenario defectFailure for setIssueState. */
+export function setIssueStateDefectFailure(): Case<UpdatedIssueState> {
+  const value = UpdatedIssueStateSchema.parse({"number":42});
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "setIssueState", message: "GitHub issue state reason reopened requires state open." });
+}
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #getAuthenticatedProfile: MockQuery<GetAuthenticatedProfileInput, AuthenticatedProfile>;
@@ -667,6 +741,7 @@ export class GeneratedMock implements Operations {
   readonly #listCommits: MockQuery<ListCommitsInput, CommitPage>;
   readonly #listIssues: MockQuery<ListIssuesInput, IssuePage>;
   readonly #createIssue: MockMutation<CreateIssueInput, CreatedIssue>;
+  readonly #setIssueState: MockMutation<SetIssueStateInput, UpdatedIssueState>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
@@ -678,6 +753,7 @@ export class GeneratedMock implements Operations {
     this.#listCommits = newQuery<ListCommitsInput, CommitPage>(ListCommitsDefinition).default(listCommitsDefault());
     this.#listIssues = newQuery<ListIssuesInput, IssuePage>(ListIssuesDefinition).default(listIssuesDefault());
     this.#createIssue = newMutation<CreateIssueInput, CreatedIssue>(CreateIssueDefinition).default(createIssueDefault());
+    this.#setIssueState = newMutation<SetIssueStateInput, UpdatedIssueState>(SetIssueStateDefinition).default(setIssueStateDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
@@ -690,6 +766,7 @@ export class GeneratedMock implements Operations {
   listCommits(): MockQuery<ListCommitsInput, CommitPage> { return this.#listCommits; }
   listIssues(): MockQuery<ListIssuesInput, IssuePage> { return this.#listIssues; }
   createIssue(): MockMutation<CreateIssueInput, CreatedIssue> { return this.#createIssue; }
+  setIssueState(): MockMutation<SetIssueStateInput, UpdatedIssueState> { return this.#setIssueState; }
   assertNoFailures(): void {
     this.#getAuthenticatedProfile.assertNoFailures();
     this.#listPublicRepositories.assertNoFailures();
@@ -699,5 +776,6 @@ export class GeneratedMock implements Operations {
     this.#listCommits.assertNoFailures();
     this.#listIssues.assertNoFailures();
     this.#createIssue.assertNoFailures();
+    this.#setIssueState.assertNoFailures();
   }
 }

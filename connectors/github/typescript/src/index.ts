@@ -8,4 +8,4 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newProjectConnection } from './project.js';
 export { GitHubClient, PublicAuthMethodID, RepositoryAuthMethodID, type GitHubClientOptions } from './client.js';
 export { GetAuthenticatedProfileOperation, ListPublicRepositoriesOperation, ListMergedPullRequestsOperation, ListPullRequestFilesOperation, ListReleasesOperation, ListCommitsOperation } from './operations.js';
-export { CreateIssueOperation, ListIssuesOperation } from './issues.js';
+export { CreateIssueOperation, ListIssuesOperation, SetIssueStateOperation, IssueStateOpen, IssueStateClosed, IssueStateReasonCompleted, IssueStateReasonNotPlanned, IssueStateReasonReopened } from './issues.js';

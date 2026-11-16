@@ -17,10 +17,14 @@ import { ConnectionName, IssueFilingFlow, type IssueFilingInput, type IssueFilin
 const token = 'github-integration-token';
 type CreateBehavior = 'store201' | 'store502' | 'drop502';
 
-/** Local stand-in for the documented GitHub issue list, create, and user endpoints. */
+/** Local stand-in for the documented GitHub issue list, create, update, and user endpoints. */
 class IssueProvider {
   readonly issues = new Map<number, Record<string, unknown>>();
   readonly sentBodies: string[] = [];
+  readonly sentStateUpdates: string[] = [];
+  requestCount = 0;
+  /** State updates applied and then answered with 502. */
+  failStateUpdates = 0;
   posts = 0;
   readBackLists = 0;
   failReadBackLists = 0;
@@ -39,8 +43,22 @@ class IssueProvider {
 
   async handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     if (request.headers.authorization !== `Bearer ${token}`) { response.writeHead(401).end('{"message":"Bad credentials"}'); return; }
+    this.requestCount++;
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
     const headers = { 'Content-Type': 'application/json', 'X-OAuth-Scopes': this.grantedScopes };
+    const issueNumber = /^\/repos\/octocat\/hello-world\/issues\/(\d+)$/.exec(url.pathname)?.[1];
+    if (request.method === 'PATCH' && issueNumber) {
+      let raw = '';
+      for await (const chunk of request) raw += String(chunk);
+      this.sentStateUpdates.push(raw);
+      const update = JSON.parse(raw) as { state: string; state_reason?: string };
+      const issue = this.issues.get(Number(issueNumber));
+      if (!issue) { response.writeHead(404, headers).end('{"message":"Not Found"}'); return; }
+      Object.assign(issue, { state: update.state, state_reason: update.state_reason ?? null, updated_at: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') });
+      if (this.failStateUpdates > 0) { this.failStateUpdates--; response.writeHead(502, headers).end(); return; }
+      response.writeHead(200, headers).end(JSON.stringify(issue));
+      return;
+    }
     if (request.method === 'GET' && url.pathname === '/user') { response.writeHead(200, headers).end(JSON.stringify({ login: 'octocat', id: 1 })); return; }
     if (url.pathname !== '/repos/octocat/hello-world/issues') { response.writeHead(404, headers).end('{}'); return; }
     if (request.method === 'POST') {
@@ -162,4 +180,27 @@ it('fails on a public connection without writing', async () => {
   expect(result.status).toBe('failed');
   expect(result.errorMessage).toContain('insufficientScope');
   expect(provider.posts).toBe(0);
+}, 120_000);
+
+it('closes the issue it filed, sending the same state again after a 502', async () => {
+  const provider = new IssueProvider();
+  provider.failStateUpdates = 1;
+  const result = await runFiling(provider, RepositoryAuthMethodID, { ...bugReport, closeWithStateReason: 'not_planned' });
+  expect(result.status, result.errorMessage).toBe('completed');
+  const report = result.singleOutput<IssueFilingReport>();
+  expect(report.status).toBe('closed');
+  expect(report.createdIssue?.number).toBe(1);
+  expect(report.closedIssue).toMatchObject({ number: 1, state: 'closed', stateReason: 'not_planned', url: 'https://github.com/octocat/hello-world/issues/1' });
+  expect(report.closedIssue?.updatedAt).toBeTruthy();
+  expect(provider.posts).toBe(1);
+  expect(provider.sentStateUpdates).toEqual(['{"state":"closed","state_reason":"not_planned"}', '{"state":"closed","state_reason":"not_planned"}']);
+  expect(provider.issues.get(1)).toMatchObject({ state: 'closed', state_reason: 'not_planned' });
+}, 120_000);
+
+it('rejects a reopen reason before any request', async () => {
+  const provider = new IssueProvider();
+  const result = await runFiling(provider, RepositoryAuthMethodID, { ...bugReport, closeWithStateReason: 'reopened' });
+  expect(result.status).toBe('failed');
+  expect(result.errorMessage).toContain('closeWithStateReason');
+  expect(provider.requestCount).toBe(0);
 }, 120_000);

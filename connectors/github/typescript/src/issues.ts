@@ -4,13 +4,14 @@
 import { createHash } from 'node:crypto';
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { CheckpointError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
-import { CreateIssueDefinition, ListIssuesDefinition } from './generated/definitions.js';
-import type { CreateIssueInput, CreatedIssue, Issue, IssuePage, ListIssuesInput } from './generated/models.js';
+import { CreateIssueDefinition, ListIssuesDefinition, SetIssueStateDefinition } from './generated/definitions.js';
+import type { CreateIssueInput, CreatedIssue, Issue, IssuePage, ListIssuesInput, SetIssueStateInput, UpdatedIssueState } from './generated/models.js';
 import { failure, hasAuthMethodScopes, pathEscape, rateLimitDelayMs, requestReceipt, RepositoryAuthMethodID, type GitHubAccess, type GitHubClient, type GitHubExchange } from './client.js';
 import { bounded, decode, integerField, invalid, invalidResponse, loginPattern, nextPage, page, providerTime, record, repositoryPattern, safeURL, stringField, timestamp, truncateCharacters } from './operations.js';
 
 const listIssuesOperationId = 'listIssues';
 const createIssueOperationId = 'createIssue';
+const setIssueStateOperationId = 'setIssueState';
 const defaultIssuePageSize = 30;
 const defaultIssueBodyCharacters = 4000;
 const maximumIssueBodyCharacters = 16384;
@@ -32,6 +33,17 @@ const issueReadBackPageLimit = 5;
 const zeroTime = '0001-01-01T00:00:00Z';
 const encoder = new TextEncoder();
 const emptyIssuePage: IssuePage = { issues: [], nextPage: 0 };
+
+/** An open issue. */
+export const IssueStateOpen = 'open';
+/** A closed issue. */
+export const IssueStateClosed = 'closed';
+/** Closes an issue as completed; GitHub applies it when a close omits the reason. */
+export const IssueStateReasonCompleted = 'completed';
+/** Closes an issue as not planned. */
+export const IssueStateReasonNotPlanned = 'not_planned';
+/** Reopens a closed issue; GitHub applies it when a reopen omits the reason. */
+export const IssueStateReasonReopened = 'reopened';
 
 /** One decoded GitHub issue, validated like the Go connector's JSON model. */
 interface GitHubIssue {
@@ -281,6 +293,71 @@ class IssueWriter {
     const definitionMaxSends = CreateIssueDefinition.maxSends ?? 1;
     return definitionMaxSends >= 2 ? this.call.maxSendsOverride ?? definitionMaxSends : 1;
   }
+}
+
+/** Issue close and reopen Mutation; an absolute state is safe to send again after an unknown outcome. */
+export class SetIssueStateOperation implements Mutation<SetIssueStateInput, UpdatedIssueState> {
+  definition() { return SetIssueStateDefinition; }
+  constructor(private readonly client: GitHubClient) {}
+
+  /** Record the stable Call ID as the key; GitHub accepts none, and the update is safe to repeat. */
+  idempotencyKey(callId: string): string { return callId; }
+
+  /**
+   * Send one PATCH that sets the issue's state. Invalid input and a connection without the
+   * github-oauth-repository method select a branch before GitHub is called; rate limits, 5xx answers, and
+   * transport failures retry, because sending the same absolute state again is harmless.
+   */
+  async invoke(call: Call, input: SetIssueStateInput): Promise<MutationAttempt<UpdatedIssueState>> {
+    const operation = setIssueStateOperationId;
+    const requested: UpdatedIssueState = { number: Number.isSafeInteger(input.issueNumber) ? Math.max(input.issueNumber, 0) : 0 };
+    const request = buildSetIssueStateRequest(input);
+    if (!('body' in request)) return newMutationBranch('defect', requested, {}, request);
+    const access = await this.client.resolveAccess(call, operation);
+    if ('failure' in access) return newMutationBranch('defect', requested, access.receipt, access.failure);
+    if (access.authMethodId !== RepositoryAuthMethodID) {
+      return newMutationBranch('insufficientScope', requested, {}, failure(operation, 'AUTHORIZATION', 'setIssueState requires a connection authorized with the github-oauth-repository method'));
+    }
+    const payload = encoder.encode(JSON.stringify(request.body));
+    const exchange = await this.client.sendRequest(call, operation, 'PATCH', `${issuesPath(request.owner, request.repository)}/${input.issueNumber}`, {}, payload);
+    if ('failure' in exchange) {
+      if (exchange.branch === undefined) return newMutationRetry(exchange.failure, exchange.retryAfterMs ?? 0);
+      return newMutationBranch(exchange.branch, requested, exchange.receipt, exchange.failure);
+    }
+    let updated: GitHubIssue;
+    try { updated = decodeGitHubIssue(decode(exchange.response.body)); }
+    catch { return newMutationBranch('invalidResponse', requested, exchange.receipt, failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue')); }
+    if (!isValidUpdatedIssue(updated, input.issueNumber, request.body.state)) {
+      return newMutationBranch('invalidResponse', requested, exchange.receipt, failure(operation, 'PROTOCOL', 'GitHub returned an invalid issue'));
+    }
+    const output: UpdatedIssueState = { number: updated.number };
+    const url = safeURL(updated.htmlUrl); if (url) output.url = url;
+    output.state = updated.state;
+    const stateReason = bounded(updated.stateReason, maximumIssueStateBytes); if (stateReason) output.stateReason = stateReason;
+    output.updatedAt = updated.updatedAt!;
+    return newMutationBranch('updated', output, { ...exchange.receipt, ...(updated.nodeId ? { providerObjectId: updated.nodeId } : {}) });
+  }
+}
+
+/** Validate the state and reason against GitHub's combinations; a Failure selects defect. */
+function buildSetIssueStateRequest(input: SetIssueStateInput): { owner: string; repository: string; body: { state: string; state_reason?: string } } | Failure {
+  const operation = setIssueStateOperationId;
+  const repository = validateRepository(operation, input.owner, input.repository);
+  if (!Array.isArray(repository)) return repository;
+  if (!Number.isSafeInteger(input.issueNumber) || input.issueNumber <= 0) return failure(operation, 'VALIDATION', 'GitHub issue number must be positive');
+  const state = String(input.state ?? '').trim(), stateReason = String(input.stateReason ?? '').trim();
+  if (state === IssueStateOpen) {
+    if (stateReason && stateReason !== IssueStateReasonReopened) return failure(operation, 'VALIDATION', 'GitHub issue state open accepts only the state reason reopened');
+  } else if (state === IssueStateClosed) {
+    if (stateReason && stateReason !== IssueStateReasonCompleted && stateReason !== IssueStateReasonNotPlanned) return failure(operation, 'VALIDATION', 'GitHub issue state closed accepts only the state reasons completed and not_planned');
+  } else return failure(operation, 'VALIDATION', 'GitHub issue state must be open or closed');
+  return { owner: repository[0], repository: repository[1], body: { state, ...(stateReason ? { state_reason: stateReason } : {}) } };
+}
+
+// Requiring the requested issue in the requested state rules out a redirect that read a transferred issue.
+function isValidUpdatedIssue(issue: GitHubIssue, issueNumber: number, state: string): boolean {
+  return issue.number === issueNumber && issue.state === state && issue.updatedAt !== undefined && issue.updatedAt !== zeroTime &&
+    encoder.encode(issue.nodeId).length <= maximumNodeIdBytes;
 }
 
 /** Return the hidden Markdown comment holding a digest of the Call ID, never Flow input. */
