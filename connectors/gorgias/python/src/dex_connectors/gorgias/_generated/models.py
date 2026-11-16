@@ -404,3 +404,47 @@ class AddNoteOutput:
 
 
 setattr(AddNoteOutput, '__module__', 'dex_connectors.gorgias.models')
+
+
+# TicketChangedEvent is one Gorgias ticket event read from the account's event log, GET /api/events. It
+# names the ticket and what happened, not the ticket's fields: read the ticket with getTicket for its
+# current status, tags, customer, and messages. One action in Gorgias can record several events, such as
+# ticket-updated and ticket-tags-added, and each arrives as its own delivery.
+@dataclass(frozen=True, slots=True)
+class TicketChangedEvent:
+    # EventID is Gorgias's event ID, which also names the Trigger event.
+    event_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'eventId'})
+    # EventType is the Gorgias event type, such as ticket-created.
+    event_type: str = _dataclass_field(kw_only=True, metadata={'dex_json_name': 'eventType'})
+    # TicketID is the ticket the event is about, the event's object_id.
+    ticket_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'ticketId'})
+    # OccurredAt is the event's created_datetime, read as UTC.
+    occurred_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'occurredAt', 'dex_json_format': 'rfc3339'})
+    # UserID is the Gorgias user who caused the event; zero when Gorgias recorded none, such as for a rule.
+    user_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'userId', 'dex_json_omit_default': True})
+    # Context groups the events Gorgias recorded for one chain of actions, such as a rule's changes.
+    context: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.occurred_at, str):
+            object.__setattr__(self, 'occurred_at', parse_go_datetime(self.occurred_at, 'occurred_at'))
+        elif self.occurred_at is not None:
+            validate_go_datetime(self.occurred_at, 'occurred_at')
+
+
+setattr(TicketChangedEvent, '__module__', 'dex_connectors.gorgias.models')
+
+
+# TicketChangedTriggerConfiguration is the ticketChanged binding configuration saved for a Trigger
+# binding in the project configuration. Studio setup commands cannot send a Gorgias API key over HTTP
+# Basic to a per-account host, so the binding has no picker; every field is optional.
+@dataclass(frozen=True, slots=True)
+class TicketChangedTriggerConfiguration:
+    # EventTypes limits deliveries to these Gorgias event types, such as ["ticket-created"] to start a Flow
+    # only for new tickets, or ["ticket-closed"] for a satisfaction follow-up. Each must be one of
+    # TicketEventTypes. Empty, the default, delivers every one of them. Skipped events still move the
+    # cursor, so adding a type later never delivers events the binding already passed.
+    event_types: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'eventTypes', 'dex_json_omit_default': True})
+
+
+setattr(TicketChangedTriggerConfiguration, '__module__', 'dex_connectors.gorgias.models')

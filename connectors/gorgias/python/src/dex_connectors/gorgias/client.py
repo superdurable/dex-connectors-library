@@ -6,7 +6,7 @@ import base64
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -37,6 +37,10 @@ if TYPE_CHECKING:
         UpdateTicketOperation,
     )
 
+MINIMUM_POLL_INTERVAL_SECONDS = 10
+"""Keeps a ticketChanged poll loop from spending the account's 40 requests per 20 seconds on empty polls."""
+_DEFAULT_POLL_INTERVAL_SECONDS = 60
+
 _DOMAIN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _CURSOR = re.compile(r"^[A-Za-z0-9+/=_.:-]{1,2048}$")
 _TIMESTAMP = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)?$")
@@ -59,7 +63,12 @@ class Exchange:
 
 
 class Client:
-    """Bind six Gorgias operations to one credential source and owned HTTP transport."""
+    """Bind six Gorgias operations and the ticketChanged Trigger to one credential source and owned HTTP
+    transport.
+
+    Raises ValueError for an invalid domain, a non-positive response limit, or a pollInterval under 10
+    seconds.
+    """
 
     def __init__(
         self,
@@ -75,8 +84,14 @@ class Client:
             raise ValueError("Gorgias domain must be lowercase letters, digits, and hyphens")
         if config.max_response_bytes < 1:
             raise ValueError("Gorgias response limit must be positive")
+        if config.poll_interval_seconds == 0:
+            # A zero pollInterval keeps the one-minute default, as Go's withConfigDefaults does.
+            config = replace(config, poll_interval_seconds=_DEFAULT_POLL_INTERVAL_SECONDS)
+        if config.poll_interval_seconds < MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError(f"Gorgias pollInterval must be at least {MINIMUM_POLL_INTERVAL_SECONDS}s")
         self.base_url = validate_base_url(api_base_url or f"https://{config.domain}.gorgias.com/api")
         self.max_response_bytes = config.max_response_bytes
+        self.poll_interval_seconds = config.poll_interval_seconds
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(8)
         self._owns_http_client = http_client is None
