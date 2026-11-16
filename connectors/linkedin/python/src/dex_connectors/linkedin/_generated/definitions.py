@@ -11,6 +11,8 @@ from dex_connectors.sdk import (
     QueryDefinition,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -43,4 +45,9 @@ GET_AUTHENTICATED_PROFILE_DEFINITION = QueryDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+)
+
+PROFILE_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="profileChanged"),
+    description="Receive a change whenever the connected member's own LinkedIn OpenID Connect profile claims (name, given and family name, email, email verification, picture, or locale) change, found by comparing each UserInfo poll with the last; it never watches other members, and the first run records a baseline and delivers nothing.",
 )
