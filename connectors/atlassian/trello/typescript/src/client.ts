@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateCardOperation, GetCardOperation, ListCardsOperation, UpdateCardOperation } from './operations.js';
 
@@ -11,6 +11,9 @@ const defaultMaxResponseBytes = 4_194_304;
 const requestTimeoutMs = 20_000;
 const requestIdPattern = /^[A-Za-z0-9-]{1,64}$/;
 const quotedCredentialPattern = /^[!-~]+$/;
+const defaultPollIntervalMs = 30_000;
+/** Keeps cardChanged polls well inside the token's 100 requests per 10 seconds. */
+const minimumPollIntervalMs = 10_000;
 
 /** Injectable Trello transport for provider tests. */
 export type TrelloRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -19,6 +22,7 @@ export type TrelloRequestSender = (request: ProviderRequest) => Promise<Provider
 export interface TrelloClientOptions {
   /** Transport; omitted in production. */ send?: TrelloRequestSender;
   /** Receipt clock. */ now?: () => Date;
+  /** Receives the cardChanged runner's seed, reseed, failed-poll, and rate-limit records and its durable inbox records; never payloads or credentials. Omitted uses the SDK default logger. */ triggerLogger?: TriggerLogger;
 }
 
 /** A bounded Trello response or a classified transport failure. */
@@ -38,16 +42,25 @@ export class TrelloClient {
   readonly endpoint: string;
   /** Maximum successful response size in bytes. */
   readonly maxResponseBytes: number;
+  /** Delay between cardChanged polls of each binding, in milliseconds. */ readonly pollIntervalMs: number;
+  /** Receives cardChanged Trigger records; undefined uses the SDK default logger. */ readonly triggerLogger: TriggerLogger | undefined;
   private readonly credentials: CredentialProvider<Credentials>;
   private readonly send: TrelloRequestSender;
   private readonly now: () => Date;
 
-  /** Validate configuration without contacting Trello. */
+  /**
+   * Validate configuration without contacting Trello. Throws TypeError for an invalid endpoint, a
+   * maxResponseBytes under one, or a pollInterval under ten seconds; zero keeps the 30s default, as in Go.
+   */
   constructor(config: Config, credentials: CredentialProvider<Credentials>, options: TrelloClientOptions = {}) {
     if (!credentials) throw new TypeError('Trello credential provider is required');
     this.endpoint = validateBaseURL(config.endpoint || defaultEndpoint);
     this.maxResponseBytes = config.maxResponseBytes || defaultMaxResponseBytes;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('Trello maxResponseBytes must be positive');
+    // Zero keeps the displayed default, as the Go connector's configuration defaults do.
+    this.pollIntervalMs = config.pollIntervalMs || defaultPollIntervalMs;
+    if (!Number.isFinite(this.pollIntervalMs) || this.pollIntervalMs < minimumPollIntervalMs) throw new TypeError('Trello pollInterval must be at least 10s');
+    this.triggerLogger = options.triggerLogger;
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());

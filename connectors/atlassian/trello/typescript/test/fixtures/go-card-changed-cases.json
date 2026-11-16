@@ -1,0 +1,1957 @@
+{
+"actionCases": [
+{
+"event": {
+"id": "trello-action-6512f0a1c2d3e4f5a6b74001",
+"occurredAt": "2026-11-02T09:00:00.123Z",
+"payload": {
+"boardId": "b",
+"actionId": "6512f0a1c2d3e4f5a6b74001",
+"actionType": "updateCard",
+"occurredAt": "2026-11-02T09:00:00.123Z",
+"memberCreatorId": "m",
+"card": {
+"id": "6512F0A1C2D3E4F5A6B71001",
+"shortId": 3,
+"isClosed": true
+},
+"changedFields": [
+"closed",
+"desc",
+"due",
+"name"
+]
+}
+},
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b74001",
+"idMemberCreator": "m",
+"type": "updateCard",
+"date": "2026-11-02T09:00:00.123Z",
+"data": {
+"card": {
+"id": "6512F0A1C2D3E4F5A6B71001",
+"closed": true,
+"idShort": 3
+},
+"old": {
+"name": "a",
+"due": null,
+"closed": true,
+"desc": ""
+},
+"board": {
+"id": "b"
+}
+},
+"memberCreator": {
+"fullName": "No ID"
+}
+},
+"valid": true
+},
+{
+"event": {
+"id": "trello-action-6512f0a1c2d3e4f5a6b74002",
+"occurredAt": "2026-11-02T09:00:00Z",
+"payload": {
+"boardId": "",
+"actionId": "6512F0A1C2D3E4F5A6B74002",
+"actionType": "commentCard",
+"occurredAt": "2026-11-02T09:00:00Z",
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001"
+},
+"commentText": "hi"
+}
+},
+"raw": {
+"ID": "6512F0A1C2D3E4F5A6B74002",
+"type": "commentCard",
+"Date": "2026-11-02T10:00:00+01:00",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001"
+},
+"text": "hi",
+"old": {
+"x": 1
+}
+}
+},
+"valid": true
+},
+{
+"event": {
+"id": "trello-action-6512f0a1c2d3e4f5a6b74003",
+"occurredAt": "2026-11-02T09:00:00.123456Z",
+"payload": {
+"boardId": "",
+"actionId": "6512f0a1c2d3e4f5a6b74003",
+"actionType": "createCard",
+"occurredAt": "2026-11-02T09:00:00.123456Z",
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001"
+},
+"list": {
+"id": "l",
+"name": "L"
+}
+}
+},
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b74003",
+"type": "createCard",
+"date": "2026-11-02T09:00:00.123456Z",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"name": null
+},
+"text": "ignored",
+"list": {
+"id": "l",
+"name": "L"
+},
+"listBefore": null
+},
+"memberCreator": null,
+"unknown": true
+},
+"valid": true
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b74004",
+"type": "updateBoard",
+"date": "2026-11-02T09:00:00Z",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001"
+}
+}
+},
+"valid": false
+},
+{
+"raw": {
+"id": "x",
+"type": "createCard",
+"date": "2026-11-02T09:00:00Z",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001"
+}
+}
+},
+"valid": false
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b74005",
+"type": "createCard",
+"date": "yesterday",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001"
+}
+}
+},
+"valid": false
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b74006",
+"type": "createCard",
+"date": "2026-11-02T09:00:00Z",
+"data": {}
+},
+"valid": false
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b74007",
+"type": "createCard",
+"date": "2026-11-02T09:00:00Z",
+"data": {
+"card": {
+"id": "short"
+}
+}
+},
+"valid": false
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b74008",
+"type": "createCard",
+"date": "2026-11-02T09:00:00Z",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"name": 5
+}
+}
+},
+"valid": false
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b74009",
+"type": "createCard",
+"date": "2026-11-02T09:00:00Z",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"idShort": 1.5
+}
+}
+},
+"valid": false
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b7400a",
+"type": "createCard",
+"date": "2026-11-02T09:00:00Z",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"closed": "yes"
+}
+}
+},
+"valid": false
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b7400b",
+"type": "updateCard",
+"date": "2026-11-02T09:00:00Z",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001"
+},
+"old": []
+}
+},
+"valid": false
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b7400c",
+"type": "deleteCard",
+"date": "2026-11-02T09:00:00Z",
+"data": null
+},
+"valid": false
+},
+{
+"event": {
+"id": "trello-action-6512f0a1c2d3e4f5a6b7400d",
+"occurredAt": "2026-11-02T09:00:00Z",
+"payload": {
+"boardId": "b2",
+"boardName": "Other",
+"actionId": "6512f0a1c2d3e4f5a6b7400d",
+"actionType": "moveCardToBoard",
+"occurredAt": "2026-11-02T09:00:00Z",
+"memberCreator": {
+"id": "m",
+"username": "u"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"shortLink": "AbCd1234",
+"listId": "l2"
+},
+"list": {
+"id": "l2"
+}
+}
+},
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b7400d",
+"type": "moveCardToBoard",
+"date": "2026-11-02T09:00:00Z",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"shortLink": "AbCd1234",
+"idList": "l2"
+},
+"board": {
+"id": "b2",
+"name": "Other"
+},
+"list": {
+"id": "l2"
+}
+},
+"memberCreator": {
+"id": "m",
+"username": "u"
+}
+},
+"valid": true
+},
+{
+"raw": {
+"id": "6512f0a1c2d3e4f5a6b7400e",
+"type": "convertToCardFromCheckItem",
+"date": "2026-11-02T09:00:00Z",
+"data": {
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"idShort": 1e2
+}
+}
+},
+"valid": false
+},
+{
+"raw": "not an object",
+"valid": false
+},
+{
+"raw": null,
+"valid": false
+}
+],
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"cursorCases": [
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"token": " {\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}\n",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"} trailing",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.000Z\"}",
+"token": "{\"BOARDID\":\"6512f0a1c2d3e4f5a6b70001\",\"Watermark\":\"2026-11-02T09:00:00.000Z\"}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.000Z\",\"seenActionIds\":[\"6512f0a1c2d3e4f5a6b70aaa\"],\"floorActionId\":\"6512f0a1c2d3e4f5a6b70aaa\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.000Z\",\"seenActionIds\":[\"6512f0a1c2d3e4f5a6b70aaa\"],\"floorActionId\":\"6512f0a1c2d3e4f5a6b70aaa\"}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T11:00:00.5+02:00\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T11:00:00.5+02:00\"}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.123456789Z\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.123456789Z\"}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00Z\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00Z\"}",
+"valid": true
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00z\"}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02 09:00:00Z\"}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.Z\"}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T24:00:00Z\"}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:60Z\"}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-02-30T09:00:00Z\"}",
+"valid": false
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00+24:00\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00+24:00\"}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00,5Z\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00,5Z\"}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"\"}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":null,\"seenActionIds\":null}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"seenActionIds\":[]}",
+"valid": true
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"seenActionIds\":[\"\"]}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"seenActionIds\":[null]}",
+"valid": true
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"seenActionIds\":[\"6512F0A1C2D3E4F5A6B70AAA\"]}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"seenActionIds\":[\"x\"]}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"floorActionId\":\"x\"}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"seenActionIds\":\"x\"}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"extra\":1}",
+"valid": false
+},
+{
+"token": "{\"boardId\":5}",
+"valid": false
+},
+{
+"token": "{\"boardId\":\"5b6893f01cb3228998cf629e\"}",
+"valid": false
+},
+{
+"token": "not json",
+"valid": false
+},
+{
+"token": "null",
+"valid": false
+},
+{
+"token": "[]",
+"valid": false
+},
+{
+"token": "\"\"",
+"valid": false
+},
+{
+"encoded": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"valid": true
+},
+{
+"token": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"yesterday\"}",
+"valid": false
+}
+],
+"scenarios": [
+{
+"name": "baselineThenEachActionOnce",
+"actions": [
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Existing card",
+"shortLink": "Sh000007"
+},
+"list": {
+"id": "5b6893f01cb3228998cf62a1",
+"name": "To do"
+}
+},
+"date": "2026-11-02T09:00:00.000Z",
+"id": "6ae851100000000000001001",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "createCard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Existing card",
+"shortLink": "Sh000007"
+},
+"text": "old"
+},
+"date": "2026-11-02T09:00:30.000Z",
+"id": "6ae8512e0000000000001002",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "commentCard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Replace badge reader",
+"shortLink": "Sh000007"
+},
+"list": {
+"id": "5b6893f01cb3228998cf62a1",
+"name": "To do"
+}
+},
+"date": "2026-11-02T09:02:00.000Z",
+"id": "6ae851880000000000001003",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "createCard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Replace badge reader",
+"shortLink": "Sh000007"
+},
+"listAfter": {
+"id": "5b6893f01cb3228998cf62a2",
+"name": "Done"
+},
+"listBefore": {
+"id": "5b6893f01cb3228998cf62a1",
+"name": "To do"
+},
+"old": {
+"closed": false,
+"idList": "5b6893f01cb3228998cf62a1",
+"pos": 1
+}
+},
+"date": "2026-11-02T09:02:01.500Z",
+"id": "6ae851890000000000001004",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "updateCard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"closed": true,
+"id": "6512f0a1c2d3e4f5a6b71002",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Replace badge reader",
+"shortLink": "Sh000007"
+},
+"old": {
+"closed": false
+}
+},
+"date": "2026-11-02T09:02:02.000Z",
+"id": "6ae8518a0000000000001005",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"type": "updateCard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Replace badge reader",
+"shortLink": "Sh000007"
+},
+"text": "Ordered \u003cthe\u003e part \u0026 more."
+},
+"date": "2026-11-02T09:02:02.000Z",
+"id": "6ae8518a0000000000001006",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "commentCard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001"
+}
+},
+"date": "2026-11-02T09:02:03.000Z",
+"id": "6ae8518b0000000000001007",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "updateBoard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7
+},
+"list": {
+"id": ""
+}
+},
+"date": "2026-11-02T09:02:04.000Z",
+"id": "6ae8518c0000000000001008",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "deleteCard"
+}
+],
+"steps": [
+{
+"operation": "seed",
+"visibleCount": 2,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:30.000Z\",\"seenActionIds\":[\"6ae851100000000000001001\",\"6ae8512e0000000000001002\"]}"
+},
+{
+"operation": "fetch",
+"visibleCount": 8,
+"cursor": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:30.000Z\",\"seenActionIds\":[\"6ae851100000000000001001\",\"6ae8512e0000000000001002\"]}",
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:30.000Z"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:02:04.000Z\",\"seenActionIds\":[\"6ae851880000000000001003\",\"6ae851890000000000001004\",\"6ae8518a0000000000001005\",\"6ae8518a0000000000001006\",\"6ae8518c0000000000001008\"]}",
+"events": [
+{
+"id": "trello-action-6ae851880000000000001003",
+"occurredAt": "2026-11-02T09:02:00Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae851880000000000001003",
+"actionType": "createCard",
+"occurredAt": "2026-11-02T09:02:00Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"name": "Replace badge reader",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+},
+"list": {
+"id": "5b6893f01cb3228998cf62a1",
+"name": "To do"
+}
+}
+},
+{
+"id": "trello-action-6ae851890000000000001004",
+"occurredAt": "2026-11-02T09:02:01.5Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae851890000000000001004",
+"actionType": "updateCard",
+"occurredAt": "2026-11-02T09:02:01.5Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"name": "Replace badge reader",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+},
+"listBefore": {
+"id": "5b6893f01cb3228998cf62a1",
+"name": "To do"
+},
+"listAfter": {
+"id": "5b6893f01cb3228998cf62a2",
+"name": "Done"
+},
+"changedFields": [
+"closed",
+"idList",
+"pos"
+]
+}
+},
+{
+"id": "trello-action-6ae8518a0000000000001005",
+"occurredAt": "2026-11-02T09:02:02Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae8518a0000000000001005",
+"actionType": "updateCard",
+"occurredAt": "2026-11-02T09:02:02Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"name": "Replace badge reader",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1",
+"isClosed": true
+},
+"changedFields": [
+"closed"
+]
+}
+},
+{
+"id": "trello-action-6ae8518a0000000000001006",
+"occurredAt": "2026-11-02T09:02:02Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae8518a0000000000001006",
+"actionType": "commentCard",
+"occurredAt": "2026-11-02T09:02:02Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"name": "Replace badge reader",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+},
+"commentText": "Ordered \u003cthe\u003e part \u0026 more."
+}
+},
+{
+"id": "trello-action-6ae8518c0000000000001008",
+"occurredAt": "2026-11-02T09:02:04Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae8518c0000000000001008",
+"actionType": "deleteCard",
+"occurredAt": "2026-11-02T09:02:04Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+}
+}
+}
+]
+},
+{
+"operation": "fetch",
+"visibleCount": 8,
+"cursor": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:02:04.000Z\",\"seenActionIds\":[\"6ae851880000000000001003\",\"6ae851890000000000001004\",\"6ae8518a0000000000001005\",\"6ae8518a0000000000001006\",\"6ae8518c0000000000001008\"]}",
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T09:01:04.000Z"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:02:04.000Z\",\"seenActionIds\":[\"6ae851880000000000001003\",\"6ae851890000000000001004\",\"6ae8518a0000000000001005\",\"6ae8518a0000000000001006\",\"6ae8518c0000000000001008\"]}"
+},
+{
+"operation": "fetch",
+"visibleCount": 8,
+"cursor": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:30.000Z\",\"seenActionIds\":[\"6ae851100000000000001001\",\"6ae8512e0000000000001002\"]}",
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:30.000Z"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:02:04.000Z\",\"seenActionIds\":[\"6ae851880000000000001003\",\"6ae851890000000000001004\",\"6ae8518a0000000000001005\",\"6ae8518a0000000000001006\",\"6ae8518c0000000000001008\"]}",
+"events": [
+{
+"id": "trello-action-6ae851880000000000001003",
+"occurredAt": "2026-11-02T09:02:00Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae851880000000000001003",
+"actionType": "createCard",
+"occurredAt": "2026-11-02T09:02:00Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"name": "Replace badge reader",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+},
+"list": {
+"id": "5b6893f01cb3228998cf62a1",
+"name": "To do"
+}
+}
+},
+{
+"id": "trello-action-6ae851890000000000001004",
+"occurredAt": "2026-11-02T09:02:01.5Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae851890000000000001004",
+"actionType": "updateCard",
+"occurredAt": "2026-11-02T09:02:01.5Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"name": "Replace badge reader",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+},
+"listBefore": {
+"id": "5b6893f01cb3228998cf62a1",
+"name": "To do"
+},
+"listAfter": {
+"id": "5b6893f01cb3228998cf62a2",
+"name": "Done"
+},
+"changedFields": [
+"closed",
+"idList",
+"pos"
+]
+}
+},
+{
+"id": "trello-action-6ae8518a0000000000001005",
+"occurredAt": "2026-11-02T09:02:02Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae8518a0000000000001005",
+"actionType": "updateCard",
+"occurredAt": "2026-11-02T09:02:02Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"name": "Replace badge reader",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1",
+"isClosed": true
+},
+"changedFields": [
+"closed"
+]
+}
+},
+{
+"id": "trello-action-6ae8518a0000000000001006",
+"occurredAt": "2026-11-02T09:02:02Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae8518a0000000000001006",
+"actionType": "commentCard",
+"occurredAt": "2026-11-02T09:02:02Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71002",
+"name": "Replace badge reader",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+},
+"commentText": "Ordered \u003cthe\u003e part \u0026 more."
+}
+},
+{
+"id": "trello-action-6ae8518c0000000000001008",
+"occurredAt": "2026-11-02T09:02:04Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae8518c0000000000001008",
+"actionType": "deleteCard",
+"occurredAt": "2026-11-02T09:02:04Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b71001",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+}
+}
+}
+]
+}
+]
+},
+{
+"name": "emptyBaselineThenLateAction",
+"actions": [
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b72001",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Door sensor",
+"shortLink": "Sh000007"
+}
+},
+"date": "2026-11-02T09:00:00.000Z",
+"id": "6ae851100000000000001001",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "createCard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b72001",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Door sensor (east)",
+"shortLink": "Sh000007"
+},
+"old": {
+"name": "Door sensor"
+}
+},
+"date": "2026-11-02T08:59:40.000Z",
+"id": "6ae850fc0000000000001002",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "updateCard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b72002",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Emailed",
+"shortLink": "Sh000007"
+}
+},
+"date": "2026-11-02T09:03:00.000Z",
+"id": "6ae851c40000000000001003",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "emailCard"
+},
+{
+"data": {
+"board": {
+"id": "6512f0a1c2d3e4f5a6b70001",
+"name": "Support queue",
+"shortLink": "Supp0rtQ"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b72003",
+"idList": "5b6893f01cb3228998cf62a1",
+"idShort": 7,
+"name": "Copied",
+"shortLink": "Sh000007"
+}
+},
+"date": "2026-11-02T09:03:00.000Z",
+"id": "6ae851c40000000000001004",
+"idMemberCreator": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"fullName": "Grace Hopper",
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"username": "gracehopper"
+},
+"type": "copyCard"
+}
+],
+"steps": [
+{
+"operation": "seed",
+"visibleCount": 0,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}"
+},
+{
+"operation": "fetch",
+"visibleCount": 1,
+"cursor": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\"}",
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.000Z\",\"seenActionIds\":[\"6ae851100000000000001001\"]}",
+"events": [
+{
+"id": "trello-action-6ae851100000000000001001",
+"occurredAt": "2026-11-02T09:00:00Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae851100000000000001001",
+"actionType": "createCard",
+"occurredAt": "2026-11-02T09:00:00Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b72001",
+"name": "Door sensor",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+}
+}
+}
+]
+},
+{
+"operation": "fetch",
+"visibleCount": 2,
+"cursor": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.000Z\",\"seenActionIds\":[\"6ae851100000000000001001\"]}",
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:00.000Z"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.000Z\",\"seenActionIds\":[\"6ae850fc0000000000001002\",\"6ae851100000000000001001\"]}",
+"events": [
+{
+"id": "trello-action-6ae850fc0000000000001002",
+"occurredAt": "2026-11-02T08:59:40Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae850fc0000000000001002",
+"actionType": "updateCard",
+"occurredAt": "2026-11-02T08:59:40Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b72001",
+"name": "Door sensor (east)",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+},
+"changedFields": [
+"name"
+]
+}
+}
+]
+},
+{
+"operation": "fetch",
+"visibleCount": 2,
+"cursor": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.000Z\",\"seenActionIds\":[\"6ae850fc0000000000001002\",\"6ae851100000000000001001\"]}",
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:00.000Z"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.000Z\",\"seenActionIds\":[\"6ae850fc0000000000001002\",\"6ae851100000000000001001\"]}"
+},
+{
+"operation": "fetch",
+"visibleCount": 4,
+"cursor": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:00:00.000Z\",\"seenActionIds\":[\"6ae850fc0000000000001002\",\"6ae851100000000000001001\"]}",
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:00.000Z"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:03:00.000Z\",\"seenActionIds\":[\"6ae851c40000000000001003\",\"6ae851c40000000000001004\"]}",
+"events": [
+{
+"id": "trello-action-6ae851c40000000000001003",
+"occurredAt": "2026-11-02T09:03:00Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae851c40000000000001003",
+"actionType": "emailCard",
+"occurredAt": "2026-11-02T09:03:00Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b72002",
+"name": "Emailed",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+}
+}
+},
+{
+"id": "trello-action-6ae851c40000000000001004",
+"occurredAt": "2026-11-02T09:03:00Z",
+"payload": {
+"boardId": "6512f0a1c2d3e4f5a6b70001",
+"boardName": "Support queue",
+"actionId": "6ae851c40000000000001004",
+"actionType": "copyCard",
+"occurredAt": "2026-11-02T09:03:00Z",
+"memberCreatorId": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"memberCreator": {
+"id": "5a1e4c7b2f0d3e6a9b8c7d6e",
+"fullName": "Grace Hopper",
+"username": "gracehopper"
+},
+"card": {
+"id": "6512f0a1c2d3e4f5a6b72003",
+"name": "Copied",
+"shortLink": "Sh000007",
+"shortId": 7,
+"listId": "5b6893f01cb3228998cf62a1"
+}
+}
+}
+]
+},
+{
+"operation": "fetch",
+"visibleCount": 4,
+"cursor": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:03:00.000Z\",\"seenActionIds\":[\"6ae851c40000000000001003\",\"6ae851c40000000000001004\"]}",
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T09:02:00.000Z"
+}
+],
+"next": "{\"boardId\":\"6512f0a1c2d3e4f5a6b70001\",\"watermark\":\"2026-11-02T09:03:00.000Z\",\"seenActionIds\":[\"6ae851c40000000000001003\",\"6ae851c40000000000001004\"]}"
+}
+]
+},
+{
+"name": "backlogPagesOldestFirst",
+"bulk": {
+"count": 620,
+"firstSequence": 4097,
+"spacingMilli": 37,
+"startUnixMilli": 1793610000000
+},
+"steps": [
+{
+"operation": "seed",
+"visibleCount": 0,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+}
+],
+"nextSha256": "5b7ed497feff172832caec4b2cce8204a1216ffb3eeea3dc43bffa6d4b9e5d70",
+"eventIdsSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+},
+{
+"operation": "fetch",
+"visibleCount": 620,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+},
+{
+"before": "6ae851140000000000001079",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+}
+],
+"hasMorePages": true,
+"nextSha256": "1b36d3fc48d7c386a71316fc007a1935c0ebbf1829898393b8e8919dcc900726",
+"eventCount": 500,
+"eventIdsSha256": "84ea65771b93f93d8d2e63b5c7a87b75ec25357e45f84dc9110b74cb41bf19d6"
+},
+{
+"operation": "fetch",
+"visibleCount": 620,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:18.463Z"
+},
+{
+"before": "6ae851140000000000001079",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:18.463Z"
+}
+],
+"nextSha256": "440967683f23ca5071a5ac51b103454154381fc22e4158a3e251156e72f6285b",
+"eventCount": 120,
+"eventIdsSha256": "3bcdf6131a5a530c817794e5bb0ac8f812814ff699e7a9be71f63f0f3ff1c5cd"
+},
+{
+"operation": "fetch",
+"visibleCount": 620,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:22.903Z"
+},
+{
+"before": "6ae851140000000000001079",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:22.903Z"
+}
+],
+"nextSha256": "440967683f23ca5071a5ac51b103454154381fc22e4158a3e251156e72f6285b",
+"eventIdsSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
+]
+},
+{
+"name": "burstOverSeenBound",
+"bulk": {
+"count": 2750,
+"firstSequence": 4097,
+"spacingMilli": 7,
+"startUnixMilli": 1793610000000
+},
+"steps": [
+{
+"operation": "seed",
+"visibleCount": 0,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+}
+],
+"nextSha256": "5b7ed497feff172832caec4b2cce8204a1216ffb3eeea3dc43bffa6d4b9e5d70",
+"eventIdsSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+},
+{
+"operation": "fetch",
+"visibleCount": 2750,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+},
+{
+"before": "6ae8511f00000000000018cb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+},
+{
+"before": "6ae8511c00000000000016d7",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+},
+{
+"before": "6ae8511800000000000014e3",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+},
+{
+"before": "6ae8511500000000000012ef",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+},
+{
+"before": "6ae8511100000000000010fb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions"
+}
+],
+"hasMorePages": true,
+"nextSha256": "07ceeffa623e01a586baec598faee83de79d05d495d0a1e2cceade59fb63fad8",
+"eventCount": 500,
+"eventIdsSha256": "dd4bdb7036ec2056f19cc687ce3dff1cf69e9b4abe007ab0841f75b38bfda152"
+},
+{
+"operation": "fetch",
+"visibleCount": 2750,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:03.493Z"
+},
+{
+"before": "6ae8511f00000000000018cb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:03.493Z"
+},
+{
+"before": "6ae8511c00000000000016d7",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:03.493Z"
+},
+{
+"before": "6ae8511800000000000014e3",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:03.493Z"
+},
+{
+"before": "6ae8511500000000000012ef",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:03.493Z"
+},
+{
+"before": "6ae8511100000000000010fb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:03.493Z"
+}
+],
+"hasMorePages": true,
+"nextSha256": "818d10e0ff4b0776b1bd3e3b50cabee05fe1e9451b8b21dc88a4c5d42e59b435",
+"eventCount": 500,
+"eventIdsSha256": "e59a4d7f2132b1140873d9fbc09f6f18c34d3d0ff28814a3cb99d490badbf4b5"
+},
+{
+"operation": "fetch",
+"visibleCount": 2750,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:06.993Z"
+},
+{
+"before": "6ae8511f00000000000018cb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:06.993Z"
+},
+{
+"before": "6ae8511c00000000000016d7",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:06.993Z"
+},
+{
+"before": "6ae8511800000000000014e3",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:06.993Z"
+},
+{
+"before": "6ae8511500000000000012ef",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:06.993Z"
+},
+{
+"before": "6ae8511100000000000010fb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:06.993Z"
+}
+],
+"hasMorePages": true,
+"nextSha256": "407058eb2cc0c14432dcd98cfd7057c5c5e6751c1ba9a42e8da026bd2ce52197",
+"eventCount": 500,
+"eventIdsSha256": "1c3bda34c11eebf98a61bac49a1dbd2545bc02790ba8d86ba90f362bda922c45"
+},
+{
+"operation": "fetch",
+"visibleCount": 2750,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:10.493Z"
+},
+{
+"before": "6ae8511f00000000000018cb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:10.493Z"
+},
+{
+"before": "6ae8511c00000000000016d7",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:10.493Z"
+},
+{
+"before": "6ae8511800000000000014e3",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:10.493Z"
+},
+{
+"before": "6ae8511500000000000012ef",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:10.493Z"
+},
+{
+"before": "6ae8511100000000000010fb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:10.493Z"
+}
+],
+"hasMorePages": true,
+"nextSha256": "b32a0ae13882376428c51920906be10a85de614c2a3972d5d827f14a81c85f34",
+"eventCount": 500,
+"eventIdsSha256": "5a231cde3e67824a2b42539fe0543bebd23214df4043f133f040a64bac739541"
+},
+{
+"operation": "fetch",
+"visibleCount": 2750,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:13.993Z"
+},
+{
+"before": "6ae8511f00000000000018cb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:13.993Z"
+},
+{
+"before": "6ae8511c00000000000016d7",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:13.993Z"
+},
+{
+"before": "6ae8511800000000000014e3",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:13.993Z"
+},
+{
+"before": "6ae8511500000000000012ef",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:13.993Z"
+},
+{
+"before": "6ae8511100000000000010fb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:13.993Z"
+}
+],
+"hasMorePages": true,
+"nextSha256": "80ae4f789fb4d8f906d680bec08bd4dda3aa830d6cd330b5d22fe214cd2fb0f3",
+"eventCount": 500,
+"eventIdsSha256": "efa83b5384bc27ecec3b461f36943ca2c0769bd4df74ee951008be8f820aa252"
+},
+{
+"operation": "fetch",
+"visibleCount": 2750,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:17.493Z"
+},
+{
+"before": "6ae8511f00000000000018cb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:17.493Z"
+},
+{
+"before": "6ae8511c00000000000016d7",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:17.493Z"
+},
+{
+"before": "6ae8511800000000000014e3",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:17.493Z"
+},
+{
+"before": "6ae8511500000000000012ef",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:17.493Z"
+},
+{
+"before": "6ae8511100000000000010fb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:17.493Z"
+}
+],
+"nextSha256": "b066ccf6d95c22d0460f137c8b901f37387d8346f5b7161002f5d2b874fbb446",
+"eventCount": 250,
+"eventIdsSha256": "856ab26d4dbc176d8254f888f99a19ded40676dc829101604fab7c69a3ed6fe7"
+},
+{
+"operation": "fetch",
+"visibleCount": 2750,
+"requests": [
+{
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:19.243Z"
+},
+{
+"before": "6ae8511f00000000000018cb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:19.243Z"
+},
+{
+"before": "6ae8511c00000000000016d7",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:19.243Z"
+},
+{
+"before": "6ae8511800000000000014e3",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:19.243Z"
+},
+{
+"before": "6ae8511500000000000012ef",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:19.243Z"
+},
+{
+"before": "6ae8511100000000000010fb",
+"fields": "id,idMemberCreator,type,date,data",
+"filter": "createCard,copyCard,convertToCardFromCheckItem,emailCard,updateCard,commentCard,moveCardToBoard,deleteCard",
+"limit": "500",
+"memberCreator": "true",
+"memberCreator_fields": "fullName,username",
+"path": "/1/boards/6512f0a1c2d3e4f5a6b70001/actions",
+"since": "2026-11-02T08:59:19.243Z"
+}
+],
+"nextSha256": "b066ccf6d95c22d0460f137c8b901f37387d8346f5b7161002f5d2b874fbb446",
+"eventIdsSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
+]
+}
+]
+}
