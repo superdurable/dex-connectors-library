@@ -28,8 +28,8 @@ keeps every attempt inside Xero's six-minute Idempotency-Key lifetime.
 
 It also has one Trigger, `invoiceChanged`, which polls `GET /Invoices` and
 starts a Flow for each sales invoice or bill created or changed; see
-[invoiceChanged Trigger](#invoicechanged-trigger). The TypeScript package
-implements the same Trigger; the Python package implements no Triggers.
+[invoiceChanged Trigger](#invoicechanged-trigger). Both the Python and the
+TypeScript packages implement this Trigger.
 There are no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
@@ -480,8 +480,11 @@ become visible after its `UpdatedDateUTC`.
 
 ## Python package
 
-`connectors/xero/python` publishes `dex-connector-xero` v0.1.0 with all six
-operations and no Triggers. Its public models and Step factories are generated
+`connectors/xero/python` publishes `dex-connector-xero` v0.2.0 with all six
+operations and the `invoiceChanged` Trigger on the Python poll Trigger kit
+(`dex-connectors-sdk>=0.12.0`). Its cursor documents and Trigger inbox
+payloads match Go's byte for byte, so Go and Python replicas share a binding's
+cursor and inbox. Its public models and Step factories are generated
 from this manifest; its HTTP client and operation invocations retain Xero's
 exact-decimal amounts and Call ID based Idempotency-Key behavior. Both Custom
 Connection and OAuth web app credentials use the generated durable refresh
@@ -489,7 +492,11 @@ wiring and the same Dex Web setup above.
 
 The runnable [contact lookup example](python/examples/contact_lookup/README.md)
 binds the static `xero-books` connection and routes only the `found` branch.
+The [invoice change example](python/examples/invoice_changed/README.md)
+starts one `XeroInvoiceChangePython` Flow per change from the
+`invoice-changes` binding and reads the invoice back with `getInvoice`.
 The [Python package README](python/README.md) covers installation and targeted
 verification. The Go-recorded provider replay and the real Dex Worker/Client
 example use inert local stand-ins. Live Xero authorization, tenant selection,
-and Accounting API behavior are unverified for the Python package.
+Accounting API behavior, and live invoice polling are unverified for the
+Python package.

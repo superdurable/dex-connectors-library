@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -115,6 +118,7 @@ CREATE_INVOICE_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=240)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 RECORD_PAYMENT_DEFINITION = MutationDefinition(
@@ -131,4 +135,10 @@ RECORD_PAYMENT_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 6, timedelta(seconds=240)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
+)
+
+INVOICE_CHANGED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="invoiceChanged"),
+    description="Receive each Xero sales invoice or bill created or changed in the organisation, with its line items and exact decimal totals, read by polling GET /Invoices with If-Modified-Since; the first run records a baseline and delivers no existing invoices.",
 )

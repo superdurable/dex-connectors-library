@@ -8,7 +8,7 @@ import ipaddress
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from urllib.parse import quote, urlencode
@@ -44,6 +44,9 @@ if TYPE_CHECKING:
 _UUID = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z")
 _RATE_COUNT = re.compile(r"[0-9]{1,10}\Z")
 _API = "https://api.xero.com"
+# Keeps an invoiceChanged poll loop well inside Xero's minute and daily limits.
+_MINIMUM_POLL_INTERVAL_SECONDS = 30
+_DEFAULT_POLL_INTERVAL_SECONDS = 300
 
 
 def _reject_nonfinite(value: str) -> object:
@@ -117,7 +120,7 @@ class Exchange:
 
 
 class Client:
-    """Execute Xero calls using call-time credentials and a bounded HTTP transport."""
+    """Execute Xero calls and invoiceChanged polls using call-time credentials and a bounded transport."""
 
     def __init__(
         self,
@@ -131,6 +134,11 @@ class Client:
             raise ValueError("Xero configuration and credential provider are required")
         if config.max_response_bytes <= 0:
             raise ValueError("Xero response limit must be positive")
+        if config.poll_interval_seconds == 0:
+            # A zero pollInterval, as a saved project may hold, keeps the default, as Go's defaults do.
+            config = replace(config, poll_interval_seconds=_DEFAULT_POLL_INTERVAL_SECONDS)
+        if config.poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError("Xero pollInterval must be at least 30s")
         if len(config.organisation.strip()) > 255 or any(ord(ch) < 32 for ch in config.organisation):
             raise ValueError("Xero organisation is invalid")
         if local_provider_url:
