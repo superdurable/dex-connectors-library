@@ -2,7 +2,7 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go@v0.24.0`.
 
-The Python package `dex-connector-atlassian-trello` implements all five operations at `v0.1.0`; see its [package README](python/README.md) and [runnable card-read Flow](python/examples/approved_request_card/README.md). Go-recorded provider scenarios cover Python requests, retries, branches, and output encoding. The Python example ran through a local Dex Worker and Client with a fake Trello HTTP service; live Trello authorization and provider behavior remain unverified for Python.
+The Python package `dex-connector-atlassian-trello` implements all five operations and the `cardChanged` Trigger at `v0.2.0`; see its [package README](python/README.md), [runnable card-read Flow](python/examples/approved_request_card/README.md), and [card-changed Flow](python/examples/card_changed/README.md). Go-recorded provider scenarios cover Python requests, retries, branches, and output encoding, and Go-generated fixtures check the Python Trigger's requests, cursor tokens, and events byte for byte. The Python examples ran through a local Dex Worker and Client with a fake Trello HTTP service; live Trello authorization and provider behavior remain unverified for Python.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/trello`.
 

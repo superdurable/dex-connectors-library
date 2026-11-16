@@ -4,7 +4,7 @@
 
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
@@ -45,6 +45,8 @@ SUMMARY_FIELDS = (
     "idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
 )
 DETAIL_FIELDS = SUMMARY_FIELDS + ",desc"
+# Keeps cardChanged polls well inside the token's 100 requests per 10 seconds.
+_MINIMUM_POLL_INTERVAL_SECONDS = 10
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,12 +70,23 @@ class Client:
         credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
+        """Validate config and bind the credential source and an optional caller-owned HTTP client.
+
+        Raises ValueError for an invalid endpoint, a maxResponseBytes under one, or a pollInterval under
+        ten seconds; a zero pollInterval keeps the 30s default, as in the Go connector.
+        """
         if config is None or credentials is None:
             raise ValueError("Trello configuration and credentials are required")
         self.endpoint = validate_base_url(config.endpoint or Config().endpoint)
         self.max_response_bytes = config.max_response_bytes or Config().max_response_bytes
         if self.max_response_bytes < 1:
             raise ValueError("Trello maxResponseBytes must be positive")
+        if not config.poll_interval_seconds:
+            config = replace(config, poll_interval_seconds=Config().poll_interval_seconds)
+        if config.poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError(f"Trello pollInterval must be at least {_MINIMUM_POLL_INTERVAL_SECONDS}s")
+        self.poll_interval_seconds = config.poll_interval_seconds
+        """The delay between cardChanged polls of each binding, in seconds."""
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(20)
         self._owns_http_client = http_client is None
