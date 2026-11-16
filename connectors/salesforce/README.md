@@ -336,6 +336,9 @@ triggerRunner, err := salesforce.NewProjectRecordTriggerRunner(project, recordch
 }, salesforce.WithLogger(logger))
 ```
 
+The Python package implements the same Trigger from `0.2.0` as
+`new_project_record_trigger_runner`; see the [Python README](python/README.md).
+
 `NewRecordTriggerRunner` takes explicit routes, cursors, and targets instead,
 and the generated `NewRecordModifiedPolledTrigger` keeps its cursor in memory,
 so it records a new baseline on every start.
@@ -370,6 +373,15 @@ match to an external ID or creates the record by that ID, and reads it back.
 [`examples/record-changes`](go/examples/record-changes) is started by the
 `recordModifiedPolled` Trigger: each created or modified record starts one
 Flow, which reads the record back, or records that it was deleted first.
+
+The [Python record changes](python/examples/record_changes) example ports
+`record-changes` to the Python package, which implements `recordModifiedPolled`
+from `dex-connector-salesforce==0.2.0` with cursor documents and event IDs
+that match Go's byte for byte. Its real Dex integration tests cover the
+baseline, one Flow per change, `Id` paging of a bulk load, a
+`REQUEST_LIMIT_EXCEEDED` pause, a record deleted before the read-back, restart
+recovery, and a changed object. Live Salesforce polling has not been verified
+for the Python port.
 
 The [Python record lookup](python/examples/record_lookup) is a runnable Dex Worker
 using the static `salesforce-crm` connection. Its real Dex integration test

@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import GetRecordInput, ProviderError, QueryRecordsInput, QueryRecordsOutput, Record, SOQLValue, UpdateRecordInput, UpdateRecordOutput, UpsertRecordByExternalIDInput, UpsertRecordByExternalIDOutput
+from ..models import GetRecordInput, ProviderError, QueryRecordsInput, QueryRecordsOutput, Record, RecordModifiedEvent, RecordModifiedTriggerConfiguration, SOQLValue, UpdateRecordInput, UpdateRecordOutput, UpsertRecordByExternalIDInput, UpsertRecordByExternalIDOutput
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_RECORD_DEFINITION, INVALID_RESPONSE, MULTIPLE_MATCHES, NOT_FOUND, PROVIDER_REJECTED, QUERY_RECORDS_DEFINITION, QUERY_REJECTED, RECORD_REJECTED, UPDATED, UPDATE_RECORD_DEFINITION, UPSERTED, UPSERT_RECORD_BY_EXTERNAL_ID_DEFINITION
 
 def query_records_found(value: QueryRecordsOutput, failure: Failure | None = None) -> Case[QueryRecordsOutput]:
