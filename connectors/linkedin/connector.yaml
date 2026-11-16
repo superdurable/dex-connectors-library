@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: linkedin
   displayName: LinkedIn
-  description: Read the authenticated member's OpenID Connect UserInfo profile and verified email.
+  description: Read the authenticated member's OpenID Connect UserInfo profile and verified email, and receive a change whenever that member's own profile claims change.
   company: LinkedIn
   categories: [social-media, security-identity]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: linkedin
   languages:
@@ -43,6 +43,12 @@ spec:
         description: Maximum bytes accepted from the LinkedIn UserInfo response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         required: false
         default: 1048576
+      - name: pollInterval
+        goName: PollInterval
+        type: duration
+        description: Delay between profileChanged Trigger polls of the connected member's own LinkedIn UserInfo profile, as a Go duration of at least 1m such as 30m or 6h; change it only to see profile edits sooner or to spend fewer requests. Each poll makes one GET https://api.linkedin.com/v2/userinfo request, LinkedIn counts API calls against daily per-member and per-app limits shown at https://www.linkedin.com/developers/apps > your app > Analytics, and members rarely edit their profile, so prefer longer intervals; blank uses the displayed default.
+        required: false
+        default: 15m
   auth:
     refreshable: true
     type: oauth2
@@ -98,6 +104,12 @@ spec:
         acceptsMissingTokenType: true
         exactScopes: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, access_denied]
+  triggers:
+    - name: profileChanged
+      goName: ProfileChanged
+      eventType: ProfileChangedEvent
+      configurationType: ProfileChangedTriggerConfiguration
+      description: Receive a change whenever the connected member's own LinkedIn OpenID Connect profile claims (name, given and family name, email, email verification, picture, or locale) change, found by comparing each UserInfo poll with the last; it never watches other members, and the first run records a baseline and delivers nothing.
   operations:
     - name: getAuthenticatedProfile
       goName: GetAuthenticatedProfile

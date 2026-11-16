@@ -1,15 +1,18 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package linkedin provides a bounded LinkedIn OpenID Connect UserInfo query.
+// Package linkedin provides a bounded LinkedIn OpenID Connect UserInfo query, and the profileChanged
+// Trigger, which polls the connected member's own UserInfo profile and delivers each change of its claims.
 package linkedin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/mail"
@@ -22,18 +25,31 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-const userAgent = "superdurable-dex-linkedin-connector/0.1"
+const (
+	userAgent = "superdurable-dex-linkedin-connector/0.1"
+	// minimumPollInterval bounds profileChanged polling: profiles change rarely and LinkedIn limits are daily.
+	minimumPollInterval = time.Minute
+)
 
 // Option configures Client construction.
 type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	logger     *slog.Logger
 }
 
 // WithHTTPClient overrides the default HTTP client; the caller retains ownership.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithLogger sends the profileChanged Trigger runner's records to logger: seeds, reseeds, failed polls,
+// rate-limit pauses, and the durable inboxes NewProjectProfileTriggerRunner opens. Records carry binding
+// identity and never profile claims or credentials. Without this option, or with a nil logger, records
+// go to slog.Default() as of each record. Operation Steps do not log.
+func WithLogger(logger *slog.Logger) Option {
+	return func(options *clientOptions) { options.logger = logger }
 }
 
 // Client executes authenticated LinkedIn requests for connector operations.
@@ -43,6 +59,9 @@ type Client struct {
 	httpClient       *http.Client
 	credentials      CredentialSource
 	refreshDriver    sdkgo.CredentialRefreshDriver[Credentials]
+	pollInterval     time.Duration
+	logger           *slog.Logger
+	now              func() time.Time
 }
 
 // GetAuthenticatedProfileInput contains the provider request fields for get authenticated profile.
@@ -105,6 +124,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if userInfoURL.User != nil || userInfoURL.RawQuery != "" || userInfoURL.Fragment != "" {
 		return nil, fmt.Errorf("LinkedIn UserInfo URL cannot contain user info, a query, or a fragment")
 	}
+	if config.PollInterval < minimumPollInterval {
+		return nil, fmt.Errorf("LinkedIn pollInterval must be at least %s", minimumPollInterval)
+	}
 	if credentials == nil {
 		return nil, fmt.Errorf("credential provider is required")
 	}
@@ -129,6 +151,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	return &Client{
 		userInfoURL: userInfoURL, maxResponseBytes: config.MaxResponseBytes,
 		httpClient: httpClient, credentials: credentials, refreshDriver: NewCredentialRefreshDriver(httpClient),
+		pollInterval: config.PollInterval, logger: dependencies.logger, now: time.Now,
 	}, nil
 }
 
@@ -148,7 +171,7 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchDefect, AuthenticatedProfile{}, failure, sdkgo.Receipt{})
 	}
-	response, err := operation.client.get(call, &credential)
+	response, err := operation.client.get(call.Context, call, &credential)
 	if err != nil {
 		if errors.Is(err, errResponseTooLarge) {
 			failure := providerFailure(sdkgo.FailureResponseTooLarge, "LinkedIn UserInfo response exceeds the configured size limit")
@@ -165,7 +188,7 @@ func (operation GetAuthenticatedProfileOperation) Invoke(call sdkgo.Call, _ GetA
 		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchInvalidResponse, AuthenticatedProfile{}, &failure, receipt(response))
 	}
 	subject := strings.TrimSpace(claims.Subject)
-	if subject == "" || len(subject) > 255 || !utf8.ValidString(subject) {
+	if !validSubject(subject) {
 		failure := providerFailure(sdkgo.FailureProtocol, "LinkedIn returned an invalid UserInfo response")
 		return sdkgo.NewQueryBranch(GetAuthenticatedProfileBranchInvalidResponse, AuthenticatedProfile{}, &failure, receipt(response))
 	}
@@ -191,9 +214,11 @@ func (client *Client) resolveCredential(call sdkgo.Call) (Credentials, *sdkgo.Fa
 	return credential, nil
 }
 
-func (client *Client) get(call sdkgo.Call, credential *Credentials) (providerResponse, error) {
+// get sends one UserInfo request under ctx, and once more after a refresh when LinkedIn answers 401. Steps
+// pass their call.Context; Trigger pollers pass their own context, since they have no Step.
+func (client *Client) get(ctx context.Context, call sdkgo.Call, credential *Credentials) (providerResponse, error) {
 	for attempt := 0; attempt < 2; attempt++ {
-		request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.userInfoURL.String(), nil)
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, client.userInfoURL.String(), nil)
 		if err != nil {
 			return providerResponse{}, err
 		}
@@ -223,7 +248,7 @@ func (client *Client) get(call sdkgo.Call, credential *Credentials) (providerRes
 		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
 			return result, nil
 		}
-		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
 		if err != nil || validateResolvedCredentials(replacement) != nil {
 			return result, nil
 		}
@@ -295,11 +320,23 @@ func decodeJSON(body []byte, destination any) error {
 	return nil
 }
 
+func validSubject(subject string) bool {
+	return subject != "" && len(subject) <= 255 && utf8.ValidString(subject)
+}
+
 func verifiedEmail(value string, verified bool) string {
 	if !verified {
 		return ""
 	}
+	return canonicalEmailAddress(value)
+}
+
+// canonicalEmailAddress returns the trimmed, lower-cased address, or "" when it is not one bounded address.
+func canonicalEmailAddress(value string) string {
 	email := strings.ToLower(strings.TrimSpace(value))
+	if email == "" {
+		return ""
+	}
 	address, err := mail.ParseAddress(email)
 	if err != nil || !strings.EqualFold(address.Address, email) || len(email) > 320 {
 		return ""
