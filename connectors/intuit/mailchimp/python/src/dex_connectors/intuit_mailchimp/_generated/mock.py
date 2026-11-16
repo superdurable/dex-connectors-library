@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import Campaign, GetMemberInput, ListMembersInput, ListMembersOutput, MarketingPermissionInput, Member, SendCampaignInput, SendCampaignOutput, UpdateMemberTagsInput, UpdateMemberTagsOutput, UpsertMemberInput, UpsertMemberOutput
+from ..models import Campaign, GetMemberInput, ListMembersInput, ListMembersOutput, MarketingPermissionInput, Member, MemberChangedEvent, MemberChangedTriggerConfiguration, SendCampaignInput, SendCampaignOutput, UpdateMemberTagsInput, UpdateMemberTagsOutput, UpsertMemberInput, UpsertMemberOutput
 from .definitions import CONNECTOR_ID, ALREADY_SENT, DEFECT, FOUND, GET_MEMBER_DEFINITION, INVALID_RESPONSE, LISTED, LIST_MEMBERS_DEFINITION, NOT_FOUND, NOT_SENDABLE, PROVIDER_REJECTED, SEND_CAMPAIGN_DEFINITION, SENT, UNCERTAIN, UPDATED, UPDATE_MEMBER_TAGS_DEFINITION, UPSERTED, UPSERT_MEMBER_DEFINITION
 
 def get_member_found(value: Member, failure: Failure | None = None) -> Case[Member]:

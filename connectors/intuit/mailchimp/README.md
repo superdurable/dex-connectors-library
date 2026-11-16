@@ -400,13 +400,18 @@ contact back with `getMember`.
 
 ## Python package
 
-[`python/`](python/) contains the `dex-connector-intuit-mailchimp` v0.1.0 package.
-It implements all five operations with manifest-generated models, Step factories,
-connection bindings, and mocks, plus a handwritten provider client. The
-[`get_member` example](python/examples/get_member/README.md) is a runnable Dex
-Flow with static `mailchimp-audience` connection, a real Worker and Client
-integration test, and Go-recorded provider conformance scenarios. Python has no
-Trigger in this version, and neither does the TypeScript package. See the package README for installation, testing, and
+[`python/`](python/) contains the `dex-connector-intuit-mailchimp` v0.2.0 package,
+on `dex-connectors-sdk>=0.12.0`. It implements all five operations with
+manifest-generated models, Step factories, connection bindings, and mocks, plus
+a handwritten provider client. It also implements the `memberChanged` Trigger
+at behavior parity with Go: it reads and writes the same poll cursor document
+and keyed snapshot byte for byte and yields the same Trigger event IDs, so Go
+and Python replicas can share one binding. The
+[`get_member` example](python/examples/get_member/README.md) and the
+[`member_changed` example](python/examples/member_changed/README.md) are
+runnable Dex Flows with the static `mailchimp-audience` connection and real
+Worker and Client integration tests. The TypeScript package has no Trigger in
+this version. See the package README for installation, testing, and
 live-provider limits.
 
 ## Verification

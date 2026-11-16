@@ -6,7 +6,7 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
 
@@ -58,11 +58,18 @@ def failure(kind: FailureKind, operation: str, message: str) -> Failure:
     return Failure(kind, "mailchimp", operation, message)
 
 
+MINIMUM_POLL_INTERVAL = timedelta(seconds=5)
+"""Keeps a memberChanged poll loop from occupying Mailchimp's per-user request slots."""
+
+
 class Client:
     """Call Mailchimp with a fresh private key for every request.
 
     A supplied HTTP client remains caller owned. The connector closes only its
-    internally created client after all Steps stop.
+    internally created client after all Steps stop. `poll_interval` is the
+    memberChanged Trigger's delay between polls of each audience, from
+    `Config.poll_interval_seconds` (zero uses the manifest's 30 seconds); the
+    constructor raises ValueError for an interval under 5 seconds, as Go's New does.
     """
 
     def __init__(
@@ -78,6 +85,14 @@ class Client:
             raise ValueError("Mailchimp configuration and credentials are required")
         if config.max_response_bytes < 1:
             raise ValueError("Mailchimp response limit must be positive")
+        poll_interval_seconds = config.poll_interval_seconds or Config().poll_interval_seconds
+        if (
+            isinstance(poll_interval_seconds, bool)
+            or not isinstance(poll_interval_seconds, int | float)
+            or not poll_interval_seconds >= MINIMUM_POLL_INTERVAL.total_seconds()
+        ):
+            raise ValueError("Mailchimp pollInterval must be at least 5s")
+        self.poll_interval = timedelta(seconds=poll_interval_seconds)
         self.config = config
         self._credentials = credentials
         self._api_base_url = validate_base_url(api_base_url) if api_base_url else ""
