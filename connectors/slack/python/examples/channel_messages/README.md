@@ -1,0 +1,7 @@
+# Slack channel history Python example
+
+Configure a Dex project connection named `slack-channel-history-reader` in Dex Web with the Slack OAuth setup in the [connector guide](../../../README.md). This read uses the bot token's `channels:history` and `groups:history`, so invite the app to the channel first. From `connectors/slack/python`, with `dexcli dev` running, start the Worker with `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 uv run python -m examples.channel_messages.main`, then start `SlackChannelMessagesPython` with input such as `{"channelId":"C0123456789","oldestTimestamp":"1710000000.000100","pageSize":15}`. Keep provider tokens in Dex project credentials, never Flow input.
+
+The Flow returns up to `pageSize` top-level messages, newest first, and a `nextCursor` while older messages remain; pass it back as `cursor` to read the next page. `pageSize` is 1 through 15 (blank or 0 reads 15), the most Slack returns to a non-Marketplace app. The Flow Definition Graph 2.0 source is [`flow.py`](flow.py); its application Step type has one `dex:group` and one `dex:explanation` directive, only the connector Step's `read` branch is wired, so other optional branches fail the Flow, and the page Attribute is registered in the persistence schema.
+
+`DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 uv run pytest examples/channel_messages/integration_test.py` runs this Flow on a real Dex Worker and Client against a local Slack HTTP stand-in. Live Slack authorization and Web API behavior for this example have not been verified.

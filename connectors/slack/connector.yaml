@@ -11,10 +11,10 @@ spec:
   provider: slack
   languages:
     python:
-      version: v0.4.1
+      version: v0.5.0
       package: dex-connector-slack
-      operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
-      triggers: []
+      operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply, postButtonMessage]
+      triggers: [channelThreadCreated, threadReplyCreated, buttonClicked]
     typescript:
       version: v0.7.0
       package: "@superdurable/connector-slack"
