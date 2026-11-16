@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { Call, CredentialRefreshDriver, FailureKind } from '@superdurable/connectors-sdk';
-import { resolveCredential, resolveCredentialAfterRejection } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection } from '@superdurable/connectors-sdk';
 import {
   BodyTooLargeError, isHeaderSafeCredential, sendProviderRequest, validateBaseURL,
   type AddressPolicy, type ProviderRequest, type ProviderResponse,
@@ -41,7 +41,10 @@ export function gmailClientSettings(config: Config = {}): GmailClientSettings {
 
 /** Failure after credential lookup or credential validation. */
 export class GmailCredentialError extends Error {
-  constructor() { super('connection credentials are unavailable'); this.name = 'GmailCredentialError'; }
+  /** True when only reconnection can repair the failure: reauthorization or invalid material. */
+  readonly isPermanent: boolean;
+  /** Create a secret-safe credential failure; omitted permanence means permanent. */
+  constructor(isPermanent = true) { super('connection credentials are unavailable'); this.name = 'GmailCredentialError'; this.isPermanent = isPermanent; }
 }
 
 /** Credential-safe HTTP client shared by all three operations. */
@@ -65,11 +68,12 @@ export class GmailHTTPClient {
 
   /** Resolve a private token at call time; never put it in a receipt or Flow value. */
   async resolveCredentials(call: Call, signal?: AbortSignal): Promise<Credentials> {
-    try {
-      const credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, signal);
-      validateCredentials(credentials);
-      return credentials;
-    } catch { throw new GmailCredentialError(); }
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, signal); }
+    catch (error) { throw new GmailCredentialError(error instanceof ReauthorizationRequiredError); }
+    try { validateCredentials(credentials); }
+    catch { throw new GmailCredentialError(); }
+    return credentials;
   }
 
   /** Send one authenticated request, refreshing at most once after a 401. */

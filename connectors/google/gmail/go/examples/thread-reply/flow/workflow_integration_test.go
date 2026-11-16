@@ -106,12 +106,13 @@ func TestThreadReplyExampleReadsBackAfterUnavailableWithoutResendWithRealDex(t *
 	require.Equal(t, 5, provider.searchCount(retriedThreadID))
 }
 
-func TestThreadReplyClaimedSearchMissFailsWithoutDuplicateWithRealDex(t *testing.T) {
+func TestThreadReplyClaimedSearchMissResendsUpToTheCapThenFailsWithRealDex(t *testing.T) {
 	provider := newGmailProvider(t)
 	defer provider.Close()
 	flow, harness := newGmailIntegrationHarness(t, provider.URL)
 	harness.startWorker(t)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	// The reply retry policy backs off for over a minute before its seventh attempt.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	identity := "claimed-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	threadID := "thread-" + identity
@@ -137,10 +138,10 @@ func TestThreadReplyClaimedSearchMissFailsWithoutDuplicateWithRealDex(t *testing
 		err := replyTarget.HandleTrigger(ctx, reply)
 		return err == nil || !strings.Contains(err.Error(), "attribute keys are locked")
 	}, 20*time.Second, 50*time.Millisecond)
-	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
-	require.NoError(t, err)
+	result := waitForTerminalGmailFlow(t, ctx, harness.client, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Equal(t, 1, provider.sendCount(threadID))
+	// Every Sent Mail search misses, so the reply resends up to the declared cap and no further.
+	require.Equal(t, int(gmail.ReplyToMessageDefinition.MaxSends), provider.sendCount(threadID))
 	require.GreaterOrEqual(t, provider.searchCount(threadID), 5)
 }
 
@@ -485,4 +486,18 @@ func environmentOr(name string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// waitForTerminalGmailFlow keeps waiting across single long-poll windows until ctx ends.
+func waitForTerminalGmailFlow(t *testing.T, ctx context.Context, client *dex.Client, flowID string) dex.FlowResult {
+	t.Helper()
+	for {
+		result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+		var longPollTimeout *dex.LongPollTimeoutError
+		if ctx.Err() == nil && (errors.As(err, &longPollTimeout) || errors.Is(err, context.DeadlineExceeded)) {
+			continue
+		}
+		require.NoError(t, err, "Flow %s did not reach a terminal status", flowID)
+		return result
+	}
 }

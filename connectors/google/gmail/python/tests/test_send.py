@@ -20,7 +20,11 @@ from dex_connectors.google_gmail import (
     ReplyToMessageInput,
     SendMessageInput,
 )
-from dex_connectors.google_gmail.provider import build_send_message, rfc_message_id_address
+from dex_connectors.google_gmail.provider import (
+    GmailCredentialMaterialError,
+    build_send_message,
+    rfc_message_id_address,
+)
 from dex_connectors.google_gmail.send import SendExecution, SendService
 
 
@@ -770,3 +774,31 @@ async def test_second_reply_attempt_readback_match_skips_source_and_post() -> No
     )
     assert result.branch == "sent" and result.value is not None and result.value.recipients == []
     assert methods == ["GET"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "malformed_fields",
+    [
+        {"primary_email": None},
+        {"access_token": None},
+        {"access_token": SecretString(None)},  # type: ignore[arg-type]
+    ],
+)
+async def test_malformed_credential_fields_are_invalid_material(malformed_fields: dict[str, object]) -> None:
+    """Malformed credential fields are invalid material, not a transient credential failure."""
+    call = Call(
+        CallID(str(uuid4())), ConnectionRef("google", "support"), OperationRef("gmail", "sendMessage")
+    )
+    credential = replace(
+        Credentials(SecretString("access-token"), "owner@example.org"),
+        **malformed_fields,  # type: ignore[arg-type]
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(200))) as client:
+        provider = GmailProvider(
+            Config(endpoint="http://localhost/gmail/v1"),
+            StaticCredentialProvider({call.connection: credential}),
+            http_client=client,
+        )
+        with pytest.raises(GmailCredentialMaterialError):
+            await provider.resolve_credentials(call)

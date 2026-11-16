@@ -173,7 +173,7 @@ func SendMessageInvalidRecipient() connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.SendMessageBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Gmail rejected the message recipients."})
 }
 
-// SendMessageConnectionLost is the manifest mock connectionLost: The connection closed after dispatch and Sent Mail found nothing; retry the lookup without another send.
+// SendMessageConnectionLost is the manifest mock connectionLost: The connection closed after dispatch and Sent Mail found nothing; the next attempt searches again and resends with the same Message-ID while below the send cap.
 func SendMessageConnectionLost() connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Retry[gmail.SendMessageOutput](sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before Gmail answered."}, time.Duration(0))
 }
@@ -184,7 +184,7 @@ func SendMessageNoRecipients() connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.SendMessageBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "At least one recipient is required."})
 }
 
-// SendMessageUnavailable is the manifest mock unavailable: Gmail answered 503 and Sent Mail found no match yet; the send may have been accepted, so later attempts only search Sent Mail and never POST again.
+// SendMessageUnavailable is the manifest mock unavailable: Gmail answered 503 and Sent Mail found no match yet; the send may have been accepted, so the next attempt searches Sent Mail first and resends with the same Message-ID only while below the send cap.
 func SendMessageUnavailable() connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Retry[gmail.SendMessageOutput](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Gmail is temporarily unavailable."}, time.Duration(0))
 }
@@ -237,7 +237,7 @@ func ReplyToMessageMalformedSource() connectormock.Case[gmail.SendMessageOutput]
 	return connectormock.Branch(gmail.ReplyToMessageBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Gmail returned an invalid source message."})
 }
 
-// ReplyToMessageConnectionLost is the manifest mock connectionLost: The connection closed after dispatch and Sent Mail found nothing; retry the lookup without another reply.
+// ReplyToMessageConnectionLost is the manifest mock connectionLost: The connection closed after dispatch and Sent Mail found nothing; the next attempt searches again and resends the reply with the same Message-ID while below the send cap.
 func ReplyToMessageConnectionLost() connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Retry[gmail.SendMessageOutput](sdkgo.Failure{Kind: sdkgo.FailureTransport, Message: "The connection closed before Gmail answered."}, time.Duration(0))
 }

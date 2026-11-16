@@ -2,12 +2,13 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
-Version 0.3.0 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
-the `messageReceived` and `replyReceived` Triggers at parity with Go.
+Version 0.4.0 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
+the `messageReceived` and `replyReceived` Triggers at parity with Go. From
+0.4.0 a send or reply whose outcome is unknown may be sent up to three times.
 
 ## Install
 
-After release, install `dex-connector-google-gmail==0.3.0`. The package requires
+After release, install `dex-connector-google-gmail==0.4.0`. The package requires
 `dex-connectors-sdk>=0.12.0,<1` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
@@ -136,18 +137,22 @@ start time contributes its Unix second, matching Go; an absent or invalid start
 time uses `no-flow-start`. A missing run ID returns a local defect before any
 Gmail request. Its Python Mutation Steps use the manifest's synchronous Execute
 durability and persist the single-dispatch heartbeat before a POST. On a
-numbered retry it searches Sent Mail first. A prior claimed send can only be
-read back; a second POST requires a persisted `notSent` or `canResend` marker.
-After a possibly accepted POST loses its answer or returns 5xx, the connector
-polls Sent Mail before returning Retry. A successful 2xx is already accepted
-even if its response is malformed, oversized, or unreadable; a Sent Mail miss
-then returns `sent` with an empty message ID. A search miss after a claimed
-POST remains Retry without another dispatch; the Flow fails when its retry
-budget is exhausted. A 503 is treated like any other 5xx: Gmail may have
-processed it, so a Sent Mail miss keeps the claim and never permits another
-POST. A definite 429 refusal, or a transport failure proven to precede
-dispatch, permits a later send. The manifest limits sends
-and replies to five attempts within two minutes.
+numbered retry it searches Sent Mail first. After a possibly accepted POST
+loses its answer or returns 5xx, the connector polls Sent Mail before returning
+Retry. A successful 2xx is already accepted even if its response is malformed,
+oversized, or unreadable; a Sent Mail miss then returns `sent` with an empty
+message ID. Both operations declare `repeatOnUnknown: limited` with
+`maxSends: 3`, and the Fence takes `Call.max_sends`. After a claimed send whose
+outcome stayed unknown, a Sent Mail miss or failed search resends with the same
+Message-ID while fewer than that many sends may have taken effect. At the cap a
+miss returns Retry without another POST, and the Flow fails when its retry
+budget is exhausted. A saved Gmail message ID and a definite 4xx are never
+resent. A definite 4xx, or a rejected or unusable reply source read, selects its
+branch only when no earlier send is possible; otherwise it returns Retry,
+because the earlier send may still be delivered. A 503 is treated like any other 5xx. A definite 429 refusal, or a
+transport failure proven to precede dispatch, permits a later send. The
+manifest limits sends and replies to seven attempts within five minutes;
+`max_sends_override` on the generated Step factory changes one Step's cap.
 
 Live provider authorization and these Gmail behaviors remain unverified without
 a user-controlled account: retention of the client-set Message-ID header,

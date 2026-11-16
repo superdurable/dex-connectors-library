@@ -6,16 +6,16 @@ metadata:
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
   categories: [communication]
-  version: v0.26.0
+  version: v0.27.0
 spec:
   provider: google
   languages:
     python:
-      version: v0.3.0
+      version: v0.4.0
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: [messageReceived, replyReceived]
     typescript:
-      version: v0.3.0
+      version: v0.4.0
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: [messageReceived, replyReceived]
   codegen:
@@ -257,9 +257,9 @@ spec:
       agent:
         exposed: true
         approval: recommended
-        # No retry claim: Gmail has no idempotency key and Sent Mail search can lag an accepted send.
-        # providerRejected follows a definite 4xx; later attempts POST only after notSent or canResend (429, proven unsent).
-        # defect is also selected when the fence fails closed or credentials fail after an earlier claimed POST.
+        # No retry claim: Gmail has no idempotency key, so an unknown outcome is read back, then resent up to maxSends.
+        # providerRejected follows a definite 4xx with no earlier possible send and is never resent.
+        # defect is also selected when the fence fails closed or credentials need reconnection after an earlier claimed POST.
         branches: {providerRejected: rejected, defect: unknown}
         description: Send one new email from the connected Gmail account. Give the recipient email addresses, a one-line subject, and the plain-text body; an HTML body is optional.
       branches:
@@ -270,7 +270,9 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 503, later attempts only search Sent Mail; bound sendMessage retries to five attempts within two minutes so an unconfirmed send fails the Flow promptly."}}
+        repeatOnUnknown: limited
+        maxSends: 3
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends plus Sent Mail read-back retries after the cap, so an unconfirmed send fails the Flow instead of sending more copies."}}
       mocks:
         - name: sentToCustomer
           branch: sent
@@ -282,14 +284,14 @@ spec:
           description: Gmail rejected the message because a recipient address is invalid.
           failure: {kind: PROVIDER_REJECTION, message: Gmail rejected the message recipients.}
         - name: connectionLost
-          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup without another send.
+          description: The connection closed after dispatch and Sent Mail found nothing; the next attempt searches again and resends with the same Message-ID while below the send cap.
           retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
         - name: noRecipients
           branch: defect
           description: The message has no recipient, so no request is sent.
           failure: {kind: VALIDATION, message: At least one recipient is required.}
         - name: unavailable
-          description: Gmail answered 503 and Sent Mail found no match yet; the send may have been accepted, so later attempts only search Sent Mail and never POST again.
+          description: Gmail answered 503 and Sent Mail found no match yet; the send may have been accepted, so the next attempt searches Sent Mail first and resends with the same Message-ID only while below the send cap.
           retry: {failure: {kind: AVAILABILITY, message: Gmail is temporarily unavailable.}}
     - name: replyToMessage
       goName: ReplyToMessage
@@ -301,9 +303,9 @@ spec:
       agent:
         exposed: true
         approval: recommended
-        # No retry claim: Gmail has no idempotency key and Sent Mail search can lag an accepted reply.
-        # providerRejected follows a definite source-read or send 4xx; invalidResponse follows the source read, before the POST.
-        # defect is also selected when the fence fails closed or credentials fail after an earlier claimed POST.
+        # No retry claim: Gmail has no idempotency key, so an unknown outcome is read back, then resent up to maxSends.
+        # providerRejected follows a definite source-read or send 4xx and is never resent; invalidResponse follows the source read, before the POST.
+        # defect is also selected when the fence fails closed or credentials need reconnection after an earlier claimed POST.
         branches: {providerRejected: rejected, invalidResponse: rejected, defect: unknown}
         description: Reply in its existing Gmail thread to one message in the connected mailbox, addressed to that message's Reply-To or sender. Give the Gmail message ID to answer and the plain-text reply body; an HTML body is optional.
       branches:
@@ -315,7 +317,9 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 503, later attempts only search Sent Mail; bound replyToMessage retries to five attempts within two minutes so an unconfirmed reply fails the Flow promptly."}}
+        repeatOnUnknown: limited
+        maxSends: 3
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 7, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 5xx, a later attempt searches Sent Mail for the shared Message-ID and resends the reply with that Message-ID only while fewer than maxSends sends may have taken effect; seven attempts within five minutes cover three sends plus Sent Mail read-back retries after the cap, so an unconfirmed reply fails the Flow instead of sending more copies."}}
       mocks:
         - name: repliedInThread
           branch: sent
@@ -331,7 +335,7 @@ spec:
           description: Gmail returned a source message that cannot be decoded, so no reply is sent.
           failure: {kind: PROTOCOL, message: Gmail returned an invalid source message.}
         - name: connectionLost
-          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup without another reply.
+          description: The connection closed after dispatch and Sent Mail found nothing; the next attempt searches again and resends the reply with the same Message-ID while below the send cap.
           retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
         - name: emptyBody
           branch: defect

@@ -198,7 +198,10 @@ class SendMessageOperation:
                 call, context.attempt, getattr(context, "run_id", None),
                 getattr(context, "flow_started_at", None), context.deadline,
                 SEND_MESSAGE_DEFINITION.step_defaults.execute_method_timeout,
-                Fence(call, SEND_MESSAGE_DEFINITION.step_defaults.execute_method_timeout),
+                Fence(
+                    call, SEND_MESSAGE_DEFINITION.step_defaults.execute_method_timeout,
+                    max_sends=call.max_sends,
+                ),
             ),
             input,
         )
@@ -235,7 +238,10 @@ class ReplyToMessageOperation:
                 call, context.attempt, getattr(context, "run_id", None),
                 getattr(context, "flow_started_at", None), context.deadline,
                 REPLY_TO_MESSAGE_DEFINITION.step_defaults.execute_method_timeout,
-                Fence(call, REPLY_TO_MESSAGE_DEFINITION.step_defaults.execute_method_timeout),
+                Fence(
+                    call, REPLY_TO_MESSAGE_DEFINITION.step_defaults.execute_method_timeout,
+                    max_sends=call.max_sends,
+                ),
             ),
             input,
         )

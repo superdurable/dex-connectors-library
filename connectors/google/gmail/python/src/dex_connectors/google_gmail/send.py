@@ -12,6 +12,7 @@ from functools import partial
 
 import httpx
 from dex_connectors.sdk import Call, Failure, FailureKind, MutationAttempt, Receipt
+from dex_connectors.sdk.credentials import ReauthorizationRequiredError
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
@@ -21,6 +22,7 @@ from dex_connectors.sdk.singledispatch import (
 
 from .models import Credentials, ReplyToMessageInput, SendMessageInput, SendMessageOutput
 from .provider import (
+    GmailCredentialMaterialError,
     GmailHTTPResult,
     GmailProvider,
     GmailResponseReadFailure,
@@ -193,14 +195,8 @@ class SendService:
         try:
             async with asyncio.timeout_at(budget.attempt_end):
                 credential = await self._provider.resolve_credentials(execution.call)
-        except Exception:
-            return _branch(
-                execution,
-                _SEND,
-                "defect",
-                FailureKind.AUTHENTICATION,
-                "connection credentials are unavailable",
-            )
+        except Exception as error:
+            return await self._unavailable_credentials(execution, _SEND, error)
         try:
             recipients = validate_send_input(input, credential.primary_email)
             payload = build_send_message(
@@ -225,7 +221,7 @@ class SendService:
         outgoing = _OutgoingMessage(payload, recipients, message_id_address)
         if fence_result == DecisionKind.READ_BACK_REQUIRED:
             return await self._read_back_only(execution, budget, credential, _SEND, outgoing)
-        return await self._send_and_confirm(execution, budget, credential, _SEND, outgoing)
+        return await self._send_and_confirm(execution, budget, credential, _SEND, outgoing, fence_result)
 
     async def reply_to_message(
         self,
@@ -252,14 +248,8 @@ class SendService:
         try:
             async with asyncio.timeout_at(budget.attempt_end):
                 credential = await self._provider.resolve_credentials(execution.call)
-        except Exception:
-            return _branch(
-                execution,
-                _REPLY,
-                "defect",
-                FailureKind.AUTHENTICATION,
-                "connection credentials are unavailable",
-            )
+        except Exception as error:
+            return await self._unavailable_credentials(execution, _REPLY, error)
         if not input.message_id.strip() or not input.text_body.strip():
             return _branch(
                 execution, _REPLY, "defect", FailureKind.VALIDATION, "message ID and text body are required"
@@ -272,10 +262,14 @@ class SendService:
                         message_id_address=message_id_address,
                     )
             except Exception:
-                await self._record_not_sent(execution)
-                return _retry(
-                    _REPLY, FailureKind.AVAILABILITY, "Gmail sent-mail search did not answer before the reply"
-                )
+                found = None
+                # An inconclusive search still permits a resend below the send cap.
+                if fence_result != DecisionKind.READ_BACK_THEN_RESEND_ALLOWED:
+                    await self._record_not_sent(execution)
+                    return _retry(
+                        _REPLY, FailureKind.AVAILABILITY,
+                        "Gmail sent-mail search did not answer before the reply",
+                    )
             if found:
                 return await self._sent(
                     execution,
@@ -314,7 +308,7 @@ class SendService:
                     "Gmail source message is temporarily unavailable",
                 )
             if 200 <= status < 300:
-                return _branch(
+                return await self._reject_unless_earlier_send_is_unconfirmed(
                     execution,
                     _REPLY,
                     "invalidResponse",
@@ -322,7 +316,7 @@ class SendService:
                     "Gmail returned an invalid source message response",
                     _receipt(execution, headers, input.message_id),
                 )
-            return _branch(
+            return await self._reject_unless_earlier_send_is_unconfirmed(
                 execution,
                 _REPLY,
                 "providerRejected",
@@ -333,7 +327,7 @@ class SendService:
         try:
             source_resource = json.loads(source_response.body)
         except (ValueError, UnicodeDecodeError):
-            return _branch(
+            return await self._reject_unless_earlier_send_is_unconfirmed(
                 execution, _REPLY, "invalidResponse", FailureKind.PROTOCOL,
                 "Gmail returned an invalid source message response",
                 _receipt(execution, headers, input.message_id),
@@ -341,7 +335,7 @@ class SendService:
         try:
             message = decode_message(source_resource)
         except (ValueError, UnicodeDecodeError, KeyError, TypeError):
-            return _branch(
+            return await self._reject_unless_earlier_send_is_unconfirmed(
                 execution,
                 _REPLY,
                 "invalidResponse",
@@ -350,7 +344,7 @@ class SendService:
                 _receipt(execution, headers, input.message_id),
             )
         if not message.thread_id or not message.rfc_message_id:
-            return _branch(
+            return await self._reject_unless_earlier_send_is_unconfirmed(
                 execution,
                 _REPLY,
                 "invalidResponse",
@@ -361,7 +355,7 @@ class SendService:
         try:
             recipient = _format_go_mailbox(parse_mailbox(message.reply_to or message.from_address))
         except ValueError:
-            return _branch(
+            return await self._reject_unless_earlier_send_is_unconfirmed(
                 execution,
                 _REPLY,
                 "invalidResponse",
@@ -372,7 +366,7 @@ class SendService:
         if "\r" in message.subject + message.rfc_message_id + message.references or "\n" in (
             message.subject + message.rfc_message_id + message.references
         ):
-            return _branch(
+            return await self._reject_unless_earlier_send_is_unconfirmed(
                 execution,
                 _REPLY,
                 "invalidResponse",
@@ -404,7 +398,7 @@ class SendService:
         outgoing = _OutgoingMessage(
             payload, [recipient], message_id_address, message.thread_id, execution.attempt > 1
         )
-        return await self._send_and_confirm(execution, budget, credential, _REPLY, outgoing)
+        return await self._send_and_confirm(execution, budget, credential, _REPLY, outgoing, fence_result)
 
     async def _decide_fence(
         self, execution: SendExecution, outcome: _SendOutcome
@@ -417,7 +411,54 @@ class SendService:
                 execution, outcome, "defect", FailureKind.LOCAL_DEFECT,
                 decision.error,
             )
+        # A saved provider ID proves Gmail accepted an earlier send, so it is never resent.
+        if (
+            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+            and decision.marker is not None and decision.marker.provider_id
+        ):
+            return DecisionKind.READ_BACK_REQUIRED
         return decision.kind
+
+    async def _unavailable_credentials(
+        self, execution: SendExecution, outcome: _SendOutcome, error: Exception
+    ) -> MutationAttempt[SendMessageOutput]:
+        """Classify a credential failure before any send in this attempt.
+
+        After an earlier possible send, a transient failure returns Retry
+        without notSent, so later attempts still read back. Reauthorization,
+        invalid material, and a clean first attempt select defect.
+        """
+        is_permanent = isinstance(error, (ReauthorizationRequiredError, GmailCredentialMaterialError))
+        if not is_permanent and execution.fence is not None and (
+            await execution.fence.decide()
+        ).prior_send_upper_bound > 0:
+            return _retry(
+                outcome, FailureKind.AUTHENTICATION,
+                "Gmail credentials are temporarily unavailable; an earlier send may still be delivered",
+            )
+        return _branch(
+            execution, outcome, "defect", FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+        )
+
+    async def _reject_unless_earlier_send_is_unconfirmed(
+        self,
+        execution: SendExecution,
+        outcome: _SendOutcome,
+        branch: str,
+        kind: FailureKind,
+        message: str,
+        receipt: Receipt,
+    ) -> MutationAttempt[SendMessageOutput]:
+        """Select a definite rejection only when no earlier attempt may have sent.
+
+        Otherwise that send may still be delivered, so Retry keeps the claim and
+        later attempts read back until a match or the retry budget ends.
+        """
+        if execution.fence is not None and (
+            await execution.fence.decide()
+        ).prior_send_upper_bound > 0:
+            return _retry(outcome, kind, f"{message}; an earlier send may still be delivered")
+        return _branch(execution, outcome, branch, kind, message, receipt)
 
     async def _record_not_sent(self, execution: SendExecution) -> None:
         if execution.fence is not None and (
@@ -463,6 +504,7 @@ class SendService:
         credential: Credentials,
         outcome: _SendOutcome,
         message: _OutgoingMessage,
+        decision_kind: DecisionKind,
     ) -> MutationAttempt[SendMessageOutput]:
         if execution.attempt > 1 and not message.has_pre_send_search:
             try:
@@ -472,12 +514,15 @@ class SendService:
                         message_id_address=message.message_id_address,
                     )
             except Exception:
-                await self._record_not_sent(execution)
-                return _retry(
-                    outcome,
-                    FailureKind.AVAILABILITY,
-                    f"Gmail sent-mail search did not answer before the {outcome.request_name}",
-                )
+                found = None
+                # An inconclusive search still permits a resend below the send cap.
+                if decision_kind != DecisionKind.READ_BACK_THEN_RESEND_ALLOWED:
+                    await self._record_not_sent(execution)
+                    return _retry(
+                        outcome,
+                        FailureKind.AVAILABILITY,
+                        f"Gmail sent-mail search did not answer before the {outcome.request_name}",
+                    )
             if found:
                 return await self._sent(
                     execution, budget, credential, outcome, message, found, _receipt(execution)
@@ -582,7 +627,7 @@ class SendService:
                     found = None
                 if found:
                     return await self._sent(execution, budget, credential, outcome, message, found, receipt)
-            return _branch(
+            return await self._reject_unless_earlier_send_is_unconfirmed(
                 execution,
                 outcome,
                 "providerRejected",
