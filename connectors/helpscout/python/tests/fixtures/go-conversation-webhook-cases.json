@@ -1,0 +1,418 @@
+{
+  "cases": [
+    {
+      "name": "full conversation",
+      "event": "convo.created",
+      "signature": "hszdMSLQx7L1l2cgw/Pj2G6xGJQ=",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 200,
+      "eventId": "convo.created:501:a9e49272e501e596895052ee49d52ab1",
+      "occurredAt": "2026-09-30T12:00:00Z",
+      "payload": {
+        "event": "convo.created",
+        "conversation": {
+          "id": 501,
+          "number": 12,
+          "subject": "Double charge on order 88213",
+          "status": "active",
+          "state": "published",
+          "type": "email",
+          "mailboxId": 123,
+          "folderId": 11,
+          "preview": "I was charged twice",
+          "threadCount": 2,
+          "assignee": {
+            "id": 99,
+            "type": "user",
+            "email": "agent@acme.example.com",
+            "firstName": "Mr",
+            "lastName": "Robot"
+          },
+          "primaryCustomer": {
+            "id": 238604,
+            "type": "customer",
+            "email": "jane@acme.example.com",
+            "firstName": "Jane",
+            "lastName": "Smith"
+          },
+          "createdBy": {
+            "id": 238604,
+            "type": "customer",
+            "email": "jane@acme.example.com"
+          },
+          "tags": [
+            "billing",
+            "vip"
+          ],
+          "sourceType": "email",
+          "sourceVia": "customer",
+          "createdAt": "2026-09-29T22:46:22Z",
+          "userUpdatedAt": "2026-09-30T08:00:00Z",
+          "customerWaitingSince": "2026-09-30T07:59:00Z",
+          "webUrl": "https://secure.helpscout.net/conversation/501/12"
+        }
+      }
+    },
+    {
+      "name": "same body another event",
+      "event": "convo.tags",
+      "signature": "hszdMSLQx7L1l2cgw/Pj2G6xGJQ=",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 200,
+      "eventId": "convo.tags:501:a9e49272e501e596895052ee49d52ab1",
+      "occurredAt": "2026-09-30T12:00:00Z",
+      "payload": {
+        "event": "convo.tags",
+        "conversation": {
+          "id": 501,
+          "number": 12,
+          "subject": "Double charge on order 88213",
+          "status": "active",
+          "state": "published",
+          "type": "email",
+          "mailboxId": 123,
+          "folderId": 11,
+          "preview": "I was charged twice",
+          "threadCount": 2,
+          "assignee": {
+            "id": 99,
+            "type": "user",
+            "email": "agent@acme.example.com",
+            "firstName": "Mr",
+            "lastName": "Robot"
+          },
+          "primaryCustomer": {
+            "id": 238604,
+            "type": "customer",
+            "email": "jane@acme.example.com",
+            "firstName": "Jane",
+            "lastName": "Smith"
+          },
+          "createdBy": {
+            "id": 238604,
+            "type": "customer",
+            "email": "jane@acme.example.com"
+          },
+          "tags": [
+            "billing",
+            "vip"
+          ],
+          "sourceType": "email",
+          "sourceVia": "customer",
+          "createdAt": "2026-09-29T22:46:22Z",
+          "userUpdatedAt": "2026-09-30T08:00:00Z",
+          "customerWaitingSince": "2026-09-30T07:59:00Z",
+          "webUrl": "https://secure.helpscout.net/conversation/501/12"
+        }
+      }
+    },
+    {
+      "name": "minimal conversation",
+      "event": "convo.customer.reply.created",
+      "signature": "ANxrvT7h5IqsM8Yfn9gxIGfHcKs=",
+      "body": "{\"id\":7,\"status\":\"pending\"}",
+      "status": 200,
+      "eventId": "convo.customer.reply.created:7:60160cd199eb4d0708cab4d71b5a059b",
+      "occurredAt": "2026-09-30T12:00:00Z",
+      "payload": {
+        "event": "convo.customer.reply.created",
+        "conversation": {
+          "id": 7,
+          "number": 0,
+          "subject": "",
+          "status": "pending",
+          "mailboxId": 0,
+          "threadCount": 0,
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "null collections and unassigned",
+      "event": "convo.assigned",
+      "signature": "azFMQIBAeS1d2Df90M3Eqd7UhgE=",
+      "body": "{\"id\":8,\"status\":\"closed\",\"mailboxId\":5,\"tags\":null,\"assignee\":{\"id\":0,\"first\":\"x\"},\"primaryCustomer\":null,\"source\":null,\"_links\":{\"web\":{\"href\":\"http://insecure.example/c/8\"}}}",
+      "status": 200,
+      "eventId": "convo.assigned:8:d9c89056871ea24bda696089318525a4",
+      "occurredAt": "2026-09-30T12:00:00Z",
+      "payload": {
+        "event": "convo.assigned",
+        "conversation": {
+          "id": 8,
+          "number": 0,
+          "subject": "",
+          "status": "closed",
+          "mailboxId": 5,
+          "threadCount": 0,
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "unicode and fractional offset times",
+      "event": "convo.note.created",
+      "signature": "MlP6dgX4HmorhejQ9Rk64EcWqU4=",
+      "body": "{\"id\":9,\"status\":\"active\",\"subject\":\"Café ☃\",\"preview\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"createdAt\":\"2026-09-29T22:46:22.123456789+02:00\",\"closedAt\":\"2026-09-29T23:00:00.5Z\",\"customerWaitingSince\":{\"time\":\"2026-09-30T07:59:00.000Z\"}}",
+      "status": 200,
+      "eventId": "convo.note.created:9:c9c684a8dfd390f08fb2abdfaaa9336b",
+      "occurredAt": "2026-09-30T12:00:00Z",
+      "payload": {
+        "event": "convo.note.created",
+        "conversation": {
+          "id": 9,
+          "number": 0,
+          "subject": "Café ☃",
+          "status": "active",
+          "mailboxId": 0,
+          "preview": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+          "threadCount": 0,
+          "tags": [],
+          "createdAt": "2026-09-29T20:46:22.123456789Z",
+          "closedAt": "2026-09-29T23:00:00.5Z",
+          "customerWaitingSince": "2026-09-30T07:59:00Z"
+        }
+      }
+    },
+    {
+      "name": "event header with spaces",
+      "event": "  convo.status\t",
+      "signature": "hszdMSLQx7L1l2cgw/Pj2G6xGJQ=",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 200,
+      "eventId": "convo.status:501:a9e49272e501e596895052ee49d52ab1",
+      "occurredAt": "2026-09-30T12:00:00Z",
+      "payload": {
+        "event": "convo.status",
+        "conversation": {
+          "id": 501,
+          "number": 12,
+          "subject": "Double charge on order 88213",
+          "status": "active",
+          "state": "published",
+          "type": "email",
+          "mailboxId": 123,
+          "folderId": 11,
+          "preview": "I was charged twice",
+          "threadCount": 2,
+          "assignee": {
+            "id": 99,
+            "type": "user",
+            "email": "agent@acme.example.com",
+            "firstName": "Mr",
+            "lastName": "Robot"
+          },
+          "primaryCustomer": {
+            "id": 238604,
+            "type": "customer",
+            "email": "jane@acme.example.com",
+            "firstName": "Jane",
+            "lastName": "Smith"
+          },
+          "createdBy": {
+            "id": 238604,
+            "type": "customer",
+            "email": "jane@acme.example.com"
+          },
+          "tags": [
+            "billing",
+            "vip"
+          ],
+          "sourceType": "email",
+          "sourceVia": "customer",
+          "createdAt": "2026-09-29T22:46:22Z",
+          "userUpdatedAt": "2026-09-30T08:00:00Z",
+          "customerWaitingSince": "2026-09-30T07:59:00Z",
+          "webUrl": "https://secure.helpscout.net/conversation/501/12"
+        }
+      }
+    },
+    {
+      "name": "signature with spaces and line break",
+      "event": "convo.moved",
+      "signature": " hszdMSLQx7L1\r\nl2cgw/Pj2G6xGJQ= ",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 200,
+      "eventId": "convo.moved:501:a9e49272e501e596895052ee49d52ab1",
+      "occurredAt": "2026-09-30T12:00:00Z",
+      "payload": {
+        "event": "convo.moved",
+        "conversation": {
+          "id": 501,
+          "number": 12,
+          "subject": "Double charge on order 88213",
+          "status": "active",
+          "state": "published",
+          "type": "email",
+          "mailboxId": 123,
+          "folderId": 11,
+          "preview": "I was charged twice",
+          "threadCount": 2,
+          "assignee": {
+            "id": 99,
+            "type": "user",
+            "email": "agent@acme.example.com",
+            "firstName": "Mr",
+            "lastName": "Robot"
+          },
+          "primaryCustomer": {
+            "id": 238604,
+            "type": "customer",
+            "email": "jane@acme.example.com",
+            "firstName": "Jane",
+            "lastName": "Smith"
+          },
+          "createdBy": {
+            "id": 238604,
+            "type": "customer",
+            "email": "jane@acme.example.com"
+          },
+          "tags": [
+            "billing",
+            "vip"
+          ],
+          "sourceType": "email",
+          "sourceVia": "customer",
+          "createdAt": "2026-09-29T22:46:22Z",
+          "userUpdatedAt": "2026-09-30T08:00:00Z",
+          "customerWaitingSince": "2026-09-30T07:59:00Z",
+          "webUrl": "https://secure.helpscout.net/conversation/501/12"
+        }
+      }
+    },
+    {
+      "name": "other valid event",
+      "event": "customer.created",
+      "signature": "7WW6KMK9uZ1RN/BZSId1eKe5aQw=",
+      "body": "{\"id\":1}",
+      "status": 200
+    },
+    {
+      "name": "unknown conversation event",
+      "event": "convo.deleted",
+      "signature": "qGG06lBTecoDMjHw8H4qIr51COo=",
+      "body": "not json",
+      "status": 200
+    },
+    {
+      "name": "uppercase event",
+      "event": "Convo.created",
+      "signature": "hszdMSLQx7L1l2cgw/Pj2G6xGJQ=",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 400
+    },
+    {
+      "name": "missing event",
+      "signature": "hszdMSLQx7L1l2cgw/Pj2G6xGJQ=",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 400
+    },
+    {
+      "name": "event too long",
+      "event": "caaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "signature": "hszdMSLQx7L1l2cgw/Pj2G6xGJQ=",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 400
+    },
+    {
+      "name": "unpadded signature",
+      "event": "convo.created",
+      "signature": "hszdMSLQx7L1l2cgw/Pj2G6xGJQ",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 400
+    },
+    {
+      "name": "hex signature",
+      "event": "convo.created",
+      "signature": "abababababababababababababababababababab",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 400
+    },
+    {
+      "name": "wrong secret",
+      "event": "convo.created",
+      "signature": "dPwNAdxbUv/DQ5kZuQNzuDQRSr0=",
+      "body": "{\n  \"_links\": {\"self\": {\"href\": \"https://api.helpscout.net/v2/conversations/501\"}, \"web\": {\"href\": \"https://secure.helpscout.net/conversation/501/12\"}},\n  \"id\": 501, \"number\": 12, \"threads\": 2, \"type\": \"email\", \"folderId\": 11, \"status\": \"active\", \"state\": \"published\",\n  \"subject\": \"Double charge on order 88213\", \"preview\": \"I was charged twice\", \"mailboxId\": 123,\n  \"assignee\": {\"id\": 99, \"type\": \"user\", \"first\": \"Mr\", \"last\": \"Robot\", \"email\": \"agent@acme.example.com\"},\n  \"createdBy\": {\"id\": 238604, \"type\": \"customer\", \"email\": \"jane@acme.example.com\"},\n  \"createdAt\": \"2026-09-29T22:46:22Z\", \"closedBy\": 0, \"userUpdatedAt\": \"2026-09-30T08:00:00Z\",\n  \"customerWaitingSince\": {\"time\": \"2026-09-30T07:59:00Z\", \"friendly\": \"4 hours ago\"},\n  \"source\": {\"type\": \"email\", \"via\": \"customer\"},\n  \"tags\": [{\"id\":9150,\"color\":\"#929499\",\"tag\":\"billing\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9151,\"color\":\"#929499\",\"tag\":\"\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}},{\"id\":9152,\"color\":\"#929499\",\"tag\":\"vip\",\"styles\":{\"default\":{\"background\":{\"fill\":\"#ACE3FF\"}}}}],\n  \"cc\": [\"cc@acme.example.com\"], \"bcc\": [\"bcc@acme.example.com\"],\n  \"primaryCustomer\": {\"id\": 238604, \"type\": \"customer\", \"first\": \"Jane\", \"last\": \"Smith\", \"email\": \"jane@acme.example.com\"},\n  \"customFields\": [{\"id\": 8, \"name\": \"Account Type\", \"value\": \"8518\", \"text\": \"Free\"}],\n  \"_embedded\": {\"threads\": []}\n}",
+      "status": 400
+    },
+    {
+      "name": "notification payload",
+      "event": "convo.created",
+      "signature": "psd4uihi6LNbTnoiKYWxP54upi4=",
+      "body": "{\"url\":\"https://api.helpscout.net/v2/conversations/501\"}",
+      "status": 400
+    },
+    {
+      "name": "array body",
+      "event": "convo.created",
+      "signature": "vKq7kDKiUp346Mj7CnuGsckSFWY=",
+      "body": "[1]",
+      "status": 400
+    },
+    {
+      "name": "null body",
+      "event": "convo.created",
+      "signature": "MmNt2awU7TrZNvEQyLcbM1X8jBE=",
+      "body": "null",
+      "status": 400
+    },
+    {
+      "name": "empty body",
+      "event": "convo.created",
+      "signature": "3ePRqNSdYVZAZFFfPNCABbBLxfQ=",
+      "body": "",
+      "status": 400
+    },
+    {
+      "name": "string id",
+      "event": "convo.created",
+      "signature": "NS41oHhdPN6T6UVLlWqpAxGetfU=",
+      "body": "{\"id\":\"501\",\"status\":\"active\"}",
+      "status": 400
+    },
+    {
+      "name": "float id",
+      "event": "convo.created",
+      "signature": "221rxSsGaSr9KknbYCMpUy56mhs=",
+      "body": "{\"id\":501.0,\"status\":\"active\"}",
+      "status": 400
+    },
+    {
+      "name": "bad timestamp",
+      "event": "convo.created",
+      "signature": "9ZG1RAAiafyW8vKc2dqURU4wlpY=",
+      "body": "{\"id\":501,\"status\":\"active\",\"createdAt\":\"2026-09-29 22:46:22\"}",
+      "status": 400
+    },
+    {
+      "name": "invalid utf-8 in string",
+      "event": "convo.created",
+      "signature": "HE9/F+TaaFYt9SgyrUSfgGVLYLU=",
+      "body": "{\"id\":10,\"status\":\"active\",\"subject\":\"bad � byte\"}",
+      "bodyBase64": "eyJpZCI6MTAsInN0YXR1cyI6ImFjdGl2ZSIsInN1YmplY3QiOiJiYWQg/yBieXRlIn0=",
+      "status": 200,
+      "eventId": "convo.created:10:41f9b5c1080f901884a2fcbf24ce079a",
+      "occurredAt": "2026-09-30T12:00:00Z",
+      "payload": {
+        "event": "convo.created",
+        "conversation": {
+          "id": 10,
+          "number": 0,
+          "subject": "bad � byte",
+          "status": "active",
+          "mailboxId": 0,
+          "threadCount": 0,
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "trailing data",
+      "event": "convo.created",
+      "signature": "0TIfPmX0nzYgLB1CAra+KqwnC7k=",
+      "body": "{\"id\":11,\"status\":\"active\"} {}",
+      "status": 400
+    }
+  ],
+  "receivedAt": "2026-09-30T12:00:00Z",
+  "secret": "fixture-webhook-secret"
+}

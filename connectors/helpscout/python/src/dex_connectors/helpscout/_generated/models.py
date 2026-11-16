@@ -364,3 +364,35 @@ class CustomerMatches:
 CustomerMatches.__annotations__['customers'] = tuple[Customer, ...] | None
 CustomerMatches.__dataclass_fields__['customers'].type = tuple[Customer, ...] | None
 setattr(CustomerMatches, '__module__', 'dex_connectors.helpscout.models')
+
+
+# ConversationEvent is one verified Help Scout conversation webhook. The Trigger event ID is the event,
+# the conversation ID, and the first 32 hex digits of the body's SHA-256, such as
+# convo.created:123456:0f1e..., because Help Scout sends no delivery ID: a redelivery of the same body
+# keeps its ID, and a later event about the same conversation has another. TriggerEvent.OccurredAt is when
+# this process received the request, because Help Scout sends no event time.
+@dataclass(frozen=True, slots=True)
+class ConversationEvent:
+    # Event is the X-HelpScout-Event value, such as convo.customer.reply.created.
+    event: str = ''
+    # Conversation is the conversation as the webhook body described it; its threads are not included, so
+    # a Flow reads them with getConversation.
+    conversation: Conversation = _dataclass_field(kw_only=True)
+
+
+setattr(ConversationEvent, '__module__', 'dex_connectors.helpscout.models')
+
+
+# ConversationEventTriggerConfiguration filters the Help Scout webhook events one binding records. The
+# zero value records every conversation event of every inbox. It reduces what a binding stores; the
+# application's TriggerFilter remains its admission rule.
+@dataclass(frozen=True, slots=True)
+class ConversationEventTriggerConfiguration:
+    # Events lists conversation webhook events from ConversationWebhookEvents; empty accepts every one.
+    events: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+    # MailboxID accepts only conversations of this inbox, such as the mailboxPicker unit's mailboxId; zero
+    # accepts every inbox.
+    mailbox_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'mailboxId', 'dex_json_omit_default': True})
+
+
+setattr(ConversationEventTriggerConfiguration, '__module__', 'dex_connectors.helpscout.models')
