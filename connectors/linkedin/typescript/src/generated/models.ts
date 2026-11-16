@@ -14,6 +14,8 @@ export interface Config {
   timeoutMs?: number;
   /** Maximum bytes accepted from the LinkedIn UserInfo response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;
+  /** Delay between profileChanged Trigger polls of the connected member's own LinkedIn UserInfo profile, as a Go duration of at least 1m such as 30m or 6h; change it only to see profile edits sooner or to spend fewer requests. Each poll makes one GET https://api.linkedin.com/v2/userinfo request, LinkedIn counts API calls against daily per-member and per-app limits shown at https://www.linkedin.com/developers/apps > your app > Analytics, and members rarely edit their profile, so prefer longer intervals; blank uses the displayed default. Runtime value in milliseconds. */
+  pollIntervalMs?: number;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -21,6 +23,7 @@ export const ConfigSchema = z.object({
   "userInfoUrl": z.string().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "pollIntervalMs": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

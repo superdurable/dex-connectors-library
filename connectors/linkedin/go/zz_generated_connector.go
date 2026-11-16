@@ -22,6 +22,7 @@ type Config struct {
 	UserInfoURL      string        `json:"userInfoUrl,omitempty" yaml:"userInfoUrl,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 }
 
 type Credentials struct {
@@ -192,6 +193,7 @@ func DefaultConfig() Config {
 		UserInfoURL:      "https://api.linkedin.com/v2/userinfo",
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 1048576,
+		PollInterval:     time.Duration(900000000000),
 	}
 }
 
@@ -205,6 +207,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = defaults.PollInterval
 	}
 	return config
 }
@@ -222,6 +227,9 @@ func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
+	if config.PollInterval < 0 {
+		return fmt.Errorf("configuration pollInterval cannot be negative")
+	}
 	return nil
 }
 
@@ -238,6 +246,50 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+var ProfileChangedTriggerDefinition = sdkgo.TriggerDefinition{
+	Trigger:     sdkgo.TriggerRef{ConnectorID: ConnectorID, TriggerName: "profileChanged"},
+	Description: "Receive a change whenever the connected member's own LinkedIn OpenID Connect profile claims (name, given and family name, email, email verification, picture, or locale) change, found by comparing each UserInfo poll with the last; it never watches other members, and the first run records a baseline and delivers nothing.",
+}
+
+type ProfileChangedTriggerBindingConfig struct {
+	sdkgo.TriggerBindingFactoryConfigMarker `connector:"factory=triggerBinding"`
+	connectorID                             struct{} `connector:"connectorId=linkedin"`
+	triggerName                             struct{} `connector:"triggerName=profileChanged"`
+	ConnectionName                          string   `connector:"connectionName"`
+	BindingName                             string   `connector:"bindingName"`
+}
+
+func DefineProfileChangedTriggerBinding(config ProfileChangedTriggerBindingConfig) sdkgo.TriggerBindingDefinition {
+	return sdkgo.MustTriggerBindingDefinition(sdkgo.TriggerBindingDefinition{
+		Definition: ProfileChangedTriggerDefinition, ConnectionName: config.ConnectionName, BindingName: config.BindingName,
+	})
+}
+
+type ProfileChangedTriggerConfig struct {
+	sdkgo.TriggerFactoryConfigMarker `connector:"factory=trigger"`
+	connectorID                      struct{}                                 `connector:"connectorId=linkedin"`
+	triggerName                      struct{}                                 `connector:"triggerName=profileChanged"`
+	Connection                       Connection                               `connector:"connection"`
+	ConnectionName                   string                                   `connector:"connectionName"`
+	BindingName                      string                                   `connector:"bindingName"`
+	Configuration                    ProfileChangedTriggerConfiguration       `connector:"triggerConfiguration"`
+	Target                           sdkgo.TriggerTarget[ProfileChangedEvent] `connector:"triggerTarget"`
+}
+
+func NewProfileChangedTrigger(config ProfileChangedTriggerConfig) sdkgo.TriggerRunner {
+	if err := config.Connection.validate(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("linkedin connector trigger ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	binding := sdkgo.TriggerBindingRef{Connection: config.Connection.reference, Trigger: ProfileChangedTriggerDefinition.Trigger, Name: config.BindingName}
+	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[ProfileChangedEvent]{
+		Definition: ProfileChangedTriggerDefinition, Binding: binding,
+		Source: config.Connection.client.profileChangedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
 }
 
 const GetAuthenticatedProfileBranchProfileLoaded sdkgo.BranchID = "profileLoaded"

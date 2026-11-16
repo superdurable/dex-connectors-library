@@ -13,6 +13,7 @@ class Config:
     user_info_url: str = "https://api.linkedin.com/v2/userinfo"
     timeout_seconds: float = 15
     max_response_bytes: int = 1048576
+    poll_interval_seconds: float = 900
 
 setattr(Config, '__module__', 'dex_connectors.linkedin.client')
 
