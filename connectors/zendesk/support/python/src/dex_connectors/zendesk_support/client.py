@@ -28,6 +28,7 @@ from dex_connectors.sdk.providerhttp import (
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 from .models import Ticket, TicketComment, TicketUser
+from .request_spacing_limiter import RequestSpacingLimiter
 
 if TYPE_CHECKING:
     from .operations import (
@@ -40,6 +41,10 @@ if TYPE_CHECKING:
 _SUBDOMAIN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _ERROR_FIELD = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _ERROR_TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
+# Keeps a ticketChanged poll loop from spending the export rate limit on empty polls.
+_MINIMUM_POLL_INTERVAL_SECONDS = 5
+DEFAULT_INCREMENTAL_EXPORT_REQUESTS_PER_MINUTE = 10
+"""Zendesk's documented incremental export rate limit for an account without the High Volume API add-on."""
 _RFC3339 = re.compile(
     r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(?:[.,](\d+))?(Z|([+-])(\d\d):(\d\d))$", re.ASCII
 )
@@ -251,7 +256,14 @@ def truncate_text(value: str) -> tuple[str, bool]:
 
 
 class Client:
-    """Bind Zendesk operations to one credential source and HTTP transport."""
+    """Bind Zendesk operations to one credential source and HTTP transport.
+
+    incremental_export_requests_per_minute (1 to 600) is how many incremental ticket export requests every
+    ticketChanged binding of this client may start per minute together; an account with Zendesk's High
+    Volume API add-on may pass 30. Other integrations on the same account share Zendesk's limit, and a 429
+    still pauses the bindings. Raises ValueError for an invalid configuration, a pollInterval under 5s, or
+    a request rate outside that range.
+    """
 
     def __init__(
         self,
@@ -260,6 +272,7 @@ class Client:
         http_client: httpx.AsyncClient | None = None,
         api_base_url: str = "",
         now: Callable[[], datetime] | None = None,
+        incremental_export_requests_per_minute: int = DEFAULT_INCREMENTAL_EXPORT_REQUESTS_PER_MINUTE,
     ) -> None:
         if config is None or credentials is None:
             raise ValueError("Zendesk configuration and credential source are required")
@@ -267,6 +280,14 @@ class Client:
             raise ValueError("Zendesk subdomain must be lowercase letters, digits, and hyphens")
         if config.max_response_bytes < 1:
             raise ValueError("Zendesk response limit must be positive")
+        if config.poll_interval_seconds < _MINIMUM_POLL_INTERVAL_SECONDS:
+            raise ValueError("Zendesk pollInterval must be at least 5s")
+        requests_per_minute = incremental_export_requests_per_minute
+        if type(requests_per_minute) is not int or not 1 <= requests_per_minute <= 600:
+            raise ValueError("Zendesk incremental export requests per minute must be 1 to 600")
+        self.poll_interval = timedelta(seconds=config.poll_interval_seconds)
+        # Spaces incremental export requests across every ticketChanged binding of this client.
+        self.export_request_limiter = RequestSpacingLimiter(timedelta(minutes=1) / requests_per_minute)
         self.base_url = validate_base_url(api_base_url or f"https://{config.subdomain}.zendesk.com/api/v2")
         self.agent_ticket_url = f"https://{config.subdomain}.zendesk.com/agent/tickets/"
         self.max_response_bytes = config.max_response_bytes

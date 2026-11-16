@@ -71,7 +71,7 @@ async def test_ticket_triage_retries_and_fails_unwired_absence(tmp_path: Path) -
     provider = ThreadingHTTPServer(("127.0.0.1", 0), ProviderHandler)
     provider_thread = threading.Thread(target=provider.serve_forever, daemon=True)
     provider_thread.start()
-    reference = ConnectionRef("zendesk-support", CONNECTION_NAME)
+    reference = ConnectionRef("zendesk", CONNECTION_NAME)
     provider_client = Client(
         Config("acme"),
         StaticCredentialProvider(

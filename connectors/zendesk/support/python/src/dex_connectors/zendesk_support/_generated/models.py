@@ -310,3 +310,40 @@ class UpdateTicketOutput:
 
 
 setattr(UpdateTicketOutput, '__module__', 'dex_connectors.zendesk_support.models')
+
+
+# TicketChangedEvent is one ticket the incremental ticket export reported as created, updated, or
+# deleted after the binding's cursor. Several changes made between two polls arrive as one event carrying
+# the ticket's latest state.
+@dataclass(frozen=True, slots=True)
+class TicketChangedEvent:
+    # ChangeKind is the derived change kind; see TicketChangeKind.
+    change_kind: str = _dataclass_field(metadata={'dex_json_name': 'changeKind'})
+    # Ticket is the ticket as the export returned it, with Description cut at MaxTextBytes. A deleted
+    # ticket has Status TicketStatusDeleted.
+    ticket: Ticket
+    # GeneratedAt is Zendesk's generated_timestamp: the last change of the ticket, including system
+    # updates that leave UpdatedAt unchanged, at one-second precision. It is zero when Zendesk omits it.
+    generated_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'generatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.generated_at, str):
+            object.__setattr__(self, 'generated_at', parse_go_datetime(self.generated_at, 'generated_at'))
+        elif self.generated_at is not None:
+            validate_go_datetime(self.generated_at, 'generated_at')
+
+
+setattr(TicketChangedEvent, '__module__', 'dex_connectors.zendesk_support.models')
+
+
+# TicketChangedTriggerConfiguration is the ticketChanged binding configuration. The Trigger watches the
+# whole account, as the connection's administrator sees it; a Flow's accept function narrows deliveries,
+# for example to one group or brand. A zero value delivers created and updated tickets only.
+@dataclass(frozen=True, slots=True)
+class TicketChangedTriggerConfiguration:
+    # IncludeDeleted also delivers tickets deleted in Zendesk, as TicketChangeDeleted. False sends
+    # exclude_deleted=true, so the export omits deletions. Changing it keeps the binding's position.
+    include_deleted: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'includeDeleted', 'dex_json_omit_default': True})
+
+
+setattr(TicketChangedTriggerConfiguration, '__module__', 'dex_connectors.zendesk_support.models')
