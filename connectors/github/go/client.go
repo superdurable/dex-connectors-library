@@ -326,6 +326,11 @@ func (client *Client) CreateIssue() CreateIssueOperation {
 	return CreateIssueOperation{client: client}
 }
 
+// SetIssueState returns the issue close and reopen Mutation bound to this client.
+func (client *Client) SetIssueState() SetIssueStateOperation {
+	return SetIssueStateOperation{client: client}
+}
+
 // Definition returns the immutable connector operation definition.
 func (GetAuthenticatedProfileOperation) Definition() sdkgo.QueryDefinition {
 	return GetAuthenticatedProfileDefinition
@@ -499,17 +504,30 @@ func (client *Client) resolveCredential(call sdkgo.Call, operation string) (Cred
 }
 
 func (client *Client) get(call sdkgo.Call, credential *Credentials, path string, query url.Values) (providerResponse, error) {
+	return client.sendRequest(call, credential, http.MethodGet, path, query, nil)
+}
+
+// sendRequest sends one request and repeats it once with a refreshed token after a 401. Only reads and
+// repeat-safe writes use it.
+func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, method string, path string, query url.Values, payload []byte) (providerResponse, error) {
 	target := *client.baseURL
 	target.Path = strings.TrimRight(target.Path, "/") + path
 	target.RawPath = ""
 	target.RawQuery = query.Encode()
 	for attempt := 0; attempt < 2; attempt++ {
-		request, err := http.NewRequestWithContext(call.Context, http.MethodGet, target.String(), nil)
+		var requestBody io.Reader
+		if payload != nil {
+			requestBody = bytes.NewReader(payload)
+		}
+		request, err := http.NewRequestWithContext(call.Context, method, target.String(), requestBody)
 		if err != nil {
 			return providerResponse{}, err
 		}
 		request.Header.Set("Accept", "application/vnd.github+json")
 		request.Header.Set("Authorization", "Bearer "+credential.AccessToken.Reveal())
+		if payload != nil {
+			request.Header.Set("Content-Type", "application/json")
+		}
 		request.Header.Set("User-Agent", userAgent)
 		request.Header.Set("X-GitHub-Api-Version", client.apiVersion)
 		response, err := client.httpClient.Do(request)

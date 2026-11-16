@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: github
   displayName: GitHub
-  description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes, and list and create repository issues.
+  description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes, and list, create, close, and reopen repository issues.
   company: GitHub
   categories: [developer-tools]
   version: v0.25.0
@@ -85,7 +85,7 @@ spec:
     methods:
       - id: github-oauth
         displayName: GitHub OAuth, public read-only
-        description: "Recommended for profile, public repository, change, release, and issue reads: requests read:user and user:email, so GitHub serves only public repository data. createIssue needs the github-oauth-repository method and selects insufficientScope on this connection without calling GitHub."
+        description: "Recommended for profile, public repository, change, release, and issue reads: requests read:user and user:email, so GitHub serves only public repository data. createIssue and setIssueState need the github-oauth-repository method and select insufficientScope on this connection without calling GitHub."
         recommended: true
         type: oauth2
         connectionKind: github-oauth
@@ -137,7 +137,7 @@ spec:
             terminalErrorCodes: [bad_refresh_token, incorrect_client_credentials, invalid_client, invalid_grant]
       - id: github-oauth-repository
         displayName: GitHub OAuth, repository issues
-        description: "Required for createIssue, and for listIssues in private repositories: requests the repo scope, GitHub's only OAuth App scope that writes issues in private repositories. repo also reads and writes code and pull requests in every repository the authorizing account can reach, so authorize with an account limited to the repositories the Flows use. The profile, public repository, change, and release queries select insufficientScope on this connection; use a separate github-oauth connection for them."
+        description: "Required for createIssue and setIssueState, and for listIssues in private repositories: requests the repo scope, GitHub's only OAuth App scope that writes issues in private repositories. repo also reads and writes code and pull requests in every repository the authorizing account can reach, so authorize with an account limited to the repositories the Flows use. The profile, public repository, change, and release queries select insufficientScope on this connection; use a separate github-oauth connection for them."
         type: oauth2
         connectionKind: github-repository-oauth
         fields:
@@ -667,3 +667,67 @@ spec:
           description: "The issue title is empty, so no request is sent."
           output: {owner: octocat, repository: hello-world}
           failure: {kind: VALIDATION, message: "GitHub issue title is required."}
+    - name: setIssueState
+      goName: SetIssueState
+      inputType: SetIssueStateInput
+      outputType: UpdatedIssueState
+      kind: mutation
+      description: Close or reopen one existing issue in a public or private repository, with an optional state reason, on a github-oauth-repository connection. Setting an absolute state is safe to repeat, so an unknown outcome sends the same update again.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "GitHub set the issue to the requested state, or it already had that state and reason."}
+        - {id: insufficientScope, goName: InsufficientScope, description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; the issue is unchanged.", optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked; the issue is unchanged., optional: true}
+        - {id: notFound, goName: NotFound, description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: closedCompleted
+          branch: updated
+          description: GitHub closes the issue as completed.
+          default: true
+          output: {number: 42, url: "https://github.com/octocat/hello-world/issues/42", state: closed, stateReason: completed, updatedAt: "2026-03-08T09:30:00Z"}
+        - name: reopened
+          branch: updated
+          description: GitHub reopens a closed issue.
+          output: {number: 42, url: "https://github.com/octocat/hello-world/issues/42", state: open, stateReason: reopened, updatedAt: "2026-03-09T14:00:00Z"}
+        - name: rateLimited
+          description: GitHub's secondary rate limit refuses the update once, so it is sent again after the delay.
+          retry: {failure: {kind: RATE_LIMIT, message: GitHub rate limit was reached.}, after: 1s}
+        - name: insufficientScopeFailure
+          branch: insufficientScope
+          description: "The connection does not use the github-oauth-repository method."
+          output: {number: 42}
+          failure: {kind: AUTHORIZATION, message: "The connection does not use the github-oauth-repository method."}
+        - name: authorizationRevokedFailure
+          branch: authorizationRevoked
+          description: "The OAuth grant is invalid or revoked."
+          output: {number: 42}
+          failure: {kind: AUTHENTICATION, message: "The OAuth grant is invalid or revoked."}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The repository or issue was not found or the connection cannot reach it."
+          output: {number: 4242}
+          failure: {kind: NOT_FOUND, message: "The repository or issue was not found or the connection cannot reach it."}
+        - name: issueDeletedRejection
+          branch: providerRejected
+          description: "GitHub rejects the update because the issue was deleted."
+          output: {number: 42}
+          failure: {kind: PROVIDER_REJECTION, message: "GitHub rejected the issue state update with HTTP 410."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "GitHub returned an invalid or oversized issue."
+          output: {number: 42}
+          failure: {kind: PROTOCOL, message: "GitHub returned an invalid issue."}
+        - name: defectFailure
+          branch: defect
+          description: "The state reason does not fit the requested state, so no request is sent."
+          output: {number: 42}
+          failure: {kind: VALIDATION, message: "GitHub issue state reason reopened requires state open."}

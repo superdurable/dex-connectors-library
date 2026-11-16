@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -149,6 +150,58 @@ func TestIssueFilingExampleFailsOnAPublicConnectionWithoutWritingWithRealDex(t *
 	require.Zero(t, provider.count("POST"))
 }
 
+// TestIssueFilingExampleClosesTheIssueItFiledWithRealDex files a resolved problem and closes the created
+// issue. GitHub applies the first close but answers 502, so Dex retries the Step and sends the same state
+// again.
+func TestIssueFilingExampleClosesTheIssueItFiledWithRealDex(t *testing.T) {
+	provider := newIssueProvider(t)
+	provider.applyThenFailStateUpdates(1)
+	flow, harness := newIssueFilingHarness(t, provider.URL, github.RepositoryAuthMethodID)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	flowID := "github-issue-filing-closed-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	input := bugReportInput()
+	input.CloseWithStateReason = github.IssueStateReasonNotPlanned
+
+	_, err := harness.client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	report := completedReport(t, ctx, harness.client, flowID)
+	require.Equal(t, StatusClosed, report.Status)
+	require.Equal(t, 1, report.CreatedIssue.Number)
+	require.NotNil(t, report.ClosedIssue)
+	require.Equal(t, 1, report.ClosedIssue.Number)
+	require.Equal(t, "closed", report.ClosedIssue.State)
+	require.Equal(t, "not_planned", report.ClosedIssue.StateReason)
+	require.Equal(t, "https://github.com/octocat/hello-world/issues/1", report.ClosedIssue.URL)
+	require.NotNil(t, report.ClosedIssue.UpdatedAt)
+	require.Equal(t, 1, provider.count("POST"))
+	require.Equal(t, 2, provider.count("PATCH"), "the retry repeats the absolute state")
+	require.Equal(t, []string{`{"state":"closed","state_reason":"not_planned"}`, `{"state":"closed","state_reason":"not_planned"}`}, provider.sentStateUpdates())
+	issues := provider.issuesTitled(input.Title)
+	require.Len(t, issues, 1)
+	require.Equal(t, "closed", issues[0]["state"])
+	require.Equal(t, "not_planned", issues[0]["state_reason"])
+}
+
+// TestIssueFilingExampleRejectsAReopenReasonBeforeFilingWithRealDex fails the Flow before any provider
+// request when the close reason cannot close an issue.
+func TestIssueFilingExampleRejectsAReopenReasonBeforeFilingWithRealDex(t *testing.T) {
+	provider := newIssueProvider(t)
+	flow, harness := newIssueFilingHarness(t, provider.URL, github.RepositoryAuthMethodID)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := "github-issue-filing-reopen-reason-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	input := bugReportInput()
+	input.CloseWithStateReason = github.IssueStateReasonReopened
+
+	_, err := harness.client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result := waitForTerminalFlow(t, ctx, harness.client, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "closeWithStateReason")
+	require.Zero(t, provider.count("GET")+provider.count("POST")+provider.count("PATCH"))
+}
+
 func bugReportInput() Input {
 	return Input{
 		Owner: "octocat", Repository: "hello-world", Title: "Crash when saving an empty draft",
@@ -187,7 +240,7 @@ const (
 	answer502WithoutStoring issueWriteBehavior = "answer 502 without storing"
 )
 
-// issueProvider is a local fake of the documented GitHub issue list, get, and create endpoints.
+// issueProvider is a local fake of the documented GitHub issue list, create, and update endpoints.
 type issueProvider struct {
 	*httptest.Server
 	t                    *testing.T
@@ -200,6 +253,8 @@ type issueProvider struct {
 	sent                 []string
 	readBackListFailures int
 	readBackListCount    int
+	stateUpdateFailures  int
+	stateUpdates         []string
 }
 
 func newIssueProvider(t *testing.T, behaviors ...issueWriteBehavior) *issueProvider {
@@ -227,6 +282,8 @@ func (provider *issueProvider) serveHTTP(response http.ResponseWriter, request *
 		provider.serveList(response, request)
 	case request.Method == http.MethodPost && request.URL.Path == "/repos/octocat/hello-world/issues":
 		provider.serveCreate(response, request)
+	case request.Method == http.MethodPatch && strings.HasPrefix(request.URL.Path, "/repos/octocat/hello-world/issues/"):
+		provider.serveStateUpdate(response, request)
 	default:
 		http.NotFound(response, request)
 	}
@@ -299,6 +356,40 @@ func (provider *issueProvider) serveCreate(response http.ResponseWriter, request
 	writeProviderBody(response, stored)
 }
 
+// serveStateUpdate applies a state update; a scripted failure applies it and still answers 502.
+func (provider *issueProvider) serveStateUpdate(response http.ResponseWriter, request *http.Request) {
+	number, err := strconv.Atoi(strings.TrimPrefix(request.URL.Path, "/repos/octocat/hello-world/issues/"))
+	body, readErr := io.ReadAll(request.Body)
+	var update struct {
+		State       string `json:"state"`
+		StateReason string `json:"state_reason"`
+	}
+	if err != nil || readErr != nil || json.Unmarshal(body, &update) != nil {
+		http.Error(response, `{"message":"Problems parsing JSON"}`, http.StatusBadRequest)
+		return
+	}
+	provider.mutex.Lock()
+	provider.stateUpdates = append(provider.stateUpdates, string(body))
+	issue, isKnown := provider.issues[number]
+	if isKnown {
+		issue["state"], issue["state_reason"] = update.State, update.StateReason
+		issue["updated_at"] = time.Now().UTC().Format(time.RFC3339)
+	}
+	isFailing := provider.stateUpdateFailures > 0
+	if isFailing {
+		provider.stateUpdateFailures--
+	}
+	provider.mutex.Unlock()
+	switch {
+	case !isKnown:
+		http.Error(response, `{"message":"Not Found"}`, http.StatusNotFound)
+	case isFailing:
+		response.WriteHeader(http.StatusBadGateway)
+	default:
+		writeProviderBody(response, issue)
+	}
+}
+
 func (provider *issueProvider) storeLocked(title string, body string, author string, labels []string) map[string]any {
 	number := provider.nextNumber
 	provider.nextNumber++
@@ -334,6 +425,18 @@ func (provider *issueProvider) failReadBackLists(count int) {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	provider.readBackListFailures = count
+}
+
+func (provider *issueProvider) applyThenFailStateUpdates(count int) {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	provider.stateUpdateFailures = count
+}
+
+func (provider *issueProvider) sentStateUpdates() []string {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return slices.Clone(provider.stateUpdates)
 }
 
 func (provider *issueProvider) count(method string) int {

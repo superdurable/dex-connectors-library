@@ -58,6 +58,7 @@ type Operations interface {
 	ListCommits() sdkgo.Query[ListCommitsInput, CommitPage]
 	ListIssues() sdkgo.Query[ListIssuesInput, IssuePage]
 	CreateIssue() sdkgo.Mutation[CreateIssueInput, CreatedIssue]
+	SetIssueState() sdkgo.Mutation[SetIssueStateInput, UpdatedIssueState]
 }
 
 type clientOperations struct{ client *Client }
@@ -85,6 +86,9 @@ func (operations clientOperations) ListIssues() sdkgo.Query[ListIssuesInput, Iss
 }
 func (operations clientOperations) CreateIssue() sdkgo.Mutation[CreateIssueInput, CreatedIssue] {
 	return operations.client.CreateIssue()
+}
+func (operations clientOperations) SetIssueState() sdkgo.Mutation[SetIssueStateInput, UpdatedIssueState] {
+	return operations.client.SetIssueState()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1078,5 +1082,95 @@ func NewCreateIssueStep[IN any](config CreateIssueStepConfig[IN]) sdkgo.Mutation
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 		MaxSends:            config.MaxSends,
+	})
+}
+
+const SetIssueStateBranchUpdated sdkgo.BranchID = "updated"
+const SetIssueStateBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const SetIssueStateBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const SetIssueStateBranchNotFound sdkgo.BranchID = "notFound"
+const SetIssueStateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetIssueStateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SetIssueStateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetIssueStateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setIssueState"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetIssueStateBranchUpdated, Description: "GitHub set the issue to the requested state, or it already had that state and reason."},
+		{ID: SetIssueStateBranchInsufficientScope, Description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; the issue is unchanged.", Optional: true},
+		{ID: SetIssueStateBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked; the issue is unchanged.", Optional: true},
+		{ID: SetIssueStateBranchNotFound, Description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", Optional: true},
+		{ID: SetIssueStateBranchProviderRejected, Description: "GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged.", Optional: true},
+		{ID: SetIssueStateBranchInvalidResponse, Description: "GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed.", Optional: true},
+		{ID: SetIssueStateBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SetIssueStateResult = sdkgo.MutationResult[UpdatedIssueState]
+
+type SetIssueStateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=github"`
+	operationID                       struct{}                                                `connector:"operationId=setIssueState"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetIssueStateInput                             `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[SetIssueStateResult]                       `connector:"branch=updated"`
+	InsufficientScope                 sdkgo.Target[SetIssueStateResult]                       `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked              sdkgo.Target[SetIssueStateResult]                       `connector:"branch=authorizationRevoked,optional"`
+	NotFound                          sdkgo.Target[SetIssueStateResult]                       `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[SetIssueStateResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SetIssueStateResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SetIssueStateResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedIssueState]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewSetIssueStateStep[IN any](config SetIssueStateStepConfig[IN]) sdkgo.MutationStep[IN, SetIssueStateInput, UpdatedIssueState] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetIssueStateInput, UpdatedIssueState]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetIssueState(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetIssueStateResult] {
+			branches := make([]sdkgo.BranchTarget[SetIssueStateResult], 0, 7)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(SetIssueStateBranchUpdated))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(SetIssueStateBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(SetIssueStateBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SetIssueStateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetIssueStateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SetIssueStateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetIssueStateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }

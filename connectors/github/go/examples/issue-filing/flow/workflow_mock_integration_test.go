@@ -43,6 +43,16 @@ func TestIssueFilingExampleRunsOnTheGitHubMockWithRealDex(t *testing.T) {
 	require.Equal(t, StatusAlreadyTracked, report.Status)
 	require.Equal(t, 12, report.ExistingIssue.Number)
 
+	closedFlowID := "github-issue-filing-mock-closed-" + testRunID
+	input.Title, input.CloseWithStateReason = "Export fails for large projects", "completed"
+	_, err = harness.client.StartFlow(ctx, flow, closedFlowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	report = completedReport(t, ctx, harness.client, closedFlowID)
+	require.Equal(t, StatusClosed, report.Status)
+	require.Equal(t, 42, report.ClosedIssue.Number)
+	require.Equal(t, "completed", report.ClosedIssue.StateReason)
+	input.CloseWithStateReason = ""
+
 	uncertainFlowID := "github-issue-filing-mock-uncertain-" + testRunID
 	mock.CreateIssue().ForFlow(uncertainFlowID).Respond(githubmock.CreateIssueCreateOutcomeUnknown())
 	input.Title = "Export fails for large projects"

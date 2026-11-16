@@ -26,6 +26,7 @@ type Mock struct {
 	listCommits             *connectormock.Query[github.ListCommitsInput, github.CommitPage]
 	listIssues              *connectormock.Query[github.ListIssuesInput, github.IssuePage]
 	createIssue             *connectormock.Mutation[github.CreateIssueInput, github.CreatedIssue]
+	setIssueState           *connectormock.Mutation[github.SetIssueStateInput, github.UpdatedIssueState]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -41,6 +42,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		listCommits:             connectormock.NewQuery[github.ListCommitsInput, github.CommitPage](t, github.ListCommitsDefinition),
 		listIssues:              connectormock.NewQuery[github.ListIssuesInput, github.IssuePage](t, github.ListIssuesDefinition),
 		createIssue:             connectormock.NewMutation[github.CreateIssueInput, github.CreatedIssue](t, github.CreateIssueDefinition),
+		setIssueState:           connectormock.NewMutation[github.SetIssueStateInput, github.UpdatedIssueState](t, github.SetIssueStateDefinition),
 	}
 	mock.getAuthenticatedProfile.Default(GetAuthenticatedProfileDefault())
 	mock.listPublicRepositories.Default(ListPublicRepositoriesDefault())
@@ -50,6 +52,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listCommits.Default(ListCommitsDefault())
 	mock.listIssues.Default(ListIssuesDefault())
 	mock.createIssue.Default(CreateIssueDefault())
+	mock.setIssueState.Default(SetIssueStateDefault())
 	connection, err := github.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "github", Name: connectionName})
 	if err != nil {
 		t.Fatalf("github mock connection: %v", err)
@@ -101,6 +104,11 @@ func (mock *Mock) CreateIssue() *connectormock.Mutation[github.CreateIssueInput,
 	return mock.createIssue
 }
 
+// SetIssueState returns the setIssueState script.
+func (mock *Mock) SetIssueState() *connectormock.Mutation[github.SetIssueStateInput, github.UpdatedIssueState] {
+	return mock.setIssueState
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetAuthenticatedProfile() sdkgo.Query[github.GetAuthenticatedProfileInput, github.AuthenticatedProfile] {
@@ -126,6 +134,9 @@ func (operations mockOperations) ListIssues() sdkgo.Query[github.ListIssuesInput
 }
 func (operations mockOperations) CreateIssue() sdkgo.Mutation[github.CreateIssueInput, github.CreatedIssue] {
 	return operations.mock.createIssue
+}
+func (operations mockOperations) SetIssueState() sdkgo.Mutation[github.SetIssueStateInput, github.UpdatedIssueState] {
+	return operations.mock.setIssueState
 }
 
 // GetAuthenticatedProfileProfileLoaded selects the profileLoaded branch: The authenticated profile and primary verified email were loaded.
@@ -934,4 +945,102 @@ func CreateIssueDefectFailure() connectormock.Case[github.CreatedIssue] {
 // CreateIssueDefault is the manifest default, bugReportCreated, which New installs.
 func CreateIssueDefault() connectormock.Case[github.CreatedIssue] {
 	return CreateIssueBugReportCreated()
+}
+
+// SetIssueStateUpdated selects the updated branch: GitHub set the issue to the requested state, or it already had that state and reason.
+func SetIssueStateUpdated(value github.UpdatedIssueState, failure *sdkgo.Failure) connectormock.Case[github.UpdatedIssueState] {
+	return connectormock.Branch(github.SetIssueStateBranchUpdated, value, failure)
+}
+
+// SetIssueStateInsufficientScope selects the insufficientScope branch: The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, missing issue access, or an organization's OAuth App restriction; the issue is unchanged.
+func SetIssueStateInsufficientScope(value github.UpdatedIssueState, failure *sdkgo.Failure) connectormock.Case[github.UpdatedIssueState] {
+	return connectormock.Branch(github.SetIssueStateBranchInsufficientScope, value, failure)
+}
+
+// SetIssueStateAuthorizationRevoked selects the authorizationRevoked branch: The OAuth grant is invalid or revoked; the issue is unchanged.
+func SetIssueStateAuthorizationRevoked(value github.UpdatedIssueState, failure *sdkgo.Failure) connectormock.Case[github.UpdatedIssueState] {
+	return connectormock.Branch(github.SetIssueStateBranchAuthorizationRevoked, value, failure)
+}
+
+// SetIssueStateNotFound selects the notFound branch: The repository or issue was not found, or the connection cannot reach it; nothing was changed.
+func SetIssueStateNotFound(value github.UpdatedIssueState, failure *sdkgo.Failure) connectormock.Case[github.UpdatedIssueState] {
+	return connectormock.Branch(github.SetIssueStateBranchNotFound, value, failure)
+}
+
+// SetIssueStateProviderRejected selects the providerRejected branch: GitHub conclusively rejected the update, such as an issue that was deleted, a repository with issues disabled, or a state reason GitHub refuses; the issue is unchanged.
+func SetIssueStateProviderRejected(value github.UpdatedIssueState, failure *sdkgo.Failure) connectormock.Case[github.UpdatedIssueState] {
+	return connectormock.Branch(github.SetIssueStateBranchProviderRejected, value, failure)
+}
+
+// SetIssueStateInvalidResponse selects the invalidResponse branch: GitHub accepted the update but returned an invalid or oversized issue; the issue may have changed.
+func SetIssueStateInvalidResponse(value github.UpdatedIssueState, failure *sdkgo.Failure) connectormock.Case[github.UpdatedIssueState] {
+	return connectormock.Branch(github.SetIssueStateBranchInvalidResponse, value, failure)
+}
+
+// SetIssueStateDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func SetIssueStateDefect(value github.UpdatedIssueState, failure *sdkgo.Failure) connectormock.Case[github.UpdatedIssueState] {
+	return connectormock.Branch(github.SetIssueStateBranchDefect, value, failure)
+}
+
+// SetIssueStateRetry asks Dex to retry the setIssueState Step, after the delay when it is positive.
+func SetIssueStateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[github.UpdatedIssueState] {
+	return connectormock.Retry[github.UpdatedIssueState](failure, after)
+}
+
+// SetIssueStateClosedCompleted is the manifest mock closedCompleted: GitHub closes the issue as completed.
+func SetIssueStateClosedCompleted() connectormock.Case[github.UpdatedIssueState] {
+	value := connectormock.MustDecodeOutput[github.UpdatedIssueState](`{"number":42,"url":"https://github.com/octocat/hello-world/issues/42","state":"closed","stateReason":"completed","updatedAt":"2026-03-08T09:30:00Z"}`)
+	return connectormock.Branch(github.SetIssueStateBranchUpdated, value, nil)
+}
+
+// SetIssueStateReopened is the manifest mock reopened: GitHub reopens a closed issue.
+func SetIssueStateReopened() connectormock.Case[github.UpdatedIssueState] {
+	value := connectormock.MustDecodeOutput[github.UpdatedIssueState](`{"number":42,"url":"https://github.com/octocat/hello-world/issues/42","state":"open","stateReason":"reopened","updatedAt":"2026-03-09T14:00:00Z"}`)
+	return connectormock.Branch(github.SetIssueStateBranchUpdated, value, nil)
+}
+
+// SetIssueStateRateLimited is the manifest mock rateLimited: GitHub's secondary rate limit refuses the update once, so it is sent again after the delay.
+func SetIssueStateRateLimited() connectormock.Case[github.UpdatedIssueState] {
+	return connectormock.Retry[github.UpdatedIssueState](sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "GitHub rate limit was reached."}, time.Duration(1000000000))
+}
+
+// SetIssueStateInsufficientScopeFailure is the manifest mock insufficientScopeFailure: The connection does not use the github-oauth-repository method.
+func SetIssueStateInsufficientScopeFailure() connectormock.Case[github.UpdatedIssueState] {
+	value := connectormock.MustDecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+	return connectormock.Branch(github.SetIssueStateBranchInsufficientScope, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "The connection does not use the github-oauth-repository method."})
+}
+
+// SetIssueStateAuthorizationRevokedFailure is the manifest mock authorizationRevokedFailure: The OAuth grant is invalid or revoked.
+func SetIssueStateAuthorizationRevokedFailure() connectormock.Case[github.UpdatedIssueState] {
+	value := connectormock.MustDecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+	return connectormock.Branch(github.SetIssueStateBranchAuthorizationRevoked, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "The OAuth grant is invalid or revoked."})
+}
+
+// SetIssueStateNotFoundFailure is the manifest mock notFoundFailure: The repository or issue was not found or the connection cannot reach it.
+func SetIssueStateNotFoundFailure() connectormock.Case[github.UpdatedIssueState] {
+	value := connectormock.MustDecodeOutput[github.UpdatedIssueState](`{"number":4242}`)
+	return connectormock.Branch(github.SetIssueStateBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The repository or issue was not found or the connection cannot reach it."})
+}
+
+// SetIssueStateIssueDeletedRejection is the manifest mock issueDeletedRejection: GitHub rejects the update because the issue was deleted.
+func SetIssueStateIssueDeletedRejection() connectormock.Case[github.UpdatedIssueState] {
+	value := connectormock.MustDecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+	return connectormock.Branch(github.SetIssueStateBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "GitHub rejected the issue state update with HTTP 410."})
+}
+
+// SetIssueStateInvalidResponseFailure is the manifest mock invalidResponseFailure: GitHub returned an invalid or oversized issue.
+func SetIssueStateInvalidResponseFailure() connectormock.Case[github.UpdatedIssueState] {
+	value := connectormock.MustDecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+	return connectormock.Branch(github.SetIssueStateBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "GitHub returned an invalid issue."})
+}
+
+// SetIssueStateDefectFailure is the manifest mock defectFailure: The state reason does not fit the requested state, so no request is sent.
+func SetIssueStateDefectFailure() connectormock.Case[github.UpdatedIssueState] {
+	value := connectormock.MustDecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+	return connectormock.Branch(github.SetIssueStateBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "GitHub issue state reason reopened requires state open."})
+}
+
+// SetIssueStateDefault is the manifest default, closedCompleted, which New installs.
+func SetIssueStateDefault() connectormock.Case[github.UpdatedIssueState] {
+	return SetIssueStateClosedCompleted()
 }

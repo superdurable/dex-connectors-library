@@ -136,6 +136,38 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[github.CreatedIssue](`{"owner":"octocat","repository":"hello-world"}`)
 			return err
 		}},
+		{name: "setIssueState/closedCompleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.UpdatedIssueState](`{"number":42,"url":"https://github.com/octocat/hello-world/issues/42","state":"closed","stateReason":"completed","updatedAt":"2026-03-08T09:30:00Z"}`)
+			return err
+		}},
+		{name: "setIssueState/reopened/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.UpdatedIssueState](`{"number":42,"url":"https://github.com/octocat/hello-world/issues/42","state":"open","stateReason":"reopened","updatedAt":"2026-03-09T14:00:00Z"}`)
+			return err
+		}},
+		{name: "setIssueState/insufficientScopeFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+			return err
+		}},
+		{name: "setIssueState/authorizationRevokedFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+			return err
+		}},
+		{name: "setIssueState/notFoundFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.UpdatedIssueState](`{"number":4242}`)
+			return err
+		}},
+		{name: "setIssueState/issueDeletedRejection/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+			return err
+		}},
+		{name: "setIssueState/invalidResponseFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+			return err
+		}},
+		{name: "setIssueState/defectFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.UpdatedIssueState](`{"number":42}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -169,5 +201,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CreateIssue().Definition().Operation.OperationID != "createIssue" {
 		t.Errorf("createIssue mock has another definition")
+	}
+	if mock.SetIssueState().Definition().Operation.OperationID != "setIssueState" {
+		t.Errorf("setIssueState mock has another definition")
 	}
 }

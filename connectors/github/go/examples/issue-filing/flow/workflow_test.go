@@ -20,6 +20,7 @@ func TestRegisteredTypesMatchTheFlowDefinitionGraph(t *testing.T) {
 		dex.GetFinalStepType[Input](startIssueFiling{}):                       "startIssueFiling",
 		dex.GetFinalStepType[github.ListIssuesResult](recordOpenIssues{}):     "recordOpenIssues",
 		dex.GetFinalStepType[github.CreateIssueResult](completeIssueFiling{}): "completeIssueFiling",
+		dex.GetFinalStepType[github.SetIssueStateResult](recordClosedIssue{}): "recordClosedIssue",
 	} {
 		if got != want {
 			t.Fatalf("Step type = %q, want %q", got, want)
@@ -42,5 +43,13 @@ func TestOpenIssuePageRequestCarriesTheRepositoryAndLabels(t *testing.T) {
 	request := openIssuePageRequest(Input{Owner: "octocat", Repository: "hello-world", Title: "Crash", Labels: []string{"bug"}}, 2)
 	if request.Owner != "octocat" || request.Repository != "hello-world" || len(request.Labels) != 1 || request.Labels[0] != "bug" || request.Page != 2 {
 		t.Fatalf("request = %+v", request)
+	}
+}
+
+func TestIsClosingStateReasonAcceptsOnlyCloseReasons(t *testing.T) {
+	for stateReason, want := range map[string]bool{"": true, "completed": true, "not_planned": true, "reopened": false, "Completed": false} {
+		if got := isClosingStateReason(stateReason); got != want {
+			t.Fatalf("isClosingStateReason(%q) = %v, want %v", stateReason, got, want)
+		}
 	}
 }

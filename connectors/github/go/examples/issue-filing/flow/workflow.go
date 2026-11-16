@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package issuefiling demonstrates the GitHub listIssues and createIssue operations.
+// Package issuefiling demonstrates the GitHub listIssues, createIssue, and setIssueState operations.
 package issuefiling
 
 import (
@@ -20,10 +20,12 @@ const (
 	ConnectionName         = "github-issue-filing"
 	listOpenIssuesStepType = "ListOpenIssues"
 	createIssueStepType    = "CreateIssue"
+	closeIssueStepType     = "CloseIssue"
 	// Application Step types match the Flow Definition Graph so Dex Web starts and displays the same Steps.
 	startIssueFilingStepType    = "startIssueFiling"
 	recordOpenIssuesStepType    = "recordOpenIssues"
 	completeIssueFilingStepType = "completeIssueFiling"
+	recordClosedIssueStepType   = "recordClosedIssue"
 	// OpenIssuePageSize is the number of open issues read per page.
 	OpenIssuePageSize = 100
 	// MaxOpenIssuePages bounds the open issue pages checked for a matching title before creating.
@@ -40,6 +42,8 @@ const (
 	StatusCreatingIssue      Status = "creatingIssue"
 	StatusAlreadyTracked     Status = "alreadyTracked"
 	StatusCreated            Status = "created"
+	StatusClosingIssue       Status = "closingIssue"
+	StatusClosed             Status = "closed"
 )
 
 // Input names the repository and the issue to file unless an open issue with its title already exists.
@@ -49,6 +53,17 @@ type Input struct {
 	Title      string   `json:"title"`
 	Body       string   `json:"body"`
 	Labels     []string `json:"labels"`
+	// CloseWithStateReason, completed or not_planned, closes the created issue at once, filing a problem that
+	// is already resolved. Empty leaves the issue open.
+	CloseWithStateReason string `json:"closeWithStateReason,omitempty"`
+}
+
+// CloseIssueRequest is the durable input of closing the created issue.
+type CloseIssueRequest struct {
+	Owner       string `json:"owner"`
+	Repository  string `json:"repository"`
+	IssueNumber int    `json:"issueNumber"`
+	StateReason string `json:"stateReason"`
 }
 
 // OpenIssuePageRequest is the durable input of one open issue page read.
@@ -65,9 +80,10 @@ type Report struct {
 	Status             Status `json:"status"`
 	OpenIssuePagesRead int    `json:"openIssuePagesRead"`
 	// HasUncheckedOpenIssues reports that open issues beyond MaxOpenIssuePages were not checked.
-	HasUncheckedOpenIssues bool                 `json:"hasUncheckedOpenIssues"`
-	ExistingIssue          *github.Issue        `json:"existingIssue,omitempty"`
-	CreatedIssue           *github.CreatedIssue `json:"createdIssue,omitempty"`
+	HasUncheckedOpenIssues bool                      `json:"hasUncheckedOpenIssues"`
+	ExistingIssue          *github.Issue             `json:"existingIssue,omitempty"`
+	CreatedIssue           *github.CreatedIssue      `json:"createdIssue,omitempty"`
+	ClosedIssue            *github.UpdatedIssueState `json:"closedIssue,omitempty"`
 }
 
 type Flow struct {
@@ -113,6 +129,19 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Created: sdkgo.GoTo(completeIssueFiling{}),
 		})),
 		dex.DefineStep(completeIssueFiling{}),
+		dex.DefineStep(github.NewSetIssueStateStep(github.SetIssueStateStepConfig[CloseIssueRequest]{
+			StepType: closeIssueStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "issue-closing", GroupLabel: "Issue closing", Explanation: "Close the created issue with the requested reason; a repeat sets the same state again."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(request CloseIssueRequest) github.SetIssueStateInput {
+				return github.SetIssueStateInput{
+					Owner: request.Owner, Repository: request.Repository, IssueNumber: request.IssueNumber,
+					State: github.IssueStateClosed, StateReason: request.StateReason,
+				}
+			},
+			Updated: sdkgo.GoTo(recordClosedIssue{}),
+		})),
+		dex.DefineStep(recordClosedIssue{}),
 	}
 }
 
@@ -169,6 +198,10 @@ func (startIssueFiling) WaitFor(dex.Context, Input) (*dex.Wait, error) {
 }
 
 func (startIssueFiling) Execute(ctx dex.Context, input Input) (*dex.StepDecision, error) {
+	// Rejecting the reason before filing avoids creating an issue the close Step cannot close.
+	if !isClosingStateReason(input.CloseWithStateReason) {
+		return dex.ForceFail("closeWithStateReason must be completed, not_planned, or empty"), nil
+	}
 	if err := reportAttribute.Set(ctx, Report{Input: input, Status: StatusCheckingOpenIssues}); err != nil {
 		return nil, err
 	}
@@ -211,7 +244,7 @@ func (recordOpenIssues) Execute(ctx dex.Context, result github.ListIssuesResult)
 }
 
 // dex:group group-id:issue-creation group-label:"Issue creation"
-// dex:explanation text:"Record the created issue and complete the filing."
+// dex:explanation text:"Record the created issue, then complete the filing or close the issue when requested."
 type completeIssueFiling struct {
 	dex.StepDefaultsNoWaitFor[github.CreateIssueResult]
 }
@@ -225,6 +258,37 @@ func (completeIssueFiling) Execute(ctx dex.Context, result github.CreateIssueRes
 	}
 	created := result.Value
 	report.CreatedIssue, report.Status = &created, StatusCreated
+	if report.Input.CloseWithStateReason != "" {
+		report.Status = StatusClosingIssue
+		if err := reportAttribute.Set(ctx, report); err != nil {
+			return nil, err
+		}
+		return dex.GoTo(sdkgo.StepRef[CloseIssueRequest](closeIssueStepType), CloseIssueRequest{
+			Owner: report.Input.Owner, Repository: report.Input.Repository, IssueNumber: created.Number,
+			StateReason: report.Input.CloseWithStateReason,
+		}), nil
+	}
+	if err := reportAttribute.Set(ctx, report); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(report), nil
+}
+
+// dex:group group-id:issue-closing group-label:"Issue closing"
+// dex:explanation text:"Record the closed issue and complete the filing."
+type recordClosedIssue struct {
+	dex.StepDefaultsNoWaitFor[github.SetIssueStateResult]
+}
+
+func (recordClosedIssue) GetStepType() string { return recordClosedIssueStepType }
+
+func (recordClosedIssue) Execute(ctx dex.Context, result github.SetIssueStateResult) (*dex.StepDecision, error) {
+	report, err := reportAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	closed := result.Value
+	report.ClosedIssue, report.Status = &closed, StatusClosed
 	if err := reportAttribute.Set(ctx, report); err != nil {
 		return nil, err
 	}
@@ -233,6 +297,10 @@ func (completeIssueFiling) Execute(ctx dex.Context, result github.CreateIssueRes
 
 func openIssuePageRequest(input Input, page int) OpenIssuePageRequest {
 	return OpenIssuePageRequest{Owner: input.Owner, Repository: input.Repository, Labels: input.Labels, Page: page}
+}
+
+func isClosingStateReason(stateReason string) bool {
+	return stateReason == "" || stateReason == github.IssueStateReasonCompleted || stateReason == github.IssueStateReasonNotPlanned
 }
 
 // findIssueWithTitle returns the first issue whose title matches, ignoring case and surrounding whitespace.

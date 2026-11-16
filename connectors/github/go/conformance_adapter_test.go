@@ -37,7 +37,8 @@ func (*conformanceRejectedCredentialSource) ResolveAfterRejection(context.Contex
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	connection := sdkgo.ConnectionRef{Provider: "github", Name: "github"}
 	authMethodID := PublicAuthMethodID
-	if scenario.Operation == "createIssue" && !strings.HasSuffix(scenario.Name, "-public-method") || strings.HasSuffix(scenario.Name, "-repository-method") {
+	isIssueWrite := scenario.Operation == "createIssue" || scenario.Operation == "setIssueState"
+	if isIssueWrite && !strings.HasSuffix(scenario.Name, "-public-method") || strings.HasSuffix(scenario.Name, "-repository-method") {
 		authMethodID = RepositoryAuthMethodID
 	}
 	credentials := sdkgo.StaticCredentialProvider[Credentials]{
@@ -80,5 +81,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listCommits":             newConformanceQueryInvocation(t, scenario.Input, context, client.ListCommits(), connection),
 		"listIssues":              newConformanceQueryInvocation(t, scenario.Input, context, client.ListIssues(), connection),
 		"createIssue":             newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateIssue(), connection, scenario.CallID),
+		"setIssueState":           newConformanceMutationInvocation(t, scenario.Input, context, client.SetIssueState(), connection, scenario.CallID),
 	}}
 }

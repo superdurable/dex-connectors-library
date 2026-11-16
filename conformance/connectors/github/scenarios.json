@@ -8203,6 +8203,938 @@
       },
       "name": "createIssue-defect",
       "operation": "createIssue"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "{\"id\": 2876543242, \"node_id\": \"I_kwDOAbCdEs6rdm42\", \"number\": 42, \"title\": \"Crash when saving an empty draft\", \"body\": \"Steps to reproduce.\", \"state\": \"closed\", \"state_reason\": \"not_planned\", \"html_url\": \"https://github.com/octocat/hello-world/issues/42\", \"user\": {\"login\": \"octocat\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [], \"comments\": 1, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-08T09:30:00Z\", \"closed_at\": \"2026-03-08T09:30:00Z\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "number": 42,
+          "state": "closed",
+          "stateReason": "not_planned",
+          "updatedAt": "2026-03-08T09:30:00Z",
+          "url": "https://github.com/octocat/hello-world/issues/42"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-updated",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "{\"id\": 2876543242, \"node_id\": \"I_kwDOAbCdEs6rdm42\", \"number\": 42, \"title\": \"Crash when saving an empty draft\", \"body\": \"Steps to reproduce.\", \"state\": \"open\", \"state_reason\": \"reopened\", \"html_url\": \"https://github.com/octocat/hello-world/issues/42\", \"user\": {\"login\": \"octocat\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [], \"comments\": 1, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-09T14:00:00Z\", \"closed_at\": null}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "open"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "number": 42,
+          "state": "open",
+          "stateReason": "reopened",
+          "updatedAt": "2026-03-09T14:00:00Z",
+          "url": "https://github.com/octocat/hello-world/issues/42"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "open"
+      },
+      "name": "setIssueState-reopened",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-429",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"You have exceeded a secondary rate limit. Please wait a few minutes before you try again.\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-secondary-rate-limit",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-502",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-503",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-transport",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-after-send-transport",
+      "operation": "setIssueState"
+    },
+    {
+      "attempts": 2,
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"id\": 2876543242, \"node_id\": \"I_kwDOAbCdEs6rdm42\", \"number\": 42, \"title\": \"Crash when saving an empty draft\", \"body\": \"Steps to reproduce.\", \"state\": \"closed\", \"state_reason\": \"not_planned\", \"html_url\": \"https://github.com/octocat/hello-world/issues/42\", \"user\": {\"login\": \"octocat\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [], \"comments\": 1, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-08T09:30:00Z\", \"closed_at\": \"2026-03-08T09:30:00Z\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "number": 42,
+          "state": "closed",
+          "stateReason": "not_planned",
+          "updatedAt": "2026-03-08T09:30:00Z",
+          "url": "https://github.com/octocat/hello-world/issues/42"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "setIssueState-resend-after-502",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "number": 42
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-insufficient-scope-public-method",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Repository was archived so is read-only.\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "number": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-insufficient-scope",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Bad credentials\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "number": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-authorization-revoked",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Not Found\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "number": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-not-found",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"This issue was deleted\"}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 410
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "number": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-provider-rejected",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Validation Failed\",\"errors\":[{\"resource\":\"Issue\",\"field\":\"state_reason\",\"code\":\"invalid\"}]}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "number": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-provider-rejected-validation",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [
+        {
+          "body": "{\"id\": 2876543242, \"node_id\": \"I_kwDOAbCdEs6rdm42\", \"number\": 42, \"title\": \"Crash when saving an empty draft\", \"body\": \"Steps to reproduce.\", \"state\": \"open\", \"state_reason\": null, \"html_url\": \"https://github.com/octocat/hello-world/issues/42\", \"user\": {\"login\": \"octocat\", \"id\": 583231}, \"labels\": [{\"id\": 1, \"name\": \"bug\"}], \"assignees\": [], \"comments\": 1, \"created_at\": \"2026-03-07T10:15:00Z\", \"updated_at\": \"2026-03-08T09:30:00Z\", \"closed_at\": null}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "repo"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/repos/octocat/hello-world/issues/42",
+          "requestBody": {
+            "state": "closed",
+            "state_reason": "not_planned"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "number": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "not_planned"
+      },
+      "name": "setIssueState-invalid-response",
+      "operation": "setIssueState"
+    },
+    {
+      "callId": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "number": 42
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "822e8395-57fb-53b6-8fee-fa88f4d4bd2e",
+      "input": {
+        "issueNumber": 42,
+        "owner": "octocat",
+        "repository": "hello-world",
+        "state": "closed",
+        "stateReason": "reopened"
+      },
+      "name": "setIssueState-defect",
+      "operation": "setIssueState"
     }
   ],
   "schemaVersion": 1
