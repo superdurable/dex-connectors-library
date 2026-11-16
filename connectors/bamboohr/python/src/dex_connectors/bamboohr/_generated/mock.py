@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AddEmployeeInput, AddEmployeeOutput, EmployeeChange, EmployeeChangeCursor, EmployeeRecord, EmployeeSummary, FindEmployeeByEmailInput, FindEmployeeByEmailOutput, GetEmployeeInput, ListEmployeeChangesInput, ListEmployeeChangesOutput, ListTimeOffRequestsInput, ListTimeOffRequestsOutput, TimeOffDailyAmount, TimeOffRequest, UpdateEmployeeInput, UpdateEmployeeOutput
+from ..models import AddEmployeeInput, AddEmployeeOutput, EmployeeChange, EmployeeChangeCursor, EmployeeChangedEvent, EmployeeChangedTriggerConfiguration, EmployeeRecord, EmployeeSummary, FindEmployeeByEmailInput, FindEmployeeByEmailOutput, GetEmployeeInput, ListEmployeeChangesInput, ListEmployeeChangesOutput, ListTimeOffRequestsInput, ListTimeOffRequestsOutput, TimeOffDailyAmount, TimeOffRequest, UpdateEmployeeInput, UpdateEmployeeOutput
 from .definitions import CONNECTOR_ID, ADD_EMPLOYEE_DEFINITION, AMBIGUOUS, CREATED, DEFECT, FIND_EMPLOYEE_BY_EMAIL_DEFINITION, FOUND, GET_EMPLOYEE_DEFINITION, INVALID_RESPONSE, LISTED, LIST_EMPLOYEE_CHANGES_DEFINITION, LIST_TIME_OFF_REQUESTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, UNCERTAIN, UPDATED, UPDATE_EMPLOYEE_DEFINITION
 
 def get_employee_found(value: EmployeeRecord, failure: Failure | None = None) -> Case[EmployeeRecord]:
