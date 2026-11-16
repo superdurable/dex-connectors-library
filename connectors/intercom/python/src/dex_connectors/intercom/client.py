@@ -13,7 +13,15 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    ConnectionRef,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    Receipt,
+    TriggerLogger,
+)
 from dex_connectors.sdk.providerhttp import (
     is_header_safe_credential,
     new_provider_http_client,
@@ -25,6 +33,9 @@ from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 
 if TYPE_CHECKING:
+    from dex_connectors.sdk.webhooktrigger import WebhookEndpoint
+
+    from .models import ConversationEvent
     from .operations import (
         FindContactByEmailOperation,
         GetConversationOperation,
@@ -61,15 +72,27 @@ class Client:
         http_client: httpx.AsyncClient | None = None,
         now: Callable[[], datetime] | None = None,
         endpoint: str | None = None,
+        trigger_logger: TriggerLogger | None = None,
     ) -> None:
+        """Validate config; trigger_logger receives the conversationEvent endpoint's delivery records.
+
+        A zero size limit selects the manifest default, as Go's New does.
+        """
         if config is None or credentials is None:
             raise ValueError("Intercom configuration and credential provider are required")
         if config.region not in _ENDPOINTS:
             raise ValueError("Intercom region must be us, eu, or au")
-        if config.max_response_bytes <= 0 or config.webhook_max_body_bytes <= 0:
+        max_response_bytes = config.max_response_bytes or Config().max_response_bytes
+        webhook_max_body_bytes = config.webhook_max_body_bytes or Config().webhook_max_body_bytes
+        if max_response_bytes <= 0 or webhook_max_body_bytes <= 0:
             raise ValueError("Intercom response and webhook body limits must be positive")
         self.base_url = validate_base_url(endpoint or _ENDPOINTS[config.region])
-        self.max_response_bytes = config.max_response_bytes
+        self.max_response_bytes = max_response_bytes
+        self.webhook_max_body_bytes = webhook_max_body_bytes
+        self.trigger_logger = trigger_logger
+        self._conversation_event_endpoints: dict[
+            ConnectionRef, WebhookEndpoint[Credentials, ConversationEvent]
+        ] = {}
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(9)
         self.now = now or (lambda: datetime.now(UTC))
@@ -103,6 +126,25 @@ class Client:
         from .operations import FindContactByEmailOperation
 
         return FindContactByEmailOperation(self)
+
+    def conversation_event_webhook_endpoint(
+        self, connection: ConnectionRef, logger: TriggerLogger | None = None
+    ) -> WebhookEndpoint[Credentials, ConversationEvent]:
+        """Return the connection's shared conversationEvent webhook endpoint, creating it on first use.
+
+        Every conversationEvent binding of the connection runs one source of this endpoint. logger,
+        or else the client's trigger_logger, receives its records when this call creates it. Raises
+        ValueError for an invalid connection reference.
+        """
+        endpoint = self._conversation_event_endpoints.get(connection)
+        if endpoint is None:
+            from .triggers import _new_conversation_event_webhook_endpoint
+
+            endpoint = _new_conversation_event_webhook_endpoint(
+                self, connection, logger or self.trigger_logger
+            )
+            self._conversation_event_endpoints[connection] = endpoint
+        return endpoint
 
     async def aclose(self) -> None:
         """Close the provider transport after Worker shutdown."""
