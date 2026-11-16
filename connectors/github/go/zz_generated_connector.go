@@ -59,6 +59,8 @@ type Operations interface {
 	ListIssues() sdkgo.Query[ListIssuesInput, IssuePage]
 	CreateIssue() sdkgo.Mutation[CreateIssueInput, CreatedIssue]
 	SetIssueState() sdkgo.Mutation[SetIssueStateInput, UpdatedIssueState]
+	ReplaceIssueLabels() sdkgo.Mutation[ReplaceIssueLabelsInput, ReplacedIssueLabels]
+	CreateIssueComment() sdkgo.Mutation[CreateIssueCommentInput, CreatedIssueComment]
 }
 
 type clientOperations struct{ client *Client }
@@ -89,6 +91,12 @@ func (operations clientOperations) CreateIssue() sdkgo.Mutation[CreateIssueInput
 }
 func (operations clientOperations) SetIssueState() sdkgo.Mutation[SetIssueStateInput, UpdatedIssueState] {
 	return operations.client.SetIssueState()
+}
+func (operations clientOperations) ReplaceIssueLabels() sdkgo.Mutation[ReplaceIssueLabelsInput, ReplacedIssueLabels] {
+	return operations.client.ReplaceIssueLabels()
+}
+func (operations clientOperations) CreateIssueComment() sdkgo.Mutation[CreateIssueCommentInput, CreatedIssueComment] {
+	return operations.client.CreateIssueComment()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1172,5 +1180,189 @@ func NewSetIssueStateStep[IN any](config SetIssueStateStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ReplaceIssueLabelsBranchReplaced sdkgo.BranchID = "replaced"
+const ReplaceIssueLabelsBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const ReplaceIssueLabelsBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const ReplaceIssueLabelsBranchNotFound sdkgo.BranchID = "notFound"
+const ReplaceIssueLabelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ReplaceIssueLabelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ReplaceIssueLabelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ReplaceIssueLabelsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replaceIssueLabels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ReplaceIssueLabelsBranchReplaced, Description: "The issue now carries exactly the requested labels, as GitHub reported them."},
+		{ID: ReplaceIssueLabelsBranchInsufficientScope, Description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, an account without push access, or an organization's OAuth App restriction; the labels are unchanged.", Optional: true},
+		{ID: ReplaceIssueLabelsBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked; the labels are unchanged.", Optional: true},
+		{ID: ReplaceIssueLabelsBranchNotFound, Description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", Optional: true},
+		{ID: ReplaceIssueLabelsBranchProviderRejected, Description: "GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged.", Optional: true},
+		{ID: ReplaceIssueLabelsBranchInvalidResponse, Description: "GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed.", Optional: true},
+		{ID: ReplaceIssueLabelsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ReplaceIssueLabelsResult = sdkgo.MutationResult[ReplacedIssueLabels]
+
+type ReplaceIssueLabelsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=github"`
+	operationID                       struct{}                                                  `connector:"operationId=replaceIssueLabels"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) ReplaceIssueLabelsInput                          `connector:"mapToOperationInput"`
+	Replaced                          sdkgo.Target[ReplaceIssueLabelsResult]                    `connector:"branch=replaced"`
+	InsufficientScope                 sdkgo.Target[ReplaceIssueLabelsResult]                    `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked              sdkgo.Target[ReplaceIssueLabelsResult]                    `connector:"branch=authorizationRevoked,optional"`
+	NotFound                          sdkgo.Target[ReplaceIssueLabelsResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ReplaceIssueLabelsResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ReplaceIssueLabelsResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ReplaceIssueLabelsResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ReplacedIssueLabels]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewReplaceIssueLabelsStep[IN any](config ReplaceIssueLabelsStepConfig[IN]) sdkgo.MutationStep[IN, ReplaceIssueLabelsInput, ReplacedIssueLabels] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReplaceIssueLabelsInput, ReplacedIssueLabels]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ReplaceIssueLabels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ReplaceIssueLabelsResult] {
+			branches := make([]sdkgo.BranchTarget[ReplaceIssueLabelsResult], 0, 7)
+			if config.Replaced.HasStep() {
+				branches = append(branches, config.Replaced.BranchTarget(ReplaceIssueLabelsBranchReplaced))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(ReplaceIssueLabelsBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(ReplaceIssueLabelsBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ReplaceIssueLabelsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ReplaceIssueLabelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ReplaceIssueLabelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ReplaceIssueLabelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateIssueCommentBranchCreated sdkgo.BranchID = "created"
+const CreateIssueCommentBranchInsufficientScope sdkgo.BranchID = "insufficientScope"
+const CreateIssueCommentBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const CreateIssueCommentBranchNotFound sdkgo.BranchID = "notFound"
+const CreateIssueCommentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateIssueCommentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateIssueCommentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateIssueCommentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createIssueComment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateIssueCommentBranchCreated, Description: "GitHub created the comment, or an earlier attempt of this Step already had and read-back found it."},
+		{ID: CreateIssueCommentBranchInsufficientScope, Description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, a locked issue, or an organization's OAuth App restriction; nothing was created.", Optional: true},
+		{ID: CreateIssueCommentBranchAuthorizationRevoked, Description: "The OAuth grant is invalid or revoked; nothing was created.", Optional: true},
+		{ID: CreateIssueCommentBranchNotFound, Description: "The repository or issue was not found or the connection cannot reach it; nothing was created.", Optional: true},
+		{ID: CreateIssueCommentBranchProviderRejected, Description: "GitHub conclusively rejected the comment, such as an issue that was deleted or a body GitHub refuses; nothing was created.", Optional: true},
+		{ID: CreateIssueCommentBranchUncertain, Description: "The comment may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested issue number for reconciliation.", Optional: true},
+		{ID: CreateIssueCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateIssueCommentResult = sdkgo.MutationResult[CreatedIssueComment]
+
+type CreateIssueCommentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=github"`
+	operationID                       struct{}                                                  `connector:"operationId=createIssueComment"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateIssueCommentInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateIssueCommentResult]                    `connector:"branch=created"`
+	InsufficientScope                 sdkgo.Target[CreateIssueCommentResult]                    `connector:"branch=insufficientScope,optional"`
+	AuthorizationRevoked              sdkgo.Target[CreateIssueCommentResult]                    `connector:"branch=authorizationRevoked,optional"`
+	NotFound                          sdkgo.Target[CreateIssueCommentResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateIssueCommentResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateIssueCommentResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateIssueCommentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedIssueComment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateIssueCommentStep[IN any](config CreateIssueCommentStepConfig[IN]) sdkgo.MutationStep[IN, CreateIssueCommentInput, CreatedIssueComment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("github connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateIssueCommentInput, CreatedIssueComment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateIssueComment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateIssueCommentResult] {
+			branches := make([]sdkgo.BranchTarget[CreateIssueCommentResult], 0, 7)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateIssueCommentBranchCreated))
+			}
+			if config.InsufficientScope.HasStep() {
+				branches = append(branches, config.InsufficientScope.BranchTarget(CreateIssueCommentBranchInsufficientScope))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(CreateIssueCommentBranchAuthorizationRevoked))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateIssueCommentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateIssueCommentBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateIssueCommentBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateIssueCommentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

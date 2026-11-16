@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package issuefiling demonstrates the GitHub listIssues, createIssue, and setIssueState operations.
+// Package issuefiling demonstrates the GitHub listIssues, createIssue, createIssueComment, replaceIssueLabels, and
+// setIssueState operations.
 package issuefiling
 
 import (
@@ -21,11 +22,15 @@ const (
 	listOpenIssuesStepType = "ListOpenIssues"
 	createIssueStepType    = "CreateIssue"
 	closeIssueStepType     = "CloseIssue"
+	commentOnIssueStepType = "CommentOnIssue"
+	relabelIssueStepType   = "RelabelIssue"
 	// Application Step types match the Flow Definition Graph so Dex Web starts and displays the same Steps.
 	startIssueFilingStepType    = "startIssueFiling"
 	recordOpenIssuesStepType    = "recordOpenIssues"
 	completeIssueFilingStepType = "completeIssueFiling"
 	recordClosedIssueStepType   = "recordClosedIssue"
+	recordIssueCommentStepType  = "recordIssueComment"
+	recordIssueLabelsStepType   = "recordIssueLabels"
 	// OpenIssuePageSize is the number of open issues read per page.
 	OpenIssuePageSize = 100
 	// MaxOpenIssuePages bounds the open issue pages checked for a matching title before creating.
@@ -42,6 +47,8 @@ const (
 	StatusCreatingIssue      Status = "creatingIssue"
 	StatusAlreadyTracked     Status = "alreadyTracked"
 	StatusCreated            Status = "created"
+	StatusCommentingOnIssue  Status = "commentingOnIssue"
+	StatusRelabelingIssue    Status = "relabelingIssue"
 	StatusClosingIssue       Status = "closingIssue"
 	StatusClosed             Status = "closed"
 )
@@ -56,6 +63,10 @@ type Input struct {
 	// CloseWithStateReason, completed or not_planned, closes the created issue at once, filing a problem that
 	// is already resolved. Empty leaves the issue open.
 	CloseWithStateReason string `json:"closeWithStateReason,omitempty"`
+	// Comment, when not blank, is added to the created issue as a Markdown comment.
+	Comment string `json:"comment,omitempty"`
+	// RelabelWith, when not empty, replaces the created issue's labels with these names.
+	RelabelWith []string `json:"relabelWith,omitempty"`
 }
 
 // CloseIssueRequest is the durable input of closing the created issue.
@@ -80,10 +91,12 @@ type Report struct {
 	Status             Status `json:"status"`
 	OpenIssuePagesRead int    `json:"openIssuePagesRead"`
 	// HasUncheckedOpenIssues reports that open issues beyond MaxOpenIssuePages were not checked.
-	HasUncheckedOpenIssues bool                      `json:"hasUncheckedOpenIssues"`
-	ExistingIssue          *github.Issue             `json:"existingIssue,omitempty"`
-	CreatedIssue           *github.CreatedIssue      `json:"createdIssue,omitempty"`
-	ClosedIssue            *github.UpdatedIssueState `json:"closedIssue,omitempty"`
+	HasUncheckedOpenIssues bool                        `json:"hasUncheckedOpenIssues"`
+	ExistingIssue          *github.Issue               `json:"existingIssue,omitempty"`
+	CreatedIssue           *github.CreatedIssue        `json:"createdIssue,omitempty"`
+	ClosedIssue            *github.UpdatedIssueState   `json:"closedIssue,omitempty"`
+	IssueComment           *github.CreatedIssueComment `json:"issueComment,omitempty"`
+	RelabeledIssue         *github.ReplacedIssueLabels `json:"relabeledIssue,omitempty"`
 }
 
 type Flow struct {
@@ -129,6 +142,26 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Created: sdkgo.GoTo(completeIssueFiling{}),
 		})),
 		dex.DefineStep(completeIssueFiling{}),
+		dex.DefineStep(github.NewCreateIssueCommentStep(github.CreateIssueCommentStepConfig[github.CreateIssueCommentInput]{
+			StepType: commentOnIssueStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "issue-comment", GroupLabel: "Issue comment", Explanation: "Comment on the created issue once, reading back a retried send instead of posting a duplicate."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input github.CreateIssueCommentInput) github.CreateIssueCommentInput {
+				return input
+			},
+			Created: sdkgo.GoTo(recordIssueComment{}),
+		})),
+		dex.DefineStep(recordIssueComment{}),
+		dex.DefineStep(github.NewReplaceIssueLabelsStep(github.ReplaceIssueLabelsStepConfig[github.ReplaceIssueLabelsInput]{
+			StepType: relabelIssueStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "issue-labels", GroupLabel: "Issue labels", Explanation: "Replace the created issue's labels; a repeat sends the same full set again."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input github.ReplaceIssueLabelsInput) github.ReplaceIssueLabelsInput {
+				return input
+			},
+			Replaced: sdkgo.GoTo(recordIssueLabels{}),
+		})),
+		dex.DefineStep(recordIssueLabels{}),
 		dex.DefineStep(github.NewSetIssueStateStep(github.SetIssueStateStepConfig[CloseIssueRequest]{
 			StepType: closeIssueStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "issue-closing", GroupLabel: "Issue closing", Explanation: "Close the created issue with the requested reason; a repeat sets the same state again."},
@@ -244,7 +277,7 @@ func (recordOpenIssues) Execute(ctx dex.Context, result github.ListIssuesResult)
 }
 
 // dex:group group-id:issue-creation group-label:"Issue creation"
-// dex:explanation text:"Record the created issue, then complete the filing or close the issue when requested."
+// dex:explanation text:"Record the created issue, then complete the filing or start its requested follow-up."
 type completeIssueFiling struct {
 	dex.StepDefaultsNoWaitFor[github.CreateIssueResult]
 }
@@ -258,18 +291,75 @@ func (completeIssueFiling) Execute(ctx dex.Context, result github.CreateIssueRes
 	}
 	created := result.Value
 	report.CreatedIssue, report.Status = &created, StatusCreated
-	if report.Input.CloseWithStateReason != "" {
-		report.Status = StatusClosingIssue
-		if err := reportAttribute.Set(ctx, report); err != nil {
-			return nil, err
-		}
-		return dex.GoTo(sdkgo.StepRef[CloseIssueRequest](closeIssueStepType), CloseIssueRequest{
-			Owner: report.Input.Owner, Repository: report.Input.Repository, IssueNumber: created.Number,
-			StateReason: report.Input.CloseWithStateReason,
-		}), nil
-	}
+	followUp := nextIssueFollowUp(report)
+	report.Status = followUp.status
 	if err := reportAttribute.Set(ctx, report); err != nil {
 		return nil, err
+	}
+	switch followUp.kind {
+	case issueFollowUpComment:
+		return dex.GoTo(sdkgo.StepRef[github.CreateIssueCommentInput](commentOnIssueStepType), issueCommentInput(report)), nil
+	case issueFollowUpRelabel:
+		return dex.GoTo(sdkgo.StepRef[github.ReplaceIssueLabelsInput](relabelIssueStepType), issueLabelsInput(report)), nil
+	case issueFollowUpClose:
+		return dex.GoTo(sdkgo.StepRef[CloseIssueRequest](closeIssueStepType), closeIssueRequest(report)), nil
+	default:
+		return dex.GracefulComplete(report), nil
+	}
+}
+
+// dex:group group-id:issue-comment group-label:"Issue comment"
+// dex:explanation text:"Record the comment, then relabel or close the issue when requested, or complete the filing."
+type recordIssueComment struct {
+	dex.StepDefaultsNoWaitFor[github.CreateIssueCommentResult]
+}
+
+func (recordIssueComment) GetStepType() string { return recordIssueCommentStepType }
+
+func (recordIssueComment) Execute(ctx dex.Context, result github.CreateIssueCommentResult) (*dex.StepDecision, error) {
+	report, err := reportAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	comment := result.Value
+	report.IssueComment = &comment
+	followUp := nextIssueFollowUp(report)
+	report.Status = followUp.status
+	if err := reportAttribute.Set(ctx, report); err != nil {
+		return nil, err
+	}
+	switch followUp.kind {
+	case issueFollowUpRelabel:
+		return dex.GoTo(sdkgo.StepRef[github.ReplaceIssueLabelsInput](relabelIssueStepType), issueLabelsInput(report)), nil
+	case issueFollowUpClose:
+		return dex.GoTo(sdkgo.StepRef[CloseIssueRequest](closeIssueStepType), closeIssueRequest(report)), nil
+	default:
+		return dex.GracefulComplete(report), nil
+	}
+}
+
+// dex:group group-id:issue-labels group-label:"Issue labels"
+// dex:explanation text:"Record the replaced labels, then close the issue when requested or complete the filing."
+type recordIssueLabels struct {
+	dex.StepDefaultsNoWaitFor[github.ReplaceIssueLabelsResult]
+}
+
+func (recordIssueLabels) GetStepType() string { return recordIssueLabelsStepType }
+
+func (recordIssueLabels) Execute(ctx dex.Context, result github.ReplaceIssueLabelsResult) (*dex.StepDecision, error) {
+	report, err := reportAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	relabeled := result.Value
+	report.RelabeledIssue = &relabeled
+	followUp := nextIssueFollowUp(report)
+	report.Status = followUp.status
+	if err := reportAttribute.Set(ctx, report); err != nil {
+		return nil, err
+	}
+	if followUp.kind == issueFollowUpClose {
+		return dex.GoTo(sdkgo.StepRef[CloseIssueRequest](closeIssueStepType), closeIssueRequest(report)), nil
 	}
 	return dex.GracefulComplete(report), nil
 }
@@ -293,6 +383,55 @@ func (recordClosedIssue) Execute(ctx dex.Context, result github.SetIssueStateRes
 		return nil, err
 	}
 	return dex.GracefulComplete(report), nil
+}
+
+type issueFollowUpKind uint8
+
+const (
+	issueFollowUpNone issueFollowUpKind = iota
+	issueFollowUpComment
+	issueFollowUpRelabel
+	issueFollowUpClose
+)
+
+// issueFollowUp is the next requested follow-up on the created issue and the report status it sets.
+type issueFollowUp struct {
+	kind   issueFollowUpKind
+	status Status
+}
+
+// nextIssueFollowUp picks the first follow-up still to run, in order: comment, relabel, then close.
+func nextIssueFollowUp(report Report) issueFollowUp {
+	input := report.Input
+	switch {
+	case strings.TrimSpace(input.Comment) != "" && report.IssueComment == nil:
+		return issueFollowUp{kind: issueFollowUpComment, status: StatusCommentingOnIssue}
+	case len(input.RelabelWith) > 0 && report.RelabeledIssue == nil:
+		return issueFollowUp{kind: issueFollowUpRelabel, status: StatusRelabelingIssue}
+	case input.CloseWithStateReason != "":
+		return issueFollowUp{kind: issueFollowUpClose, status: StatusClosingIssue}
+	default:
+		return issueFollowUp{kind: issueFollowUpNone, status: StatusCreated}
+	}
+}
+
+func issueCommentInput(report Report) github.CreateIssueCommentInput {
+	return github.CreateIssueCommentInput{
+		Owner: report.Input.Owner, Repository: report.Input.Repository, IssueNumber: report.CreatedIssue.Number, Body: report.Input.Comment,
+	}
+}
+
+func issueLabelsInput(report Report) github.ReplaceIssueLabelsInput {
+	return github.ReplaceIssueLabelsInput{
+		Owner: report.Input.Owner, Repository: report.Input.Repository, IssueNumber: report.CreatedIssue.Number, Labels: report.Input.RelabelWith,
+	}
+}
+
+func closeIssueRequest(report Report) CloseIssueRequest {
+	return CloseIssueRequest{
+		Owner: report.Input.Owner, Repository: report.Input.Repository, IssueNumber: report.CreatedIssue.Number,
+		StateReason: report.Input.CloseWithStateReason,
+	}
 }
 
 func openIssuePageRequest(input Input, page int) OpenIssuePageRequest {

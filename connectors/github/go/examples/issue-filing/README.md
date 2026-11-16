@@ -8,8 +8,12 @@ open issue with the same title is already tracked:
 2. `recordOpenIssues` completes the Flow with the existing issue when a title
    matches, ignoring case and surrounding whitespace; and
 3. `CreateIssue` creates the issue once, then the Flow completes with its
-   number, node ID, and URL; and
-4. when the input sets `closeWithStateReason` to `completed` or `not_planned`,
+   number, node ID, and URL, unless the input asks for follow-ups;
+4. when the input sets `comment`, `CommentOnIssue` adds it to the created issue
+   once, reading back a retried send instead of posting a duplicate;
+5. when the input sets `relabelWith`, `RelabelIssue` replaces the created
+   issue's labels with those names; and
+6. when the input sets `closeWithStateReason` to `completed` or `not_planned`,
    `CloseIssue` closes the created issue with that reason, filing a problem
    that is already resolved, and the Flow completes as `closed`. Any other
    nonempty reason fails the Flow before GitHub is called.
@@ -19,14 +23,15 @@ and the existing or created issue, because a Connector branch target receives
 only the current operation Result. The summary and display RPCs read it for
 Dex Web.
 
-The example wires only the `listed`, `created`, and `updated` branches. An unwired optional
+The example wires only the `listed`, `created`, `replaced`, and `updated` branches. An unwired optional
 branch fails the Flow, such as `insufficientScope` on a connection that does not
 use the `github-oauth-repository` method, or `uncertain` when every allowed
 send ended without a confirmed issue. `CreateIssue` never files a duplicate when
 its Step retries: a retry first reads the saved issue number, or lists the
 newest issues the connection's account created and matches the hidden marker in
-their bodies, and sends again only while the send cap allows. `CloseIssue` sets an
-absolute state, so a retried Step sends the same update again. The title check
+their bodies, and sends again only while the send cap allows. `CommentOnIssue` follows the same read-back
+rule for comments. `RelabelIssue` and `CloseIssue` set an absolute label set
+and state, so a retried Step sends the same update again. The title check
 covers the first 300 open issues with the labels; `hasUncheckedOpenIssues`
 reports more.
 
@@ -105,7 +110,8 @@ organization owner approves the app under the organization's **Settings** >
 ## 4. Configure the connection in Dex Web
 
 Open **Connections** and select `github / github-issue-filing`. It lists the
-`listIssues`, `createIssue`, and `setIssueState` uses. Choose the **GitHub OAuth, repository
+`listIssues`, `createIssue`, `createIssueComment`, `replaceIssueLabels`, and
+`setIssueState` uses. Choose the **GitHub OAuth, repository
 issues** method, enter the OAuth client ID and secret, leave the configuration
 defaults, and choose **Authorize**. Approve the `repo` scope on GitHub. After
 GitHub returns to Dex Web, the connection status should be **Ready**. The
@@ -147,9 +153,10 @@ a repository the authorizing account can write issues in:
 Open the run and follow it to **Completed**. The display shows `created` with
 the new issue's number and URL. Start the Flow again with a new Flow ID and the
 same input: it completes as `alreadyTracked` with the same issue and creates
-nothing. Start a third run with a new title and `"closeWithStateReason":
-"not_planned"`: it completes as `closed`, and the new issue is closed on GitHub
-as not planned. Close the first test issue on GitHub afterwards.
+nothing. Start a third run with a new title, `"comment": "Fixed in the
+latest build."`, `"relabelWith": ["bug", "fixed"]`, and `"closeWithStateReason":
+"completed"`: it completes as `closed`, and the new issue carries the comment
+and the two labels and is closed as completed. Close the first test issue on GitHub afterwards.
 
 ## Verify from the repository
 
@@ -168,10 +175,14 @@ whose Step retry reads the issue back instead of sending again, a create that
 GitHub never stored whose retry reads back and then sends once more, a Flow
 failure without any create on a `github-oauth` connection, a created issue that
 the Flow closes as not planned after a `502` close whose Step retry sends the
-same state again, and a reopen reason that fails the Flow before any request. A mock test runs
+same state again, a reopen reason that fails the Flow before any request, and
+a comment, relabel, and close of the filed issue where GitHub stores the comment
+but answers `502` and the first read-back fails, so the Step retry reads the
+comment back from the newest page and posts nothing again. A mock test runs
 the same Flow on a `githubmock` connection through all three default issue
 pages, an already tracked title, a created issue that the default
-`setIssueState` mock closes, and a scripted `uncertain` create that fails the
+`setIssueState` mock closes, a created issue that the default comment and label
+mocks follow up, and a scripted `uncertain` create that fails the
 Flow.
 
 Before `v0.25.0` is published, build a local release artifact from the

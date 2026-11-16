@@ -331,6 +331,16 @@ func (client *Client) SetIssueState() SetIssueStateOperation {
 	return SetIssueStateOperation{client: client}
 }
 
+// ReplaceIssueLabels returns the issue label replacement Mutation bound to this client.
+func (client *Client) ReplaceIssueLabels() ReplaceIssueLabelsOperation {
+	return ReplaceIssueLabelsOperation{client: client}
+}
+
+// CreateIssueComment returns the fenced issue comment creation Mutation bound to this client.
+func (client *Client) CreateIssueComment() CreateIssueCommentOperation {
+	return CreateIssueCommentOperation{client: client}
+}
+
 // Definition returns the immutable connector operation definition.
 func (GetAuthenticatedProfileOperation) Definition() sdkgo.QueryDefinition {
 	return GetAuthenticatedProfileDefinition

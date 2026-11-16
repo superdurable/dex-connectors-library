@@ -27,6 +27,8 @@ type Mock struct {
 	listIssues              *connectormock.Query[github.ListIssuesInput, github.IssuePage]
 	createIssue             *connectormock.Mutation[github.CreateIssueInput, github.CreatedIssue]
 	setIssueState           *connectormock.Mutation[github.SetIssueStateInput, github.UpdatedIssueState]
+	replaceIssueLabels      *connectormock.Mutation[github.ReplaceIssueLabelsInput, github.ReplacedIssueLabels]
+	createIssueComment      *connectormock.Mutation[github.CreateIssueCommentInput, github.CreatedIssueComment]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -43,6 +45,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		listIssues:              connectormock.NewQuery[github.ListIssuesInput, github.IssuePage](t, github.ListIssuesDefinition),
 		createIssue:             connectormock.NewMutation[github.CreateIssueInput, github.CreatedIssue](t, github.CreateIssueDefinition),
 		setIssueState:           connectormock.NewMutation[github.SetIssueStateInput, github.UpdatedIssueState](t, github.SetIssueStateDefinition),
+		replaceIssueLabels:      connectormock.NewMutation[github.ReplaceIssueLabelsInput, github.ReplacedIssueLabels](t, github.ReplaceIssueLabelsDefinition),
+		createIssueComment:      connectormock.NewMutation[github.CreateIssueCommentInput, github.CreatedIssueComment](t, github.CreateIssueCommentDefinition),
 	}
 	mock.getAuthenticatedProfile.Default(GetAuthenticatedProfileDefault())
 	mock.listPublicRepositories.Default(ListPublicRepositoriesDefault())
@@ -53,6 +57,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listIssues.Default(ListIssuesDefault())
 	mock.createIssue.Default(CreateIssueDefault())
 	mock.setIssueState.Default(SetIssueStateDefault())
+	mock.replaceIssueLabels.Default(ReplaceIssueLabelsDefault())
+	mock.createIssueComment.Default(CreateIssueCommentDefault())
 	connection, err := github.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "github", Name: connectionName})
 	if err != nil {
 		t.Fatalf("github mock connection: %v", err)
@@ -109,6 +115,16 @@ func (mock *Mock) SetIssueState() *connectormock.Mutation[github.SetIssueStateIn
 	return mock.setIssueState
 }
 
+// ReplaceIssueLabels returns the replaceIssueLabels script.
+func (mock *Mock) ReplaceIssueLabels() *connectormock.Mutation[github.ReplaceIssueLabelsInput, github.ReplacedIssueLabels] {
+	return mock.replaceIssueLabels
+}
+
+// CreateIssueComment returns the createIssueComment script.
+func (mock *Mock) CreateIssueComment() *connectormock.Mutation[github.CreateIssueCommentInput, github.CreatedIssueComment] {
+	return mock.createIssueComment
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetAuthenticatedProfile() sdkgo.Query[github.GetAuthenticatedProfileInput, github.AuthenticatedProfile] {
@@ -137,6 +153,12 @@ func (operations mockOperations) CreateIssue() sdkgo.Mutation[github.CreateIssue
 }
 func (operations mockOperations) SetIssueState() sdkgo.Mutation[github.SetIssueStateInput, github.UpdatedIssueState] {
 	return operations.mock.setIssueState
+}
+func (operations mockOperations) ReplaceIssueLabels() sdkgo.Mutation[github.ReplaceIssueLabelsInput, github.ReplacedIssueLabels] {
+	return operations.mock.replaceIssueLabels
+}
+func (operations mockOperations) CreateIssueComment() sdkgo.Mutation[github.CreateIssueCommentInput, github.CreatedIssueComment] {
+	return operations.mock.createIssueComment
 }
 
 // GetAuthenticatedProfileProfileLoaded selects the profileLoaded branch: The authenticated profile and primary verified email were loaded.
@@ -1043,4 +1065,194 @@ func SetIssueStateDefectFailure() connectormock.Case[github.UpdatedIssueState] {
 // SetIssueStateDefault is the manifest default, closedCompleted, which New installs.
 func SetIssueStateDefault() connectormock.Case[github.UpdatedIssueState] {
 	return SetIssueStateClosedCompleted()
+}
+
+// ReplaceIssueLabelsReplaced selects the replaced branch: The issue now carries exactly the requested labels, as GitHub reported them.
+func ReplaceIssueLabelsReplaced(value github.ReplacedIssueLabels, failure *sdkgo.Failure) connectormock.Case[github.ReplacedIssueLabels] {
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchReplaced, value, failure)
+}
+
+// ReplaceIssueLabelsInsufficientScope selects the insufficientScope branch: The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, an account without push access, or an organization's OAuth App restriction; the labels are unchanged.
+func ReplaceIssueLabelsInsufficientScope(value github.ReplacedIssueLabels, failure *sdkgo.Failure) connectormock.Case[github.ReplacedIssueLabels] {
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchInsufficientScope, value, failure)
+}
+
+// ReplaceIssueLabelsAuthorizationRevoked selects the authorizationRevoked branch: The OAuth grant is invalid or revoked; the labels are unchanged.
+func ReplaceIssueLabelsAuthorizationRevoked(value github.ReplacedIssueLabels, failure *sdkgo.Failure) connectormock.Case[github.ReplacedIssueLabels] {
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchAuthorizationRevoked, value, failure)
+}
+
+// ReplaceIssueLabelsNotFound selects the notFound branch: The repository or issue was not found, or the connection cannot reach it; nothing was changed.
+func ReplaceIssueLabelsNotFound(value github.ReplacedIssueLabels, failure *sdkgo.Failure) connectormock.Case[github.ReplacedIssueLabels] {
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchNotFound, value, failure)
+}
+
+// ReplaceIssueLabelsProviderRejected selects the providerRejected branch: GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged.
+func ReplaceIssueLabelsProviderRejected(value github.ReplacedIssueLabels, failure *sdkgo.Failure) connectormock.Case[github.ReplacedIssueLabels] {
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchProviderRejected, value, failure)
+}
+
+// ReplaceIssueLabelsInvalidResponse selects the invalidResponse branch: GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed.
+func ReplaceIssueLabelsInvalidResponse(value github.ReplacedIssueLabels, failure *sdkgo.Failure) connectormock.Case[github.ReplacedIssueLabels] {
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchInvalidResponse, value, failure)
+}
+
+// ReplaceIssueLabelsDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func ReplaceIssueLabelsDefect(value github.ReplacedIssueLabels, failure *sdkgo.Failure) connectormock.Case[github.ReplacedIssueLabels] {
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchDefect, value, failure)
+}
+
+// ReplaceIssueLabelsRetry asks Dex to retry the replaceIssueLabels Step, after the delay when it is positive.
+func ReplaceIssueLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[github.ReplacedIssueLabels] {
+	return connectormock.Retry[github.ReplacedIssueLabels](failure, after)
+}
+
+// ReplaceIssueLabelsTriagedLabels is the manifest mock triagedLabels: GitHub replaces the issue's labels with bug and triaged.
+func ReplaceIssueLabelsTriagedLabels() connectormock.Case[github.ReplacedIssueLabels] {
+	value := connectormock.MustDecodeOutput[github.ReplacedIssueLabels](`{"number":42,"labels":["bug","triaged"],"url":"https://github.com/octocat/hello-world/issues/42"}`)
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchReplaced, value, nil)
+}
+
+// ReplaceIssueLabelsLabelsCleared is the manifest mock labelsCleared: GitHub removes every label from the issue.
+func ReplaceIssueLabelsLabelsCleared() connectormock.Case[github.ReplacedIssueLabels] {
+	value := connectormock.MustDecodeOutput[github.ReplacedIssueLabels](`{"number":42,"labels":[],"url":"https://github.com/octocat/hello-world/issues/42"}`)
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchReplaced, value, nil)
+}
+
+// ReplaceIssueLabelsRateLimited is the manifest mock rateLimited: GitHub's secondary rate limit refuses the replacement once, so it is sent again after the delay.
+func ReplaceIssueLabelsRateLimited() connectormock.Case[github.ReplacedIssueLabels] {
+	return connectormock.Retry[github.ReplacedIssueLabels](sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "GitHub rate limit was reached."}, time.Duration(1000000000))
+}
+
+// ReplaceIssueLabelsInsufficientScopeFailure is the manifest mock insufficientScopeFailure: The connection does not use the github-oauth-repository method.
+func ReplaceIssueLabelsInsufficientScopeFailure() connectormock.Case[github.ReplacedIssueLabels] {
+	value := connectormock.MustDecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchInsufficientScope, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "The connection does not use the github-oauth-repository method."})
+}
+
+// ReplaceIssueLabelsAuthorizationRevokedFailure is the manifest mock authorizationRevokedFailure: The OAuth grant is invalid or revoked.
+func ReplaceIssueLabelsAuthorizationRevokedFailure() connectormock.Case[github.ReplacedIssueLabels] {
+	value := connectormock.MustDecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchAuthorizationRevoked, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "The OAuth grant is invalid or revoked."})
+}
+
+// ReplaceIssueLabelsNotFoundFailure is the manifest mock notFoundFailure: The repository or issue was not found or the connection cannot reach it.
+func ReplaceIssueLabelsNotFoundFailure() connectormock.Case[github.ReplacedIssueLabels] {
+	value := connectormock.MustDecodeOutput[github.ReplacedIssueLabels](`{"number":4242}`)
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The repository or issue was not found or the connection cannot reach it."})
+}
+
+// ReplaceIssueLabelsInvalidLabelRejection is the manifest mock invalidLabelRejection: GitHub rejects the replacement because a label name is invalid.
+func ReplaceIssueLabelsInvalidLabelRejection() connectormock.Case[github.ReplacedIssueLabels] {
+	value := connectormock.MustDecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "GitHub rejected the issue labels with HTTP 422."})
+}
+
+// ReplaceIssueLabelsInvalidResponseFailure is the manifest mock invalidResponseFailure: GitHub returned an invalid or oversized label list.
+func ReplaceIssueLabelsInvalidResponseFailure() connectormock.Case[github.ReplacedIssueLabels] {
+	value := connectormock.MustDecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "GitHub returned an invalid label list."})
+}
+
+// ReplaceIssueLabelsDefectFailure is the manifest mock defectFailure: A label name is empty, so no request is sent.
+func ReplaceIssueLabelsDefectFailure() connectormock.Case[github.ReplacedIssueLabels] {
+	value := connectormock.MustDecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+	return connectormock.Branch(github.ReplaceIssueLabelsBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "GitHub issue labels must be one line of 1 through 50 characters."})
+}
+
+// ReplaceIssueLabelsDefault is the manifest default, triagedLabels, which New installs.
+func ReplaceIssueLabelsDefault() connectormock.Case[github.ReplacedIssueLabels] {
+	return ReplaceIssueLabelsTriagedLabels()
+}
+
+// CreateIssueCommentCreated selects the created branch: GitHub created the comment, or an earlier attempt of this Step already had and read-back found it.
+func CreateIssueCommentCreated(value github.CreatedIssueComment, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssueComment] {
+	return connectormock.Branch(github.CreateIssueCommentBranchCreated, value, failure)
+}
+
+// CreateIssueCommentInsufficientScope selects the insufficientScope branch: The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, a locked issue, or an organization's OAuth App restriction; nothing was created.
+func CreateIssueCommentInsufficientScope(value github.CreatedIssueComment, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssueComment] {
+	return connectormock.Branch(github.CreateIssueCommentBranchInsufficientScope, value, failure)
+}
+
+// CreateIssueCommentAuthorizationRevoked selects the authorizationRevoked branch: The OAuth grant is invalid or revoked; nothing was created.
+func CreateIssueCommentAuthorizationRevoked(value github.CreatedIssueComment, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssueComment] {
+	return connectormock.Branch(github.CreateIssueCommentBranchAuthorizationRevoked, value, failure)
+}
+
+// CreateIssueCommentNotFound selects the notFound branch: The repository or issue was not found or the connection cannot reach it; nothing was created.
+func CreateIssueCommentNotFound(value github.CreatedIssueComment, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssueComment] {
+	return connectormock.Branch(github.CreateIssueCommentBranchNotFound, value, failure)
+}
+
+// CreateIssueCommentProviderRejected selects the providerRejected branch: GitHub conclusively rejected the comment, such as an issue that was deleted or a body GitHub refuses; nothing was created.
+func CreateIssueCommentProviderRejected(value github.CreatedIssueComment, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssueComment] {
+	return connectormock.Branch(github.CreateIssueCommentBranchProviderRejected, value, failure)
+}
+
+// CreateIssueCommentUncertain returns an uncertain createIssueComment outcome.
+func CreateIssueCommentUncertain(value github.CreatedIssueComment, failure sdkgo.Failure) connectormock.Case[github.CreatedIssueComment] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateIssueCommentDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func CreateIssueCommentDefect(value github.CreatedIssueComment, failure *sdkgo.Failure) connectormock.Case[github.CreatedIssueComment] {
+	return connectormock.Branch(github.CreateIssueCommentBranchDefect, value, failure)
+}
+
+// CreateIssueCommentRetry asks Dex to retry the createIssueComment Step, after the delay when it is positive.
+func CreateIssueCommentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[github.CreatedIssueComment] {
+	return connectormock.Retry[github.CreatedIssueComment](failure, after)
+}
+
+// CreateIssueCommentTriageNoteCreated is the manifest mock triageNoteCreated: GitHub creates a triage note on the issue.
+func CreateIssueCommentTriageNoteCreated() connectormock.Case[github.CreatedIssueComment] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssueComment](`{"issueNumber":42,"commentId":1987654321,"url":"https://github.com/octocat/hello-world/issues/42#issuecomment-1987654321","createdAt":"2026-03-07T10:20:00Z"}`)
+	return connectormock.Branch(github.CreateIssueCommentBranchCreated, value, nil)
+}
+
+// CreateIssueCommentRateLimited is the manifest mock rateLimited: GitHub's secondary rate limit refuses the comment once, so it is sent again after the delay.
+func CreateIssueCommentRateLimited() connectormock.Case[github.CreatedIssueComment] {
+	return connectormock.Retry[github.CreatedIssueComment](sdkgo.Failure{Kind: sdkgo.FailureRateLimit, Message: "GitHub rate limit was reached."}, time.Duration(1000000000))
+}
+
+// CreateIssueCommentInsufficientScopeFailure is the manifest mock insufficientScopeFailure: The connection does not use the github-oauth-repository method.
+func CreateIssueCommentInsufficientScopeFailure() connectormock.Case[github.CreatedIssueComment] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+	return connectormock.Branch(github.CreateIssueCommentBranchInsufficientScope, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "The connection does not use the github-oauth-repository method."})
+}
+
+// CreateIssueCommentAuthorizationRevokedFailure is the manifest mock authorizationRevokedFailure: The OAuth grant is invalid or revoked.
+func CreateIssueCommentAuthorizationRevokedFailure() connectormock.Case[github.CreatedIssueComment] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+	return connectormock.Branch(github.CreateIssueCommentBranchAuthorizationRevoked, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "The OAuth grant is invalid or revoked."})
+}
+
+// CreateIssueCommentNotFoundFailure is the manifest mock notFoundFailure: The repository or issue was not found or the connection cannot reach it.
+func CreateIssueCommentNotFoundFailure() connectormock.Case[github.CreatedIssueComment] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssueComment](`{"issueNumber":4242}`)
+	return connectormock.Branch(github.CreateIssueCommentBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "The repository or issue was not found or the connection cannot reach it."})
+}
+
+// CreateIssueCommentIssueDeletedRejection is the manifest mock issueDeletedRejection: GitHub rejects the comment because the issue was deleted.
+func CreateIssueCommentIssueDeletedRejection() connectormock.Case[github.CreatedIssueComment] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+	return connectormock.Branch(github.CreateIssueCommentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "GitHub rejected the comment with HTTP 410."})
+}
+
+// CreateIssueCommentCommentOutcomeUnknown is the manifest mock commentOutcomeUnknown: Every possible send ended without a confirmed comment, so read-back could not find the marked comment.
+func CreateIssueCommentCommentOutcomeUnknown() connectormock.Case[github.CreatedIssueComment] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+	return connectormock.Uncertain(value, sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "GitHub comment creation outcome is unknown."})
+}
+
+// CreateIssueCommentDefectFailure is the manifest mock defectFailure: The comment body is empty, so no request is sent.
+func CreateIssueCommentDefectFailure() connectormock.Case[github.CreatedIssueComment] {
+	value := connectormock.MustDecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+	return connectormock.Branch(github.CreateIssueCommentBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "GitHub comment body is required."})
+}
+
+// CreateIssueCommentDefault is the manifest default, triageNoteCreated, which New installs.
+func CreateIssueCommentDefault() connectormock.Case[github.CreatedIssueComment] {
+	return CreateIssueCommentTriageNoteCreated()
 }

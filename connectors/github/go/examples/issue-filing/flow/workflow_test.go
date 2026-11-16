@@ -17,10 +17,12 @@ func TestRegisteredTypesMatchTheFlowDefinitionGraph(t *testing.T) {
 		t.Fatalf("Flow type = %q", flowType)
 	}
 	for got, want := range map[string]string{
-		dex.GetFinalStepType[Input](startIssueFiling{}):                       "startIssueFiling",
-		dex.GetFinalStepType[github.ListIssuesResult](recordOpenIssues{}):     "recordOpenIssues",
-		dex.GetFinalStepType[github.CreateIssueResult](completeIssueFiling{}): "completeIssueFiling",
-		dex.GetFinalStepType[github.SetIssueStateResult](recordClosedIssue{}): "recordClosedIssue",
+		dex.GetFinalStepType[Input](startIssueFiling{}):                             "startIssueFiling",
+		dex.GetFinalStepType[github.ListIssuesResult](recordOpenIssues{}):           "recordOpenIssues",
+		dex.GetFinalStepType[github.CreateIssueResult](completeIssueFiling{}):       "completeIssueFiling",
+		dex.GetFinalStepType[github.SetIssueStateResult](recordClosedIssue{}):       "recordClosedIssue",
+		dex.GetFinalStepType[github.CreateIssueCommentResult](recordIssueComment{}): "recordIssueComment",
+		dex.GetFinalStepType[github.ReplaceIssueLabelsResult](recordIssueLabels{}):  "recordIssueLabels",
 	} {
 		if got != want {
 			t.Fatalf("Step type = %q, want %q", got, want)

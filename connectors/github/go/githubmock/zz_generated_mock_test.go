@@ -168,6 +168,66 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[github.UpdatedIssueState](`{"number":42}`)
 			return err
 		}},
+		{name: "replaceIssueLabels/triagedLabels/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.ReplacedIssueLabels](`{"number":42,"labels":["bug","triaged"],"url":"https://github.com/octocat/hello-world/issues/42"}`)
+			return err
+		}},
+		{name: "replaceIssueLabels/labelsCleared/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.ReplacedIssueLabels](`{"number":42,"labels":[],"url":"https://github.com/octocat/hello-world/issues/42"}`)
+			return err
+		}},
+		{name: "replaceIssueLabels/insufficientScopeFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+			return err
+		}},
+		{name: "replaceIssueLabels/authorizationRevokedFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+			return err
+		}},
+		{name: "replaceIssueLabels/notFoundFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.ReplacedIssueLabels](`{"number":4242}`)
+			return err
+		}},
+		{name: "replaceIssueLabels/invalidLabelRejection/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+			return err
+		}},
+		{name: "replaceIssueLabels/invalidResponseFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+			return err
+		}},
+		{name: "replaceIssueLabels/defectFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.ReplacedIssueLabels](`{"number":42}`)
+			return err
+		}},
+		{name: "createIssueComment/triageNoteCreated/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssueComment](`{"issueNumber":42,"commentId":1987654321,"url":"https://github.com/octocat/hello-world/issues/42#issuecomment-1987654321","createdAt":"2026-03-07T10:20:00Z"}`)
+			return err
+		}},
+		{name: "createIssueComment/insufficientScopeFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+			return err
+		}},
+		{name: "createIssueComment/authorizationRevokedFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+			return err
+		}},
+		{name: "createIssueComment/notFoundFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssueComment](`{"issueNumber":4242}`)
+			return err
+		}},
+		{name: "createIssueComment/issueDeletedRejection/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+			return err
+		}},
+		{name: "createIssueComment/commentOutcomeUnknown/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+			return err
+		}},
+		{name: "createIssueComment/defectFailure/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[github.CreatedIssueComment](`{"issueNumber":42}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -204,5 +264,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SetIssueState().Definition().Operation.OperationID != "setIssueState" {
 		t.Errorf("setIssueState mock has another definition")
+	}
+	if mock.ReplaceIssueLabels().Definition().Operation.OperationID != "replaceIssueLabels" {
+		t.Errorf("replaceIssueLabels mock has another definition")
+	}
+	if mock.CreateIssueComment().Definition().Operation.OperationID != "createIssueComment" {
+		t.Errorf("createIssueComment mock has another definition")
 	}
 }

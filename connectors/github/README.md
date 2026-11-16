@@ -19,10 +19,12 @@ Dex Query Step factories for:
 - `ListIssues`: one page of a repository's issues, newest created first,
   filtered by state, labels, creator, and last update.
 
-It also exposes two Mutation Step factories: `CreateIssue`, which creates one
-issue in a public or private repository without filing a duplicate when a Step
-retries, and `SetIssueState`, which closes or reopens one existing issue. See
-[Repository issues](#repository-issues).
+It also exposes four issue Mutation Step factories: `CreateIssue`, which
+creates one issue in a public or private repository without filing a duplicate
+when a Step retries; `SetIssueState`, which closes or reopens one existing
+issue; `ReplaceIssueLabels`, which replaces an issue's labels; and
+`CreateIssueComment`, which comments on an issue without posting a duplicate
+when a Step retries. See [Repository issues](#repository-issues).
 
 ## Authorization methods
 
@@ -31,15 +33,16 @@ A connection selects one of two OAuth methods in Dex Web **Connections**:
 | Method | Requested scopes | Operations |
 | --- | --- | --- |
 | `github-oauth`, the default and recommended | `read:user user:email offline_access` | every Query; `listIssues` reads public repositories only |
-| `github-oauth-repository` | `repo offline_access` | `createIssue`, `setIssueState`, and `listIssues` in public and private repositories |
+| `github-oauth-repository` | `repo offline_access` | `createIssue`, `setIssueState`, `replaceIssueLabels`, `createIssueComment`, and `listIssues` in public and private repositories |
 
 Each operation compares GitHub's `X-OAuth-Scopes` response header with the
 exact scopes of the connection's method and selects `insufficientScope` for any
 other grant. The profile, public repository, change, and release queries keep
 their public-only guarantee, so they select `insufficientScope` on a
 `github-oauth-repository` connection; an application that also needs them uses
-a second connection with the default method. `createIssue` and `setIssueState`
-select `insufficientScope` on a `github-oauth` connection without calling GitHub.
+a second connection with the default method. The issue writes, `createIssue`,
+`setIssueState`, `replaceIssueLabels`, and `createIssueComment`, select
+`insufficientScope` on a `github-oauth` connection without calling GitHub.
 Credentials saved before this release have no method and use `github-oauth`,
 so existing connections keep working without reauthorization.
 
@@ -301,9 +304,58 @@ select `providerRejected`. A `2xx` whose issue is not the requested number in
 the requested state, such as a transferred issue whose redirect was read
 instead of updated, selects `invalidResponse`.
 
+`replaceIssueLabels` calls GitHub's [Set labels for an issue
+API](https://docs.github.com/en/rest/issues/labels#set-labels-for-an-issue)
+with one `PUT` of the complete label set, on a `github-oauth-repository`
+connection. It accepts `Owner`, `Repository`, a positive `IssueNumber`, and up
+to 100 `Labels` of 1 to 50 characters; an empty list removes every label, and
+GitHub creates a named label the repository lacks. The `replaced` result,
+`ReplacedIssueLabels`, carries `Number`, the `Labels` GitHub reports, and the
+issue's web `URL`, derived from the configured base URL for GitHub.com or a
+GitHub Enterprise Server `/api/v3` URL and empty for any other base URL. Every
+other branch echoes only `Number`. Replacing the full set is safe to repeat, so
+the operation declares `repeatOnUnknown: safe` and classifies answers like
+`setIssueState`; a `2xx` without a label list selects `invalidResponse`.
+
+`createIssueComment` calls GitHub's [Create an issue comment
+API](https://docs.github.com/en/rest/issues/comments#create-an-issue-comment)
+on a `github-oauth-repository` connection. It accepts `Owner`, `Repository`, a
+positive `IssueNumber`, and a nonblank Markdown `Body`. The `created` result,
+`CreatedIssueComment`, carries `CommentID`, `URL`, and `CreatedAt`; every
+branch echoes `IssueNumber`.
+
+```go
+		dex.DefineStep(github.NewCreateIssueCommentStep(github.CreateIssueCommentStepConfig[github.CreateIssueCommentInput]{
+			StepType: commentOnIssueStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "issue-follow-up", GroupLabel: "Issue follow-up", Explanation: "Comment on the created issue once, reading back a retried send instead of posting a duplicate."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input github.CreateIssueCommentInput) github.CreateIssueCommentInput {
+				return input
+			},
+			Created: sdkgo.GoTo(recordIssueComment{}),
+		})),
+```
+
+A comment has no idempotency key either, so the operation follows
+`createIssue`: the body carries the same hidden Call ID marker, and the shared
+single-dispatch fence runs with synchronous durability,
+`repeatOnUnknown: limited`, and `maxSends: 3`. A `201` records the comment ID,
+which the next attempt reads after a lost Step result. A `429`, a secondary rate
+limit, a `503`, a `401` after a token refresh, and a request that provably never
+left retry without counting a send. Any other unknown outcome reads back first:
+GitHub lists an issue's comments oldest first, so the connector reads the first
+page of 100 and then the newest pages from the `last` link, five pages in all,
+and matches a comment by the connection's account that holds the marker. A miss
+retries and sends again only below the cap; at the cap the Step selects
+`uncertain`. Set `CreateIssueCommentStepConfig.MaxSends` to change one Step's
+cap. A `403`, such as for a locked issue, selects `insufficientScope`, `404`
+selects `notFound`, and `410`, `422`, and other `4xx` select
+`providerRejected`.
+
 The [issue filing example](go/examples/issue-filing/README.md) checks up to
 three pages of open issues with the requested labels for a matching title, then
-creates the issue, and closes it when the input names a close reason.
+creates the issue, and, when the input asks, comments on it, replaces its
+labels, and closes it.
 
 The issue operations ran on a real Dex stack against a local stand-in for
 GitHub, not against GitHub. Unverified live behavior: authorization with the
@@ -312,8 +364,9 @@ GitHub, not against GitHub. Unverified live behavior: authorization with the
 value GitHub sends for a `repo` grant; whether GitHub can store an issue before
 answering `5xx`; how soon a new issue appears in the issue list; and the
 `403`, `410`, and `422` answers for archived repositories, disabled issues, and
-invalid assignees; and the `setIssueState` answers for a deleted or transferred
-issue.
+invalid assignees; the `setIssueState`, `replaceIssueLabels`, and
+`createIssueComment` answers for a deleted, transferred, or locked issue; and
+how GitHub pages a long comment thread.
 
 ## Test with githubmock
 
@@ -374,8 +427,8 @@ The dedicated token must grant exactly the documented signup scopes. The live
 test reads at most five public repositories, and at most five merged pull
 requests, changed files, and commits from the last 30 days of
 `superdurable/dex`. It never logs the token. The live test does not cover
-`listIssues`, `createIssue`, `setIssueState`, or the `github-oauth-repository`
-method.
+`listIssues`, `createIssue`, `setIssueState`, `replaceIssueLabels`,
+`createIssueComment`, or the `github-oauth-repository` method.
 
 Applications own the OAuth start/callback, state, PKCE verifier, token exchange,
 one-use token deletion, Result Attributes, and branch behavior. Provider calls
@@ -416,7 +469,7 @@ The TypeScript package `@superdurable/connector-github` implements every Go oper
 
 The [Python package](python/README.md) implements the six profile, repository,
 change, and release Queries with operation-specific Step factories;
-`listIssues`, `createIssue`, and `setIssueState` are Go only. It uses generated OAuth refresh and project
+`listIssues` and the issue writes are Go only. It uses generated OAuth refresh and project
 connection wiring, with provider calls in hand-written Query invocations. The
 [profile Flow example](python/examples/profile/README.md) has a Worker entrypoint
 and a real Dex integration test using an inert provider stand-in. Python

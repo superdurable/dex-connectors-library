@@ -202,6 +202,42 @@ func TestIssueFilingExampleRejectsAReopenReasonBeforeFilingWithRealDex(t *testin
 	require.Zero(t, provider.count("GET")+provider.count("POST")+provider.count("PATCH"))
 }
 
+// TestIssueFilingExampleCommentsRelabelsAndClosesTheIssueItFiledWithRealDex runs every follow-up. GitHub
+// stores the first comment but answers 502 and fails the first comment read-back, so Dex retries the Step;
+// the retry reads the comment back from the newest page instead of posting a duplicate.
+func TestIssueFilingExampleCommentsRelabelsAndClosesTheIssueItFiledWithRealDex(t *testing.T) {
+	provider := newIssueProvider(t)
+	provider.storeThenFailComments(1)
+	provider.failCommentLists(1)
+	provider.addCommentsByAnotherAccount(120)
+	flow, harness := newIssueFilingHarness(t, provider.URL, github.RepositoryAuthMethodID)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	flowID := "github-issue-filing-follow-up-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	input := bugReportInput()
+	input.Comment = "Fixed by the draft validation change."
+	input.RelabelWith = []string{"bug", "fixed"}
+	input.CloseWithStateReason = github.IssueStateReasonCompleted
+
+	_, err := harness.client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	report := completedReport(t, ctx, harness.client, flowID)
+	require.Equal(t, StatusClosed, report.Status)
+	require.NotNil(t, report.IssueComment)
+	require.Equal(t, 1, report.IssueComment.IssueNumber)
+	require.Positive(t, report.IssueComment.CommentID)
+	require.NotNil(t, report.RelabeledIssue)
+	require.Equal(t, []string{"bug", "fixed"}, report.RelabeledIssue.Labels)
+	require.Equal(t, "completed", report.ClosedIssue.StateReason)
+	comments := provider.commentsOnIssue(1, "octocat")
+	require.Len(t, comments, 1, "the retry found the first comment instead of posting another")
+	require.Equal(t, 1, provider.commentPosts(), "the retry sent nothing again")
+	require.Regexp(t, `^Fixed by the draft validation change\.\n\n<!-- dex-connector-call: [0-9a-f]{64} -->$`, comments[0]["body"])
+	issue := provider.issuesTitled(input.Title)[0]
+	require.Equal(t, []any{map[string]any{"name": "bug"}, map[string]any{"name": "fixed"}}, issue["labels"])
+	require.Equal(t, "closed", issue["state"])
+}
+
 func bugReportInput() Input {
 	return Input{
 		Owner: "octocat", Repository: "hello-world", Title: "Crash when saving an empty draft",
@@ -240,7 +276,8 @@ const (
 	answer502WithoutStoring issueWriteBehavior = "answer 502 without storing"
 )
 
-// issueProvider is a local fake of the documented GitHub issue list, create, and update endpoints.
+// issueProvider is a local fake of the documented GitHub issue list, create, update, label, and comment
+// endpoints.
 type issueProvider struct {
 	*httptest.Server
 	t                    *testing.T
@@ -255,6 +292,11 @@ type issueProvider struct {
 	readBackListCount    int
 	stateUpdateFailures  int
 	stateUpdates         []string
+	comments             []map[string]any
+	nextCommentID        int64
+	commentFailures      int
+	commentListFailures  int
+	commentPostCount     int
 }
 
 func newIssueProvider(t *testing.T, behaviors ...issueWriteBehavior) *issueProvider {
@@ -284,6 +326,10 @@ func (provider *issueProvider) serveHTTP(response http.ResponseWriter, request *
 		provider.serveCreate(response, request)
 	case request.Method == http.MethodPatch && strings.HasPrefix(request.URL.Path, "/repos/octocat/hello-world/issues/"):
 		provider.serveStateUpdate(response, request)
+	case strings.HasSuffix(request.URL.Path, "/comments") && strings.HasPrefix(request.URL.Path, "/repos/octocat/hello-world/issues/"):
+		provider.serveComments(response, request)
+	case request.Method == http.MethodPut && strings.HasSuffix(request.URL.Path, "/labels"):
+		provider.serveLabelReplacement(response, request)
 	default:
 		http.NotFound(response, request)
 	}
@@ -388,6 +434,131 @@ func (provider *issueProvider) serveStateUpdate(response http.ResponseWriter, re
 	default:
 		writeProviderBody(response, issue)
 	}
+}
+
+// serveComments lists an issue's comments oldest first, or creates one; a scripted failure stores the
+// comment and still answers 502.
+func (provider *issueProvider) serveComments(response http.ResponseWriter, request *http.Request) {
+	number, err := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(request.URL.Path, "/repos/octocat/hello-world/issues/"), "/comments"))
+	if err != nil {
+		http.NotFound(response, request)
+		return
+	}
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	if request.Method == http.MethodGet {
+		if provider.commentListFailures > 0 {
+			provider.commentListFailures--
+			response.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		var onIssue []map[string]any
+		for _, comment := range provider.comments {
+			if comment["issue"] == number {
+				onIssue = append(onIssue, comment)
+			}
+		}
+		pageSize, _ := strconv.Atoi(request.URL.Query().Get("per_page"))
+		page, _ := strconv.Atoi(request.URL.Query().Get("page"))
+		if lastPage := (len(onIssue) + pageSize - 1) / pageSize; lastPage > 1 {
+			response.Header().Set("Link", fmt.Sprintf(`<https://api.github.com/repositories/1/issues/%d/comments?page=%d>; rel="last"`, number, lastPage))
+		}
+		start, end := min((page-1)*pageSize, len(onIssue)), min(page*pageSize, len(onIssue))
+		writeProviderBody(response, append([]map[string]any{}, onIssue[start:end]...))
+		return
+	}
+	var sent struct {
+		Body string `json:"body"`
+	}
+	if err := json.NewDecoder(request.Body).Decode(&sent); err != nil {
+		http.Error(response, `{"message":"Problems parsing JSON"}`, http.StatusBadRequest)
+		return
+	}
+	provider.commentPostCount++
+	comment := provider.storeCommentLocked(number, sent.Body, "octocat")
+	if provider.commentFailures > 0 {
+		provider.commentFailures--
+		response.WriteHeader(http.StatusBadGateway)
+		return
+	}
+	response.WriteHeader(http.StatusCreated)
+	writeProviderBody(response, comment)
+}
+
+// serveLabelReplacement replaces an issue's labels and answers with the new label list.
+func (provider *issueProvider) serveLabelReplacement(response http.ResponseWriter, request *http.Request) {
+	number, err := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(request.URL.Path, "/repos/octocat/hello-world/issues/"), "/labels"))
+	var replacement struct {
+		Labels []string `json:"labels"`
+	}
+	if err != nil || json.NewDecoder(request.Body).Decode(&replacement) != nil {
+		http.Error(response, `{"message":"Problems parsing JSON"}`, http.StatusBadRequest)
+		return
+	}
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	issue, isKnown := provider.issues[number]
+	if !isKnown {
+		http.Error(response, `{"message":"Not Found"}`, http.StatusNotFound)
+		return
+	}
+	labels := make([]any, 0, len(replacement.Labels))
+	for _, label := range replacement.Labels {
+		labels = append(labels, map[string]any{"name": label})
+	}
+	issue["labels"] = labels
+	writeProviderBody(response, labels)
+}
+
+func (provider *issueProvider) storeCommentLocked(issueNumber int, body string, author string) map[string]any {
+	provider.nextCommentID++
+	commentID := 7000 + provider.nextCommentID
+	comment := map[string]any{
+		"id": commentID, "issue": issueNumber, "body": body, "user": map[string]any{"login": author},
+		"html_url":   fmt.Sprintf("https://github.com/octocat/hello-world/issues/%d#issuecomment-%d", issueNumber, commentID),
+		"created_at": time.Now().UTC().Format(time.RFC3339),
+	}
+	provider.comments = append(provider.comments, comment)
+	return comment
+}
+
+func (provider *issueProvider) failCommentLists(count int) {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	provider.commentListFailures = count
+}
+
+func (provider *issueProvider) commentPosts() int {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return provider.commentPostCount
+}
+
+func (provider *issueProvider) storeThenFailComments(count int) {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	provider.commentFailures = count
+}
+
+// addCommentsByAnotherAccount fills issue 1's comments so read-back must reach the newest page.
+func (provider *issueProvider) addCommentsByAnotherAccount(count int) {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	for range count {
+		provider.storeCommentLocked(1, "Another reply", "hubot")
+	}
+}
+
+func (provider *issueProvider) commentsOnIssue(issueNumber int, author string) []map[string]any {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	var comments []map[string]any
+	for _, comment := range provider.comments {
+		if user, _ := comment["user"].(map[string]any); comment["issue"] == issueNumber && user["login"] == author {
+			comments = append(comments, comment)
+		}
+	}
+	return comments
 }
 
 func (provider *issueProvider) storeLocked(title string, body string, author string, labels []string) map[string]any {

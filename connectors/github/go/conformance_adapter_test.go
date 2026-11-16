@@ -37,7 +37,8 @@ func (*conformanceRejectedCredentialSource) ResolveAfterRejection(context.Contex
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	connection := sdkgo.ConnectionRef{Provider: "github", Name: "github"}
 	authMethodID := PublicAuthMethodID
-	isIssueWrite := scenario.Operation == "createIssue" || scenario.Operation == "setIssueState"
+	isIssueWrite := scenario.Operation == "createIssue" || scenario.Operation == "setIssueState" ||
+		scenario.Operation == "replaceIssueLabels" || scenario.Operation == "createIssueComment"
 	if isIssueWrite && !strings.HasSuffix(scenario.Name, "-public-method") || strings.HasSuffix(scenario.Name, "-repository-method") {
 		authMethodID = RepositoryAuthMethodID
 	}
@@ -58,7 +59,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(config, credentialSource, WithHTTPClient(transport), WithClock(func() time.Time { return time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC) }))
 	require.NoError(t, err)
 	context := testsupport.NewDexContext("conformance", "github-step")
-	// The createIssue fence reads and writes heartbeats across the scenario's attempts.
+	// The createIssue and createIssueComment fences read and write heartbeats across the scenario's attempts.
 	fenceContext := singledispatchtest.NewContext("conformance", "github-step")
 	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(marker []byte) {
 		require.NoError(t, fenceContext.SetPersistedCheckpoint(json.RawMessage(marker)))
@@ -82,5 +83,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listIssues":              newConformanceQueryInvocation(t, scenario.Input, context, client.ListIssues(), connection),
 		"createIssue":             newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateIssue(), connection, scenario.CallID),
 		"setIssueState":           newConformanceMutationInvocation(t, scenario.Input, context, client.SetIssueState(), connection, scenario.CallID),
+		"replaceIssueLabels":      newConformanceMutationInvocation(t, scenario.Input, context, client.ReplaceIssueLabels(), connection, scenario.CallID),
+		"createIssueComment":      newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateIssueComment(), connection, scenario.CallID),
 	}}
 }

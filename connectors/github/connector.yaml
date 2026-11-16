@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: github
   displayName: GitHub
-  description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes, and list, create, close, and reopen repository issues.
+  description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes, and list, create, close, reopen, relabel, and comment on repository issues.
   company: GitHub
   categories: [developer-tools]
   version: v0.25.0
@@ -85,7 +85,7 @@ spec:
     methods:
       - id: github-oauth
         displayName: GitHub OAuth, public read-only
-        description: "Recommended for profile, public repository, change, release, and issue reads: requests read:user and user:email, so GitHub serves only public repository data. createIssue and setIssueState need the github-oauth-repository method and select insufficientScope on this connection without calling GitHub."
+        description: "Recommended for profile, public repository, change, release, and issue reads: requests read:user and user:email, so GitHub serves only public repository data. the issue writes (createIssue, setIssueState, replaceIssueLabels, and createIssueComment) need the github-oauth-repository method and select insufficientScope on this connection without calling GitHub."
         recommended: true
         type: oauth2
         connectionKind: github-oauth
@@ -137,7 +137,7 @@ spec:
             terminalErrorCodes: [bad_refresh_token, incorrect_client_credentials, invalid_client, invalid_grant]
       - id: github-oauth-repository
         displayName: GitHub OAuth, repository issues
-        description: "Required for createIssue and setIssueState, and for listIssues in private repositories: requests the repo scope, GitHub's only OAuth App scope that writes issues in private repositories. repo also reads and writes code and pull requests in every repository the authorizing account can reach, so authorize with an account limited to the repositories the Flows use. The profile, public repository, change, and release queries select insufficientScope on this connection; use a separate github-oauth connection for them."
+        description: "Required for createIssue, setIssueState, replaceIssueLabels, and createIssueComment, and for listIssues in private repositories: requests the repo scope, GitHub's only OAuth App scope that writes issues in private repositories. repo also reads and writes code and pull requests in every repository the authorizing account can reach, so authorize with an account limited to the repositories the Flows use. The profile, public repository, change, and release queries select insufficientScope on this connection; use a separate github-oauth connection for them."
         type: oauth2
         connectionKind: github-repository-oauth
         fields:
@@ -731,3 +731,128 @@ spec:
           description: "The state reason does not fit the requested state, so no request is sent."
           output: {number: 42}
           failure: {kind: VALIDATION, message: "GitHub issue state reason reopened requires state open."}
+    - name: replaceIssueLabels
+      goName: ReplaceIssueLabels
+      inputType: ReplaceIssueLabelsInput
+      outputType: ReplacedIssueLabels
+      kind: mutation
+      description: Replace every label on one existing issue with the given label names, on a github-oauth-repository connection; an empty list removes all labels. Replacing the full set is safe to repeat, so an unknown outcome sends the same set again.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: replaced, goName: Replaced, description: "The issue now carries exactly the requested labels, as GitHub reported them."}
+        - {id: insufficientScope, goName: InsufficientScope, description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, an account without push access, or an organization's OAuth App restriction; the labels are unchanged.", optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked; the labels are unchanged., optional: true}
+        - {id: notFound, goName: NotFound, description: "The repository or issue was not found, or the connection cannot reach it; nothing was changed.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "GitHub conclusively rejected the labels, such as an issue that was deleted or an invalid label name; the labels are unchanged.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "GitHub accepted the labels but returned an invalid or oversized label list; the labels may have changed.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: triagedLabels
+          branch: replaced
+          description: GitHub replaces the issue's labels with bug and triaged.
+          default: true
+          output: {number: 42, labels: [bug, triaged], url: "https://github.com/octocat/hello-world/issues/42"}
+        - name: labelsCleared
+          branch: replaced
+          description: GitHub removes every label from the issue.
+          output: {number: 42, labels: [], url: "https://github.com/octocat/hello-world/issues/42"}
+        - name: rateLimited
+          description: GitHub's secondary rate limit refuses the replacement once, so it is sent again after the delay.
+          retry: {failure: {kind: RATE_LIMIT, message: GitHub rate limit was reached.}, after: 1s}
+        - name: insufficientScopeFailure
+          branch: insufficientScope
+          description: "The connection does not use the github-oauth-repository method."
+          output: {number: 42}
+          failure: {kind: AUTHORIZATION, message: "The connection does not use the github-oauth-repository method."}
+        - name: authorizationRevokedFailure
+          branch: authorizationRevoked
+          description: "The OAuth grant is invalid or revoked."
+          output: {number: 42}
+          failure: {kind: AUTHENTICATION, message: "The OAuth grant is invalid or revoked."}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The repository or issue was not found or the connection cannot reach it."
+          output: {number: 4242}
+          failure: {kind: NOT_FOUND, message: "The repository or issue was not found or the connection cannot reach it."}
+        - name: invalidLabelRejection
+          branch: providerRejected
+          description: "GitHub rejects the replacement because a label name is invalid."
+          output: {number: 42}
+          failure: {kind: VALIDATION, message: "GitHub rejected the issue labels with HTTP 422."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "GitHub returned an invalid or oversized label list."
+          output: {number: 42}
+          failure: {kind: PROTOCOL, message: "GitHub returned an invalid label list."}
+        - name: defectFailure
+          branch: defect
+          description: "A label name is empty, so no request is sent."
+          output: {number: 42}
+          failure: {kind: VALIDATION, message: "GitHub issue labels must be one line of 1 through 50 characters."}
+    - name: createIssueComment
+      goName: CreateIssueComment
+      inputType: CreateIssueCommentInput
+      outputType: CreatedIssueComment
+      kind: mutation
+      description: Add one Markdown comment to an existing issue in a public or private repository, on a github-oauth-repository connection. GitHub has no idempotency key, so the body carries a hidden marker derived from the Call ID; after an unknown outcome a retry reads the issue's newest comments by the connection's account and returns the marked comment instead of posting another, and resends only while the send cap allows.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "GitHub created the comment, or an earlier attempt of this Step already had and read-back found it."}
+        - {id: insufficientScope, goName: InsufficientScope, description: "The connection does not use the github-oauth-repository method, or GitHub forbade the write, such as an archived repository, a locked issue, or an organization's OAuth App restriction; nothing was created.", optional: true}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The OAuth grant is invalid or revoked; nothing was created., optional: true}
+        - {id: notFound, goName: NotFound, description: The repository or issue was not found or the connection cannot reach it; nothing was created., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "GitHub conclusively rejected the comment, such as an issue that was deleted or a body GitHub refuses; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The comment may exist but read-back could not confirm it after the send cap was reached; the Value echoes the requested issue number for reconciliation.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # GitHub has no idempotency key; the shared fence needs durable sync heartbeats across attempts.
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+        repeatOnUnknown: limited
+        maxSends: 3
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: triageNoteCreated
+          branch: created
+          description: GitHub creates a triage note on the issue.
+          default: true
+          output: {issueNumber: 42, commentId: 1987654321, url: "https://github.com/octocat/hello-world/issues/42#issuecomment-1987654321", createdAt: "2026-03-07T10:20:00Z"}
+        - name: rateLimited
+          description: GitHub's secondary rate limit refuses the comment once, so it is sent again after the delay.
+          retry: {failure: {kind: RATE_LIMIT, message: GitHub rate limit was reached.}, after: 1s}
+        - name: insufficientScopeFailure
+          branch: insufficientScope
+          description: "The connection does not use the github-oauth-repository method."
+          output: {issueNumber: 42}
+          failure: {kind: AUTHORIZATION, message: "The connection does not use the github-oauth-repository method."}
+        - name: authorizationRevokedFailure
+          branch: authorizationRevoked
+          description: "The OAuth grant is invalid or revoked."
+          output: {issueNumber: 42}
+          failure: {kind: AUTHENTICATION, message: "The OAuth grant is invalid or revoked."}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The repository or issue was not found or the connection cannot reach it."
+          output: {issueNumber: 4242}
+          failure: {kind: NOT_FOUND, message: "The repository or issue was not found or the connection cannot reach it."}
+        - name: issueDeletedRejection
+          branch: providerRejected
+          description: "GitHub rejects the comment because the issue was deleted."
+          output: {issueNumber: 42}
+          failure: {kind: PROVIDER_REJECTION, message: "GitHub rejected the comment with HTTP 410."}
+        - name: commentOutcomeUnknown
+          description: Every possible send ended without a confirmed comment, so read-back could not find the marked comment.
+          uncertain: {output: {issueNumber: 42}, failure: {kind: AVAILABILITY, message: GitHub comment creation outcome is unknown.}}
+        - name: defectFailure
+          branch: defect
+          description: "The comment body is empty, so no request is sent."
+          output: {issueNumber: 42}
+          failure: {kind: VALIDATION, message: "GitHub comment body is required."}
