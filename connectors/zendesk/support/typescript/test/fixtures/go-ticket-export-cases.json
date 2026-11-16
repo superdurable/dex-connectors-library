@@ -1,0 +1,747 @@
+{
+ "cases": [
+  {
+   "name": "seed_quiet",
+   "kind": "seed",
+   "now": "2026-03-02T09:00:00Z",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[],\"after_cursor\":\"c-1\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}"
+  },
+  {
+   "name": "seed_drains_two_pages",
+   "kind": "seed",
+   "now": "2026-03-02T09:00:00Z",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-02T08:57:59Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441880,\"group_id\":41,\"id\":5001,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"new\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:00Z\",\"via\":{\"channel\":\"email\"}},{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441895,\"group_id\":41,\"id\":5002,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"pending\",\"subject\":\"Ticket \\u003cpending\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:10Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":false}"
+    },
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"group_id\":41,\"id\":5004,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:30Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-3\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700",
+    "cursor=c-2\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-3\",\"resumeAt\":1772441895}"
+  },
+  {
+   "name": "seed_keeps_html_cursor",
+   "kind": "seed",
+   "now": "2026-03-02T09:00:00Z",
+   "includeDeleted": true,
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441900,\"group_id\":41,\"id\":5003,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"deleted\",\"subject\":\"Ticket \\u003cdeleted\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:20Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c\\u003c\\u0026\\u003e\\u2028\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "per_page=100\u0026start_time=1772441700"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c\\u003c\\u0026\\u003e\\u2028\",\"resumeAt\":1772441901,\"includeDeleted\":true}"
+  },
+  {
+   "name": "seed_without_progress",
+   "kind": "seed",
+   "now": "2026-03-02T09:00:00Z",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-02T08:57:59Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441880,\"group_id\":41,\"id\":5001,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"new\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:00Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":null,\"before_cursor\":null,\"end_of_stream\":false}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "seed_rate_limited",
+   "kind": "seed",
+   "now": "2026-03-02T09:00:00Z",
+   "responses": [
+    {
+     "status": 429,
+     "retryAfter": "17",
+     "body": "{\"error\":\"APIRateLimitExceeded\"}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700"
+   ],
+   "error": "rateLimited",
+   "retryAfterSeconds": 17
+  },
+  {
+   "name": "seed_agent_forbidden",
+   "kind": "seed",
+   "now": "2026-03-02T09:00:00Z",
+   "responses": [
+    {
+     "status": 403,
+     "body": "{\"error\":\"Forbidden\"}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700"
+   ],
+   "error": "failed",
+   "errorContains": "only for administrators"
+  },
+  {
+   "name": "seed_start_time_rejected",
+   "kind": "seed",
+   "now": "2026-03-02T09:00:00Z",
+   "responses": [
+    {
+     "status": 400,
+     "body": "{\"error\":\"InvalidPaginationParameter\"}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_steady_excludes_deleted",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-02T08:57:59Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441880,\"group_id\":41,\"id\":5001,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"new\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:00Z\",\"via\":{\"channel\":\"email\"}},{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441895,\"group_id\":41,\"id\":5002,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"pending\",\"subject\":\"Ticket \\u003cpending\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:10Z\",\"via\":{\"channel\":\"email\"}},{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441900,\"group_id\":41,\"id\":5003,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"deleted\",\"subject\":\"Ticket \\u003cdeleted\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:20Z\",\"via\":{\"channel\":\"email\"}},{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"group_id\":41,\"id\":5004,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:30Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-4\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-4\",\"resumeAt\":1772441901}",
+   "changes": [
+    {
+     "id": "zendesk-ticket-897cba421f2a136d36a4375ed6386bdb",
+     "occurredAt": "2026-03-02T08:58:00Z",
+     "payload": "{\"changeKind\":\"created\",\"ticket\":{\"id\":5001,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5001\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"new\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-02T08:57:59Z\",\"updatedAt\":\"2026-03-02T08:58:00Z\"},\"generatedAt\":\"2026-03-02T08:58:00Z\"}"
+    },
+    {
+     "id": "zendesk-ticket-f9cf141bb7112eb54630b9b0c4178be1",
+     "occurredAt": "2026-03-02T08:58:15Z",
+     "payload": "{\"changeKind\":\"updated\",\"ticket\":{\"id\":5002,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5002\",\"subject\":\"Ticket \\u003cpending\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"pending\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-01T08:00:00Z\",\"updatedAt\":\"2026-03-02T08:58:10Z\"},\"generatedAt\":\"2026-03-02T08:58:15Z\"}"
+    },
+    {
+     "id": "zendesk-ticket-60eec93c876246e003366ed80100bd30",
+     "occurredAt": "2026-03-02T08:58:30Z",
+     "payload": "{\"changeKind\":\"updated\",\"ticket\":{\"id\":5004,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5004\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"open\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-01T08:00:00Z\",\"updatedAt\":\"2026-03-02T08:58:30Z\"}}"
+    }
+   ]
+  },
+  {
+   "name": "fetch_caught_up",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-4\",\"resumeAt\":1772441911}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[],\"after_cursor\":\"c-4\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-4\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-4\",\"resumeAt\":1772441911}"
+  },
+  {
+   "name": "fetch_caught_up_without_after_cursor",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-4\",\"resumeAt\":1772441911}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-4\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-4\",\"resumeAt\":1772441911}"
+  },
+  {
+   "name": "fetch_more_pages",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-02T08:57:59Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441880,\"group_id\":41,\"id\":5001,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"new\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:00Z\",\"via\":{\"channel\":\"email\"}},{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441895,\"group_id\":41,\"id\":5002,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"pending\",\"subject\":\"Ticket \\u003cpending\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:10Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":false}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-2\",\"resumeAt\":1772441895}",
+   "hasMorePages": true,
+   "changes": [
+    {
+     "id": "zendesk-ticket-897cba421f2a136d36a4375ed6386bdb",
+     "occurredAt": "2026-03-02T08:58:00Z",
+     "payload": "{\"changeKind\":\"created\",\"ticket\":{\"id\":5001,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5001\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"new\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-02T08:57:59Z\",\"updatedAt\":\"2026-03-02T08:58:00Z\"},\"generatedAt\":\"2026-03-02T08:58:00Z\"}"
+    },
+    {
+     "id": "zendesk-ticket-f9cf141bb7112eb54630b9b0c4178be1",
+     "occurredAt": "2026-03-02T08:58:15Z",
+     "payload": "{\"changeKind\":\"updated\",\"ticket\":{\"id\":5002,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5002\",\"subject\":\"Ticket \\u003cpending\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"pending\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-01T08:00:00Z\",\"updatedAt\":\"2026-03-02T08:58:10Z\"},\"generatedAt\":\"2026-03-02T08:58:15Z\"}"
+    }
+   ]
+  },
+  {
+   "name": "fetch_more_pages_same_cursor",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-02T08:57:59Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441880,\"group_id\":41,\"id\":5001,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"new\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:00Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-1\",\"before_cursor\":null,\"end_of_stream\":false}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_include_deleted_restarts_saved_without",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "includeDeleted": true,
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441900,\"group_id\":41,\"id\":5003,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"deleted\",\"subject\":\"Ticket \\u003cdeleted\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:20Z\",\"via\":{\"channel\":\"email\"}},{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-02T10:58:00+02:00\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441880,\"group_id\":41,\"id\":5005,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":null,\"type\":\"incident\",\"updated_at\":\"2026-03-02T10:58:00.500+02:00\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-5\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "per_page=100\u0026start_time=1772441700"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-5\",\"resumeAt\":1772441901,\"includeDeleted\":true}",
+   "changes": [
+    {
+     "id": "zendesk-ticket-7d37622e2365519df394c8e3908b9e38",
+     "occurredAt": "2026-03-02T08:58:20Z",
+     "payload": "{\"changeKind\":\"deleted\",\"ticket\":{\"id\":5003,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5003\",\"subject\":\"Ticket \\u003cdeleted\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"deleted\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-01T08:00:00Z\",\"updatedAt\":\"2026-03-02T08:58:20Z\"},\"generatedAt\":\"2026-03-02T08:58:20Z\"}"
+    },
+    {
+     "id": "zendesk-ticket-53d5cf6bcb26b7fd0c8a2a925f06e526",
+     "occurredAt": "2026-03-02T08:58:00.5Z",
+     "payload": "{\"changeKind\":\"created\",\"ticket\":{\"id\":5005,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5005\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"open\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"channel\":\"email\",\"createdAt\":\"2026-03-02T08:58:00Z\",\"updatedAt\":\"2026-03-02T08:58:00.5Z\"},\"generatedAt\":\"2026-03-02T08:58:00Z\"}"
+    }
+   ]
+  },
+  {
+   "name": "fetch_include_deleted_steady",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "includeDeleted": true,
+   "cursorIn": "{\"afterCursor\":\"c-5\",\"resumeAt\":1772441700,\"includeDeleted\":true}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441900,\"group_id\":41,\"id\":5003,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"deleted\",\"subject\":\"Ticket \\u003cdeleted\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:20Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-6\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-5\u0026per_page=100"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-6\",\"resumeAt\":1772441901,\"includeDeleted\":true}",
+   "changes": [
+    {
+     "id": "zendesk-ticket-7d37622e2365519df394c8e3908b9e38",
+     "occurredAt": "2026-03-02T08:58:20Z",
+     "payload": "{\"changeKind\":\"deleted\",\"ticket\":{\"id\":5003,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5003\",\"subject\":\"Ticket \\u003cdeleted\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"deleted\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-01T08:00:00Z\",\"updatedAt\":\"2026-03-02T08:58:20Z\"},\"generatedAt\":\"2026-03-02T08:58:20Z\"}"
+    }
+   ]
+  },
+  {
+   "name": "fetch_dropping_include_deleted_restarts",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-5\",\"resumeAt\":1772441700,\"includeDeleted\":true}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[],\"after_cursor\":\"c-6\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-6\",\"resumeAt\":1772441700}"
+  },
+  {
+   "name": "fetch_cursor_rejected_422",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 422,
+     "body": "{\"error\":\"InvalidPaginationParameter\"}"
+    },
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-02T08:57:59Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441880,\"group_id\":41,\"id\":5001,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"new\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:00Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-7\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100",
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-7\",\"resumeAt\":1772441881}",
+   "changes": [
+    {
+     "id": "zendesk-ticket-897cba421f2a136d36a4375ed6386bdb",
+     "occurredAt": "2026-03-02T08:58:00Z",
+     "payload": "{\"changeKind\":\"created\",\"ticket\":{\"id\":5001,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5001\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"new\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-02T08:57:59Z\",\"updatedAt\":\"2026-03-02T08:58:00Z\"},\"generatedAt\":\"2026-03-02T08:58:00Z\"}"
+    }
+   ]
+  },
+  {
+   "name": "fetch_cursor_rejected_400",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772442000}",
+   "responses": [
+    {
+     "status": 400,
+     "body": "{\"error\":\"InvalidCursor\"}"
+    },
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441895,\"group_id\":41,\"id\":5002,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"pending\",\"subject\":\"Ticket \\u003cpending\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:10Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-7\",\"before_cursor\":null,\"end_of_stream\":false}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100",
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441939"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-7\",\"resumeAt\":1772442000}",
+   "hasMorePages": true,
+   "changes": [
+    {
+     "id": "zendesk-ticket-f9cf141bb7112eb54630b9b0c4178be1",
+     "occurredAt": "2026-03-02T08:58:15Z",
+     "payload": "{\"changeKind\":\"updated\",\"ticket\":{\"id\":5002,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5002\",\"subject\":\"Ticket \\u003cpending\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"pending\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-01T08:00:00Z\",\"updatedAt\":\"2026-03-02T08:58:10Z\"},\"generatedAt\":\"2026-03-02T08:58:15Z\"}"
+    }
+   ]
+  },
+  {
+   "name": "fetch_restart_rejected",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 400,
+     "body": "{\"error\":\"InvalidValue\"}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_rejected_cursor_then_rejected_restart",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 422,
+     "body": "{}"
+    },
+    {
+     "status": 422,
+     "body": "{}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100",
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441700"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_rate_limited",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 429,
+     "body": "{\"error\":\"APIRateLimitExceeded\"}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "error": "rateLimited"
+  },
+  {
+   "name": "fetch_server_error",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 503,
+     "retryAfter": "5",
+     "body": "{\"error\":\"Unavailable\"}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_unauthorized",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 401,
+     "body": "{\"error\":\"Couldn't authenticate you\"}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_not_found",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 404,
+     "body": "{}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_invalid_ticket",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"id\":5006,\"created_at\":\"2026-03-02T08:00:00Z\",\"updated_at\":\"2026-03-02T08:00:00Z\"}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_invalid_json",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":["
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_reflected_token",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[],\"after_cursor\":\"fixtureZendeskToken0123\",\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "error": "failed"
+  },
+  {
+   "name": "fetch_oversized_halves",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "maxResponseBytes": 700,
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"external_id\":null,\"generated_timestamp\":1772441910,\"group_id\":41,\"id\":5007,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:30Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    },
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"external_id\":null,\"generated_timestamp\":1772441910,\"group_id\":41,\"id\":5007,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:30Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    },
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-02T08:57:59Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441880,\"group_id\":41,\"id\":5001,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"new\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:00Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100",
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=50",
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=25"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-2\",\"resumeAt\":1772441881}",
+   "changes": [
+    {
+     "id": "zendesk-ticket-897cba421f2a136d36a4375ed6386bdb",
+     "occurredAt": "2026-03-02T08:58:00Z",
+     "payload": "{\"changeKind\":\"created\",\"ticket\":{\"id\":5001,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5001\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"new\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-02T08:57:59Z\",\"updatedAt\":\"2026-03-02T08:58:00Z\"},\"generatedAt\":\"2026-03-02T08:58:00Z\"}"
+    }
+   ]
+  },
+  {
+   "name": "fetch_oversized_fails",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "maxResponseBytes": 700,
+   "cursorIn": "{\"afterCursor\":\"c-1\",\"resumeAt\":1772441700}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"external_id\":null,\"generated_timestamp\":1772441910,\"group_id\":41,\"id\":5007,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:30Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    },
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"external_id\":null,\"generated_timestamp\":1772441910,\"group_id\":41,\"id\":5007,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:30Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    },
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"external_id\":null,\"generated_timestamp\":1772441910,\"group_id\":41,\"id\":5007,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:30Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    },
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"external_id\":null,\"generated_timestamp\":1772441910,\"group_id\":41,\"id\":5007,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:30Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    },
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-01T08:00:00Z\",\"custom_status_id\":9,\"description\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"external_id\":null,\"generated_timestamp\":1772441910,\"group_id\":41,\"id\":5007,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"open\",\"subject\":\"Ticket \\u003copen\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:30Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=100",
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=50",
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=25",
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=12",
+    "cursor=c-1\u0026exclude_deleted=true\u0026per_page=10"
+   ],
+   "error": "failed",
+   "errorContains": "raise maxResponseBytes"
+  },
+  {
+   "name": "fetch_case_insensitive_cursor",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"AFTERCURSOR\":\"c-1\",\"ResumeAt\":1772441700,\"afterCursor\":\"c-9\",\"unknown\":[1],\"includeDeleted\":null}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[],\"after_cursor\":\"c-9\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "cursor=c-9\u0026exclude_deleted=true\u0026per_page=100"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-9\",\"resumeAt\":1772441700}"
+  },
+  {
+   "name": "fetch_old_resume_at",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":1}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[{\"assignee_id\":0,\"brand_id\":3,\"created_at\":\"2026-03-02T08:57:59Z\",\"custom_status_id\":9,\"description\":\"Opened ticket\",\"external_id\":null,\"generated_timestamp\":1772441880,\"group_id\":41,\"id\":5001,\"organization_id\":null,\"priority\":\"high\",\"requester_id\":7701,\"status\":\"new\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"submitter_id\":7701,\"tags\":[\"vip\",\"dex\"],\"type\":\"incident\",\"updated_at\":\"2026-03-02T08:58:00Z\",\"via\":{\"channel\":\"email\"}}],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-2\",\"resumeAt\":1772441881}",
+   "changes": [
+    {
+     "id": "zendesk-ticket-897cba421f2a136d36a4375ed6386bdb",
+     "occurredAt": "2026-03-02T08:58:00Z",
+     "payload": "{\"changeKind\":\"created\",\"ticket\":{\"id\":5001,\"agentUrl\":\"https://acme.zendesk.com/agent/tickets/5001\",\"subject\":\"Ticket \\u003cnew\\u003e \\u0026 co\",\"description\":\"Opened ticket\",\"status\":\"new\",\"customStatusId\":9,\"priority\":\"high\",\"type\":\"incident\",\"requesterId\":7701,\"submitterId\":7701,\"groupId\":41,\"brandId\":3,\"tags\":[\"vip\",\"dex\"],\"channel\":\"email\",\"createdAt\":\"2026-03-02T08:57:59Z\",\"updatedAt\":\"2026-03-02T08:58:00Z\"},\"generatedAt\":\"2026-03-02T08:58:00Z\"}"
+    }
+   ]
+  },
+  {
+   "name": "fetch_future_resume_at",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":1772450000}",
+   "responses": [
+    {
+     "status": 200,
+     "body": "{\"tickets\":[],\"after_cursor\":\"c-2\",\"before_cursor\":null,\"end_of_stream\":true}"
+    }
+   ],
+   "requests": [
+    "exclude_deleted=true\u0026per_page=100\u0026start_time=1772441939"
+   ],
+   "cursorOut": "{\"afterCursor\":\"c-2\",\"resumeAt\":1772450000}"
+  },
+  {
+   "name": "fetch_undecodable_0_notmjson",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "not-json",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_1_",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_2_null",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "null",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_3_",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "[]",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_4_resumeAt_0",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":0}",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_5_resumeAt_m3",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":-3}",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_6_resumeAt_1p5",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":1.5}",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_7_resumeAt_5",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":\"5\"}",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_8_resumeAt_1e3",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":1e3}",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_9_resumeAt_5_afterCursor_7",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":5,\"afterCursor\":7}",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_10_resumeAt_5_includeDeleted_true",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":5,\"includeDeleted\":\"true\"}",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_11_resumeAt_9223372036854775808",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":9223372036854775808}",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  },
+  {
+   "name": "fetch_undecodable_12_resumeAt_5_x",
+   "kind": "fetch",
+   "now": "2026-03-02T09:00:00Z",
+   "cursorIn": "{\"resumeAt\":5} x",
+   "responses": null,
+   "requests": [],
+   "error": "cursorInvalid"
+  }
+ ]
+}

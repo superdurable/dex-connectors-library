@@ -16,10 +16,10 @@ spec:
       operations: [searchTickets, getTicket, createTicket, updateTicket]
       triggers: [ticketChanged]
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-zendesk-support"
       operations: [searchTickets, getTicket, createTicket, updateTicket]
-      triggers: []
+      triggers: [ticketChanged]
   codegen:
     go:
       package: support
