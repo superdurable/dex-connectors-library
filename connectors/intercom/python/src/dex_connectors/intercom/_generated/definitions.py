@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -77,6 +80,8 @@ REPLY_TO_CONVERSATION_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 5, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_CONVERSATION_STATE_DEFINITION = MutationDefinition(
@@ -93,6 +98,8 @@ UPDATE_CONVERSATION_STATE_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 FIND_CONTACT_BY_EMAIL_DEFINITION = QueryDefinition(
@@ -109,4 +116,9 @@ FIND_CONTACT_BY_EMAIL_DEFINITION = QueryDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+)
+
+CONVERSATION_EVENT_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="conversationEvent"),
+    description="Receive one Intercom conversation webhook notification, verified with its X-Hub-Signature, such as a new inbound conversation or a customer reply, filtered by topic.",
 )

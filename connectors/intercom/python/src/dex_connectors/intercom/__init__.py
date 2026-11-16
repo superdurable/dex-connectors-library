@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Intercom connector for Dex Flows."""
+"""Intercom connector for Dex Flows: conversation operations and the conversationEvent Trigger."""
 
 from .client import Client, Config, Credentials
 from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
@@ -13,6 +13,36 @@ from .operations import (
     UpdateConversationStateOperation,
 )
 from .steps import *  # noqa: F403
+from .triggers import (
+    CONVERSATION_EVENT_TRIGGER_DEFINITION,
+    TOPIC_CONVERSATION_ADMIN_ASSIGNED,
+    TOPIC_CONVERSATION_ADMIN_CLOSED,
+    TOPIC_CONVERSATION_ADMIN_NOTED,
+    TOPIC_CONVERSATION_ADMIN_OPEN_ASSIGNED,
+    TOPIC_CONVERSATION_ADMIN_OPENED,
+    TOPIC_CONVERSATION_ADMIN_REPLIED,
+    TOPIC_CONVERSATION_ADMIN_SINGLE_CREATED,
+    TOPIC_CONVERSATION_ADMIN_SNOOZED,
+    TOPIC_CONVERSATION_ADMIN_UNSNOOZED,
+    TOPIC_CONVERSATION_OPERATOR_REPLIED,
+    TOPIC_CONVERSATION_PRIORITY_UPDATED,
+    TOPIC_CONVERSATION_RATING_ADDED,
+    TOPIC_CONVERSATION_USER_CREATED,
+    TOPIC_CONVERSATION_USER_REPLIED,
+    UI_ADMIN_PICKER_PORT_ADMIN_ID,
+    UI_CONVERSATION_TOPIC_PICKER_PORT_TOPICS,
+    UI_UNIT_ADMIN_PICKER,
+    UI_UNIT_CONVERSATION_TOPIC_PICKER,
+    ConversationEventEndpointRunner,
+    ProjectConversationEventTriggerRoute,
+    conversation_event_topics,
+    decode_conversation_event_trigger_configuration,
+    define_conversation_event_trigger_binding,
+    new_conversation_event_trigger,
+    new_conversation_event_webhook_handler,
+    new_project_conversation_event_endpoint_runner,
+    validate_conversation_event_trigger_configuration,
+)
 
 __all__ = [
     "Client",
@@ -27,4 +57,32 @@ __all__ = [
     "ReplyToConversationOperation",
     "UpdateConversationStateOperation",
     "FindContactByEmailOperation",
+    "CONVERSATION_EVENT_TRIGGER_DEFINITION",
+    "TOPIC_CONVERSATION_ADMIN_ASSIGNED",
+    "TOPIC_CONVERSATION_ADMIN_CLOSED",
+    "TOPIC_CONVERSATION_ADMIN_NOTED",
+    "TOPIC_CONVERSATION_ADMIN_OPEN_ASSIGNED",
+    "TOPIC_CONVERSATION_ADMIN_OPENED",
+    "TOPIC_CONVERSATION_ADMIN_REPLIED",
+    "TOPIC_CONVERSATION_ADMIN_SINGLE_CREATED",
+    "TOPIC_CONVERSATION_ADMIN_SNOOZED",
+    "TOPIC_CONVERSATION_ADMIN_UNSNOOZED",
+    "TOPIC_CONVERSATION_OPERATOR_REPLIED",
+    "TOPIC_CONVERSATION_PRIORITY_UPDATED",
+    "TOPIC_CONVERSATION_RATING_ADDED",
+    "TOPIC_CONVERSATION_USER_CREATED",
+    "TOPIC_CONVERSATION_USER_REPLIED",
+    "UI_ADMIN_PICKER_PORT_ADMIN_ID",
+    "UI_CONVERSATION_TOPIC_PICKER_PORT_TOPICS",
+    "UI_UNIT_ADMIN_PICKER",
+    "UI_UNIT_CONVERSATION_TOPIC_PICKER",
+    "ConversationEventEndpointRunner",
+    "ProjectConversationEventTriggerRoute",
+    "conversation_event_topics",
+    "decode_conversation_event_trigger_configuration",
+    "define_conversation_event_trigger_binding",
+    "new_conversation_event_trigger",
+    "new_conversation_event_webhook_handler",
+    "new_project_conversation_event_endpoint_runner",
+    "validate_conversation_event_trigger_configuration",
 ]

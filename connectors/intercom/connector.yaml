@@ -11,10 +11,10 @@ spec:
   provider: intercom
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-intercom
       operations: [searchConversations, getConversation, replyToConversation, updateConversationState, findContactByEmail]
-      triggers: []
+      triggers: [conversationEvent]
     typescript:
       version: v0.2.0
       package: "@superdurable/connector-intercom"
