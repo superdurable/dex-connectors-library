@@ -40,6 +40,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListApplicationFeedback() sdkgo.Query[ListApplicationFeedbackInput, ApplicationFeedbackPage]
+	RequestApplicationFeedback() sdkgo.Mutation[RequestApplicationFeedbackInput, FeedbackRequestReceipt]
+	SubmitApplicationFeedback() sdkgo.Mutation[SubmitApplicationFeedbackInput, FeedbackSubmissionReceipt]
 	ListInterviews() sdkgo.Query[ListInterviewsInput, InterviewPage]
 	GetInterview() sdkgo.Query[GetInterviewInput, InterviewSummary]
 	ListInterviewSchedules() sdkgo.Query[ListInterviewSchedulesInput, InterviewSchedulePage]
@@ -76,6 +79,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListApplicationFeedback() sdkgo.Query[ListApplicationFeedbackInput, ApplicationFeedbackPage] {
+	return operations.client.ListApplicationFeedback()
+}
+func (operations clientOperations) RequestApplicationFeedback() sdkgo.Mutation[RequestApplicationFeedbackInput, FeedbackRequestReceipt] {
+	return operations.client.RequestApplicationFeedback()
+}
+func (operations clientOperations) SubmitApplicationFeedback() sdkgo.Mutation[SubmitApplicationFeedbackInput, FeedbackSubmissionReceipt] {
+	return operations.client.SubmitApplicationFeedback()
+}
 func (operations clientOperations) ListInterviews() sdkgo.Query[ListInterviewsInput, InterviewPage] {
 	return operations.client.ListInterviews()
 }
@@ -308,6 +320,225 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListApplicationFeedbackBranchListed sdkgo.BranchID = "listed"
+const ListApplicationFeedbackBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListApplicationFeedbackBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListApplicationFeedbackBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListApplicationFeedbackDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listApplicationFeedback"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListApplicationFeedbackBranchListed, Description: "Ashby returned the feedback result."},
+		{ID: ListApplicationFeedbackBranchProviderRejected, Description: "Ashby conclusively rejected the feedback request.", Optional: true},
+		{ID: ListApplicationFeedbackBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: ListApplicationFeedbackBranchDefect, Description: "Local feedback input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListApplicationFeedbackResult = sdkgo.QueryResult[ApplicationFeedbackPage]
+
+type ListApplicationFeedbackStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=ashby"`
+	operationID                    struct{}                                                   `connector:"operationId=listApplicationFeedback"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListApplicationFeedbackInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListApplicationFeedbackResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListApplicationFeedbackResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListApplicationFeedbackResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListApplicationFeedbackResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ApplicationFeedbackPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewListApplicationFeedbackStep[IN any](config ListApplicationFeedbackStepConfig[IN]) sdkgo.QueryStep[IN, ListApplicationFeedbackInput, ApplicationFeedbackPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListApplicationFeedbackInput, ApplicationFeedbackPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListApplicationFeedback(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListApplicationFeedbackResult] {
+			branches := make([]sdkgo.BranchTarget[ListApplicationFeedbackResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListApplicationFeedbackBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListApplicationFeedbackBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListApplicationFeedbackBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListApplicationFeedbackBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RequestApplicationFeedbackBranchRequested sdkgo.BranchID = "requested"
+const RequestApplicationFeedbackBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RequestApplicationFeedbackBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const RequestApplicationFeedbackBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RequestApplicationFeedbackDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "requestApplicationFeedback"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RequestApplicationFeedbackBranchRequested, Description: "Ashby returned the feedback result."},
+		{ID: RequestApplicationFeedbackBranchProviderRejected, Description: "Ashby conclusively rejected the feedback request.", Optional: true},
+		{ID: RequestApplicationFeedbackBranchUncertain, Description: "The feedback request may have been created but the send cap was reached.", Optional: true},
+		{ID: RequestApplicationFeedbackBranchDefect, Description: "Local feedback input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type RequestApplicationFeedbackResult = sdkgo.MutationResult[FeedbackRequestReceipt]
+
+type RequestApplicationFeedbackStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=ashby"`
+	operationID                       struct{}                                                     `connector:"operationId=requestApplicationFeedback"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) RequestApplicationFeedbackInput                     `connector:"mapToOperationInput"`
+	Requested                         sdkgo.Target[RequestApplicationFeedbackResult]               `connector:"branch=requested"`
+	ProviderRejected                  sdkgo.Target[RequestApplicationFeedbackResult]               `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[RequestApplicationFeedbackResult]               `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[RequestApplicationFeedbackResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FeedbackRequestReceipt]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewRequestApplicationFeedbackStep[IN any](config RequestApplicationFeedbackStepConfig[IN]) sdkgo.MutationStep[IN, RequestApplicationFeedbackInput, FeedbackRequestReceipt] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RequestApplicationFeedbackInput, FeedbackRequestReceipt]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RequestApplicationFeedback(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RequestApplicationFeedbackResult] {
+			branches := make([]sdkgo.BranchTarget[RequestApplicationFeedbackResult], 0, 4)
+			if config.Requested.HasStep() {
+				branches = append(branches, config.Requested.BranchTarget(RequestApplicationFeedbackBranchRequested))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RequestApplicationFeedbackBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(RequestApplicationFeedbackBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RequestApplicationFeedbackBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SubmitApplicationFeedbackBranchSubmitted sdkgo.BranchID = "submitted"
+const SubmitApplicationFeedbackBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SubmitApplicationFeedbackBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SubmitApplicationFeedbackBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SubmitApplicationFeedbackDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "submitApplicationFeedback"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SubmitApplicationFeedbackBranchSubmitted, Description: "Ashby returned the feedback result."},
+		{ID: SubmitApplicationFeedbackBranchProviderRejected, Description: "Ashby conclusively rejected the feedback request.", Optional: true},
+		{ID: SubmitApplicationFeedbackBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: SubmitApplicationFeedbackBranchDefect, Description: "Local feedback input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SubmitApplicationFeedbackResult = sdkgo.MutationResult[FeedbackSubmissionReceipt]
+
+type SubmitApplicationFeedbackStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=ashby"`
+	operationID                       struct{}                                                        `connector:"operationId=submitApplicationFeedback"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) SubmitApplicationFeedbackInput                         `connector:"mapToOperationInput"`
+	Submitted                         sdkgo.Target[SubmitApplicationFeedbackResult]                   `connector:"branch=submitted"`
+	ProviderRejected                  sdkgo.Target[SubmitApplicationFeedbackResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SubmitApplicationFeedbackResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SubmitApplicationFeedbackResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FeedbackSubmissionReceipt]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewSubmitApplicationFeedbackStep[IN any](config SubmitApplicationFeedbackStepConfig[IN]) sdkgo.MutationStep[IN, SubmitApplicationFeedbackInput, FeedbackSubmissionReceipt] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SubmitApplicationFeedbackInput, FeedbackSubmissionReceipt]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SubmitApplicationFeedback(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SubmitApplicationFeedbackResult] {
+			branches := make([]sdkgo.BranchTarget[SubmitApplicationFeedbackResult], 0, 4)
+			if config.Submitted.HasStep() {
+				branches = append(branches, config.Submitted.BranchTarget(SubmitApplicationFeedbackBranchSubmitted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SubmitApplicationFeedbackBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SubmitApplicationFeedbackBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SubmitApplicationFeedbackBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListInterviewsBranchListed sdkgo.BranchID = "listed"

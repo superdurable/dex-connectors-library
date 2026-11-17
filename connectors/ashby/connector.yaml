@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: ashby
   displayName: Ashby
-  description: Create and read candidates, jobs, applications, and interview schedules; manage tags, notes, stages, and schedule cancellation in Ashby.
+  description: Create and read candidates, jobs, applications, interview schedules, and feedback requests in Ashby.
   company: Ashby
   categories: [hr-recruiting]
   version: v0.2.0
@@ -56,7 +56,69 @@ spec:
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. For tag operations, find the non-secret tag UUID in Ashby Admin > Organization Settings > Candidate Tags or candidateTag.list (which additionally needs Hiring Process read permission) and pass it as tagId; blank is invalid. For project association, open Sourcing > Projects or use candidate.listProjects and pass the non-secret project UUID as projectId; blank is invalid. Candidate notes accept plaintext up to 8192 bytes; omit secrets. Results omit email, phone, resume, and note content.
         - For jobs, open Jobs > Jobs to find a job UUID, and select its team and location in the job settings for createJob; blank IDs are invalid. For applications, open a candidate in Candidates > Search and select an application for its UUID. Use the job and interview-plan stage IDs from that application's job setup. Omit archiveReasonId unless moving to an Archived stage; then select a reason in Ashby settings. Find sourceId under Admin > Organization Settings > Sources. All IDs are non-secret UUIDs; blank IDs are invalid. Application results omit candidate contact information and forms.
         - For interviews, open the application's Interview Plan to find interviewId and interviewScheduleId, or use interview.list and interviewSchedule.list with Interviews read permission. Schedule creation requires an application UUID, one to ten RFC3339 event start and end times, and Ashby interviewer account emails; optional interviewId selects a definition, while blank uses Ashby's default. Cancel endpoints require non-secret schedule and event UUIDs; blank is invalid. Schedule results omit meeting links and interviewer identities.
+        - For feedback, open Candidates > Search > application > Feedback to locate the application and interview event. Use interview.list for the interview UUID and user.list for the interviewer UUID; all are non-secret UUIDs and blank is invalid. To submit feedback, read feedbackFormDefinition.info for the form UUID and exact field paths and value types; supply one or more JSON values, omit secrets, and always include the event and user UUIDs so repeats replace the same submission. Feedback results omit answers and user details.
   operations:
+    - name: listApplicationFeedback
+      goName: ListApplicationFeedback
+      inputType: ListApplicationFeedbackInput
+      outputType: ApplicationFeedbackPage
+      kind: query
+      description: List feedback submission identities for one application.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Ashby returned the feedback result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the feedback request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local feedback input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample feedback result is returned.
+          output: {feedback: [{id: ba64ac47-0a10-4b67-a422-8aa031dd636c, applicationId: 6d724bc1-2587-4915-adb3-d70c1dd940db, interviewId: ac0b2c21-70a2-4c02-93ac-41d932b43af5, interviewEventId: 0f2b7d01-a67a-4cef-a82c-cd8c3b0a232f, submittedAt: "2024-01-16T10:30:00.000Z"}], moreDataAvailable: false}
+    - name: requestApplicationFeedback
+      goName: RequestApplicationFeedback
+      inputType: RequestApplicationFeedbackInput
+      outputType: FeedbackRequestReceipt
+      kind: mutation
+      description: Request feedback from an interviewer for one application.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: requested, goName: Requested, description: Ashby returned the feedback result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the feedback request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The feedback request may have been created but the send cap was reached., optional: true}
+        - {id: defect, goName: Defect, description: Local feedback input or credentials are invalid., optional: true}
+      mocks:
+        - name: requestedDefault
+          branch: requested
+          default: true
+          description: A sample feedback result is returned.
+          output: {applicationId: 6d724bc1-2587-4915-adb3-d70c1dd940db, interviewEventId: 0f2b7d01-a67a-4cef-a82c-cd8c3b0a232f, interviewerUserId: 85b89d6e-02e5-4aca-bcc7-f4d2773a30df}
+    - name: submitApplicationFeedback
+      goName: SubmitApplicationFeedback
+      inputType: SubmitApplicationFeedbackInput
+      outputType: FeedbackSubmissionReceipt
+      kind: mutation
+      description: Submit or replace feedback for an interview event and user.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: submitted, goName: Submitted, description: Ashby returned the feedback result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the feedback request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local feedback input or credentials are invalid., optional: true}
+      mocks:
+        - name: submittedDefault
+          branch: submitted
+          default: true
+          description: A sample feedback result is returned.
+          output: {submissionId: 183b9b59-2e49-4de6-bfc4-53ce10b9b281}
+
     - name: listInterviews
       goName: ListInterviews
       inputType: ListInterviewsInput

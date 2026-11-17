@@ -17,39 +17,42 @@ import (
 
 // Mock is a scripted ashby connection. Script each operation through its accessor.
 type Mock struct {
-	connection              ashby.Connection
-	listInterviews          *connectormock.Query[ashby.ListInterviewsInput, ashby.InterviewPage]
-	getInterview            *connectormock.Query[ashby.GetInterviewInput, ashby.InterviewSummary]
-	listInterviewSchedules  *connectormock.Query[ashby.ListInterviewSchedulesInput, ashby.InterviewSchedulePage]
-	getInterviewSchedule    *connectormock.Query[ashby.GetInterviewScheduleInput, ashby.InterviewScheduleSummary]
-	createInterviewSchedule *connectormock.Mutation[ashby.CreateInterviewScheduleInput, ashby.InterviewScheduleSummary]
-	cancelInterviewSchedule *connectormock.Mutation[ashby.CancelInterviewScheduleInput, ashby.InterviewScheduleSummary]
-	cancelInterviewEvent    *connectormock.Mutation[ashby.CancelInterviewEventInput, ashby.InterviewScheduleSummary]
-	listApplications        *connectormock.Query[ashby.ListApplicationsInput, ashby.ApplicationPage]
-	getApplication          *connectormock.Query[ashby.GetApplicationInput, ashby.ApplicationSummary]
-	createApplication       *connectormock.Mutation[ashby.CreateApplicationInput, ashby.ApplicationSummary]
-	changeApplicationStage  *connectormock.Mutation[ashby.ChangeApplicationStageInput, ashby.ApplicationSummary]
-	transferApplication     *connectormock.Mutation[ashby.TransferApplicationInput, ashby.ApplicationSummary]
-	setApplicationSource    *connectormock.Mutation[ashby.SetApplicationSourceInput, ashby.ApplicationSummary]
-	deleteApplication       *connectormock.Mutation[ashby.DeleteApplicationInput, ashby.DeletedApplication]
-	listJobs                *connectormock.Query[ashby.ListJobsInput, ashby.JobPage]
-	getJob                  *connectormock.Query[ashby.GetJobInput, ashby.JobSummary]
-	searchJobs              *connectormock.Query[ashby.SearchJobsInput, ashby.JobSearchResults]
-	createJob               *connectormock.Mutation[ashby.CreateJobInput, ashby.JobSummary]
-	updateJobTitle          *connectormock.Mutation[ashby.UpdateJobTitleInput, ashby.JobSummary]
-	setJobStatus            *connectormock.Mutation[ashby.SetJobStatusInput, ashby.JobSummary]
-	listCandidateNotes      *connectormock.Query[ashby.ListCandidateNotesInput, ashby.CandidateNotePage]
-	createCandidateNote     *connectormock.Mutation[ashby.CreateCandidateNoteInput, ashby.CandidateNoteSummary]
-	listCandidateProjects   *connectormock.Query[ashby.ListCandidateProjectsInput, ashby.CandidateProjectPage]
-	addCandidateProject     *connectormock.Mutation[ashby.CandidateProjectInput, ashby.CandidateProfile]
-	removeCandidateProject  *connectormock.Mutation[ashby.CandidateProjectInput, ashby.CandidateProfile]
-	searchCandidates        *connectormock.Query[ashby.SearchCandidatesInput, ashby.CandidateSearchResults]
-	createCandidate         *connectormock.Mutation[ashby.CreateCandidateInput, ashby.CandidateProfile]
-	addCandidateTag         *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
-	removeCandidateTag      *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
-	listCandidates          *connectormock.Query[ashby.ListCandidatesInput, ashby.CandidatePage]
-	updateCandidate         *connectormock.Mutation[ashby.UpdateCandidateInput, ashby.CandidateProfile]
-	getCandidate            *connectormock.Query[ashby.GetCandidateInput, ashby.CandidateProfile]
+	connection                 ashby.Connection
+	listApplicationFeedback    *connectormock.Query[ashby.ListApplicationFeedbackInput, ashby.ApplicationFeedbackPage]
+	requestApplicationFeedback *connectormock.Mutation[ashby.RequestApplicationFeedbackInput, ashby.FeedbackRequestReceipt]
+	submitApplicationFeedback  *connectormock.Mutation[ashby.SubmitApplicationFeedbackInput, ashby.FeedbackSubmissionReceipt]
+	listInterviews             *connectormock.Query[ashby.ListInterviewsInput, ashby.InterviewPage]
+	getInterview               *connectormock.Query[ashby.GetInterviewInput, ashby.InterviewSummary]
+	listInterviewSchedules     *connectormock.Query[ashby.ListInterviewSchedulesInput, ashby.InterviewSchedulePage]
+	getInterviewSchedule       *connectormock.Query[ashby.GetInterviewScheduleInput, ashby.InterviewScheduleSummary]
+	createInterviewSchedule    *connectormock.Mutation[ashby.CreateInterviewScheduleInput, ashby.InterviewScheduleSummary]
+	cancelInterviewSchedule    *connectormock.Mutation[ashby.CancelInterviewScheduleInput, ashby.InterviewScheduleSummary]
+	cancelInterviewEvent       *connectormock.Mutation[ashby.CancelInterviewEventInput, ashby.InterviewScheduleSummary]
+	listApplications           *connectormock.Query[ashby.ListApplicationsInput, ashby.ApplicationPage]
+	getApplication             *connectormock.Query[ashby.GetApplicationInput, ashby.ApplicationSummary]
+	createApplication          *connectormock.Mutation[ashby.CreateApplicationInput, ashby.ApplicationSummary]
+	changeApplicationStage     *connectormock.Mutation[ashby.ChangeApplicationStageInput, ashby.ApplicationSummary]
+	transferApplication        *connectormock.Mutation[ashby.TransferApplicationInput, ashby.ApplicationSummary]
+	setApplicationSource       *connectormock.Mutation[ashby.SetApplicationSourceInput, ashby.ApplicationSummary]
+	deleteApplication          *connectormock.Mutation[ashby.DeleteApplicationInput, ashby.DeletedApplication]
+	listJobs                   *connectormock.Query[ashby.ListJobsInput, ashby.JobPage]
+	getJob                     *connectormock.Query[ashby.GetJobInput, ashby.JobSummary]
+	searchJobs                 *connectormock.Query[ashby.SearchJobsInput, ashby.JobSearchResults]
+	createJob                  *connectormock.Mutation[ashby.CreateJobInput, ashby.JobSummary]
+	updateJobTitle             *connectormock.Mutation[ashby.UpdateJobTitleInput, ashby.JobSummary]
+	setJobStatus               *connectormock.Mutation[ashby.SetJobStatusInput, ashby.JobSummary]
+	listCandidateNotes         *connectormock.Query[ashby.ListCandidateNotesInput, ashby.CandidateNotePage]
+	createCandidateNote        *connectormock.Mutation[ashby.CreateCandidateNoteInput, ashby.CandidateNoteSummary]
+	listCandidateProjects      *connectormock.Query[ashby.ListCandidateProjectsInput, ashby.CandidateProjectPage]
+	addCandidateProject        *connectormock.Mutation[ashby.CandidateProjectInput, ashby.CandidateProfile]
+	removeCandidateProject     *connectormock.Mutation[ashby.CandidateProjectInput, ashby.CandidateProfile]
+	searchCandidates           *connectormock.Query[ashby.SearchCandidatesInput, ashby.CandidateSearchResults]
+	createCandidate            *connectormock.Mutation[ashby.CreateCandidateInput, ashby.CandidateProfile]
+	addCandidateTag            *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
+	removeCandidateTag         *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
+	listCandidates             *connectormock.Query[ashby.ListCandidatesInput, ashby.CandidatePage]
+	updateCandidate            *connectormock.Mutation[ashby.UpdateCandidateInput, ashby.CandidateProfile]
+	getCandidate               *connectormock.Query[ashby.GetCandidateInput, ashby.CandidateProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -57,39 +60,45 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listInterviews:          connectormock.NewQuery[ashby.ListInterviewsInput, ashby.InterviewPage](t, ashby.ListInterviewsDefinition),
-		getInterview:            connectormock.NewQuery[ashby.GetInterviewInput, ashby.InterviewSummary](t, ashby.GetInterviewDefinition),
-		listInterviewSchedules:  connectormock.NewQuery[ashby.ListInterviewSchedulesInput, ashby.InterviewSchedulePage](t, ashby.ListInterviewSchedulesDefinition),
-		getInterviewSchedule:    connectormock.NewQuery[ashby.GetInterviewScheduleInput, ashby.InterviewScheduleSummary](t, ashby.GetInterviewScheduleDefinition),
-		createInterviewSchedule: connectormock.NewMutation[ashby.CreateInterviewScheduleInput, ashby.InterviewScheduleSummary](t, ashby.CreateInterviewScheduleDefinition),
-		cancelInterviewSchedule: connectormock.NewMutation[ashby.CancelInterviewScheduleInput, ashby.InterviewScheduleSummary](t, ashby.CancelInterviewScheduleDefinition),
-		cancelInterviewEvent:    connectormock.NewMutation[ashby.CancelInterviewEventInput, ashby.InterviewScheduleSummary](t, ashby.CancelInterviewEventDefinition),
-		listApplications:        connectormock.NewQuery[ashby.ListApplicationsInput, ashby.ApplicationPage](t, ashby.ListApplicationsDefinition),
-		getApplication:          connectormock.NewQuery[ashby.GetApplicationInput, ashby.ApplicationSummary](t, ashby.GetApplicationDefinition),
-		createApplication:       connectormock.NewMutation[ashby.CreateApplicationInput, ashby.ApplicationSummary](t, ashby.CreateApplicationDefinition),
-		changeApplicationStage:  connectormock.NewMutation[ashby.ChangeApplicationStageInput, ashby.ApplicationSummary](t, ashby.ChangeApplicationStageDefinition),
-		transferApplication:     connectormock.NewMutation[ashby.TransferApplicationInput, ashby.ApplicationSummary](t, ashby.TransferApplicationDefinition),
-		setApplicationSource:    connectormock.NewMutation[ashby.SetApplicationSourceInput, ashby.ApplicationSummary](t, ashby.SetApplicationSourceDefinition),
-		deleteApplication:       connectormock.NewMutation[ashby.DeleteApplicationInput, ashby.DeletedApplication](t, ashby.DeleteApplicationDefinition),
-		listJobs:                connectormock.NewQuery[ashby.ListJobsInput, ashby.JobPage](t, ashby.ListJobsDefinition),
-		getJob:                  connectormock.NewQuery[ashby.GetJobInput, ashby.JobSummary](t, ashby.GetJobDefinition),
-		searchJobs:              connectormock.NewQuery[ashby.SearchJobsInput, ashby.JobSearchResults](t, ashby.SearchJobsDefinition),
-		createJob:               connectormock.NewMutation[ashby.CreateJobInput, ashby.JobSummary](t, ashby.CreateJobDefinition),
-		updateJobTitle:          connectormock.NewMutation[ashby.UpdateJobTitleInput, ashby.JobSummary](t, ashby.UpdateJobTitleDefinition),
-		setJobStatus:            connectormock.NewMutation[ashby.SetJobStatusInput, ashby.JobSummary](t, ashby.SetJobStatusDefinition),
-		listCandidateNotes:      connectormock.NewQuery[ashby.ListCandidateNotesInput, ashby.CandidateNotePage](t, ashby.ListCandidateNotesDefinition),
-		createCandidateNote:     connectormock.NewMutation[ashby.CreateCandidateNoteInput, ashby.CandidateNoteSummary](t, ashby.CreateCandidateNoteDefinition),
-		listCandidateProjects:   connectormock.NewQuery[ashby.ListCandidateProjectsInput, ashby.CandidateProjectPage](t, ashby.ListCandidateProjectsDefinition),
-		addCandidateProject:     connectormock.NewMutation[ashby.CandidateProjectInput, ashby.CandidateProfile](t, ashby.AddCandidateProjectDefinition),
-		removeCandidateProject:  connectormock.NewMutation[ashby.CandidateProjectInput, ashby.CandidateProfile](t, ashby.RemoveCandidateProjectDefinition),
-		searchCandidates:        connectormock.NewQuery[ashby.SearchCandidatesInput, ashby.CandidateSearchResults](t, ashby.SearchCandidatesDefinition),
-		createCandidate:         connectormock.NewMutation[ashby.CreateCandidateInput, ashby.CandidateProfile](t, ashby.CreateCandidateDefinition),
-		addCandidateTag:         connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.AddCandidateTagDefinition),
-		removeCandidateTag:      connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.RemoveCandidateTagDefinition),
-		listCandidates:          connectormock.NewQuery[ashby.ListCandidatesInput, ashby.CandidatePage](t, ashby.ListCandidatesDefinition),
-		updateCandidate:         connectormock.NewMutation[ashby.UpdateCandidateInput, ashby.CandidateProfile](t, ashby.UpdateCandidateDefinition),
-		getCandidate:            connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
+		listApplicationFeedback:    connectormock.NewQuery[ashby.ListApplicationFeedbackInput, ashby.ApplicationFeedbackPage](t, ashby.ListApplicationFeedbackDefinition),
+		requestApplicationFeedback: connectormock.NewMutation[ashby.RequestApplicationFeedbackInput, ashby.FeedbackRequestReceipt](t, ashby.RequestApplicationFeedbackDefinition),
+		submitApplicationFeedback:  connectormock.NewMutation[ashby.SubmitApplicationFeedbackInput, ashby.FeedbackSubmissionReceipt](t, ashby.SubmitApplicationFeedbackDefinition),
+		listInterviews:             connectormock.NewQuery[ashby.ListInterviewsInput, ashby.InterviewPage](t, ashby.ListInterviewsDefinition),
+		getInterview:               connectormock.NewQuery[ashby.GetInterviewInput, ashby.InterviewSummary](t, ashby.GetInterviewDefinition),
+		listInterviewSchedules:     connectormock.NewQuery[ashby.ListInterviewSchedulesInput, ashby.InterviewSchedulePage](t, ashby.ListInterviewSchedulesDefinition),
+		getInterviewSchedule:       connectormock.NewQuery[ashby.GetInterviewScheduleInput, ashby.InterviewScheduleSummary](t, ashby.GetInterviewScheduleDefinition),
+		createInterviewSchedule:    connectormock.NewMutation[ashby.CreateInterviewScheduleInput, ashby.InterviewScheduleSummary](t, ashby.CreateInterviewScheduleDefinition),
+		cancelInterviewSchedule:    connectormock.NewMutation[ashby.CancelInterviewScheduleInput, ashby.InterviewScheduleSummary](t, ashby.CancelInterviewScheduleDefinition),
+		cancelInterviewEvent:       connectormock.NewMutation[ashby.CancelInterviewEventInput, ashby.InterviewScheduleSummary](t, ashby.CancelInterviewEventDefinition),
+		listApplications:           connectormock.NewQuery[ashby.ListApplicationsInput, ashby.ApplicationPage](t, ashby.ListApplicationsDefinition),
+		getApplication:             connectormock.NewQuery[ashby.GetApplicationInput, ashby.ApplicationSummary](t, ashby.GetApplicationDefinition),
+		createApplication:          connectormock.NewMutation[ashby.CreateApplicationInput, ashby.ApplicationSummary](t, ashby.CreateApplicationDefinition),
+		changeApplicationStage:     connectormock.NewMutation[ashby.ChangeApplicationStageInput, ashby.ApplicationSummary](t, ashby.ChangeApplicationStageDefinition),
+		transferApplication:        connectormock.NewMutation[ashby.TransferApplicationInput, ashby.ApplicationSummary](t, ashby.TransferApplicationDefinition),
+		setApplicationSource:       connectormock.NewMutation[ashby.SetApplicationSourceInput, ashby.ApplicationSummary](t, ashby.SetApplicationSourceDefinition),
+		deleteApplication:          connectormock.NewMutation[ashby.DeleteApplicationInput, ashby.DeletedApplication](t, ashby.DeleteApplicationDefinition),
+		listJobs:                   connectormock.NewQuery[ashby.ListJobsInput, ashby.JobPage](t, ashby.ListJobsDefinition),
+		getJob:                     connectormock.NewQuery[ashby.GetJobInput, ashby.JobSummary](t, ashby.GetJobDefinition),
+		searchJobs:                 connectormock.NewQuery[ashby.SearchJobsInput, ashby.JobSearchResults](t, ashby.SearchJobsDefinition),
+		createJob:                  connectormock.NewMutation[ashby.CreateJobInput, ashby.JobSummary](t, ashby.CreateJobDefinition),
+		updateJobTitle:             connectormock.NewMutation[ashby.UpdateJobTitleInput, ashby.JobSummary](t, ashby.UpdateJobTitleDefinition),
+		setJobStatus:               connectormock.NewMutation[ashby.SetJobStatusInput, ashby.JobSummary](t, ashby.SetJobStatusDefinition),
+		listCandidateNotes:         connectormock.NewQuery[ashby.ListCandidateNotesInput, ashby.CandidateNotePage](t, ashby.ListCandidateNotesDefinition),
+		createCandidateNote:        connectormock.NewMutation[ashby.CreateCandidateNoteInput, ashby.CandidateNoteSummary](t, ashby.CreateCandidateNoteDefinition),
+		listCandidateProjects:      connectormock.NewQuery[ashby.ListCandidateProjectsInput, ashby.CandidateProjectPage](t, ashby.ListCandidateProjectsDefinition),
+		addCandidateProject:        connectormock.NewMutation[ashby.CandidateProjectInput, ashby.CandidateProfile](t, ashby.AddCandidateProjectDefinition),
+		removeCandidateProject:     connectormock.NewMutation[ashby.CandidateProjectInput, ashby.CandidateProfile](t, ashby.RemoveCandidateProjectDefinition),
+		searchCandidates:           connectormock.NewQuery[ashby.SearchCandidatesInput, ashby.CandidateSearchResults](t, ashby.SearchCandidatesDefinition),
+		createCandidate:            connectormock.NewMutation[ashby.CreateCandidateInput, ashby.CandidateProfile](t, ashby.CreateCandidateDefinition),
+		addCandidateTag:            connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.AddCandidateTagDefinition),
+		removeCandidateTag:         connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.RemoveCandidateTagDefinition),
+		listCandidates:             connectormock.NewQuery[ashby.ListCandidatesInput, ashby.CandidatePage](t, ashby.ListCandidatesDefinition),
+		updateCandidate:            connectormock.NewMutation[ashby.UpdateCandidateInput, ashby.CandidateProfile](t, ashby.UpdateCandidateDefinition),
+		getCandidate:               connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
 	}
+	mock.listApplicationFeedback.Default(ListApplicationFeedbackDefault())
+	mock.requestApplicationFeedback.Default(RequestApplicationFeedbackDefault())
+	mock.submitApplicationFeedback.Default(SubmitApplicationFeedbackDefault())
 	mock.listInterviews.Default(ListInterviewsDefault())
 	mock.getInterview.Default(GetInterviewDefault())
 	mock.listInterviewSchedules.Default(ListInterviewSchedulesDefault())
@@ -132,6 +141,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() ashby.Connection { return mock.connection }
+
+// ListApplicationFeedback returns the listApplicationFeedback script.
+func (mock *Mock) ListApplicationFeedback() *connectormock.Query[ashby.ListApplicationFeedbackInput, ashby.ApplicationFeedbackPage] {
+	return mock.listApplicationFeedback
+}
+
+// RequestApplicationFeedback returns the requestApplicationFeedback script.
+func (mock *Mock) RequestApplicationFeedback() *connectormock.Mutation[ashby.RequestApplicationFeedbackInput, ashby.FeedbackRequestReceipt] {
+	return mock.requestApplicationFeedback
+}
+
+// SubmitApplicationFeedback returns the submitApplicationFeedback script.
+func (mock *Mock) SubmitApplicationFeedback() *connectormock.Mutation[ashby.SubmitApplicationFeedbackInput, ashby.FeedbackSubmissionReceipt] {
+	return mock.submitApplicationFeedback
+}
 
 // ListInterviews returns the listInterviews script.
 func (mock *Mock) ListInterviews() *connectormock.Query[ashby.ListInterviewsInput, ashby.InterviewPage] {
@@ -295,6 +319,15 @@ func (mock *Mock) GetCandidate() *connectormock.Query[ashby.GetCandidateInput, a
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListApplicationFeedback() sdkgo.Query[ashby.ListApplicationFeedbackInput, ashby.ApplicationFeedbackPage] {
+	return operations.mock.listApplicationFeedback
+}
+func (operations mockOperations) RequestApplicationFeedback() sdkgo.Mutation[ashby.RequestApplicationFeedbackInput, ashby.FeedbackRequestReceipt] {
+	return operations.mock.requestApplicationFeedback
+}
+func (operations mockOperations) SubmitApplicationFeedback() sdkgo.Mutation[ashby.SubmitApplicationFeedbackInput, ashby.FeedbackSubmissionReceipt] {
+	return operations.mock.submitApplicationFeedback
+}
 func (operations mockOperations) ListInterviews() sdkgo.Query[ashby.ListInterviewsInput, ashby.InterviewPage] {
 	return operations.mock.listInterviews
 }
@@ -390,6 +423,114 @@ func (operations mockOperations) UpdateCandidate() sdkgo.Mutation[ashby.UpdateCa
 }
 func (operations mockOperations) GetCandidate() sdkgo.Query[ashby.GetCandidateInput, ashby.CandidateProfile] {
 	return operations.mock.getCandidate
+}
+
+// ListApplicationFeedbackListed selects the listed branch: Ashby returned the feedback result.
+func ListApplicationFeedbackListed(value ashby.ApplicationFeedbackPage, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationFeedbackPage] {
+	return connectormock.Branch(ashby.ListApplicationFeedbackBranchListed, value, failure)
+}
+
+// ListApplicationFeedbackProviderRejected selects the providerRejected branch: Ashby conclusively rejected the feedback request.
+func ListApplicationFeedbackProviderRejected(value ashby.ApplicationFeedbackPage, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationFeedbackPage] {
+	return connectormock.Branch(ashby.ListApplicationFeedbackBranchProviderRejected, value, failure)
+}
+
+// ListApplicationFeedbackInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func ListApplicationFeedbackInvalidResponse(value ashby.ApplicationFeedbackPage, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationFeedbackPage] {
+	return connectormock.Branch(ashby.ListApplicationFeedbackBranchInvalidResponse, value, failure)
+}
+
+// ListApplicationFeedbackDefect selects the defect branch: Local feedback input or credentials are invalid.
+func ListApplicationFeedbackDefect(value ashby.ApplicationFeedbackPage, failure *sdkgo.Failure) connectormock.Case[ashby.ApplicationFeedbackPage] {
+	return connectormock.Branch(ashby.ListApplicationFeedbackBranchDefect, value, failure)
+}
+
+// ListApplicationFeedbackRetry asks Dex to retry the listApplicationFeedback Step, after the delay when it is positive.
+func ListApplicationFeedbackRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.ApplicationFeedbackPage] {
+	return connectormock.Retry[ashby.ApplicationFeedbackPage](failure, after)
+}
+
+// ListApplicationFeedbackListedDefault is the manifest mock listedDefault: A sample feedback result is returned.
+func ListApplicationFeedbackListedDefault() connectormock.Case[ashby.ApplicationFeedbackPage] {
+	value := connectormock.MustDecodeOutput[ashby.ApplicationFeedbackPage](`{"feedback":[{"id":"ba64ac47-0a10-4b67-a422-8aa031dd636c","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewId":"ac0b2c21-70a2-4c02-93ac-41d932b43af5","interviewEventId":"0f2b7d01-a67a-4cef-a82c-cd8c3b0a232f","submittedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+	return connectormock.Branch(ashby.ListApplicationFeedbackBranchListed, value, nil)
+}
+
+// ListApplicationFeedbackDefault is the manifest default, listedDefault, which New installs.
+func ListApplicationFeedbackDefault() connectormock.Case[ashby.ApplicationFeedbackPage] {
+	return ListApplicationFeedbackListedDefault()
+}
+
+// RequestApplicationFeedbackRequested selects the requested branch: Ashby returned the feedback result.
+func RequestApplicationFeedbackRequested(value ashby.FeedbackRequestReceipt, failure *sdkgo.Failure) connectormock.Case[ashby.FeedbackRequestReceipt] {
+	return connectormock.Branch(ashby.RequestApplicationFeedbackBranchRequested, value, failure)
+}
+
+// RequestApplicationFeedbackProviderRejected selects the providerRejected branch: Ashby conclusively rejected the feedback request.
+func RequestApplicationFeedbackProviderRejected(value ashby.FeedbackRequestReceipt, failure *sdkgo.Failure) connectormock.Case[ashby.FeedbackRequestReceipt] {
+	return connectormock.Branch(ashby.RequestApplicationFeedbackBranchProviderRejected, value, failure)
+}
+
+// RequestApplicationFeedbackUncertain returns an uncertain requestApplicationFeedback outcome.
+func RequestApplicationFeedbackUncertain(value ashby.FeedbackRequestReceipt, failure sdkgo.Failure) connectormock.Case[ashby.FeedbackRequestReceipt] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// RequestApplicationFeedbackDefect selects the defect branch: Local feedback input or credentials are invalid.
+func RequestApplicationFeedbackDefect(value ashby.FeedbackRequestReceipt, failure *sdkgo.Failure) connectormock.Case[ashby.FeedbackRequestReceipt] {
+	return connectormock.Branch(ashby.RequestApplicationFeedbackBranchDefect, value, failure)
+}
+
+// RequestApplicationFeedbackRetry asks Dex to retry the requestApplicationFeedback Step, after the delay when it is positive.
+func RequestApplicationFeedbackRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.FeedbackRequestReceipt] {
+	return connectormock.Retry[ashby.FeedbackRequestReceipt](failure, after)
+}
+
+// RequestApplicationFeedbackRequestedDefault is the manifest mock requestedDefault: A sample feedback result is returned.
+func RequestApplicationFeedbackRequestedDefault() connectormock.Case[ashby.FeedbackRequestReceipt] {
+	value := connectormock.MustDecodeOutput[ashby.FeedbackRequestReceipt](`{"applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewEventId":"0f2b7d01-a67a-4cef-a82c-cd8c3b0a232f","interviewerUserId":"85b89d6e-02e5-4aca-bcc7-f4d2773a30df"}`)
+	return connectormock.Branch(ashby.RequestApplicationFeedbackBranchRequested, value, nil)
+}
+
+// RequestApplicationFeedbackDefault is the manifest default, requestedDefault, which New installs.
+func RequestApplicationFeedbackDefault() connectormock.Case[ashby.FeedbackRequestReceipt] {
+	return RequestApplicationFeedbackRequestedDefault()
+}
+
+// SubmitApplicationFeedbackSubmitted selects the submitted branch: Ashby returned the feedback result.
+func SubmitApplicationFeedbackSubmitted(value ashby.FeedbackSubmissionReceipt, failure *sdkgo.Failure) connectormock.Case[ashby.FeedbackSubmissionReceipt] {
+	return connectormock.Branch(ashby.SubmitApplicationFeedbackBranchSubmitted, value, failure)
+}
+
+// SubmitApplicationFeedbackProviderRejected selects the providerRejected branch: Ashby conclusively rejected the feedback request.
+func SubmitApplicationFeedbackProviderRejected(value ashby.FeedbackSubmissionReceipt, failure *sdkgo.Failure) connectormock.Case[ashby.FeedbackSubmissionReceipt] {
+	return connectormock.Branch(ashby.SubmitApplicationFeedbackBranchProviderRejected, value, failure)
+}
+
+// SubmitApplicationFeedbackInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func SubmitApplicationFeedbackInvalidResponse(value ashby.FeedbackSubmissionReceipt, failure *sdkgo.Failure) connectormock.Case[ashby.FeedbackSubmissionReceipt] {
+	return connectormock.Branch(ashby.SubmitApplicationFeedbackBranchInvalidResponse, value, failure)
+}
+
+// SubmitApplicationFeedbackDefect selects the defect branch: Local feedback input or credentials are invalid.
+func SubmitApplicationFeedbackDefect(value ashby.FeedbackSubmissionReceipt, failure *sdkgo.Failure) connectormock.Case[ashby.FeedbackSubmissionReceipt] {
+	return connectormock.Branch(ashby.SubmitApplicationFeedbackBranchDefect, value, failure)
+}
+
+// SubmitApplicationFeedbackRetry asks Dex to retry the submitApplicationFeedback Step, after the delay when it is positive.
+func SubmitApplicationFeedbackRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.FeedbackSubmissionReceipt] {
+	return connectormock.Retry[ashby.FeedbackSubmissionReceipt](failure, after)
+}
+
+// SubmitApplicationFeedbackSubmittedDefault is the manifest mock submittedDefault: A sample feedback result is returned.
+func SubmitApplicationFeedbackSubmittedDefault() connectormock.Case[ashby.FeedbackSubmissionReceipt] {
+	value := connectormock.MustDecodeOutput[ashby.FeedbackSubmissionReceipt](`{"submissionId":"183b9b59-2e49-4de6-bfc4-53ce10b9b281"}`)
+	return connectormock.Branch(ashby.SubmitApplicationFeedbackBranchSubmitted, value, nil)
+}
+
+// SubmitApplicationFeedbackDefault is the manifest default, submittedDefault, which New installs.
+func SubmitApplicationFeedbackDefault() connectormock.Case[ashby.FeedbackSubmissionReceipt] {
+	return SubmitApplicationFeedbackSubmittedDefault()
 }
 
 // ListInterviewsListed selects the listed branch: Ashby returned the interview result.

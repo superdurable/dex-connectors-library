@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listApplicationFeedback/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.ApplicationFeedbackPage](`{"feedback":[{"id":"ba64ac47-0a10-4b67-a422-8aa031dd636c","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewId":"ac0b2c21-70a2-4c02-93ac-41d932b43af5","interviewEventId":"0f2b7d01-a67a-4cef-a82c-cd8c3b0a232f","submittedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "requestApplicationFeedback/requestedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.FeedbackRequestReceipt](`{"applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewEventId":"0f2b7d01-a67a-4cef-a82c-cd8c3b0a232f","interviewerUserId":"85b89d6e-02e5-4aca-bcc7-f4d2773a30df"}`)
+			return err
+		}},
+		{name: "submitApplicationFeedback/submittedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.FeedbackSubmissionReceipt](`{"submissionId":"183b9b59-2e49-4de6-bfc4-53ce10b9b281"}`)
+			return err
+		}},
 		{name: "listInterviews/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ashby.InterviewPage](`{"interviews":[{"id":"ac0b2c21-70a2-4c02-93ac-41d932b43af5","title":"Technical Interview","type":"Interview","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42"}],"moreDataAvailable":false}`)
 			return err
@@ -154,6 +166,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListApplicationFeedback().Definition().Operation.OperationID != "listApplicationFeedback" {
+		t.Errorf("listApplicationFeedback mock has another definition")
+	}
+	if mock.RequestApplicationFeedback().Definition().Operation.OperationID != "requestApplicationFeedback" {
+		t.Errorf("requestApplicationFeedback mock has another definition")
+	}
+	if mock.SubmitApplicationFeedback().Definition().Operation.OperationID != "submitApplicationFeedback" {
+		t.Errorf("submitApplicationFeedback mock has another definition")
+	}
 	if mock.ListInterviews().Definition().Operation.OperationID != "listInterviews" {
 		t.Errorf("listInterviews mock has another definition")
 	}
