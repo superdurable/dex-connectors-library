@@ -16,6 +16,66 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listInvoices/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.InvoicePage](`{"invoices":[{"id":"e28zov4fw0v2","state":"open"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getInvoice/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.InvoiceSummary](`{"id":"e28zov4fw0v2","state":"open"}`)
+			return err
+		}},
+		{name: "listPlans/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.PlanPage](`{"plans":[{"id":"e28zov4fw0v2","code":"standard","name":"Standard"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getPlan/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.PlanSummary](`{"id":"e28zov4fw0v2","code":"standard","name":"Standard"}`)
+			return err
+		}},
+		{name: "createPlan/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.PlanSummary](`{"id":"e28zov4fw0v2","code":"standard_0123456789abcdef0123456789abcdef","name":"Standard"}`)
+			return err
+		}},
+		{name: "renamePlan/renamedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.PlanSummary](`{"id":"e28zov4fw0v2","code":"standard","name":"Standard Plus"}`)
+			return err
+		}},
+		{name: "deletePlan/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.DeletedPlan](`{"id":"e28zov4fw0v2"}`)
+			return err
+		}},
+		{name: "listSubscriptions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.SubscriptionPage](`{"subscriptions":[{"id":"e28zov4fw0v2","state":"active"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getSubscription/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.SubscriptionSummary](`{"id":"e28zov4fw0v2","state":"active"}`)
+			return err
+		}},
+		{name: "cancelSubscription/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.SubscriptionSummary](`{"id":"e28zov4fw0v2","state":"canceled"}`)
+			return err
+		}},
+		{name: "reactivateSubscription/reactivatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.SubscriptionSummary](`{"id":"e28zov4fw0v2","state":"active"}`)
+			return err
+		}},
+		{name: "listAccounts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.AccountPage](`{"accounts":[{"id":"e28zov4fw0v2","code":"acme-corp"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "setAccountTimeZone/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.AccountTimeZone](`{"id":"e28zov4fw0v2","code":"acme-corp","timeZone":"America/Los_Angeles"}`)
+			return err
+		}},
+		{name: "reactivateAccount/reactivatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.AccountLifecycle](`{"id":"e28zov4fw0v2","code":"acme-corp","state":"active"}`)
+			return err
+		}},
+		{name: "createAccount/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.AccountIdentity](`{"id":"e28zov4fw0v2","code":"dex_0123456789abcdef0123456789abcdef"}`)
+			return err
+		}},
 		{name: "getAccount/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[recurly.AccountIdentity](`{"id":"e28zov4fw0v2","code":"acme-corp"}`)
 			return err
@@ -30,6 +90,51 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
+	}
+	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
+		t.Errorf("getInvoice mock has another definition")
+	}
+	if mock.ListPlans().Definition().Operation.OperationID != "listPlans" {
+		t.Errorf("listPlans mock has another definition")
+	}
+	if mock.GetPlan().Definition().Operation.OperationID != "getPlan" {
+		t.Errorf("getPlan mock has another definition")
+	}
+	if mock.CreatePlan().Definition().Operation.OperationID != "createPlan" {
+		t.Errorf("createPlan mock has another definition")
+	}
+	if mock.RenamePlan().Definition().Operation.OperationID != "renamePlan" {
+		t.Errorf("renamePlan mock has another definition")
+	}
+	if mock.DeletePlan().Definition().Operation.OperationID != "deletePlan" {
+		t.Errorf("deletePlan mock has another definition")
+	}
+	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
+		t.Errorf("listSubscriptions mock has another definition")
+	}
+	if mock.GetSubscription().Definition().Operation.OperationID != "getSubscription" {
+		t.Errorf("getSubscription mock has another definition")
+	}
+	if mock.CancelSubscription().Definition().Operation.OperationID != "cancelSubscription" {
+		t.Errorf("cancelSubscription mock has another definition")
+	}
+	if mock.ReactivateSubscription().Definition().Operation.OperationID != "reactivateSubscription" {
+		t.Errorf("reactivateSubscription mock has another definition")
+	}
+	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
+		t.Errorf("listAccounts mock has another definition")
+	}
+	if mock.SetAccountTimeZone().Definition().Operation.OperationID != "setAccountTimeZone" {
+		t.Errorf("setAccountTimeZone mock has another definition")
+	}
+	if mock.ReactivateAccount().Definition().Operation.OperationID != "reactivateAccount" {
+		t.Errorf("reactivateAccount mock has another definition")
+	}
+	if mock.CreateAccount().Definition().Operation.OperationID != "createAccount" {
+		t.Errorf("createAccount mock has another definition")
+	}
 	if mock.GetAccount().Definition().Operation.OperationID != "getAccount" {
 		t.Errorf("getAccount mock has another definition")
 	}

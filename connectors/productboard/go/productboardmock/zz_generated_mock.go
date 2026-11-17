@@ -17,8 +17,18 @@ import (
 
 // Mock is a scripted productboard connection. Script each operation through its accessor.
 type Mock struct {
-	connection   productboard.Connection
-	listFeatures *connectormock.Query[productboard.ListFeaturesInput, productboard.FeaturesPage]
+	connection     productboard.Connection
+	getFeature     *connectormock.Query[productboard.GetFeatureInput, productboard.FeatureMetadata]
+	createFeature  *connectormock.Mutation[productboard.CreateFeatureInput, productboard.FeatureMetadata]
+	renameFeature  *connectormock.Mutation[productboard.RenameFeatureInput, productboard.FeatureMetadata]
+	deleteFeature  *connectormock.Mutation[productboard.DeleteFeatureInput, productboard.DeletedFeature]
+	listFeatures   *connectormock.Query[productboard.ListFeaturesInput, productboard.FeaturesPage]
+	listNotes      *connectormock.Query[productboard.ListNotesInput, productboard.NotesPage]
+	getNote        *connectormock.Query[productboard.GetNoteInput, productboard.NoteMetadata]
+	createTextNote *connectormock.Mutation[productboard.CreateTextNoteInput, productboard.NoteMetadata]
+	renameNote     *connectormock.Mutation[productboard.RenameNoteInput, productboard.RenamedNote]
+	archiveNote    *connectormock.Mutation[productboard.ArchiveNoteInput, productboard.ArchivedNote]
+	deleteNote     *connectormock.Mutation[productboard.DeleteNoteInput, productboard.DeletedNote]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +36,29 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listFeatures: connectormock.NewQuery[productboard.ListFeaturesInput, productboard.FeaturesPage](t, productboard.ListFeaturesDefinition),
+		getFeature:     connectormock.NewQuery[productboard.GetFeatureInput, productboard.FeatureMetadata](t, productboard.GetFeatureDefinition),
+		createFeature:  connectormock.NewMutation[productboard.CreateFeatureInput, productboard.FeatureMetadata](t, productboard.CreateFeatureDefinition),
+		renameFeature:  connectormock.NewMutation[productboard.RenameFeatureInput, productboard.FeatureMetadata](t, productboard.RenameFeatureDefinition),
+		deleteFeature:  connectormock.NewMutation[productboard.DeleteFeatureInput, productboard.DeletedFeature](t, productboard.DeleteFeatureDefinition),
+		listFeatures:   connectormock.NewQuery[productboard.ListFeaturesInput, productboard.FeaturesPage](t, productboard.ListFeaturesDefinition),
+		listNotes:      connectormock.NewQuery[productboard.ListNotesInput, productboard.NotesPage](t, productboard.ListNotesDefinition),
+		getNote:        connectormock.NewQuery[productboard.GetNoteInput, productboard.NoteMetadata](t, productboard.GetNoteDefinition),
+		createTextNote: connectormock.NewMutation[productboard.CreateTextNoteInput, productboard.NoteMetadata](t, productboard.CreateTextNoteDefinition),
+		renameNote:     connectormock.NewMutation[productboard.RenameNoteInput, productboard.RenamedNote](t, productboard.RenameNoteDefinition),
+		archiveNote:    connectormock.NewMutation[productboard.ArchiveNoteInput, productboard.ArchivedNote](t, productboard.ArchiveNoteDefinition),
+		deleteNote:     connectormock.NewMutation[productboard.DeleteNoteInput, productboard.DeletedNote](t, productboard.DeleteNoteDefinition),
 	}
+	mock.getFeature.Default(GetFeatureDefault())
+	mock.createFeature.Default(CreateFeatureDefault())
+	mock.renameFeature.Default(RenameFeatureDefault())
+	mock.deleteFeature.Default(DeleteFeatureDefault())
 	mock.listFeatures.Default(ListFeaturesDefault())
+	mock.listNotes.Default(ListNotesDefault())
+	mock.getNote.Default(GetNoteDefault())
+	mock.createTextNote.Default(CreateTextNoteDefault())
+	mock.renameNote.Default(RenameNoteDefault())
+	mock.archiveNote.Default(ArchiveNoteDefault())
+	mock.deleteNote.Default(DeleteNoteDefault())
 	connection, err := productboard.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "productboard", Name: connectionName})
 	if err != nil {
 		t.Fatalf("productboard mock connection: %v", err)
@@ -40,15 +70,249 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() productboard.Connection { return mock.connection }
 
+// GetFeature returns the getFeature script.
+func (mock *Mock) GetFeature() *connectormock.Query[productboard.GetFeatureInput, productboard.FeatureMetadata] {
+	return mock.getFeature
+}
+
+// CreateFeature returns the createFeature script.
+func (mock *Mock) CreateFeature() *connectormock.Mutation[productboard.CreateFeatureInput, productboard.FeatureMetadata] {
+	return mock.createFeature
+}
+
+// RenameFeature returns the renameFeature script.
+func (mock *Mock) RenameFeature() *connectormock.Mutation[productboard.RenameFeatureInput, productboard.FeatureMetadata] {
+	return mock.renameFeature
+}
+
+// DeleteFeature returns the deleteFeature script.
+func (mock *Mock) DeleteFeature() *connectormock.Mutation[productboard.DeleteFeatureInput, productboard.DeletedFeature] {
+	return mock.deleteFeature
+}
+
 // ListFeatures returns the listFeatures script.
 func (mock *Mock) ListFeatures() *connectormock.Query[productboard.ListFeaturesInput, productboard.FeaturesPage] {
 	return mock.listFeatures
 }
 
+// ListNotes returns the listNotes script.
+func (mock *Mock) ListNotes() *connectormock.Query[productboard.ListNotesInput, productboard.NotesPage] {
+	return mock.listNotes
+}
+
+// GetNote returns the getNote script.
+func (mock *Mock) GetNote() *connectormock.Query[productboard.GetNoteInput, productboard.NoteMetadata] {
+	return mock.getNote
+}
+
+// CreateTextNote returns the createTextNote script.
+func (mock *Mock) CreateTextNote() *connectormock.Mutation[productboard.CreateTextNoteInput, productboard.NoteMetadata] {
+	return mock.createTextNote
+}
+
+// RenameNote returns the renameNote script.
+func (mock *Mock) RenameNote() *connectormock.Mutation[productboard.RenameNoteInput, productboard.RenamedNote] {
+	return mock.renameNote
+}
+
+// ArchiveNote returns the archiveNote script.
+func (mock *Mock) ArchiveNote() *connectormock.Mutation[productboard.ArchiveNoteInput, productboard.ArchivedNote] {
+	return mock.archiveNote
+}
+
+// DeleteNote returns the deleteNote script.
+func (mock *Mock) DeleteNote() *connectormock.Mutation[productboard.DeleteNoteInput, productboard.DeletedNote] {
+	return mock.deleteNote
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetFeature() sdkgo.Query[productboard.GetFeatureInput, productboard.FeatureMetadata] {
+	return operations.mock.getFeature
+}
+func (operations mockOperations) CreateFeature() sdkgo.Mutation[productboard.CreateFeatureInput, productboard.FeatureMetadata] {
+	return operations.mock.createFeature
+}
+func (operations mockOperations) RenameFeature() sdkgo.Mutation[productboard.RenameFeatureInput, productboard.FeatureMetadata] {
+	return operations.mock.renameFeature
+}
+func (operations mockOperations) DeleteFeature() sdkgo.Mutation[productboard.DeleteFeatureInput, productboard.DeletedFeature] {
+	return operations.mock.deleteFeature
+}
 func (operations mockOperations) ListFeatures() sdkgo.Query[productboard.ListFeaturesInput, productboard.FeaturesPage] {
 	return operations.mock.listFeatures
+}
+func (operations mockOperations) ListNotes() sdkgo.Query[productboard.ListNotesInput, productboard.NotesPage] {
+	return operations.mock.listNotes
+}
+func (operations mockOperations) GetNote() sdkgo.Query[productboard.GetNoteInput, productboard.NoteMetadata] {
+	return operations.mock.getNote
+}
+func (operations mockOperations) CreateTextNote() sdkgo.Mutation[productboard.CreateTextNoteInput, productboard.NoteMetadata] {
+	return operations.mock.createTextNote
+}
+func (operations mockOperations) RenameNote() sdkgo.Mutation[productboard.RenameNoteInput, productboard.RenamedNote] {
+	return operations.mock.renameNote
+}
+func (operations mockOperations) ArchiveNote() sdkgo.Mutation[productboard.ArchiveNoteInput, productboard.ArchivedNote] {
+	return operations.mock.archiveNote
+}
+func (operations mockOperations) DeleteNote() sdkgo.Mutation[productboard.DeleteNoteInput, productboard.DeletedNote] {
+	return operations.mock.deleteNote
+}
+
+// GetFeatureFound selects the found branch: Productboard returned the feature.
+func GetFeatureFound(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.GetFeatureBranchFound, value, failure)
+}
+
+// GetFeatureNotFound selects the notFound branch: Productboard did not expose the feature.
+func GetFeatureNotFound(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.GetFeatureBranchNotFound, value, failure)
+}
+
+// GetFeatureProviderRejected selects the providerRejected branch: Productboard conclusively rejected the request.
+func GetFeatureProviderRejected(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.GetFeatureBranchProviderRejected, value, failure)
+}
+
+// GetFeatureInvalidResponse selects the invalidResponse branch: Productboard returned malformed or oversized JSON.
+func GetFeatureInvalidResponse(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.GetFeatureBranchInvalidResponse, value, failure)
+}
+
+// GetFeatureDefect selects the defect branch: The feature ID or credentials are invalid.
+func GetFeatureDefect(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.GetFeatureBranchDefect, value, failure)
+}
+
+// GetFeatureRetry asks Dex to retry the getFeature Step, after the delay when it is positive.
+func GetFeatureRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Retry[productboard.FeatureMetadata](failure, after)
+}
+
+// GetFeatureFoundDefault is the manifest mock foundDefault: One example feature was returned.
+func GetFeatureFoundDefault() connectormock.Case[productboard.FeatureMetadata] {
+	value := connectormock.MustDecodeOutput[productboard.FeatureMetadata](`{"id":"123e4567-e89b-12d3-a456-426614174000","name":"Example feature"}`)
+	return connectormock.Branch(productboard.GetFeatureBranchFound, value, nil)
+}
+
+// GetFeatureDefault is the manifest default, foundDefault, which New installs.
+func GetFeatureDefault() connectormock.Case[productboard.FeatureMetadata] {
+	return GetFeatureFoundDefault()
+}
+
+// CreateFeatureCreated selects the created branch: Productboard created the feature.
+func CreateFeatureCreated(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.CreateFeatureBranchCreated, value, failure)
+}
+
+// CreateFeatureProviderRejected selects the providerRejected branch: Productboard conclusively rejected creation.
+func CreateFeatureProviderRejected(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.CreateFeatureBranchProviderRejected, value, failure)
+}
+
+// CreateFeatureUncertain returns an uncertain createFeature outcome.
+func CreateFeatureUncertain(value productboard.FeatureMetadata, failure sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateFeatureDefect selects the defect branch: The name or credentials are invalid.
+func CreateFeatureDefect(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.CreateFeatureBranchDefect, value, failure)
+}
+
+// CreateFeatureRetry asks Dex to retry the createFeature Step, after the delay when it is positive.
+func CreateFeatureRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Retry[productboard.FeatureMetadata](failure, after)
+}
+
+// CreateFeatureCreatedDefault is the manifest mock createdDefault: One example feature was created.
+func CreateFeatureCreatedDefault() connectormock.Case[productboard.FeatureMetadata] {
+	value := connectormock.MustDecodeOutput[productboard.FeatureMetadata](`{"id":"123e4567-e89b-12d3-a456-426614174000","name":"Example feature"}`)
+	return connectormock.Branch(productboard.CreateFeatureBranchCreated, value, nil)
+}
+
+// CreateFeatureDefault is the manifest default, createdDefault, which New installs.
+func CreateFeatureDefault() connectormock.Case[productboard.FeatureMetadata] {
+	return CreateFeatureCreatedDefault()
+}
+
+// RenameFeatureRenamed selects the renamed branch: Productboard renamed the feature.
+func RenameFeatureRenamed(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.RenameFeatureBranchRenamed, value, failure)
+}
+
+// RenameFeatureNotFound selects the notFound branch: Productboard did not expose the feature.
+func RenameFeatureNotFound(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.RenameFeatureBranchNotFound, value, failure)
+}
+
+// RenameFeatureProviderRejected selects the providerRejected branch: Productboard conclusively rejected the rename.
+func RenameFeatureProviderRejected(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.RenameFeatureBranchProviderRejected, value, failure)
+}
+
+// RenameFeatureInvalidResponse selects the invalidResponse branch: Productboard returned malformed or oversized JSON.
+func RenameFeatureInvalidResponse(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.RenameFeatureBranchInvalidResponse, value, failure)
+}
+
+// RenameFeatureDefect selects the defect branch: The feature ID, name, or credentials are invalid.
+func RenameFeatureDefect(value productboard.FeatureMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Branch(productboard.RenameFeatureBranchDefect, value, failure)
+}
+
+// RenameFeatureRetry asks Dex to retry the renameFeature Step, after the delay when it is positive.
+func RenameFeatureRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.FeatureMetadata] {
+	return connectormock.Retry[productboard.FeatureMetadata](failure, after)
+}
+
+// RenameFeatureRenamedDefault is the manifest mock renamedDefault: One example feature was renamed.
+func RenameFeatureRenamedDefault() connectormock.Case[productboard.FeatureMetadata] {
+	value := connectormock.MustDecodeOutput[productboard.FeatureMetadata](`{"id":"123e4567-e89b-12d3-a456-426614174000","name":"Renamed feature"}`)
+	return connectormock.Branch(productboard.RenameFeatureBranchRenamed, value, nil)
+}
+
+// RenameFeatureDefault is the manifest default, renamedDefault, which New installs.
+func RenameFeatureDefault() connectormock.Case[productboard.FeatureMetadata] {
+	return RenameFeatureRenamedDefault()
+}
+
+// DeleteFeatureDeleted selects the deleted branch: Productboard deleted the feature.
+func DeleteFeatureDeleted(value productboard.DeletedFeature, failure *sdkgo.Failure) connectormock.Case[productboard.DeletedFeature] {
+	return connectormock.Branch(productboard.DeleteFeatureBranchDeleted, value, failure)
+}
+
+// DeleteFeatureNotFound selects the notFound branch: Productboard did not expose the feature.
+func DeleteFeatureNotFound(value productboard.DeletedFeature, failure *sdkgo.Failure) connectormock.Case[productboard.DeletedFeature] {
+	return connectormock.Branch(productboard.DeleteFeatureBranchNotFound, value, failure)
+}
+
+// DeleteFeatureProviderRejected selects the providerRejected branch: Productboard conclusively rejected deletion.
+func DeleteFeatureProviderRejected(value productboard.DeletedFeature, failure *sdkgo.Failure) connectormock.Case[productboard.DeletedFeature] {
+	return connectormock.Branch(productboard.DeleteFeatureBranchProviderRejected, value, failure)
+}
+
+// DeleteFeatureDefect selects the defect branch: The feature ID or credentials are invalid.
+func DeleteFeatureDefect(value productboard.DeletedFeature, failure *sdkgo.Failure) connectormock.Case[productboard.DeletedFeature] {
+	return connectormock.Branch(productboard.DeleteFeatureBranchDefect, value, failure)
+}
+
+// DeleteFeatureRetry asks Dex to retry the deleteFeature Step, after the delay when it is positive.
+func DeleteFeatureRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.DeletedFeature] {
+	return connectormock.Retry[productboard.DeletedFeature](failure, after)
+}
+
+// DeleteFeatureDeletedDefault is the manifest mock deletedDefault: One example feature was deleted.
+func DeleteFeatureDeletedDefault() connectormock.Case[productboard.DeletedFeature] {
+	value := connectormock.MustDecodeOutput[productboard.DeletedFeature](`{"id":"123e4567-e89b-12d3-a456-426614174000"}`)
+	return connectormock.Branch(productboard.DeleteFeatureBranchDeleted, value, nil)
+}
+
+// DeleteFeatureDefault is the manifest default, deletedDefault, which New installs.
+func DeleteFeatureDefault() connectormock.Case[productboard.DeletedFeature] {
+	return DeleteFeatureDeletedDefault()
 }
 
 // ListFeaturesListed selects the listed branch: Productboard returned one feature page.
@@ -85,4 +349,231 @@ func ListFeaturesListedDefault() connectormock.Case[productboard.FeaturesPage] {
 // ListFeaturesDefault is the manifest default, listedDefault, which New installs.
 func ListFeaturesDefault() connectormock.Case[productboard.FeaturesPage] {
 	return ListFeaturesListedDefault()
+}
+
+// ListNotesListed selects the listed branch: Productboard returned one note page.
+func ListNotesListed(value productboard.NotesPage, failure *sdkgo.Failure) connectormock.Case[productboard.NotesPage] {
+	return connectormock.Branch(productboard.ListNotesBranchListed, value, failure)
+}
+
+// ListNotesProviderRejected selects the providerRejected branch: Productboard conclusively rejected the request.
+func ListNotesProviderRejected(value productboard.NotesPage, failure *sdkgo.Failure) connectormock.Case[productboard.NotesPage] {
+	return connectormock.Branch(productboard.ListNotesBranchProviderRejected, value, failure)
+}
+
+// ListNotesInvalidResponse selects the invalidResponse branch: Productboard returned malformed or oversized JSON.
+func ListNotesInvalidResponse(value productboard.NotesPage, failure *sdkgo.Failure) connectormock.Case[productboard.NotesPage] {
+	return connectormock.Branch(productboard.ListNotesBranchInvalidResponse, value, failure)
+}
+
+// ListNotesDefect selects the defect branch: The page cursor or credentials are invalid.
+func ListNotesDefect(value productboard.NotesPage, failure *sdkgo.Failure) connectormock.Case[productboard.NotesPage] {
+	return connectormock.Branch(productboard.ListNotesBranchDefect, value, failure)
+}
+
+// ListNotesRetry asks Dex to retry the listNotes Step, after the delay when it is positive.
+func ListNotesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.NotesPage] {
+	return connectormock.Retry[productboard.NotesPage](failure, after)
+}
+
+// ListNotesListedDefault is the manifest mock listedDefault: One example text note is returned.
+func ListNotesListedDefault() connectormock.Case[productboard.NotesPage] {
+	value := connectormock.MustDecodeOutput[productboard.NotesPage](`{"notes":[{"id":"323e4567-e89b-12d3-a456-426614174000","type":"textNote","name":"Example note"}],"nextCursor":""}`)
+	return connectormock.Branch(productboard.ListNotesBranchListed, value, nil)
+}
+
+// ListNotesDefault is the manifest default, listedDefault, which New installs.
+func ListNotesDefault() connectormock.Case[productboard.NotesPage] { return ListNotesListedDefault() }
+
+// GetNoteFound selects the found branch: Productboard returned the note.
+func GetNoteFound(value productboard.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Branch(productboard.GetNoteBranchFound, value, failure)
+}
+
+// GetNoteNotFound selects the notFound branch: Productboard did not expose the note.
+func GetNoteNotFound(value productboard.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Branch(productboard.GetNoteBranchNotFound, value, failure)
+}
+
+// GetNoteProviderRejected selects the providerRejected branch: Productboard conclusively rejected the lookup.
+func GetNoteProviderRejected(value productboard.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Branch(productboard.GetNoteBranchProviderRejected, value, failure)
+}
+
+// GetNoteInvalidResponse selects the invalidResponse branch: Productboard returned malformed or oversized JSON.
+func GetNoteInvalidResponse(value productboard.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Branch(productboard.GetNoteBranchInvalidResponse, value, failure)
+}
+
+// GetNoteDefect selects the defect branch: The note ID or credentials are invalid.
+func GetNoteDefect(value productboard.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Branch(productboard.GetNoteBranchDefect, value, failure)
+}
+
+// GetNoteRetry asks Dex to retry the getNote Step, after the delay when it is positive.
+func GetNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Retry[productboard.NoteMetadata](failure, after)
+}
+
+// GetNoteFoundDefault is the manifest mock foundDefault: One example text note is returned.
+func GetNoteFoundDefault() connectormock.Case[productboard.NoteMetadata] {
+	value := connectormock.MustDecodeOutput[productboard.NoteMetadata](`{"id":"323e4567-e89b-12d3-a456-426614174000","type":"textNote","name":"Example note"}`)
+	return connectormock.Branch(productboard.GetNoteBranchFound, value, nil)
+}
+
+// GetNoteDefault is the manifest default, foundDefault, which New installs.
+func GetNoteDefault() connectormock.Case[productboard.NoteMetadata] { return GetNoteFoundDefault() }
+
+// CreateTextNoteCreated selects the created branch: Productboard created the text note.
+func CreateTextNoteCreated(value productboard.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Branch(productboard.CreateTextNoteBranchCreated, value, failure)
+}
+
+// CreateTextNoteProviderRejected selects the providerRejected branch: Productboard conclusively rejected the note.
+func CreateTextNoteProviderRejected(value productboard.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Branch(productboard.CreateTextNoteBranchProviderRejected, value, failure)
+}
+
+// CreateTextNoteUncertain returns an uncertain createTextNote outcome.
+func CreateTextNoteUncertain(value productboard.NoteMetadata, failure sdkgo.Failure) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTextNoteDefect selects the defect branch: The note input or credentials are invalid.
+func CreateTextNoteDefect(value productboard.NoteMetadata, failure *sdkgo.Failure) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Branch(productboard.CreateTextNoteBranchDefect, value, failure)
+}
+
+// CreateTextNoteRetry asks Dex to retry the createTextNote Step, after the delay when it is positive.
+func CreateTextNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.NoteMetadata] {
+	return connectormock.Retry[productboard.NoteMetadata](failure, after)
+}
+
+// CreateTextNoteCreatedDefault is the manifest mock createdDefault: One example text note was created.
+func CreateTextNoteCreatedDefault() connectormock.Case[productboard.NoteMetadata] {
+	value := connectormock.MustDecodeOutput[productboard.NoteMetadata](`{"id":"323e4567-e89b-12d3-a456-426614174000","type":"textNote","name":"Example note"}`)
+	return connectormock.Branch(productboard.CreateTextNoteBranchCreated, value, nil)
+}
+
+// CreateTextNoteDefault is the manifest default, createdDefault, which New installs.
+func CreateTextNoteDefault() connectormock.Case[productboard.NoteMetadata] {
+	return CreateTextNoteCreatedDefault()
+}
+
+// RenameNoteRenamed selects the renamed branch: Productboard renamed the note.
+func RenameNoteRenamed(value productboard.RenamedNote, failure *sdkgo.Failure) connectormock.Case[productboard.RenamedNote] {
+	return connectormock.Branch(productboard.RenameNoteBranchRenamed, value, failure)
+}
+
+// RenameNoteNotFound selects the notFound branch: Productboard did not expose the note.
+func RenameNoteNotFound(value productboard.RenamedNote, failure *sdkgo.Failure) connectormock.Case[productboard.RenamedNote] {
+	return connectormock.Branch(productboard.RenameNoteBranchNotFound, value, failure)
+}
+
+// RenameNoteProviderRejected selects the providerRejected branch: Productboard conclusively rejected the rename.
+func RenameNoteProviderRejected(value productboard.RenamedNote, failure *sdkgo.Failure) connectormock.Case[productboard.RenamedNote] {
+	return connectormock.Branch(productboard.RenameNoteBranchProviderRejected, value, failure)
+}
+
+// RenameNoteInvalidResponse selects the invalidResponse branch: Productboard returned malformed or oversized JSON.
+func RenameNoteInvalidResponse(value productboard.RenamedNote, failure *sdkgo.Failure) connectormock.Case[productboard.RenamedNote] {
+	return connectormock.Branch(productboard.RenameNoteBranchInvalidResponse, value, failure)
+}
+
+// RenameNoteDefect selects the defect branch: The note ID, name, or credentials are invalid.
+func RenameNoteDefect(value productboard.RenamedNote, failure *sdkgo.Failure) connectormock.Case[productboard.RenamedNote] {
+	return connectormock.Branch(productboard.RenameNoteBranchDefect, value, failure)
+}
+
+// RenameNoteRetry asks Dex to retry the renameNote Step, after the delay when it is positive.
+func RenameNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.RenamedNote] {
+	return connectormock.Retry[productboard.RenamedNote](failure, after)
+}
+
+// RenameNoteRenamedDefault is the manifest mock renamedDefault: One example note was renamed.
+func RenameNoteRenamedDefault() connectormock.Case[productboard.RenamedNote] {
+	value := connectormock.MustDecodeOutput[productboard.RenamedNote](`{"id":"323e4567-e89b-12d3-a456-426614174000","name":"Renamed note"}`)
+	return connectormock.Branch(productboard.RenameNoteBranchRenamed, value, nil)
+}
+
+// RenameNoteDefault is the manifest default, renamedDefault, which New installs.
+func RenameNoteDefault() connectormock.Case[productboard.RenamedNote] {
+	return RenameNoteRenamedDefault()
+}
+
+// ArchiveNoteArchived selects the archived branch: Productboard archived the note.
+func ArchiveNoteArchived(value productboard.ArchivedNote, failure *sdkgo.Failure) connectormock.Case[productboard.ArchivedNote] {
+	return connectormock.Branch(productboard.ArchiveNoteBranchArchived, value, failure)
+}
+
+// ArchiveNoteNotFound selects the notFound branch: Productboard did not expose the note.
+func ArchiveNoteNotFound(value productboard.ArchivedNote, failure *sdkgo.Failure) connectormock.Case[productboard.ArchivedNote] {
+	return connectormock.Branch(productboard.ArchiveNoteBranchNotFound, value, failure)
+}
+
+// ArchiveNoteProviderRejected selects the providerRejected branch: Productboard conclusively rejected the archive.
+func ArchiveNoteProviderRejected(value productboard.ArchivedNote, failure *sdkgo.Failure) connectormock.Case[productboard.ArchivedNote] {
+	return connectormock.Branch(productboard.ArchiveNoteBranchProviderRejected, value, failure)
+}
+
+// ArchiveNoteInvalidResponse selects the invalidResponse branch: Productboard returned malformed or oversized JSON.
+func ArchiveNoteInvalidResponse(value productboard.ArchivedNote, failure *sdkgo.Failure) connectormock.Case[productboard.ArchivedNote] {
+	return connectormock.Branch(productboard.ArchiveNoteBranchInvalidResponse, value, failure)
+}
+
+// ArchiveNoteDefect selects the defect branch: The note ID or credentials are invalid.
+func ArchiveNoteDefect(value productboard.ArchivedNote, failure *sdkgo.Failure) connectormock.Case[productboard.ArchivedNote] {
+	return connectormock.Branch(productboard.ArchiveNoteBranchDefect, value, failure)
+}
+
+// ArchiveNoteRetry asks Dex to retry the archiveNote Step, after the delay when it is positive.
+func ArchiveNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.ArchivedNote] {
+	return connectormock.Retry[productboard.ArchivedNote](failure, after)
+}
+
+// ArchiveNoteArchivedDefault is the manifest mock archivedDefault: One example note was archived.
+func ArchiveNoteArchivedDefault() connectormock.Case[productboard.ArchivedNote] {
+	value := connectormock.MustDecodeOutput[productboard.ArchivedNote](`{"id":"323e4567-e89b-12d3-a456-426614174000"}`)
+	return connectormock.Branch(productboard.ArchiveNoteBranchArchived, value, nil)
+}
+
+// ArchiveNoteDefault is the manifest default, archivedDefault, which New installs.
+func ArchiveNoteDefault() connectormock.Case[productboard.ArchivedNote] {
+	return ArchiveNoteArchivedDefault()
+}
+
+// DeleteNoteDeleted selects the deleted branch: Productboard deleted the note.
+func DeleteNoteDeleted(value productboard.DeletedNote, failure *sdkgo.Failure) connectormock.Case[productboard.DeletedNote] {
+	return connectormock.Branch(productboard.DeleteNoteBranchDeleted, value, failure)
+}
+
+// DeleteNoteNotFound selects the notFound branch: Productboard did not expose the note.
+func DeleteNoteNotFound(value productboard.DeletedNote, failure *sdkgo.Failure) connectormock.Case[productboard.DeletedNote] {
+	return connectormock.Branch(productboard.DeleteNoteBranchNotFound, value, failure)
+}
+
+// DeleteNoteProviderRejected selects the providerRejected branch: Productboard conclusively rejected the delete.
+func DeleteNoteProviderRejected(value productboard.DeletedNote, failure *sdkgo.Failure) connectormock.Case[productboard.DeletedNote] {
+	return connectormock.Branch(productboard.DeleteNoteBranchProviderRejected, value, failure)
+}
+
+// DeleteNoteDefect selects the defect branch: The note ID or credentials are invalid.
+func DeleteNoteDefect(value productboard.DeletedNote, failure *sdkgo.Failure) connectormock.Case[productboard.DeletedNote] {
+	return connectormock.Branch(productboard.DeleteNoteBranchDefect, value, failure)
+}
+
+// DeleteNoteRetry asks Dex to retry the deleteNote Step, after the delay when it is positive.
+func DeleteNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[productboard.DeletedNote] {
+	return connectormock.Retry[productboard.DeletedNote](failure, after)
+}
+
+// DeleteNoteDeletedDefault is the manifest mock deletedDefault: One example note was deleted.
+func DeleteNoteDeletedDefault() connectormock.Case[productboard.DeletedNote] {
+	value := connectormock.MustDecodeOutput[productboard.DeletedNote](`{"id":"323e4567-e89b-12d3-a456-426614174000"}`)
+	return connectormock.Branch(productboard.DeleteNoteBranchDeleted, value, nil)
+}
+
+// DeleteNoteDefault is the manifest default, deletedDefault, which New installs.
+func DeleteNoteDefault() connectormock.Case[productboard.DeletedNote] {
+	return DeleteNoteDeletedDefault()
 }

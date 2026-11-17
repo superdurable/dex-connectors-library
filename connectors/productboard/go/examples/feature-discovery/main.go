@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{featurediscovery.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{featurediscovery.NewFlow(connection), featurediscovery.NewFeatureLookupFlow(connection), featurediscovery.NewNoteLookupFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Productboard feature discovery Flow: %w", err)
 	}

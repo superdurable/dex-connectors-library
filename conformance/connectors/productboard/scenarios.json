@@ -462,6 +462,3480 @@
       },
       "name": "listFeatures-foreignNextLink",
       "operation": "listFeatures"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"123e4567-e89b-12d3-a456-426614174000\",\"type\":\"feature\",\"fields\":{\"name\":\"Roadmap\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields[]": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "123e4567-e89b-12d3-a456-426614174000",
+          "name": "Roadmap"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getFeature-found",
+      "operation": "getFeature"
+    },
+    {
+      "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"123e4567-e89b-12d3-a456-426614174000\",\"type\":\"feature\",\"fields\":{\"name\":\"Roadmap\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/entities",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "223e4567-e89b-12d3-a456-426614174000",
+                    "type": "component"
+                  },
+                  "type": "parent"
+                }
+              ],
+              "type": "feature"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+          "providerId": "123e4567-e89b-12d3-a456-426614174000",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "123e4567-e89b-12d3-a456-426614174000",
+          "name": "Roadmap"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "input": {
+        "name": "Roadmap",
+        "parentComponentId": "223e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "createFeature-created",
+      "operation": "createFeature"
+    },
+    {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"123e4567-e89b-12d3-a456-426614174000\",\"type\":\"feature\",\"fields\":{\"name\":\"Roadmap\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "renamed",
+        "failureKind": "",
+        "output": {
+          "id": "123e4567-e89b-12d3-a456-426614174000",
+          "name": "Roadmap"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-renamed",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "123e4567-e89b-12d3-a456-426614174000"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteFeature-deleted",
+      "operation": "deleteFeature"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields[]": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getFeature-notFound",
+      "operation": "getFeature"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields[]": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getFeature-providerRejected",
+      "operation": "getFeature"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields[]": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getFeature-invalidResponse",
+      "operation": "getFeature"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "featureId": "bad"
+      },
+      "name": "getFeature-defect",
+      "operation": "getFeature"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields[]": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getFeature-rateLimit",
+      "operation": "getFeature"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields[]": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getFeature-serverUnavailable",
+      "operation": "getFeature"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields[]": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getFeature-transportFailure",
+      "operation": "getFeature"
+    },
+    {
+      "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/entities",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "223e4567-e89b-12d3-a456-426614174000",
+                    "type": "component"
+                  },
+                  "type": "parent"
+                }
+              ],
+              "type": "feature"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "input": {
+        "name": "Roadmap",
+        "parentComponentId": "223e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "createFeature-providerRejected",
+      "operation": "createFeature"
+    },
+    {
+      "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "input": {
+        "name": " ",
+        "parentComponentId": "223e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "createFeature-defect",
+      "operation": "createFeature"
+    },
+    {
+      "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/entities",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "223e4567-e89b-12d3-a456-426614174000",
+                    "type": "component"
+                  },
+                  "type": "parent"
+                }
+              ],
+              "type": "feature"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "input": {
+        "name": "Roadmap",
+        "parentComponentId": "223e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "createFeature-rateLimit",
+      "operation": "createFeature"
+    },
+    {
+      "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/entities",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "223e4567-e89b-12d3-a456-426614174000",
+                    "type": "component"
+                  },
+                  "type": "parent"
+                }
+              ],
+              "type": "feature"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "input": {
+        "name": "Roadmap",
+        "parentComponentId": "223e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "createFeature-serverUnavailable",
+      "operation": "createFeature"
+    },
+    {
+      "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/entities",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "223e4567-e89b-12d3-a456-426614174000",
+                    "type": "component"
+                  },
+                  "type": "parent"
+                }
+              ],
+              "type": "feature"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "input": {
+        "name": "Roadmap",
+        "parentComponentId": "223e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "createFeature-transportFailure",
+      "operation": "createFeature"
+    },
+    {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-notFound",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-providerRejected",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-invalidResponse",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "bad",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-defect",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-rateLimit",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-serverUnavailable",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-transportFailure",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteFeature-notFound",
+      "operation": "deleteFeature"
+    },
+    {
+      "callId": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteFeature-providerRejected",
+      "operation": "deleteFeature"
+    },
+    {
+      "callId": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "input": {
+        "featureId": "bad"
+      },
+      "name": "deleteFeature-defect",
+      "operation": "deleteFeature"
+    },
+    {
+      "callId": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteFeature-rateLimit",
+      "operation": "deleteFeature"
+    },
+    {
+      "callId": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporarily unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteFeature-serverUnavailable",
+      "operation": "deleteFeature"
+    },
+    {
+      "callId": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d679a79a-3137-521b-a00c-8b1bf1cf45e8",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteFeature-transportFailure",
+      "operation": "deleteFeature"
+    },
+    {
+      "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/entities",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "223e4567-e89b-12d3-a456-426614174000",
+                    "type": "component"
+                  },
+                  "type": "parent"
+                }
+              ],
+              "type": "feature"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "input": {
+        "name": "Roadmap",
+        "parentComponentId": "223e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "createFeature-uncertain",
+      "operation": "createFeature"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"323e4567-e89b-12d3-a456-426614174000\",\"type\":\"textNote\",\"fields\":{\"name\":\"Example note\"}}],\"links\":{\"next\":\"\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "notes": [
+            {
+              "id": "323e4567-e89b-12d3-a456-426614174000",
+              "name": "Example note",
+              "type": "textNote"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listNotes-listed",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listNotes-providerRejected",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listNotes-invalidResponse",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "notes": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "bad\ncursor"
+      },
+      "name": "listNotes-defect",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listNotes-rateLimit",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listNotes-serviceUnavailable",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listNotes-serverError",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listNotes-transportFailure",
+      "operation": "listNotes"
+    },
+    {
+      "callId": "22222222-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"323e4567-e89b-12d3-a456-426614174000\",\"type\":\"textNote\",\"fields\":{\"name\":\"Example note\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "323e4567-e89b-12d3-a456-426614174000",
+          "name": "Example note",
+          "type": "textNote"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getNote-found",
+      "operation": "getNote"
+    },
+    {
+      "callId": "22222222-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getNote-notFound",
+      "operation": "getNote"
+    },
+    {
+      "callId": "22222222-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getNote-providerRejected",
+      "operation": "getNote"
+    },
+    {
+      "callId": "22222222-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getNote-invalidResponse",
+      "operation": "getNote"
+    },
+    {
+      "callId": "22222222-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "bad"
+      },
+      "name": "getNote-defect",
+      "operation": "getNote"
+    },
+    {
+      "callId": "22222222-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getNote-rateLimit",
+      "operation": "getNote"
+    },
+    {
+      "callId": "22222222-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getNote-serviceUnavailable",
+      "operation": "getNote"
+    },
+    {
+      "callId": "22222222-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getNote-serverError",
+      "operation": "getNote"
+    },
+    {
+      "callId": "22222222-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "query": {
+            "fields": [
+              "name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "getNote-transportFailure",
+      "operation": "getNote"
+    },
+    {
+      "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"323e4567-e89b-12d3-a456-426614174000\",\"type\":\"textNote\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+                "name": "Example note"
+              },
+              "type": "textNote"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+          "providerId": "323e4567-e89b-12d3-a456-426614174000",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "323e4567-e89b-12d3-a456-426614174000",
+          "name": "Example note",
+          "type": "textNote"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "input": {
+        "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+        "name": "Example note"
+      },
+      "name": "createTextNote-created",
+      "operation": "createTextNote"
+    },
+    {
+      "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+                "name": "Example note"
+              },
+              "type": "textNote"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "input": {
+        "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+        "name": "Example note"
+      },
+      "name": "createTextNote-providerRejected",
+      "operation": "createTextNote"
+    },
+    {
+      "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+                "name": "Example note"
+              },
+              "type": "textNote"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "input": {
+        "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+        "name": "Example note"
+      },
+      "name": "createTextNote-uncertain",
+      "operation": "createTextNote"
+    },
+    {
+      "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "input": {
+        "content": "",
+        "name": "Example note"
+      },
+      "name": "createTextNote-defect",
+      "operation": "createTextNote"
+    },
+    {
+      "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+                "name": "Example note"
+              },
+              "type": "textNote"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "input": {
+        "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+        "name": "Example note"
+      },
+      "name": "createTextNote-rateLimit",
+      "operation": "createTextNote"
+    },
+    {
+      "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+                "name": "Example note"
+              },
+              "type": "textNote"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "input": {
+        "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+        "name": "Example note"
+      },
+      "name": "createTextNote-serviceUnavailable",
+      "operation": "createTextNote"
+    },
+    {
+      "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+                "name": "Example note"
+              },
+              "type": "textNote"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "input": {
+        "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+        "name": "Example note"
+      },
+      "name": "createTextNote-serverError",
+      "operation": "createTextNote"
+    },
+    {
+      "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/notes",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+                "name": "Example note"
+              },
+              "type": "textNote"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "input": {
+        "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+        "name": "Example note"
+      },
+      "name": "createTextNote-transportFailure",
+      "operation": "createTextNote"
+    },
+    {
+      "callId": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"323e4567-e89b-12d3-a456-426614174000\",\"type\":\"textNote\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Renamed note"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "renamed",
+        "failureKind": "",
+        "output": {
+          "id": "323e4567-e89b-12d3-a456-426614174000",
+          "name": "Renamed note"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "input": {
+        "name": "Renamed note",
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "renameNote-renamed",
+      "operation": "renameNote"
+    },
+    {
+      "callId": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Renamed note"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "input": {
+        "name": "Renamed note",
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "renameNote-notFound",
+      "operation": "renameNote"
+    },
+    {
+      "callId": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Renamed note"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "input": {
+        "name": "Renamed note",
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "renameNote-providerRejected",
+      "operation": "renameNote"
+    },
+    {
+      "callId": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Renamed note"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "input": {
+        "name": "Renamed note",
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "renameNote-invalidResponse",
+      "operation": "renameNote"
+    },
+    {
+      "callId": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "input": {
+        "name": "Renamed note",
+        "noteId": "bad"
+      },
+      "name": "renameNote-defect",
+      "operation": "renameNote"
+    },
+    {
+      "callId": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Renamed note"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "input": {
+        "name": "Renamed note",
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "renameNote-rateLimit",
+      "operation": "renameNote"
+    },
+    {
+      "callId": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Renamed note"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "input": {
+        "name": "Renamed note",
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "renameNote-serviceUnavailable",
+      "operation": "renameNote"
+    },
+    {
+      "callId": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Renamed note"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "input": {
+        "name": "Renamed note",
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "renameNote-serverError",
+      "operation": "renameNote"
+    },
+    {
+      "callId": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Renamed note"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "21046606-ddfa-5ac7-ba41-00e39e045930",
+      "input": {
+        "name": "Renamed note",
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "renameNote-transportFailure",
+      "operation": "renameNote"
+    },
+    {
+      "callId": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"323e4567-e89b-12d3-a456-426614174000\",\"type\":\"textNote\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "archived": true
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "archived",
+        "failureKind": "",
+        "output": {
+          "id": "323e4567-e89b-12d3-a456-426614174000"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "archiveNote-archived",
+      "operation": "archiveNote"
+    },
+    {
+      "callId": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "archived": true
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "archiveNote-notFound",
+      "operation": "archiveNote"
+    },
+    {
+      "callId": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "archived": true
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "archiveNote-providerRejected",
+      "operation": "archiveNote"
+    },
+    {
+      "callId": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "archived": true
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "archiveNote-invalidResponse",
+      "operation": "archiveNote"
+    },
+    {
+      "callId": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "input": {
+        "noteId": "bad"
+      },
+      "name": "archiveNote-defect",
+      "operation": "archiveNote"
+    },
+    {
+      "callId": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "archived": true
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "archiveNote-rateLimit",
+      "operation": "archiveNote"
+    },
+    {
+      "callId": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "archived": true
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "archiveNote-serviceUnavailable",
+      "operation": "archiveNote"
+    },
+    {
+      "callId": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "archived": true
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "archiveNote-serverError",
+      "operation": "archiveNote"
+    },
+    {
+      "callId": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "archived": true
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "12348206-b8ca-59e9-9843-87a1f023e683",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "archiveNote-transportFailure",
+      "operation": "archiveNote"
+    },
+    {
+      "callId": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "323e4567-e89b-12d3-a456-426614174000"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteNote-deleted",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteNote-notFound",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"test response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteNote-providerRejected",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "input": {
+        "noteId": "bad"
+      },
+      "name": "deleteNote-defect",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteNote-rateLimit",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteNote-serviceUnavailable",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"temporary\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteNote-serverError",
+      "operation": "deleteNote"
+    },
+    {
+      "callId": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/notes/323e4567-e89b-12d3-a456-426614174000",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1b6e9e2-76bc-551d-b856-b5725508c68c",
+      "input": {
+        "noteId": "323e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "deleteNote-transportFailure",
+      "operation": "deleteNote"
     }
   ],
   "schemaVersion": 1

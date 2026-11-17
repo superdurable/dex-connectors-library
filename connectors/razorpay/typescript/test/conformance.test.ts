@@ -8,7 +8,7 @@ import { RazorpayClient } from '../src/client.js';
 import { GetPaymentInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/razorpay/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/razorpay/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getPayment');
 const connection = { provider: 'razorpay', name: 'razorpay' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeRazorpay, '/api'));
 

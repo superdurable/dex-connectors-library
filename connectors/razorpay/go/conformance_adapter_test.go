@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/api"
@@ -21,7 +22,24 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		reference: {KeyID: sdkgo.NewSecretString("rzp_test_1234567890"), KeySecret: sdkgo.NewSecretString("sample-razorpay-secret")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getPayment": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPayment(), reference),
+	mutationContext := singledispatchtest.NewContext("razorpay-conformance", "create-order")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			mutationContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"getPayment":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPayment(), reference),
+		"getOrder":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOrder(), reference),
+		"listOrders":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrders(), reference),
+		"createOrder":        newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateOrder(), reference, scenario.CallID),
+		"listPayments":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPayments(), reference),
+		"capturePayment":     newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CapturePayment(), reference, scenario.CallID),
+		"listRefunds":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListRefunds(), reference),
+		"getRefund":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetRefund(), reference),
+		"createNormalRefund": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateNormalRefund(), reference, scenario.CallID),
+		"listPaymentLinks":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPaymentLinks(), reference),
+		"getPaymentLink":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPaymentLink(), reference),
+		"createPaymentLink":  newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreatePaymentLink(), reference, scenario.CallID),
+		"cancelPaymentLink":  newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CancelPaymentLink(), reference, scenario.CallID),
 	}}
 }

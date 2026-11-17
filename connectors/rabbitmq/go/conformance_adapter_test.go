@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = ""
@@ -21,7 +22,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		reference: {Username: "observer", Password: sdkgo.NewSecretString("sample-password")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	mutationContext := singledispatchtest.NewContext("rabbitmq-conformance", "publish-message")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			mutationContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
 		"getQueueMetrics": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetQueueMetrics(), reference),
+		"publishMessage":  newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.PublishMessage(), reference, scenario.CallID),
 	}}
 }

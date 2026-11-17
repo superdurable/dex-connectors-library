@@ -1,6 +1,6 @@
 # Recurly account inspection Flow
 
-This runnable Flow calls `getAccount` through the static `recurly` connection. It persists the selected account identity in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Worker registers `RecurlyAccountInspection`, `RecurlyCreateAccount`, `RecurlyReactivateAccount`, `RecurlySubscriptionInspection`, `RecurlyCreatePlan`, and `RecurlyInvoiceInspection` through the static `recurly` connection. Each Flow persists only account, subscription, plan, or invoice identity in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -23,5 +23,15 @@ GOWORK=off go run ./examples/account-inspection
 ```
 
 Start `RecurlyAccountInspection` with a unique Flow ID and input `{"accountId":"e28zov4fw0v2"}`. Replace the sample with an account ID returned by Recurly. The Worker connects to Dex Server without an inbound listener.
+
+Start `RecurlyCreateAccount` with a unique Flow ID and input `{"codePrefix":"demo"}`. The connector appends a unique Dex Call marker to the prefix and returns the resulting account ID and code.
+
+Start `RecurlySubscriptionInspection` with a unique Flow ID and input `{"subscriptionId":"e28zov4fw0v2"}`. Replace the sample with a subscription ID returned by Recurly. The Flow returns only the subscription ID and lifecycle state.
+
+Start `RecurlyCreatePlan` with a unique Flow ID and input `{"codePrefix":"standard","name":"Standard","currencyCode":"USD","unitAmount":10.5,"intervalUnit":"months","intervalLength":1}`. `unitAmount` is in major currency units. The connector appends a unique Dex Call marker to the code prefix.
+
+Start `RecurlyInvoiceInspection` with a unique Flow ID and input `{"invoiceId":"e28zov4fw0v2"}`. Replace the sample with an invoice ID returned by Recurly. The Flow returns only the invoice ID and state.
+
+Start `RecurlyReactivateAccount` with a unique Flow ID and input `{"accountId":"e28zov4fw0v2"}`. Use an inactive account ID. Reactivation returns only account identity and state; it does not restore billing information.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Recurly authorization and retrieval remain unverified.

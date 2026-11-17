@@ -17,8 +17,23 @@ import (
 
 // Mock is a scripted recurly connection. Script each operation through its accessor.
 type Mock struct {
-	connection recurly.Connection
-	getAccount *connectormock.Query[recurly.GetAccountInput, recurly.AccountIdentity]
+	connection             recurly.Connection
+	listInvoices           *connectormock.Query[recurly.ListInvoicesInput, recurly.InvoicePage]
+	getInvoice             *connectormock.Query[recurly.GetInvoiceInput, recurly.InvoiceSummary]
+	listPlans              *connectormock.Query[recurly.ListPlansInput, recurly.PlanPage]
+	getPlan                *connectormock.Query[recurly.GetPlanInput, recurly.PlanSummary]
+	createPlan             *connectormock.Mutation[recurly.CreatePlanInput, recurly.PlanSummary]
+	renamePlan             *connectormock.Mutation[recurly.RenamePlanInput, recurly.PlanSummary]
+	deletePlan             *connectormock.Mutation[recurly.DeletePlanInput, recurly.DeletedPlan]
+	listSubscriptions      *connectormock.Query[recurly.ListSubscriptionsInput, recurly.SubscriptionPage]
+	getSubscription        *connectormock.Query[recurly.GetSubscriptionInput, recurly.SubscriptionSummary]
+	cancelSubscription     *connectormock.Mutation[recurly.CancelSubscriptionInput, recurly.SubscriptionSummary]
+	reactivateSubscription *connectormock.Mutation[recurly.ReactivateSubscriptionInput, recurly.SubscriptionSummary]
+	listAccounts           *connectormock.Query[recurly.ListAccountsInput, recurly.AccountPage]
+	setAccountTimeZone     *connectormock.Mutation[recurly.SetAccountTimeZoneInput, recurly.AccountTimeZone]
+	reactivateAccount      *connectormock.Mutation[recurly.ReactivateAccountInput, recurly.AccountLifecycle]
+	createAccount          *connectormock.Mutation[recurly.CreateAccountInput, recurly.AccountIdentity]
+	getAccount             *connectormock.Query[recurly.GetAccountInput, recurly.AccountIdentity]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +41,38 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getAccount: connectormock.NewQuery[recurly.GetAccountInput, recurly.AccountIdentity](t, recurly.GetAccountDefinition),
+		listInvoices:           connectormock.NewQuery[recurly.ListInvoicesInput, recurly.InvoicePage](t, recurly.ListInvoicesDefinition),
+		getInvoice:             connectormock.NewQuery[recurly.GetInvoiceInput, recurly.InvoiceSummary](t, recurly.GetInvoiceDefinition),
+		listPlans:              connectormock.NewQuery[recurly.ListPlansInput, recurly.PlanPage](t, recurly.ListPlansDefinition),
+		getPlan:                connectormock.NewQuery[recurly.GetPlanInput, recurly.PlanSummary](t, recurly.GetPlanDefinition),
+		createPlan:             connectormock.NewMutation[recurly.CreatePlanInput, recurly.PlanSummary](t, recurly.CreatePlanDefinition),
+		renamePlan:             connectormock.NewMutation[recurly.RenamePlanInput, recurly.PlanSummary](t, recurly.RenamePlanDefinition),
+		deletePlan:             connectormock.NewMutation[recurly.DeletePlanInput, recurly.DeletedPlan](t, recurly.DeletePlanDefinition),
+		listSubscriptions:      connectormock.NewQuery[recurly.ListSubscriptionsInput, recurly.SubscriptionPage](t, recurly.ListSubscriptionsDefinition),
+		getSubscription:        connectormock.NewQuery[recurly.GetSubscriptionInput, recurly.SubscriptionSummary](t, recurly.GetSubscriptionDefinition),
+		cancelSubscription:     connectormock.NewMutation[recurly.CancelSubscriptionInput, recurly.SubscriptionSummary](t, recurly.CancelSubscriptionDefinition),
+		reactivateSubscription: connectormock.NewMutation[recurly.ReactivateSubscriptionInput, recurly.SubscriptionSummary](t, recurly.ReactivateSubscriptionDefinition),
+		listAccounts:           connectormock.NewQuery[recurly.ListAccountsInput, recurly.AccountPage](t, recurly.ListAccountsDefinition),
+		setAccountTimeZone:     connectormock.NewMutation[recurly.SetAccountTimeZoneInput, recurly.AccountTimeZone](t, recurly.SetAccountTimeZoneDefinition),
+		reactivateAccount:      connectormock.NewMutation[recurly.ReactivateAccountInput, recurly.AccountLifecycle](t, recurly.ReactivateAccountDefinition),
+		createAccount:          connectormock.NewMutation[recurly.CreateAccountInput, recurly.AccountIdentity](t, recurly.CreateAccountDefinition),
+		getAccount:             connectormock.NewQuery[recurly.GetAccountInput, recurly.AccountIdentity](t, recurly.GetAccountDefinition),
 	}
+	mock.listInvoices.Default(ListInvoicesDefault())
+	mock.getInvoice.Default(GetInvoiceDefault())
+	mock.listPlans.Default(ListPlansDefault())
+	mock.getPlan.Default(GetPlanDefault())
+	mock.createPlan.Default(CreatePlanDefault())
+	mock.renamePlan.Default(RenamePlanDefault())
+	mock.deletePlan.Default(DeletePlanDefault())
+	mock.listSubscriptions.Default(ListSubscriptionsDefault())
+	mock.getSubscription.Default(GetSubscriptionDefault())
+	mock.cancelSubscription.Default(CancelSubscriptionDefault())
+	mock.reactivateSubscription.Default(ReactivateSubscriptionDefault())
+	mock.listAccounts.Default(ListAccountsDefault())
+	mock.setAccountTimeZone.Default(SetAccountTimeZoneDefault())
+	mock.reactivateAccount.Default(ReactivateAccountDefault())
+	mock.createAccount.Default(CreateAccountDefault())
 	mock.getAccount.Default(GetAccountDefault())
 	connection, err := recurly.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "recurly", Name: connectionName})
 	if err != nil {
@@ -40,6 +85,81 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() recurly.Connection { return mock.connection }
 
+// ListInvoices returns the listInvoices script.
+func (mock *Mock) ListInvoices() *connectormock.Query[recurly.ListInvoicesInput, recurly.InvoicePage] {
+	return mock.listInvoices
+}
+
+// GetInvoice returns the getInvoice script.
+func (mock *Mock) GetInvoice() *connectormock.Query[recurly.GetInvoiceInput, recurly.InvoiceSummary] {
+	return mock.getInvoice
+}
+
+// ListPlans returns the listPlans script.
+func (mock *Mock) ListPlans() *connectormock.Query[recurly.ListPlansInput, recurly.PlanPage] {
+	return mock.listPlans
+}
+
+// GetPlan returns the getPlan script.
+func (mock *Mock) GetPlan() *connectormock.Query[recurly.GetPlanInput, recurly.PlanSummary] {
+	return mock.getPlan
+}
+
+// CreatePlan returns the createPlan script.
+func (mock *Mock) CreatePlan() *connectormock.Mutation[recurly.CreatePlanInput, recurly.PlanSummary] {
+	return mock.createPlan
+}
+
+// RenamePlan returns the renamePlan script.
+func (mock *Mock) RenamePlan() *connectormock.Mutation[recurly.RenamePlanInput, recurly.PlanSummary] {
+	return mock.renamePlan
+}
+
+// DeletePlan returns the deletePlan script.
+func (mock *Mock) DeletePlan() *connectormock.Mutation[recurly.DeletePlanInput, recurly.DeletedPlan] {
+	return mock.deletePlan
+}
+
+// ListSubscriptions returns the listSubscriptions script.
+func (mock *Mock) ListSubscriptions() *connectormock.Query[recurly.ListSubscriptionsInput, recurly.SubscriptionPage] {
+	return mock.listSubscriptions
+}
+
+// GetSubscription returns the getSubscription script.
+func (mock *Mock) GetSubscription() *connectormock.Query[recurly.GetSubscriptionInput, recurly.SubscriptionSummary] {
+	return mock.getSubscription
+}
+
+// CancelSubscription returns the cancelSubscription script.
+func (mock *Mock) CancelSubscription() *connectormock.Mutation[recurly.CancelSubscriptionInput, recurly.SubscriptionSummary] {
+	return mock.cancelSubscription
+}
+
+// ReactivateSubscription returns the reactivateSubscription script.
+func (mock *Mock) ReactivateSubscription() *connectormock.Mutation[recurly.ReactivateSubscriptionInput, recurly.SubscriptionSummary] {
+	return mock.reactivateSubscription
+}
+
+// ListAccounts returns the listAccounts script.
+func (mock *Mock) ListAccounts() *connectormock.Query[recurly.ListAccountsInput, recurly.AccountPage] {
+	return mock.listAccounts
+}
+
+// SetAccountTimeZone returns the setAccountTimeZone script.
+func (mock *Mock) SetAccountTimeZone() *connectormock.Mutation[recurly.SetAccountTimeZoneInput, recurly.AccountTimeZone] {
+	return mock.setAccountTimeZone
+}
+
+// ReactivateAccount returns the reactivateAccount script.
+func (mock *Mock) ReactivateAccount() *connectormock.Mutation[recurly.ReactivateAccountInput, recurly.AccountLifecycle] {
+	return mock.reactivateAccount
+}
+
+// CreateAccount returns the createAccount script.
+func (mock *Mock) CreateAccount() *connectormock.Mutation[recurly.CreateAccountInput, recurly.AccountIdentity] {
+	return mock.createAccount
+}
+
 // GetAccount returns the getAccount script.
 func (mock *Mock) GetAccount() *connectormock.Query[recurly.GetAccountInput, recurly.AccountIdentity] {
 	return mock.getAccount
@@ -47,8 +167,556 @@ func (mock *Mock) GetAccount() *connectormock.Query[recurly.GetAccountInput, rec
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListInvoices() sdkgo.Query[recurly.ListInvoicesInput, recurly.InvoicePage] {
+	return operations.mock.listInvoices
+}
+func (operations mockOperations) GetInvoice() sdkgo.Query[recurly.GetInvoiceInput, recurly.InvoiceSummary] {
+	return operations.mock.getInvoice
+}
+func (operations mockOperations) ListPlans() sdkgo.Query[recurly.ListPlansInput, recurly.PlanPage] {
+	return operations.mock.listPlans
+}
+func (operations mockOperations) GetPlan() sdkgo.Query[recurly.GetPlanInput, recurly.PlanSummary] {
+	return operations.mock.getPlan
+}
+func (operations mockOperations) CreatePlan() sdkgo.Mutation[recurly.CreatePlanInput, recurly.PlanSummary] {
+	return operations.mock.createPlan
+}
+func (operations mockOperations) RenamePlan() sdkgo.Mutation[recurly.RenamePlanInput, recurly.PlanSummary] {
+	return operations.mock.renamePlan
+}
+func (operations mockOperations) DeletePlan() sdkgo.Mutation[recurly.DeletePlanInput, recurly.DeletedPlan] {
+	return operations.mock.deletePlan
+}
+func (operations mockOperations) ListSubscriptions() sdkgo.Query[recurly.ListSubscriptionsInput, recurly.SubscriptionPage] {
+	return operations.mock.listSubscriptions
+}
+func (operations mockOperations) GetSubscription() sdkgo.Query[recurly.GetSubscriptionInput, recurly.SubscriptionSummary] {
+	return operations.mock.getSubscription
+}
+func (operations mockOperations) CancelSubscription() sdkgo.Mutation[recurly.CancelSubscriptionInput, recurly.SubscriptionSummary] {
+	return operations.mock.cancelSubscription
+}
+func (operations mockOperations) ReactivateSubscription() sdkgo.Mutation[recurly.ReactivateSubscriptionInput, recurly.SubscriptionSummary] {
+	return operations.mock.reactivateSubscription
+}
+func (operations mockOperations) ListAccounts() sdkgo.Query[recurly.ListAccountsInput, recurly.AccountPage] {
+	return operations.mock.listAccounts
+}
+func (operations mockOperations) SetAccountTimeZone() sdkgo.Mutation[recurly.SetAccountTimeZoneInput, recurly.AccountTimeZone] {
+	return operations.mock.setAccountTimeZone
+}
+func (operations mockOperations) ReactivateAccount() sdkgo.Mutation[recurly.ReactivateAccountInput, recurly.AccountLifecycle] {
+	return operations.mock.reactivateAccount
+}
+func (operations mockOperations) CreateAccount() sdkgo.Mutation[recurly.CreateAccountInput, recurly.AccountIdentity] {
+	return operations.mock.createAccount
+}
 func (operations mockOperations) GetAccount() sdkgo.Query[recurly.GetAccountInput, recurly.AccountIdentity] {
 	return operations.mock.getAccount
+}
+
+// ListInvoicesListed selects the listed branch: Recurly returned a page of invoices.
+func ListInvoicesListed(value recurly.InvoicePage, failure *sdkgo.Failure) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Branch(recurly.ListInvoicesBranchListed, value, failure)
+}
+
+// ListInvoicesProviderRejected selects the providerRejected branch: Recurly rejected invoice listing.
+func ListInvoicesProviderRejected(value recurly.InvoicePage, failure *sdkgo.Failure) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Branch(recurly.ListInvoicesBranchProviderRejected, value, failure)
+}
+
+// ListInvoicesInvalidResponse selects the invalidResponse branch: Recurly returned unusable invoice list data.
+func ListInvoicesInvalidResponse(value recurly.InvoicePage, failure *sdkgo.Failure) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Branch(recurly.ListInvoicesBranchInvalidResponse, value, failure)
+}
+
+// ListInvoicesDefect selects the defect branch: Invalid page size or credentials.
+func ListInvoicesDefect(value recurly.InvoicePage, failure *sdkgo.Failure) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Branch(recurly.ListInvoicesBranchDefect, value, failure)
+}
+
+// ListInvoicesRetry asks Dex to retry the listInvoices Step, after the delay when it is positive.
+func ListInvoicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.InvoicePage] {
+	return connectormock.Retry[recurly.InvoicePage](failure, after)
+}
+
+// ListInvoicesListedDefault is the manifest mock listedDefault: A sample invoice page is returned.
+func ListInvoicesListedDefault() connectormock.Case[recurly.InvoicePage] {
+	value := connectormock.MustDecodeOutput[recurly.InvoicePage](`{"invoices":[{"id":"e28zov4fw0v2","state":"open"}],"hasMore":false}`)
+	return connectormock.Branch(recurly.ListInvoicesBranchListed, value, nil)
+}
+
+// ListInvoicesDefault is the manifest default, listedDefault, which New installs.
+func ListInvoicesDefault() connectormock.Case[recurly.InvoicePage] {
+	return ListInvoicesListedDefault()
+}
+
+// GetInvoiceFound selects the found branch: Recurly returned the invoice.
+func GetInvoiceFound(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchFound, value, failure)
+}
+
+// GetInvoiceNotFound selects the notFound branch: The invoice was not found.
+func GetInvoiceNotFound(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchNotFound, value, failure)
+}
+
+// GetInvoiceProviderRejected selects the providerRejected branch: Recurly rejected invoice lookup.
+func GetInvoiceProviderRejected(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchProviderRejected, value, failure)
+}
+
+// GetInvoiceInvalidResponse selects the invalidResponse branch: Recurly returned unusable invoice data.
+func GetInvoiceInvalidResponse(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchInvalidResponse, value, failure)
+}
+
+// GetInvoiceDefect selects the defect branch: Invalid ID or credentials.
+func GetInvoiceDefect(value recurly.InvoiceSummary, failure *sdkgo.Failure) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Branch(recurly.GetInvoiceBranchDefect, value, failure)
+}
+
+// GetInvoiceRetry asks Dex to retry the getInvoice Step, after the delay when it is positive.
+func GetInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.InvoiceSummary] {
+	return connectormock.Retry[recurly.InvoiceSummary](failure, after)
+}
+
+// GetInvoiceFoundDefault is the manifest mock foundDefault: A sample invoice is returned.
+func GetInvoiceFoundDefault() connectormock.Case[recurly.InvoiceSummary] {
+	value := connectormock.MustDecodeOutput[recurly.InvoiceSummary](`{"id":"e28zov4fw0v2","state":"open"}`)
+	return connectormock.Branch(recurly.GetInvoiceBranchFound, value, nil)
+}
+
+// GetInvoiceDefault is the manifest default, foundDefault, which New installs.
+func GetInvoiceDefault() connectormock.Case[recurly.InvoiceSummary] { return GetInvoiceFoundDefault() }
+
+// ListPlansListed selects the listed branch: Recurly returned a page of plans.
+func ListPlansListed(value recurly.PlanPage, failure *sdkgo.Failure) connectormock.Case[recurly.PlanPage] {
+	return connectormock.Branch(recurly.ListPlansBranchListed, value, failure)
+}
+
+// ListPlansProviderRejected selects the providerRejected branch: Recurly rejected plan listing.
+func ListPlansProviderRejected(value recurly.PlanPage, failure *sdkgo.Failure) connectormock.Case[recurly.PlanPage] {
+	return connectormock.Branch(recurly.ListPlansBranchProviderRejected, value, failure)
+}
+
+// ListPlansInvalidResponse selects the invalidResponse branch: Recurly returned unusable plan list data.
+func ListPlansInvalidResponse(value recurly.PlanPage, failure *sdkgo.Failure) connectormock.Case[recurly.PlanPage] {
+	return connectormock.Branch(recurly.ListPlansBranchInvalidResponse, value, failure)
+}
+
+// ListPlansDefect selects the defect branch: Invalid page size or credentials.
+func ListPlansDefect(value recurly.PlanPage, failure *sdkgo.Failure) connectormock.Case[recurly.PlanPage] {
+	return connectormock.Branch(recurly.ListPlansBranchDefect, value, failure)
+}
+
+// ListPlansRetry asks Dex to retry the listPlans Step, after the delay when it is positive.
+func ListPlansRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.PlanPage] {
+	return connectormock.Retry[recurly.PlanPage](failure, after)
+}
+
+// ListPlansListedDefault is the manifest mock listedDefault: A sample plan page is returned.
+func ListPlansListedDefault() connectormock.Case[recurly.PlanPage] {
+	value := connectormock.MustDecodeOutput[recurly.PlanPage](`{"plans":[{"id":"e28zov4fw0v2","code":"standard","name":"Standard"}],"hasMore":false}`)
+	return connectormock.Branch(recurly.ListPlansBranchListed, value, nil)
+}
+
+// ListPlansDefault is the manifest default, listedDefault, which New installs.
+func ListPlansDefault() connectormock.Case[recurly.PlanPage] { return ListPlansListedDefault() }
+
+// GetPlanFound selects the found branch: Recurly returned the plan.
+func GetPlanFound(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.GetPlanBranchFound, value, failure)
+}
+
+// GetPlanNotFound selects the notFound branch: The plan was not found.
+func GetPlanNotFound(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.GetPlanBranchNotFound, value, failure)
+}
+
+// GetPlanProviderRejected selects the providerRejected branch: Recurly rejected plan lookup.
+func GetPlanProviderRejected(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.GetPlanBranchProviderRejected, value, failure)
+}
+
+// GetPlanInvalidResponse selects the invalidResponse branch: Recurly returned unusable plan data.
+func GetPlanInvalidResponse(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.GetPlanBranchInvalidResponse, value, failure)
+}
+
+// GetPlanDefect selects the defect branch: Invalid ID or credentials.
+func GetPlanDefect(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.GetPlanBranchDefect, value, failure)
+}
+
+// GetPlanRetry asks Dex to retry the getPlan Step, after the delay when it is positive.
+func GetPlanRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Retry[recurly.PlanSummary](failure, after)
+}
+
+// GetPlanFoundDefault is the manifest mock foundDefault: A sample plan is returned.
+func GetPlanFoundDefault() connectormock.Case[recurly.PlanSummary] {
+	value := connectormock.MustDecodeOutput[recurly.PlanSummary](`{"id":"e28zov4fw0v2","code":"standard","name":"Standard"}`)
+	return connectormock.Branch(recurly.GetPlanBranchFound, value, nil)
+}
+
+// GetPlanDefault is the manifest default, foundDefault, which New installs.
+func GetPlanDefault() connectormock.Case[recurly.PlanSummary] { return GetPlanFoundDefault() }
+
+// CreatePlanCreated selects the created branch: Recurly created or confirmed the plan.
+func CreatePlanCreated(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.CreatePlanBranchCreated, value, failure)
+}
+
+// CreatePlanProviderRejected selects the providerRejected branch: Recurly rejected plan creation.
+func CreatePlanProviderRejected(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.CreatePlanBranchProviderRejected, value, failure)
+}
+
+// CreatePlanDefect selects the defect branch: Invalid plan input or credentials.
+func CreatePlanDefect(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.CreatePlanBranchDefect, value, failure)
+}
+
+// CreatePlanRetry asks Dex to retry the createPlan Step, after the delay when it is positive.
+func CreatePlanRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Retry[recurly.PlanSummary](failure, after)
+}
+
+// CreatePlanCreatedDefault is the manifest mock createdDefault: A sample fixed-price plan is created.
+func CreatePlanCreatedDefault() connectormock.Case[recurly.PlanSummary] {
+	value := connectormock.MustDecodeOutput[recurly.PlanSummary](`{"id":"e28zov4fw0v2","code":"standard_0123456789abcdef0123456789abcdef","name":"Standard"}`)
+	return connectormock.Branch(recurly.CreatePlanBranchCreated, value, nil)
+}
+
+// CreatePlanDefault is the manifest default, createdDefault, which New installs.
+func CreatePlanDefault() connectormock.Case[recurly.PlanSummary] { return CreatePlanCreatedDefault() }
+
+// RenamePlanRenamed selects the renamed branch: Recurly renamed the plan.
+func RenamePlanRenamed(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.RenamePlanBranchRenamed, value, failure)
+}
+
+// RenamePlanProviderRejected selects the providerRejected branch: Recurly rejected plan rename.
+func RenamePlanProviderRejected(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.RenamePlanBranchProviderRejected, value, failure)
+}
+
+// RenamePlanDefect selects the defect branch: Invalid plan ID or name or credentials.
+func RenamePlanDefect(value recurly.PlanSummary, failure *sdkgo.Failure) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Branch(recurly.RenamePlanBranchDefect, value, failure)
+}
+
+// RenamePlanRetry asks Dex to retry the renamePlan Step, after the delay when it is positive.
+func RenamePlanRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.PlanSummary] {
+	return connectormock.Retry[recurly.PlanSummary](failure, after)
+}
+
+// RenamePlanRenamedDefault is the manifest mock renamedDefault: A sample plan was renamed.
+func RenamePlanRenamedDefault() connectormock.Case[recurly.PlanSummary] {
+	value := connectormock.MustDecodeOutput[recurly.PlanSummary](`{"id":"e28zov4fw0v2","code":"standard","name":"Standard Plus"}`)
+	return connectormock.Branch(recurly.RenamePlanBranchRenamed, value, nil)
+}
+
+// RenamePlanDefault is the manifest default, renamedDefault, which New installs.
+func RenamePlanDefault() connectormock.Case[recurly.PlanSummary] { return RenamePlanRenamedDefault() }
+
+// DeletePlanDeleted selects the deleted branch: Recurly removed or confirmed the plan.
+func DeletePlanDeleted(value recurly.DeletedPlan, failure *sdkgo.Failure) connectormock.Case[recurly.DeletedPlan] {
+	return connectormock.Branch(recurly.DeletePlanBranchDeleted, value, failure)
+}
+
+// DeletePlanProviderRejected selects the providerRejected branch: Recurly rejected plan deletion.
+func DeletePlanProviderRejected(value recurly.DeletedPlan, failure *sdkgo.Failure) connectormock.Case[recurly.DeletedPlan] {
+	return connectormock.Branch(recurly.DeletePlanBranchProviderRejected, value, failure)
+}
+
+// DeletePlanDefect selects the defect branch: Invalid plan ID or credentials.
+func DeletePlanDefect(value recurly.DeletedPlan, failure *sdkgo.Failure) connectormock.Case[recurly.DeletedPlan] {
+	return connectormock.Branch(recurly.DeletePlanBranchDefect, value, failure)
+}
+
+// DeletePlanRetry asks Dex to retry the deletePlan Step, after the delay when it is positive.
+func DeletePlanRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.DeletedPlan] {
+	return connectormock.Retry[recurly.DeletedPlan](failure, after)
+}
+
+// DeletePlanDeletedDefault is the manifest mock deletedDefault: A sample plan was removed.
+func DeletePlanDeletedDefault() connectormock.Case[recurly.DeletedPlan] {
+	value := connectormock.MustDecodeOutput[recurly.DeletedPlan](`{"id":"e28zov4fw0v2"}`)
+	return connectormock.Branch(recurly.DeletePlanBranchDeleted, value, nil)
+}
+
+// DeletePlanDefault is the manifest default, deletedDefault, which New installs.
+func DeletePlanDefault() connectormock.Case[recurly.DeletedPlan] { return DeletePlanDeletedDefault() }
+
+// ListSubscriptionsListed selects the listed branch: Recurly returned a page of subscriptions.
+func ListSubscriptionsListed(value recurly.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionPage] {
+	return connectormock.Branch(recurly.ListSubscriptionsBranchListed, value, failure)
+}
+
+// ListSubscriptionsProviderRejected selects the providerRejected branch: Recurly rejected subscription listing.
+func ListSubscriptionsProviderRejected(value recurly.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionPage] {
+	return connectormock.Branch(recurly.ListSubscriptionsBranchProviderRejected, value, failure)
+}
+
+// ListSubscriptionsInvalidResponse selects the invalidResponse branch: Recurly returned unusable subscription list data.
+func ListSubscriptionsInvalidResponse(value recurly.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionPage] {
+	return connectormock.Branch(recurly.ListSubscriptionsBranchInvalidResponse, value, failure)
+}
+
+// ListSubscriptionsDefect selects the defect branch: Invalid page size or credentials.
+func ListSubscriptionsDefect(value recurly.SubscriptionPage, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionPage] {
+	return connectormock.Branch(recurly.ListSubscriptionsBranchDefect, value, failure)
+}
+
+// ListSubscriptionsRetry asks Dex to retry the listSubscriptions Step, after the delay when it is positive.
+func ListSubscriptionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.SubscriptionPage] {
+	return connectormock.Retry[recurly.SubscriptionPage](failure, after)
+}
+
+// ListSubscriptionsListedDefault is the manifest mock listedDefault: A sample subscription page is returned.
+func ListSubscriptionsListedDefault() connectormock.Case[recurly.SubscriptionPage] {
+	value := connectormock.MustDecodeOutput[recurly.SubscriptionPage](`{"subscriptions":[{"id":"e28zov4fw0v2","state":"active"}],"hasMore":false}`)
+	return connectormock.Branch(recurly.ListSubscriptionsBranchListed, value, nil)
+}
+
+// ListSubscriptionsDefault is the manifest default, listedDefault, which New installs.
+func ListSubscriptionsDefault() connectormock.Case[recurly.SubscriptionPage] {
+	return ListSubscriptionsListedDefault()
+}
+
+// GetSubscriptionFound selects the found branch: Recurly returned the subscription.
+func GetSubscriptionFound(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.GetSubscriptionBranchFound, value, failure)
+}
+
+// GetSubscriptionNotFound selects the notFound branch: The subscription was not found.
+func GetSubscriptionNotFound(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.GetSubscriptionBranchNotFound, value, failure)
+}
+
+// GetSubscriptionProviderRejected selects the providerRejected branch: Recurly rejected subscription lookup.
+func GetSubscriptionProviderRejected(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.GetSubscriptionBranchProviderRejected, value, failure)
+}
+
+// GetSubscriptionInvalidResponse selects the invalidResponse branch: Recurly returned unusable subscription data.
+func GetSubscriptionInvalidResponse(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.GetSubscriptionBranchInvalidResponse, value, failure)
+}
+
+// GetSubscriptionDefect selects the defect branch: Invalid ID or credentials.
+func GetSubscriptionDefect(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.GetSubscriptionBranchDefect, value, failure)
+}
+
+// GetSubscriptionRetry asks Dex to retry the getSubscription Step, after the delay when it is positive.
+func GetSubscriptionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Retry[recurly.SubscriptionSummary](failure, after)
+}
+
+// GetSubscriptionFoundDefault is the manifest mock foundDefault: A sample active subscription is returned.
+func GetSubscriptionFoundDefault() connectormock.Case[recurly.SubscriptionSummary] {
+	value := connectormock.MustDecodeOutput[recurly.SubscriptionSummary](`{"id":"e28zov4fw0v2","state":"active"}`)
+	return connectormock.Branch(recurly.GetSubscriptionBranchFound, value, nil)
+}
+
+// GetSubscriptionDefault is the manifest default, foundDefault, which New installs.
+func GetSubscriptionDefault() connectormock.Case[recurly.SubscriptionSummary] {
+	return GetSubscriptionFoundDefault()
+}
+
+// CancelSubscriptionCancelled selects the cancelled branch: Recurly cancelled or confirmed the subscription.
+func CancelSubscriptionCancelled(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.CancelSubscriptionBranchCancelled, value, failure)
+}
+
+// CancelSubscriptionProviderRejected selects the providerRejected branch: Recurly rejected subscription cancellation.
+func CancelSubscriptionProviderRejected(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.CancelSubscriptionBranchProviderRejected, value, failure)
+}
+
+// CancelSubscriptionDefect selects the defect branch: Invalid ID or credentials.
+func CancelSubscriptionDefect(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.CancelSubscriptionBranchDefect, value, failure)
+}
+
+// CancelSubscriptionRetry asks Dex to retry the cancelSubscription Step, after the delay when it is positive.
+func CancelSubscriptionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Retry[recurly.SubscriptionSummary](failure, after)
+}
+
+// CancelSubscriptionCancelledDefault is the manifest mock cancelledDefault: A sample subscription was cancelled.
+func CancelSubscriptionCancelledDefault() connectormock.Case[recurly.SubscriptionSummary] {
+	value := connectormock.MustDecodeOutput[recurly.SubscriptionSummary](`{"id":"e28zov4fw0v2","state":"canceled"}`)
+	return connectormock.Branch(recurly.CancelSubscriptionBranchCancelled, value, nil)
+}
+
+// CancelSubscriptionDefault is the manifest default, cancelledDefault, which New installs.
+func CancelSubscriptionDefault() connectormock.Case[recurly.SubscriptionSummary] {
+	return CancelSubscriptionCancelledDefault()
+}
+
+// ReactivateSubscriptionReactivated selects the reactivated branch: Recurly reactivated or confirmed the subscription.
+func ReactivateSubscriptionReactivated(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.ReactivateSubscriptionBranchReactivated, value, failure)
+}
+
+// ReactivateSubscriptionProviderRejected selects the providerRejected branch: Recurly rejected subscription reactivation.
+func ReactivateSubscriptionProviderRejected(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.ReactivateSubscriptionBranchProviderRejected, value, failure)
+}
+
+// ReactivateSubscriptionDefect selects the defect branch: Invalid ID or credentials.
+func ReactivateSubscriptionDefect(value recurly.SubscriptionSummary, failure *sdkgo.Failure) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Branch(recurly.ReactivateSubscriptionBranchDefect, value, failure)
+}
+
+// ReactivateSubscriptionRetry asks Dex to retry the reactivateSubscription Step, after the delay when it is positive.
+func ReactivateSubscriptionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.SubscriptionSummary] {
+	return connectormock.Retry[recurly.SubscriptionSummary](failure, after)
+}
+
+// ReactivateSubscriptionReactivatedDefault is the manifest mock reactivatedDefault: A sample subscription is active.
+func ReactivateSubscriptionReactivatedDefault() connectormock.Case[recurly.SubscriptionSummary] {
+	value := connectormock.MustDecodeOutput[recurly.SubscriptionSummary](`{"id":"e28zov4fw0v2","state":"active"}`)
+	return connectormock.Branch(recurly.ReactivateSubscriptionBranchReactivated, value, nil)
+}
+
+// ReactivateSubscriptionDefault is the manifest default, reactivatedDefault, which New installs.
+func ReactivateSubscriptionDefault() connectormock.Case[recurly.SubscriptionSummary] {
+	return ReactivateSubscriptionReactivatedDefault()
+}
+
+// ListAccountsListed selects the listed branch: Recurly returned a page of accounts.
+func ListAccountsListed(value recurly.AccountPage, failure *sdkgo.Failure) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Branch(recurly.ListAccountsBranchListed, value, failure)
+}
+
+// ListAccountsProviderRejected selects the providerRejected branch: Recurly rejected account listing.
+func ListAccountsProviderRejected(value recurly.AccountPage, failure *sdkgo.Failure) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Branch(recurly.ListAccountsBranchProviderRejected, value, failure)
+}
+
+// ListAccountsInvalidResponse selects the invalidResponse branch: Recurly returned unusable account list data.
+func ListAccountsInvalidResponse(value recurly.AccountPage, failure *sdkgo.Failure) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Branch(recurly.ListAccountsBranchInvalidResponse, value, failure)
+}
+
+// ListAccountsDefect selects the defect branch: Invalid account page size or credentials.
+func ListAccountsDefect(value recurly.AccountPage, failure *sdkgo.Failure) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Branch(recurly.ListAccountsBranchDefect, value, failure)
+}
+
+// ListAccountsRetry asks Dex to retry the listAccounts Step, after the delay when it is positive.
+func ListAccountsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.AccountPage] {
+	return connectormock.Retry[recurly.AccountPage](failure, after)
+}
+
+// ListAccountsListedDefault is the manifest mock listedDefault: A sample account page is returned.
+func ListAccountsListedDefault() connectormock.Case[recurly.AccountPage] {
+	value := connectormock.MustDecodeOutput[recurly.AccountPage](`{"accounts":[{"id":"e28zov4fw0v2","code":"acme-corp"}],"hasMore":false}`)
+	return connectormock.Branch(recurly.ListAccountsBranchListed, value, nil)
+}
+
+// ListAccountsDefault is the manifest default, listedDefault, which New installs.
+func ListAccountsDefault() connectormock.Case[recurly.AccountPage] {
+	return ListAccountsListedDefault()
+}
+
+// SetAccountTimeZoneUpdated selects the updated branch: Recurly updated the account time zone.
+func SetAccountTimeZoneUpdated(value recurly.AccountTimeZone, failure *sdkgo.Failure) connectormock.Case[recurly.AccountTimeZone] {
+	return connectormock.Branch(recurly.SetAccountTimeZoneBranchUpdated, value, failure)
+}
+
+// SetAccountTimeZoneProviderRejected selects the providerRejected branch: Recurly rejected the account update.
+func SetAccountTimeZoneProviderRejected(value recurly.AccountTimeZone, failure *sdkgo.Failure) connectormock.Case[recurly.AccountTimeZone] {
+	return connectormock.Branch(recurly.SetAccountTimeZoneBranchProviderRejected, value, failure)
+}
+
+// SetAccountTimeZoneDefect selects the defect branch: Invalid account ID or time zone or credentials.
+func SetAccountTimeZoneDefect(value recurly.AccountTimeZone, failure *sdkgo.Failure) connectormock.Case[recurly.AccountTimeZone] {
+	return connectormock.Branch(recurly.SetAccountTimeZoneBranchDefect, value, failure)
+}
+
+// SetAccountTimeZoneRetry asks Dex to retry the setAccountTimeZone Step, after the delay when it is positive.
+func SetAccountTimeZoneRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.AccountTimeZone] {
+	return connectormock.Retry[recurly.AccountTimeZone](failure, after)
+}
+
+// SetAccountTimeZoneUpdatedDefault is the manifest mock updatedDefault: A sample account time zone was updated.
+func SetAccountTimeZoneUpdatedDefault() connectormock.Case[recurly.AccountTimeZone] {
+	value := connectormock.MustDecodeOutput[recurly.AccountTimeZone](`{"id":"e28zov4fw0v2","code":"acme-corp","timeZone":"America/Los_Angeles"}`)
+	return connectormock.Branch(recurly.SetAccountTimeZoneBranchUpdated, value, nil)
+}
+
+// SetAccountTimeZoneDefault is the manifest default, updatedDefault, which New installs.
+func SetAccountTimeZoneDefault() connectormock.Case[recurly.AccountTimeZone] {
+	return SetAccountTimeZoneUpdatedDefault()
+}
+
+// ReactivateAccountReactivated selects the reactivated branch: Recurly reactivated or confirmed the account.
+func ReactivateAccountReactivated(value recurly.AccountLifecycle, failure *sdkgo.Failure) connectormock.Case[recurly.AccountLifecycle] {
+	return connectormock.Branch(recurly.ReactivateAccountBranchReactivated, value, failure)
+}
+
+// ReactivateAccountProviderRejected selects the providerRejected branch: Recurly rejected account reactivation.
+func ReactivateAccountProviderRejected(value recurly.AccountLifecycle, failure *sdkgo.Failure) connectormock.Case[recurly.AccountLifecycle] {
+	return connectormock.Branch(recurly.ReactivateAccountBranchProviderRejected, value, failure)
+}
+
+// ReactivateAccountDefect selects the defect branch: Invalid account ID or credentials.
+func ReactivateAccountDefect(value recurly.AccountLifecycle, failure *sdkgo.Failure) connectormock.Case[recurly.AccountLifecycle] {
+	return connectormock.Branch(recurly.ReactivateAccountBranchDefect, value, failure)
+}
+
+// ReactivateAccountRetry asks Dex to retry the reactivateAccount Step, after the delay when it is positive.
+func ReactivateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.AccountLifecycle] {
+	return connectormock.Retry[recurly.AccountLifecycle](failure, after)
+}
+
+// ReactivateAccountReactivatedDefault is the manifest mock reactivatedDefault: A sample account is active again.
+func ReactivateAccountReactivatedDefault() connectormock.Case[recurly.AccountLifecycle] {
+	value := connectormock.MustDecodeOutput[recurly.AccountLifecycle](`{"id":"e28zov4fw0v2","code":"acme-corp","state":"active"}`)
+	return connectormock.Branch(recurly.ReactivateAccountBranchReactivated, value, nil)
+}
+
+// ReactivateAccountDefault is the manifest default, reactivatedDefault, which New installs.
+func ReactivateAccountDefault() connectormock.Case[recurly.AccountLifecycle] {
+	return ReactivateAccountReactivatedDefault()
+}
+
+// CreateAccountCreated selects the created branch: Recurly created or confirmed the account.
+func CreateAccountCreated(value recurly.AccountIdentity, failure *sdkgo.Failure) connectormock.Case[recurly.AccountIdentity] {
+	return connectormock.Branch(recurly.CreateAccountBranchCreated, value, failure)
+}
+
+// CreateAccountProviderRejected selects the providerRejected branch: Recurly rejected account creation.
+func CreateAccountProviderRejected(value recurly.AccountIdentity, failure *sdkgo.Failure) connectormock.Case[recurly.AccountIdentity] {
+	return connectormock.Branch(recurly.CreateAccountBranchProviderRejected, value, failure)
+}
+
+// CreateAccountDefect selects the defect branch: Invalid code prefix or credentials.
+func CreateAccountDefect(value recurly.AccountIdentity, failure *sdkgo.Failure) connectormock.Case[recurly.AccountIdentity] {
+	return connectormock.Branch(recurly.CreateAccountBranchDefect, value, failure)
+}
+
+// CreateAccountRetry asks Dex to retry the createAccount Step, after the delay when it is positive.
+func CreateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.AccountIdentity] {
+	return connectormock.Retry[recurly.AccountIdentity](failure, after)
+}
+
+// CreateAccountCreatedDefault is the manifest mock createdDefault: A sample account is created.
+func CreateAccountCreatedDefault() connectormock.Case[recurly.AccountIdentity] {
+	value := connectormock.MustDecodeOutput[recurly.AccountIdentity](`{"id":"e28zov4fw0v2","code":"dex_0123456789abcdef0123456789abcdef"}`)
+	return connectormock.Branch(recurly.CreateAccountBranchCreated, value, nil)
+}
+
+// CreateAccountDefault is the manifest default, createdDefault, which New installs.
+func CreateAccountDefault() connectormock.Case[recurly.AccountIdentity] {
+	return CreateAccountCreatedDefault()
 }
 
 // GetAccountFound selects the found branch: Recurly returned the account.

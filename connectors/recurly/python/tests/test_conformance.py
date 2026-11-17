@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/recurly/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/recurly/scenarios.json")
+    if scenario["operation"] == "getAccount"
+]
 CONNECTION = sdk.ConnectionRef("recurly", "recurly")
 TEST_CREDENTIALS = recurly.Credentials(sdk.SecretString("sample-recurly-api-key"))
 ADAPTER = conformance.PythonOperationAdapter(

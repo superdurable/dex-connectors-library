@@ -16,6 +16,54 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listPaymentLinks/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentLinkPage](`{"links":[{"id":"plink_ExjpAUN3gVHrPJ","status":"created","amount":1000,"currencyCode":"INR","referenceId":"dex_0123456789abcdef0123456789abcdef","shortUrl":"https://rzp.io/i/example"}]}`)
+			return err
+		}},
+		{name: "getPaymentLink/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentLinkSummary](`{"id":"plink_ExjpAUN3gVHrPJ","status":"created","amount":1000,"currencyCode":"INR","referenceId":"dex_0123456789abcdef0123456789abcdef","shortUrl":"https://rzp.io/i/example"}`)
+			return err
+		}},
+		{name: "createPaymentLink/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentLinkSummary](`{"id":"plink_ExjpAUN3gVHrPJ","status":"created","amount":1000,"currencyCode":"INR","referenceId":"dex_0123456789abcdef0123456789abcdef","shortUrl":"https://rzp.io/i/example"}`)
+			return err
+		}},
+		{name: "cancelPaymentLink/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentLinkSummary](`{"id":"plink_ExjpAUN3gVHrPJ","status":"cancelled","amount":1000,"currencyCode":"INR","referenceId":"dex_0123456789abcdef0123456789abcdef","shortUrl":"https://rzp.io/i/example"}`)
+			return err
+		}},
+		{name: "listRefunds/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.RefundPage](`{"refunds":[{"id":"rfnd_FP8QHiV938haTz","paymentId":"pay_DG4ZdRK8ZnXC3k","status":"processed","amount":100,"currencyCode":"INR"}],"count":1}`)
+			return err
+		}},
+		{name: "getRefund/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.RefundStatus](`{"id":"rfnd_FP8QHiV938haTz","paymentId":"pay_DG4ZdRK8ZnXC3k","status":"processed","amount":100,"currencyCode":"INR"}`)
+			return err
+		}},
+		{name: "createNormalRefund/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.RefundStatus](`{"id":"rfnd_FP8QHiV938haTz","paymentId":"pay_DG4ZdRK8ZnXC3k","status":"processed","amount":100,"currencyCode":"INR"}`)
+			return err
+		}},
+		{name: "listPayments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentPage](`{"payments":[{"id":"pay_DG4ZdRK8ZnXC3k","status":"captured","amount":100,"currencyCode":"INR"}],"count":1}`)
+			return err
+		}},
+		{name: "capturePayment/capturedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.PaymentStatus](`{"id":"pay_DG4ZdRK8ZnXC3k","status":"captured","amount":100,"currencyCode":"INR"}`)
+			return err
+		}},
+		{name: "listOrders/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.OrderPage](`{"orders":[{"id":"order_RB58MiP5SPFYyM","status":"created","amount":5000,"currencyCode":"INR","receipt":"receipt-1"}],"count":1}`)
+			return err
+		}},
+		{name: "getOrder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.OrderSummary](`{"id":"order_RB58MiP5SPFYyM","status":"created","amount":5000,"currencyCode":"INR","receipt":"receipt-1"}`)
+			return err
+		}},
+		{name: "createOrder/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[razorpay.OrderSummary](`{"id":"order_RB58MiP5SPFYyM","status":"created","amount":5000,"currencyCode":"INR","receipt":"dex_0123456789abcdef0123456789abcdef"}`)
+			return err
+		}},
 		{name: "getPayment/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[razorpay.PaymentStatus](`{"id":"pay_DG4ZdRK8ZnXC3k","status":"captured","amount":100,"currencyCode":"INR"}`)
 			return err
@@ -30,6 +78,42 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListPaymentLinks().Definition().Operation.OperationID != "listPaymentLinks" {
+		t.Errorf("listPaymentLinks mock has another definition")
+	}
+	if mock.GetPaymentLink().Definition().Operation.OperationID != "getPaymentLink" {
+		t.Errorf("getPaymentLink mock has another definition")
+	}
+	if mock.CreatePaymentLink().Definition().Operation.OperationID != "createPaymentLink" {
+		t.Errorf("createPaymentLink mock has another definition")
+	}
+	if mock.CancelPaymentLink().Definition().Operation.OperationID != "cancelPaymentLink" {
+		t.Errorf("cancelPaymentLink mock has another definition")
+	}
+	if mock.ListRefunds().Definition().Operation.OperationID != "listRefunds" {
+		t.Errorf("listRefunds mock has another definition")
+	}
+	if mock.GetRefund().Definition().Operation.OperationID != "getRefund" {
+		t.Errorf("getRefund mock has another definition")
+	}
+	if mock.CreateNormalRefund().Definition().Operation.OperationID != "createNormalRefund" {
+		t.Errorf("createNormalRefund mock has another definition")
+	}
+	if mock.ListPayments().Definition().Operation.OperationID != "listPayments" {
+		t.Errorf("listPayments mock has another definition")
+	}
+	if mock.CapturePayment().Definition().Operation.OperationID != "capturePayment" {
+		t.Errorf("capturePayment mock has another definition")
+	}
+	if mock.ListOrders().Definition().Operation.OperationID != "listOrders" {
+		t.Errorf("listOrders mock has another definition")
+	}
+	if mock.GetOrder().Definition().Operation.OperationID != "getOrder" {
+		t.Errorf("getOrder mock has another definition")
+	}
+	if mock.CreateOrder().Definition().Operation.OperationID != "createOrder" {
+		t.Errorf("createOrder mock has another definition")
+	}
 	if mock.GetPayment().Definition().Operation.OperationID != "getPayment" {
 		t.Errorf("getPayment mock has another definition")
 	}

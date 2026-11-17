@@ -18,6 +18,7 @@ import (
 // Mock is a scripted rabbitmq connection. Script each operation through its accessor.
 type Mock struct {
 	connection      rabbitmq.Connection
+	publishMessage  *connectormock.Mutation[rabbitmq.PublishMessageInput, rabbitmq.PublishedMessage]
 	getQueueMetrics *connectormock.Query[rabbitmq.GetQueueMetricsInput, rabbitmq.QueueMetrics]
 }
 
@@ -26,8 +27,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		publishMessage:  connectormock.NewMutation[rabbitmq.PublishMessageInput, rabbitmq.PublishedMessage](t, rabbitmq.PublishMessageDefinition),
 		getQueueMetrics: connectormock.NewQuery[rabbitmq.GetQueueMetricsInput, rabbitmq.QueueMetrics](t, rabbitmq.GetQueueMetricsDefinition),
 	}
+	mock.publishMessage.Default(PublishMessageDefault())
 	mock.getQueueMetrics.Default(GetQueueMetricsDefault())
 	connection, err := rabbitmq.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "rabbitmq", Name: connectionName})
 	if err != nil {
@@ -40,6 +43,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() rabbitmq.Connection { return mock.connection }
 
+// PublishMessage returns the publishMessage script.
+func (mock *Mock) PublishMessage() *connectormock.Mutation[rabbitmq.PublishMessageInput, rabbitmq.PublishedMessage] {
+	return mock.publishMessage
+}
+
 // GetQueueMetrics returns the getQueueMetrics script.
 func (mock *Mock) GetQueueMetrics() *connectormock.Query[rabbitmq.GetQueueMetricsInput, rabbitmq.QueueMetrics] {
 	return mock.getQueueMetrics
@@ -47,8 +55,52 @@ func (mock *Mock) GetQueueMetrics() *connectormock.Query[rabbitmq.GetQueueMetric
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) PublishMessage() sdkgo.Mutation[rabbitmq.PublishMessageInput, rabbitmq.PublishedMessage] {
+	return operations.mock.publishMessage
+}
 func (operations mockOperations) GetQueueMetrics() sdkgo.Query[rabbitmq.GetQueueMetricsInput, rabbitmq.QueueMetrics] {
 	return operations.mock.getQueueMetrics
+}
+
+// PublishMessagePublished selects the published branch: RabbitMQ routed the message to at least one queue.
+func PublishMessagePublished(value rabbitmq.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[rabbitmq.PublishedMessage] {
+	return connectormock.Branch(rabbitmq.PublishMessageBranchPublished, value, failure)
+}
+
+// PublishMessageUnroutable selects the unroutable branch: RabbitMQ accepted the message but routed it to no queue.
+func PublishMessageUnroutable(value rabbitmq.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[rabbitmq.PublishedMessage] {
+	return connectormock.Branch(rabbitmq.PublishMessageBranchUnroutable, value, failure)
+}
+
+// PublishMessageProviderRejected selects the providerRejected branch: RabbitMQ conclusively rejected the publish request.
+func PublishMessageProviderRejected(value rabbitmq.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[rabbitmq.PublishedMessage] {
+	return connectormock.Branch(rabbitmq.PublishMessageBranchProviderRejected, value, failure)
+}
+
+// PublishMessageUncertain returns an uncertain publishMessage outcome.
+func PublishMessageUncertain(value rabbitmq.PublishedMessage, failure sdkgo.Failure) connectormock.Case[rabbitmq.PublishedMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// PublishMessageDefect selects the defect branch: The publish input or credentials are invalid.
+func PublishMessageDefect(value rabbitmq.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[rabbitmq.PublishedMessage] {
+	return connectormock.Branch(rabbitmq.PublishMessageBranchDefect, value, failure)
+}
+
+// PublishMessageRetry asks Dex to retry the publishMessage Step, after the delay when it is positive.
+func PublishMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[rabbitmq.PublishedMessage] {
+	return connectormock.Retry[rabbitmq.PublishedMessage](failure, after)
+}
+
+// PublishMessagePublishedDefault is the manifest mock publishedDefault: One example message was routed.
+func PublishMessagePublishedDefault() connectormock.Case[rabbitmq.PublishedMessage] {
+	value := connectormock.MustDecodeOutput[rabbitmq.PublishedMessage](`{"routed":true}`)
+	return connectormock.Branch(rabbitmq.PublishMessageBranchPublished, value, nil)
+}
+
+// PublishMessageDefault is the manifest default, publishedDefault, which New installs.
+func PublishMessageDefault() connectormock.Case[rabbitmq.PublishedMessage] {
+	return PublishMessagePublishedDefault()
 }
 
 // GetQueueMetricsFound selects the found branch: RabbitMQ returned the queue metrics.

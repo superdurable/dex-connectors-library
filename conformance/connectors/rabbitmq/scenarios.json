@@ -333,6 +333,461 @@
       },
       "name": "getQueueMetrics-statisticsPending",
       "operation": "getQueueMetrics"
+    },
+    {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [
+        {
+          "body": "{\"routed\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/exchanges///amq.direct/publish",
+          "requestBody": {
+            "payload": "hello",
+            "payload_encoding": "string",
+            "properties": {},
+            "routing_key": "work"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "published",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "routed": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "work",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-published",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [
+        {
+          "body": "{\"routed\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/exchanges///amq.direct/publish",
+          "requestBody": {
+            "payload": "hello",
+            "payload_encoding": "string",
+            "properties": {},
+            "routing_key": "work"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unroutable",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "routed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "work",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-unroutable",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/exchanges///amq.direct/publish",
+          "requestBody": {
+            "payload": "hello",
+            "payload_encoding": "string",
+            "properties": {},
+            "routing_key": "work"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "routed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "work",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-providerRejected",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/exchanges///amq.direct/publish",
+          "requestBody": {
+            "payload": "hello",
+            "payload_encoding": "string",
+            "properties": {},
+            "routing_key": "work"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "routed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "work",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-uncertain",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "routed": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-defect",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/exchanges///amq.direct/publish",
+          "requestBody": {
+            "payload": "hello",
+            "payload_encoding": "string",
+            "properties": {},
+            "routing_key": "work"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "work",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-rateLimit",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/exchanges///amq.direct/publish",
+          "requestBody": {
+            "payload": "hello",
+            "payload_encoding": "string",
+            "properties": {},
+            "routing_key": "work"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "work",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-serviceUnavailable",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/exchanges///amq.direct/publish",
+          "requestBody": {
+            "payload": "hello",
+            "payload_encoding": "string",
+            "properties": {},
+            "routing_key": "work"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "work",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-serverError",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/exchanges///amq.direct/publish",
+          "requestBody": {
+            "payload": "hello",
+            "payload_encoding": "string",
+            "properties": {},
+            "routing_key": "work"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "work",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-transportFailure",
+      "operation": "publishMessage"
     }
   ],
   "schemaVersion": 1
