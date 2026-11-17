@@ -20,9 +20,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	reference := sdkgo.ConnectionRef{Provider: "facebook-pages", Name: "facebook-pages"}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {PageAccessToken: sdkgo.NewSecretString("test-page-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	publishContext := singledispatchtest.NewContext("facebook-pages-conformance", "publish-post")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			publishContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
 		"listPosts":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPosts(), reference),
 		"getPost":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPost(), reference),
-		"publishTextPost": newConformanceMutationInvocation(t, scenario.Input, singledispatchtest.NewContext("facebook-pages-conformance", "publish-post"), client.PublishTextPost(), reference, scenario.CallID),
+		"publishTextPost": newConformanceMutationInvocation(t, scenario.Input, publishContext, client.PublishTextPost(), reference, scenario.CallID),
 	}}
 }

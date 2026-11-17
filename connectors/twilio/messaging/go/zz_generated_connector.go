@@ -281,8 +281,8 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendMessageBranchAccepted, Description: "Twilio created the message and returned its SID; delivery status arrives later through getMessage."},
 		{ID: SendMessageBranchProviderRejected, Description: "Twilio conclusively rejected the message, such as an invalid To number, an unverified trial recipient, an unsubscribed recipient, or an unusable sender; nothing was sent.", Optional: true},
-		{ID: SendMessageBranchUncertain, Description: "The request was dispatched but its outcome cannot be confirmed; Twilio has no idempotency key, so the message may exist and must not be resent automatically.", Optional: true},
-		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, or Twilio returned a SID without a usable message; check Twilio before sending again.", Optional: true},
+		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),

@@ -160,7 +160,7 @@ func SchedulePostUncertain(value hootsuite.ScheduledPostReceipt, failure sdkgo.F
 	return connectormock.Uncertain(value, failure)
 }
 
-// SchedulePostDefect selects the defect branch: Local post input, credentials, or dispatch checkpoint is invalid.
+// SchedulePostDefect selects the defect branch: Local post input, credentials, or dispatch fence is invalid before any send.
 func SchedulePostDefect(value hootsuite.ScheduledPostReceipt, failure *sdkgo.Failure) connectormock.Case[hootsuite.ScheduledPostReceipt] {
 	return connectormock.Branch(hootsuite.SchedulePostBranchDefect, value, failure)
 }

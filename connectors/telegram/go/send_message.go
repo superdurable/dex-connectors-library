@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -53,56 +52,67 @@ func (SendMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ SendMessageInp
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends once, retries only proven non-processed requests, and fails closed after ambiguous dispatch.
+// Invoke sends under a single-dispatch fence. Telegram has no send idempotency key or message
+// read-back, so an unknown outcome resends while possible sends stay below call.MaxSends() and
+// selects uncertain at the cap. A definite refusal is never resent.
 func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageInput) sdkgo.MutationAttempt[SentMessage] {
-	fence, err := singledispatch.NewFence(call, SendMessageDefinition.StepDefaults.ExecuteMethodTimeout)
+	if !validChatID(input.ChatID) || input.Text == "" || utf8.RuneCountInString(input.Text) > 4096 || !utf8.ValidString(input.Text) {
+		return failedSend(SendMessageBranchDefect, sdkgo.FailureValidation, "chatId or text is invalid")
+	}
+	fence, err := singledispatch.NewFence(call, SendMessageDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
 		return failedSend(SendMessageBranchDefect, sdkgo.FailureLocalDefect, "Telegram dispatch fence is unavailable")
 	}
 	decision := fence.Decide()
-	if decision.Kind != singledispatch.SendAllowed {
-		return uncertainSend(sdkgo.FailureTransport, "Telegram send outcome cannot be confirmed; do not resend")
+	switch decision.Kind {
+	case singledispatch.FailClosed:
+		return retrySend(sdkgo.FailureAvailability, "Telegram dispatch checkpoint is unreadable; no message was sent in this attempt", 0)
+	case singledispatch.ReadBackRequired:
+		return uncertainSend(sdkgo.FailureTransport, "an earlier attempt may have sent the Telegram message, and the send cap is reached")
+	case singledispatch.ReadBackThenResendAllowed:
+		// A saved message ID proves Telegram created the message, so it is never resent.
+		if decision.Marker.ProviderID != "" {
+			return uncertainSend(sdkgo.FailureTransport, "an earlier attempt sent the Telegram message, but its confirmation was lost")
+		}
 	}
-	if !validChatID(input.ChatID) || input.Text == "" || utf8.RuneCountInString(input.Text) > 4096 || !utf8.ValidString(input.Text) {
-		return failedSend(SendMessageBranchDefect, sdkgo.FailureValidation, "chatId or text is invalid")
-	}
+	// This attempt's send would be the last one the cap allows when no further send remains.
+	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
+	// An earlier send may have created the message, so a refusal of this resend cannot prove nothing changed.
+	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := operation.client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil {
-		return failedSend(SendMessageBranchDefect, sdkgo.FailureAuthentication, "bot token is unavailable or invalid")
+	if err != nil || credentials.Validate() != nil || !botTokenPattern.MatchString(credentials.BotToken.Reveal()) {
+		return localSendFailure(fence, hasPossibleEarlierSend, sdkgo.FailureAuthentication, "bot token is unavailable or invalid")
 	}
 	token := credentials.BotToken.Reveal()
-	if !botTokenPattern.MatchString(token) {
-		return failedSend(SendMessageBranchDefect, sdkgo.FailureAuthentication, "bot token is invalid")
-	}
 	form := url.Values{"chat_id": {input.ChatID}, "text": {input.Text}}.Encode()
 	endpoint := operation.client.baseURL + "/bot" + token + "/sendMessage"
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, endpoint, strings.NewReader(form))
 	if err != nil {
-		return failedSend(SendMessageBranchDefect, sdkgo.FailureLocalDefect, "Telegram send request could not be built")
+		return localSendFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "Telegram send request could not be built")
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
-		return failedSend(SendMessageBranchDefect, sdkgo.FailureLocalDefect, "Telegram send request is invalid")
+		return localSendFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "Telegram send request is invalid")
 	}
-	var didGetConnection atomic.Bool
+	observation := &dispatchObservation{}
 	var response *http.Response
 	err = fence.Dispatch(func(requestContext context.Context) error {
-		trace := &httptrace.ClientTrace{GotConn: func(httptrace.GotConnInfo) { didGetConnection.Store(true) }}
-		request = request.WithContext(httptrace.WithClientTrace(requestContext, trace))
-		response, err = operation.client.httpClient.Do(request)
-		return err
+		request = request.WithContext(httptrace.WithClientTrace(requestContext, observation.clientTrace()))
+		var sendErr error
+		response, sendErr = operation.client.httpClient.Do(request)
+		return sendErr
 	})
 	if err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return retrySend(sdkgo.FailureTransport, "Telegram dispatch was not started", 0)
 		}
-		if !didGetConnection.Load() {
-			if checkpointErr := fence.RecordCanResend(); checkpointErr == nil {
-				return retrySend(sdkgo.FailureTransport, "Telegram could not be reached before sending", 0)
-			}
+		if observation.isProvablyUndispatched() {
+			// A lost canResend checkpoint leaves the claim, which the next attempt counts as a send.
+			_ = fence.RecordCanResend()
+			return retrySend(sdkgo.FailureTransport, "Telegram could not be reached before sending", 0)
 		}
-		return uncertainSend(sdkgo.FailureTransport, "Telegram message outcome is unknown")
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "Telegram message outcome is unknown", 0)
 	}
 	// Closing the response cannot change the confirmed provider outcome.
 	defer func() { _ = response.Body.Close() }()
@@ -116,44 +126,96 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		}
 		return retrySend(kind, "Telegram did not process the send", retryAfterFromResponse(response, operation.client.maxResponseBytes))
 	}
-	if response.StatusCode >= 500 || response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusConflict {
-		return uncertainSend(sdkgo.FailureAvailability, "Telegram message outcome is unknown")
+	isDefiniteRefusalStatus := isDefiniteRefusalStatus(response.StatusCode)
+	isSuccessStatus := response.StatusCode >= 200 && response.StatusCode < 300
+	if !isDefiniteRefusalStatus && !isSuccessStatus {
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "Telegram message outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), 0)
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil {
-		return uncertainSend(sdkgo.FailureTransport, "Telegram send response could not be confirmed")
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "Telegram send response could not be read", 0)
 	}
 	var envelope struct {
-		OK     bool `json:"ok"`
-		Result struct {
-			MessageID int64 `json:"message_id"`
-			Date      int64 `json:"date"`
-			Chat      struct {
-				ID int64 `json:"id"`
-			} `json:"chat"`
-		} `json:"result"`
-		ErrorCode int `json:"error_code"`
+		OK     bool            `json:"ok"`
+		Result json.RawMessage `json:"result"`
 	}
-	if err := json.Unmarshal(body, &envelope); err != nil {
-		return uncertainSend(sdkgo.FailureProtocol, "Telegram send response is malformed")
-	}
-	if response.StatusCode >= 400 && response.StatusCode < 500 && !envelope.OK {
-		kind := sdkgo.FailureProviderRejection
-		if response.StatusCode == http.StatusUnauthorized {
-			kind = sdkgo.FailureAuthentication
+	isEnvelopeDecoded := json.Unmarshal(body, &envelope) == nil
+	if isDefiniteRefusalStatus {
+		if isEnvelopeDecoded && envelope.OK {
+			// The body reports acceptance, so a resend could duplicate the message.
+			return uncertainSend(sdkgo.FailureProtocol, "Telegram returned a contradictory send response")
 		}
-		if response.StatusCode == http.StatusForbidden {
-			kind = sdkgo.FailureAuthorization
-		}
-		return failedSend(SendMessageBranchProviderRejected, kind, "Telegram rejected the message with HTTP "+strconv.Itoa(response.StatusCode))
+		return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionFailureKind(response.StatusCode), "Telegram rejected the message with HTTP "+strconv.Itoa(response.StatusCode))
 	}
-	if response.StatusCode != http.StatusOK || !envelope.OK || envelope.Result.MessageID <= 0 || envelope.Result.Chat.ID == 0 || envelope.Result.Date <= 0 {
+	if !isEnvelopeDecoded || !envelope.OK {
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureProtocol, "Telegram send response is malformed", 0)
+	}
+	var result struct {
+		MessageID int64 `json:"message_id"`
+		Date      int64 `json:"date"`
+		Chat      struct {
+			ID int64 `json:"id"`
+		} `json:"chat"`
+	}
+	if json.Unmarshal(envelope.Result, &result) != nil || result.MessageID <= 0 || result.Chat.ID == 0 || result.Date <= 0 {
+		// Telegram reported acceptance, so a resend could duplicate the message.
 		return uncertainSend(sdkgo.FailureProtocol, "Telegram send response is incomplete")
 	}
-	message := SentMessage{ChatID: envelope.Result.Chat.ID, MessageID: envelope.Result.MessageID, Date: envelope.Result.Date}
-	// A lost provider-ID checkpoint still never permits a resend.
+	message := SentMessage{ChatID: result.Chat.ID, MessageID: result.MessageID, Date: result.Date}
+	// A lost provider-ID checkpoint leaves the claim, which still counts this send.
 	_ = fence.RecordProviderID(strconv.FormatInt(message.MessageID, 10))
 	return sdkgo.NewMutationBranch(SendMessageBranchSent, message, nil, sdkgo.Receipt{})
+}
+
+// isDefiniteRefusalStatus reports the HTTP statuses that prove Telegram refused the request.
+func isDefiniteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+func rejectionFailureKind(statusCode int) sdkgo.FailureKind {
+	switch statusCode {
+	case http.StatusUnauthorized:
+		return sdkgo.FailureAuthentication
+	case http.StatusForbidden:
+		return sdkgo.FailureAuthorization
+	}
+	return sdkgo.FailureProviderRejection
+}
+
+// resendOrSelectUncertain retries a possibly sent message while the send cap allows another send.
+func resendOrSelectUncertain(canResendUnknownOutcome bool, kind sdkgo.FailureKind, message string, retryAfter time.Duration) sdkgo.MutationAttempt[SentMessage] {
+	if canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return retrySend(kind, message, retryAfter)
+	}
+	return uncertainSend(kind, message)
+}
+
+// rejectOrSelectUncertain selects providerRejected only when no earlier send of this call may have created the message.
+func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {
+	if hasPossibleEarlierSend {
+		return uncertainSend(kind, message)
+	}
+	// The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+	_ = fence.RecordCanResend()
+	return failedSend(SendMessageBranchProviderRejected, kind, message)
+}
+
+// localSendFailure selects defect only when no earlier send may have created the message.
+func localSendFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {
+	if hasPossibleEarlierSend {
+		// notSent would hide the earlier possible send, so nothing is recorded.
+		return retrySend(kind, message+"; no message was sent in this attempt", 0)
+	}
+	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+	_ = fence.RecordNotSent()
+	return failedSend(SendMessageBranchDefect, kind, message)
 }
 
 func failedSend(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {

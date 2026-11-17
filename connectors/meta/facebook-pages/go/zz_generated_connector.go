@@ -358,14 +358,16 @@ var PublishTextPostDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: PublishTextPostBranchPublished, Description: "Meta returned the published post ID."},
 		{ID: PublishTextPostBranchProviderRejected, Description: "Meta definitively rejected the post.", Optional: true},
-		{ID: PublishTextPostBranchUncertain, Description: "The publish outcome is unknown; inspect the Page before retrying manually.", Optional: true},
-		{ID: PublishTextPostBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+		{ID: PublishTextPostBranchUncertain, Description: "Meta may have published the post, but the send cap was reached or Meta contradicted itself; inspect the Page before retrying manually.", Optional: true},
+		{ID: PublishTextPostBranchDefect, Description: "Local input or connection credentials are invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type PublishTextPostResult = sdkgo.MutationResult[PublishedPost]
@@ -385,6 +387,8 @@ type PublishTextPostStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[PublishTextPostResult]                 `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PublishedPost]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewPublishTextPostStep[IN any](config PublishTextPostStepConfig[IN]) sdkgo.MutationStep[IN, PublishTextPostInput, PublishedPost] {
@@ -416,5 +420,6 @@ func NewPublishTextPostStep[IN any](config PublishTextPostStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

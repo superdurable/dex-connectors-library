@@ -80,7 +80,8 @@ async def test_post_publish_retries_503(tmp_path: Path) -> None:
                 )
                 assert uncertain.status == dex.FlowStatus.FAILED
                 assert "uncertain" in (uncertain.error_message or "")
-                assert len(requests) == 3
+                # Each unknown outcome resends until the send cap of 3, then selects uncertain.
+                assert len(requests) == 5
         finally:
             await worker.stop()
             await worker_task

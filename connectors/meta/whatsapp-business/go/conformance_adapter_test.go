@@ -20,9 +20,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	reference := sdkgo.ConnectionRef{Provider: "whatsapp-business", Name: "whatsapp-business"}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {AccessToken: sdkgo.NewSecretString("test-system-user-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listPhoneNumbers": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPhoneNumbers(), reference),
-		"sendTextMessage": newConformanceMutationInvocation(t, scenario.Input, singledispatchtest.NewContext("whatsapp-business-conformance", "send-text"), client.SendTextMessage(), reference, scenario.CallID),
-		"sendTemplateMessage": newConformanceMutationInvocation(t, scenario.Input, singledispatchtest.NewContext("whatsapp-business-conformance", "send-template"), client.SendTemplateMessage(), reference, scenario.CallID),
+	textContext := singledispatchtest.NewContext("whatsapp-business-conformance", "send-text")
+	templateContext := singledispatchtest.NewContext("whatsapp-business-conformance", "send-template")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			textContext.AdvanceAttempt()
+			templateContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"listPhoneNumbers":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPhoneNumbers(), reference),
+		"sendTextMessage":     newConformanceMutationInvocation(t, scenario.Input, textContext, client.SendTextMessage(), reference, scenario.CallID),
+		"sendTemplateMessage": newConformanceMutationInvocation(t, scenario.Input, templateContext, client.SendTemplateMessage(), reference, scenario.CallID),
 	}}
 }

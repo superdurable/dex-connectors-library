@@ -80,20 +80,20 @@ export const CreateMeetingBranch = {
 } as const;
 /** Zoom created the meeting and returned its ID and join URL. */
 export const CreateMeetingBranchCreated = CreateMeetingBranch.Created;
-/** Zoom conclusively rejected the meeting, including a documented daily-limit 429 or a user who cannot host; nothing was created. */
+/** Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created. */
 export const CreateMeetingBranchProviderRejected = CreateMeetingBranch.ProviderRejected;
-/** The request was dispatched but its outcome cannot be confirmed; the meeting may exist and must not be created again automatically. */
+/** Zoom may have created the meeting, but the send cap was reached, a resend was refused, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again. */
 export const CreateMeetingBranchUncertain = CreateMeetingBranch.Uncertain;
-/** Local input, connection configuration, or connector definition is invalid. */
+/** Local input, connection configuration, or connector definition is invalid before any send. */
 export const CreateMeetingBranchDefect = CreateMeetingBranch.Defect;
 /** Manifest definition for createMeeting. */
 export const CreateMeetingDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "createMeeting" },
   branches: [
     { id: "created", description: "Zoom created the meeting and returned its ID and join URL." },
-    { id: "providerRejected", description: "Zoom conclusively rejected the meeting, including a documented daily-limit 429 or a user who cannot host; nothing was created.", optional: true },
-    { id: "uncertain", description: "The request was dispatched but its outcome cannot be confirmed; the meeting may exist and must not be created again automatically.", optional: true },
-    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+    { id: "providerRejected", description: "Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created.", optional: true },
+    { id: "uncertain", description: "Zoom may have created the meeting, but the send cap was reached, a resend was refused, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
   repeatOnUnknown: "limited",

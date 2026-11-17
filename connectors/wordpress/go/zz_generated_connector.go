@@ -217,14 +217,16 @@ var CreatePostDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreatePostBranchCreated, Description: "WordPress created the post and returned its numeric ID."},
 		{ID: CreatePostBranchProviderRejected, Description: "WordPress conclusively rejected the new post.", Optional: true},
-		{ID: CreatePostBranchUncertain, Description: "The request may have reached WordPress but no post ID was confirmed; do not resend automatically.", Optional: true},
-		{ID: CreatePostBranchDefect, Description: "Local post input, connection credentials, or dispatch checkpoint is invalid.", Optional: true},
+		{ID: CreatePostBranchUncertain, Description: "WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another.", Optional: true},
+		{ID: CreatePostBranchDefect, Description: "Local post input, connection credentials, or dispatch fence is invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreatePostResult = sdkgo.MutationResult[CreatedPost]
@@ -244,6 +246,8 @@ type CreatePostStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreatePostResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedPost]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreatePostStep[IN any](config CreatePostStepConfig[IN]) sdkgo.MutationStep[IN, CreatePostInput, CreatedPost] {
@@ -275,6 +279,7 @@ func NewCreatePostStep[IN any](config CreatePostStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

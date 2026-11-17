@@ -6,7 +6,7 @@ TypeScript applications. The package ships
 manifest-generated contracts and Step factories; `src/client.ts` and
 `src/operations.ts` implement the Twilio Messages HTTP behavior.
 
-Install with `npm install @superdurable/connector-twilio-messaging@0.2.0`.
+Install with `npm install @superdurable/connector-twilio-messaging@0.2.1`.
 Use Node.js 22 or 24 and the released Connector SDK version in `package.json`.
 
 ## Connection
@@ -70,10 +70,11 @@ start records a new baseline. See the
 `sendMessage` sends `To`, an optional body, ordered media URLs, and either
 `From` or `MessagingServiceSid`. Form values use Go-compatible query escaping,
 including `%2A` for `*` and an unescaped `~`. Twilio has no Messages create idempotency key.
-The SDK fence records a heartbeat before dispatch and permits a resend only
-after proof of no send or Twilio's 429 or 503 response. A valid 2xx Message
-selects `accepted`; a conclusive 4xx selects `providerRejected`; an ambiguous
-transport or response selects uncertainty. `getMessage` reads a Message SID,
+The SDK fence records a heartbeat before dispatch and counts possible sends.
+An unknown transport or response outcome resends while possible sends stay
+below the send cap and selects `uncertain` at the cap. A valid 2xx Message
+selects `accepted`; a 400, 401, 403, 404, 411, 413, 414, 415, or 422 on a first
+send selects `providerRejected` and is never resent. `getMessage` reads a Message SID,
 retries transport, 408, 429, and 5xx failures, and selects `found`, `notFound`,
 `providerRejected`, or `invalidResponse` for final results. Unwired optional
 branches fail the Flow.

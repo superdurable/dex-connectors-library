@@ -2,9 +2,9 @@
 
 ## TypeScript package
 
-Install `@superdurable/connector-zoom@0.2.0` with Connector SDK 0.12.0 to use all five meeting operations and, from 0.2.0, the `meetingChanged` poll Trigger from TypeScript, at parity with Go and with poll cursor documents that Go and TypeScript replicas read and write byte for byte. The [package README](typescript/README.md) documents the generated OAuth connection binding, operation-specific Step factories, the Trigger runners, the runnable meeting-list Flow, and the [meeting-changed example](typescript/examples/meeting-changed/README.md), which starts one Flow per change. The TypeScript conformance suite replays Go-recorded provider requests and decisions; its Dex integration checks run both examples with provider stand-ins. Live Zoom OAuth authorization and provider behavior remain unverified.
+Install `@superdurable/connector-zoom@0.2.1` with Connector SDK 0.12.0 to use all five meeting operations and, from 0.2.0, the `meetingChanged` poll Trigger from TypeScript, at parity with Go and with poll cursor documents that Go and TypeScript replicas read and write byte for byte. The [package README](typescript/README.md) documents the generated OAuth connection binding, operation-specific Step factories, the Trigger runners, the runnable meeting-list Flow, and the [meeting-changed example](typescript/examples/meeting-changed/README.md), which starts one Flow per change. The TypeScript conformance suite replays Go-recorded provider requests and decisions; its Dex integration checks run both examples with provider stand-ins. Live Zoom OAuth authorization and provider behavior remain unverified.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoom/go@v0.25.0`. It requires Connector SDK `sdkgo` v0.38.0, which adds the poll Trigger kit.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoom/go@v0.25.1`. It requires Connector SDK `sdkgo` v0.38.0, which adds the poll Trigger kit.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoom`.
 
@@ -113,9 +113,11 @@ selects `defect` without a request. Zoom documents no refresh error codes of
 its own, so these are the RFC 6749 section 5.2 codes. Before a `createMeeting`
 send, reauthorization records `notSent` and selects `defect`; if a prior create
 has an accepted ID, reauthorization prevents read-back and selects `uncertain`.
-A transient refresh failure before a provider request returns Retry. After a
-create request receives 401, a failed refresh selects `providerRejected` with
-reauthorization or temporary-unavailability guidance and no second send.
+A transient refresh failure before a provider request returns Retry, and so
+does any credential failure after an earlier possible create. After a create
+request receives 401, a failed refresh selects `providerRejected` with
+reauthorization or temporary-unavailability guidance and no second send, or
+`uncertain` when an earlier attempt may have created the meeting.
 
 Server-to-Server OAuth apps use Zoom's `account_credentials` grant, which
 `sdkgo/oauthtoken` does not implement, so this release supports only user-level
@@ -169,31 +171,35 @@ join before host, mute upon entry, waiting room, and automatic recording
 
 Zoom documents no create idempotency key or lookup by connector Call ID. The
 connector uses the Connector SDK [single-dispatch fence](../../sdkgo/README.md#single-dispatch-fence)
-to authorize at most one create per attempt and permit another only after a
-definite rejection or positive evidence that no request was sent. This
-behavior has not been verified against a live Zoom account.
+to authorize at most one create per attempt and to count possible sends across
+attempts. An unknown outcome resends while possible sends stay below the
+operation's `maxSends` (default 3, or the Step's `MaxSends`), so Zoom may hold
+a duplicate meeting, and selects `uncertain` at the cap. This behavior has not
+been verified against a live Zoom account.
 
 | Outcome | Result |
 | --- | --- |
 | 201 with a valid meeting | `created`, with the meeting ID and join URL |
-| 400, 403, 404, or another definite 4xx except 401, 408, 409, and 429 | `providerRejected`, with Zoom's error code |
-| 401 | Force one credential refresh; on success checkpoint permission to retry, otherwise `providerRejected` |
-| 429 with Zoom's documented daily-limit message | `providerRejected` with a connector-owned rate-limit message; no resend checkpoint |
+| 400, 403, 404, 411, 413, 414, 415, or 422 | `providerRejected` with Zoom's error code after checkpointing that no meeting was created; after an earlier possible send, `uncertain` |
+| 401 | Force one credential refresh; on success checkpoint permission to retry, otherwise `providerRejected` (or `uncertain` after an earlier possible send) |
+| 429 with Zoom's documented daily-limit message | `providerRejected` with a connector-owned rate-limit message (or `uncertain` after an earlier possible send) |
 | Other 429, including per-second and unrecognized messages, or 503 | Checkpoint permission to retry after Zoom's delay when supplied; retry exhaustion fails the Flow |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 3xx, 408, 409 without a lookup key, or another 5xx after dispatch | `uncertain` |
-| 2xx whose body is oversized, unreadable, unusable, or reflects the credential | `uncertain` |
+| Timeout, dropped connection, 3xx, 408, 409, another 4xx, or another 5xx after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
+| 2xx whose body is oversized, unreadable, malformed, or reflects the credential | Retry and resend below the send cap; `uncertain` at the cap |
+| 2xx with a meeting ID but an otherwise unusable meeting | `uncertain`, without another create |
 | Later attempt with an accepted meeting ID checkpoint | Read the meeting back; transient read failure retries without another create |
-| Later attempt with an unconfirmable checkpoint | `uncertain`, without another create |
+| Later attempt at the send cap without a meeting ID | `uncertain`, without another create |
+| Later attempt after a possible send whose start time has passed | `uncertain`, without another create |
+| Unreadable or foreign checkpoint | Retry without a request |
 
 The manifest makes `createMeeting` synchronous and declares its dispatch
 fence. Do not override this Step to async: local-phase heartbeats are not
 visible to later attempts. The fence reads the prior checkpoint before
 credentials, claims the dispatch before sending, and limits the request to
-7/12 of the smaller Step or Execute budget. A lost or stale checkpoint never
-permits a resend. The accepted meeting ID, when available, lets a later
-attempt use `getMeeting` to confirm it. Legacy create checkpoints fail closed
-on deployment and may need the example's reconciliation path. The existing
+7/12 of the smaller Step or Execute budget. A lost or stale checkpoint counts
+as a possible send. The accepted meeting ID, when available, lets a later
+attempt use `getMeeting` to confirm it instead of resending. The existing
 Worker-loss test and a new 503-then-success real-Dex test cover these paths in
 CI.
 
@@ -205,12 +211,13 @@ does not match that wording.
 [Zoom's error guidance](https://developers.zoom.us/docs/api/errors/) describes
 503 as temporary unavailability. Zoom's behavior for ambiguous transport
 loss and other 5xx responses remains unverified against a live account, so
-the connector fails closed on those outcomes.
+the connector resends on those outcomes only up to the send cap.
 
 On `uncertain` and `providerRejected`, `Value` has no ID and echoes the
 requested topic, start, duration, time zone, and agenda for reconciliation.
 [`examples/booked-meeting`](go/examples/booked-meeting) reconciles an unknown
-create with `listMeetings` instead of creating again:
+create with `listMeetings` instead of creating again, so it sets the Step's
+`MaxSends` to 1 and selects `uncertain` after the first unknown outcome:
 
 ```go
 		dex.DefineStep(zoom.NewCreateMeetingStep(zoom.CreateMeetingStepConfig[Input]{
@@ -220,7 +227,9 @@ create with `listMeetings` instead of creating again:
 				Explanation: "Create the meeting once; an unknown outcome is reconciled, never created again automatically.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateMeetingInput,
-			Created: sdkgo.GoTo(recordScheduledMeeting{}),
+			// Reconciliation adopts the meeting from Zoom's list, so a resend would only risk a duplicate.
+			MaxSends: 1,
+			Created:  sdkgo.GoTo(recordScheduledMeeting{}),
 			// An uncertain create continues through meeting read-back and adoption.
 			Uncertain: sdkgo.GoTo(recordUncertainMeeting{}),
 		})),
@@ -237,7 +246,8 @@ create Step's two-minute retry budget, Dex fails the Flow on retry exhaustion.
 together), duration, or settings of one meeting; a patch with no change
 selects `defect`. Every set field replaces Zoom's value, so repeating a patch
 leaves the same meeting, and the operation keeps the async default: transport
-failures, 408, 409, other 429, and 5xx are retried. In a real
+failures, redirects, 408, 409, other 429, 5xx, and any 4xx other than 400,
+401, 403, 404, 411, 413, 414, 415, or 422 are retried. In a real
 Dex run, a delayed patch leaves the requested slot once; see
 `TestSlowRescheduleIsSafeToRepeatWithRealDex`. Zoom answers `204` with no
 body, so read the meeting back with `getMeeting` to observe the stored values.
@@ -349,7 +359,7 @@ for literal call-input, call-count, reschedule, and attendance assertions.
 
 ## Python package
 
-The Python package is [`python/`](python/README.md), version `v0.2.0` with
+The Python package is [`python/`](python/README.md), version `v0.2.1` with
 `dex-connectors-sdk>=0.12.0`. It implements all five meeting operations using
 the manifest-generated models, Step factories, connection, and OAuth refresh
 wiring, and, from 0.2.0, the `meetingChanged` poll Trigger at parity with Go:

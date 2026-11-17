@@ -111,24 +111,32 @@ func (operation SendApplicationMessageOperation) Invoke(call sdkgo.Call, input S
 		failure := newFailure("sendApplicationMessage", sdkgo.FailureTransport, "an earlier attempt may have delivered the message and WeCom's four-hour duplicate check would no longer suppress a resend; check with the recipients before sending again")
 		return sdkgo.NewMutationUncertain(SentApplicationMessage{}, failure, sdkgo.Receipt{})
 	}
+	// An earlier attempt may have sent, so a local or token failure now retries instead of failing the Step.
+	hasPossibleEarlierSend := call.Context.Attempt() > 1
+	localFailure := func(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
+		if hasPossibleEarlierSend {
+			return retryApplicationSend(kind, message+"; nothing was sent in this attempt")
+		}
+		return rejectedApplicationSend(SendApplicationMessageBranchDefect, kind, message)
+	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureAuthentication, "WeCom application credentials are unavailable")
+		return localFailure(sdkgo.FailureAuthentication, "WeCom application credentials are unavailable")
 	}
 	if credentials.AuthMethodID != applicationAuthMethodID {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureValidation, "sendApplicationMessage needs a connection that uses the application method")
+		return localFailure(sdkgo.FailureValidation, "sendApplicationMessage needs a connection that uses the application method")
 	}
 	corpSecret := credentials.CorpSecret.Reveal()
 	if !corpIDPattern.MatchString(credentials.CorpID) || !agentIDPattern.MatchString(credentials.AgentID) || !providerhttp.IsHeaderSafeCredential(corpSecret) {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureAuthentication, "corp_id, agent_id, or corp_secret has an invalid format")
+		return localFailure(sdkgo.FailureAuthentication, "corp_id, agent_id, or corp_secret has an invalid format")
 	}
 	agentID, err := strconv.ParseInt(credentials.AgentID, 10, 64)
 	if err != nil {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureAuthentication, "agent_id must be a positive decimal integer")
+		return localFailure(sdkgo.FailureAuthentication, "agent_id must be a positive decimal integer")
 	}
 	body, err := json.Marshal(newApplicationRequest(input, agentID))
 	if err != nil {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom application message could not be encoded")
+		return localFailure(sdkgo.FailureLocalDefect, "WeCom application message could not be encoded")
 	}
 	tokenKey := newAccessTokenCacheKey(credentials.CorpID, corpSecret)
 	token := operation.client.accessTokens.resolve(call.Context, operation.client, "sendApplicationMessage", tokenKey, corpSecret)
@@ -136,14 +144,17 @@ func (operation SendApplicationMessageOperation) Invoke(call sdkgo.Call, input S
 	case token.shouldRetry:
 		return sdkgo.NewMutationRetry[SentApplicationMessage](token.failure, 0)
 	case token.isLocalDefect:
-		return sdkgo.NewMutationBranch(SendApplicationMessageBranchDefect, SentApplicationMessage{}, &token.failure, sdkgo.Receipt{})
+		return localFailure(token.failure.Kind, token.failure.Message)
+	case token.isRejected && hasPossibleEarlierSend:
+		// Repeating a refused secret can block the caller IP, so an earlier possible send stays uncertain.
+		return sdkgo.NewMutationUncertain(SentApplicationMessage{}, newFailure("sendApplicationMessage", token.failure.Kind, token.failure.Message+"; an earlier attempt may have delivered the message"), sdkgo.Receipt{})
 	case token.isRejected:
 		return sdkgo.NewMutationBranch(SendApplicationMessageBranchProviderRejected, SentApplicationMessage{}, &token.failure, sdkgo.Receipt{})
 	}
 	endpoint := operation.client.baseURL + "/cgi-bin/message/send?" + url.Values{"access_token": {token.token}}.Encode()
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom application message request could not be built")
+		return localFailure(sdkgo.FailureLocalDefect, "WeCom application message request could not be built")
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json")
@@ -161,11 +172,12 @@ func (operation SendApplicationMessageOperation) classifyResponse(ctx context.Co
 	if response.StatusCode == http.StatusTooManyRequests {
 		return retryApplicationSend(sdkgo.FailureRateLimit, "WeCom rate limited the application message")
 	}
-	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
-		return retryApplicationSend(sdkgo.FailureAvailability, "WeCom application message service is unavailable")
+	if isDefiniteRefusalStatus(response.StatusCode) {
+		return rejectedApplicationSend(SendApplicationMessageBranchProviderRejected, sdkgo.FailureProviderRejection, "WeCom rejected the application message with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	if response.StatusCode != http.StatusOK {
-		return rejectedApplicationSend(SendApplicationMessageBranchProviderRejected, sdkgo.FailureProviderRejection, "WeCom rejected the application message with HTTP "+strconv.Itoa(response.StatusCode))
+		// WeCom's duplicate check suppresses a repeat of an accepted send, so an unknown outcome retries.
+		return retryApplicationSend(sdkgo.FailureAvailability, "WeCom application message outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

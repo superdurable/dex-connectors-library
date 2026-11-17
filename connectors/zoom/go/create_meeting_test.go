@@ -133,7 +133,7 @@ func TestCreateMeetingClassifiesRateLimitsBeforeAllowingAnotherSend(t *testing.T
 				require.Equal(t, zoom.CreateMeetingBranchProviderRejected, result.Branch)
 				require.Equal(t, sdkgo.FailureRateLimit, result.Failure.Kind)
 				require.Equal(t, "Zoom daily API rate limit reached with HTTP 429 (code 429)", result.Failure.Message)
-				requireCheckpointState(t, context.lastHeartbeat(), singledispatch.StateClaimed)
+				requireCheckpointState(t, context.lastHeartbeat(), singledispatch.StateCanResend)
 				require.Equal(t, 1, provider.requestCount())
 				return
 			}
@@ -193,7 +193,7 @@ func TestCreateMeetingRetainsMalformedAcceptedProviderIDForReconciliation(t *tes
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestCreateMeetingReportsEveryAmbiguousOutcomeAsUncertain(t *testing.T) {
+func TestCreateMeetingResendsEveryUnknownOutcomeUntilTheSendCap(t *testing.T) {
 	for _, test := range []struct {
 		name          string
 		status        int
@@ -205,6 +205,7 @@ func TestCreateMeetingReportsEveryAmbiguousOutcomeAsUncertain(t *testing.T) {
 		{name: "server error", status: http.StatusInternalServerError, body: `{"code":500,"message":"SENTINEL"}`, kind: sdkgo.FailureAvailability},
 		{name: "request timeout", status: http.StatusRequestTimeout, body: `{}`, kind: sdkgo.FailureAvailability},
 		{name: "conflict without a lookup key", status: http.StatusConflict, body: `{"code":409}`, kind: sdkgo.FailureConflict},
+		{name: "unlisted client error", status: http.StatusTooEarly, body: `{"code":425}`, kind: sdkgo.FailureProviderRejection},
 		{name: "redirect", status: http.StatusFound, body: ``, kind: sdkgo.FailureProtocol},
 		{name: "unusable created body", status: http.StatusCreated, body: `{"id":"not-a-number"}`, kind: sdkgo.FailureProtocol},
 		{name: "created body without ID", status: http.StatusCreated, body: `{}`, kind: sdkgo.FailureProtocol},
@@ -247,8 +248,65 @@ func TestCreateMeetingReportsEveryAmbiguousOutcomeAsUncertain(t *testing.T) {
 			}
 			client, err := zoom.New(zoom.Config{Endpoint: provider.URL, MaxResponseBytes: 2048}, staticZoomCredentials(), zoom.WithHTTPClient(httpClient))
 			require.NoError(t, err)
-			context := newZoomDexContext("uncertain-" + test.name)
+			context := singledispatchtest.NewContext("zoom-flow", "unknown-"+test.name)
+			for attempt := 1; attempt < 3; attempt++ {
+				_, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "attempt %d resends", attempt)
+				require.Equal(t, test.kind, retry.Failure.Kind)
+				require.NotContains(t, retry.Failure.Message, "SENTINEL")
+				marker := lastSingleDispatchMarker(t, context)
+				require.Equal(t, singledispatch.StateClaimed, marker.State)
+				require.Equal(t, int32(attempt), marker.SendCount)
+				context.AdvanceAttempt()
+			}
 			result, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+			require.NoError(t, err)
+			require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
+			require.Equal(t, 3, provider.requestCount())
+			context.AdvanceAttempt()
+			refused, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+			require.NoError(t, err)
+			require.Equal(t, zoom.CreateMeetingBranchUncertain, refused.Branch)
+			require.Equal(t, 3, provider.requestCount())
+		})
+		t.Run(test.name+" with a send cap of 1", func(t *testing.T) {
+			provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if test.isStall {
+					<-request.Context().Done()
+					return
+				}
+				if test.isInterrupted {
+					response.Header().Set("Content-Length", "100")
+					response.WriteHeader(http.StatusCreated)
+					if _, err := response.Write([]byte(`{"id":926`)); err != nil {
+						t.Errorf("write partial accepted Zoom response: %v", err)
+						return
+					}
+					response.(http.Flusher).Flush()
+					connection, _, err := response.(http.Hijacker).Hijack()
+					if err != nil {
+						t.Errorf("interrupt accepted Zoom response: %v", err)
+						return
+					}
+					_ = connection.Close() // The response is intentionally interrupted.
+					return
+				}
+				if test.status == http.StatusFound {
+					response.Header().Set("Location", "https://attacker.example/")
+					response.WriteHeader(test.status)
+					return
+				}
+				writeJSON(t, response, test.status, test.body)
+			})
+			httpClient := &http.Client{}
+			if test.isStall {
+				httpClient.Timeout = 200 * time.Millisecond
+			}
+			client, err := zoom.New(zoom.Config{Endpoint: provider.URL, MaxResponseBytes: 2048}, staticZoomCredentials(), zoom.WithHTTPClient(httpClient))
+			require.NoError(t, err)
+			context := newZoomDexContext("uncertain-" + test.name)
+			result, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput(), sdkgo.WithMaxSends(1))
 			require.NoError(t, err)
 			require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
 			require.Equal(t, test.kind, result.Failure.Kind)
@@ -264,18 +322,86 @@ func TestCreateMeetingReportsEveryAmbiguousOutcomeAsUncertain(t *testing.T) {
 	}
 }
 
-func TestCreateMeetingNeverResendsAfterAnEarlierAttemptDispatched(t *testing.T) {
+func TestCreateMeetingRetriesWithoutSendingWhenTheCheckpointIsUntrusted(t *testing.T) {
 	provider := newRecordingProvider(t, func(http.ResponseWriter, *http.Request, int) {
-		t.Fatal("a later attempt must not send the create again")
+		t.Fatal("an untrusted checkpoint must not send the create")
 	})
 	context := newZoomDexContext("replayed-create")
 	require.NoError(t, context.RecordHeartbeat(map[string]bool{"isDispatched": true}))
 
+	_, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Zero(t, provider.requestCount())
+}
+
+func TestCreateMeetingResendsAfterAnUnknownOutcomeAndConfirmsTheSecondSend(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusBadGateway, `{"code":502}`)
+			return
+		}
+		writeJSON(t, response, http.StatusCreated, meetingJSON(92674392836, "Consultation with Priya", "2036-02-24T17:00:00Z"))
+	})
+	context := singledispatchtest.NewContext("zoom-flow", "resend-create")
+	client := newZoomClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	context.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err)
+	require.Equal(t, zoom.CreateMeetingBranchCreated, result.Branch)
+	require.Equal(t, int32(2), lastSingleDispatchMarker(t, context).SendCount)
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreateMeetingRefusalOfAResendSelectsUncertain(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusInternalServerError, `{"code":500}`)
+			return
+		}
+		writeJSON(t, response, http.StatusBadRequest, `{"code":300,"message":"Invalid start time"}`)
+	})
+	context := singledispatchtest.NewContext("zoom-flow", "refused-resend")
+	client := newZoomClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	context.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err)
+	require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreateMeetingAcceptedIDWithUnusableBodyIsNeverResent(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":92674392836,"start_time":"not a time"}`)
+	})
+	context := singledispatchtest.NewContext("zoom-flow", "accepted-unusable")
 	result, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
 	require.NoError(t, err)
 	require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
-	require.Equal(t, "the Zoom create checkpoint could not be trusted", result.Failure.Message)
-	require.Zero(t, provider.requestCount())
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateMeetingLocalFailureAfterAPossibleSendRetries(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusInternalServerError, `{"code":500}`)
+	})
+	context := singledispatchtest.NewContext("zoom-flow", "credential-after-send")
+	_, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	context.AdvanceAttempt()
+	failing, err := zoom.New(zoom.Config{Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[zoom.Credentials]{})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(context, failing.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestCreateMeetingConclusiveRejectionsCreateNothing(t *testing.T) {
@@ -307,6 +433,15 @@ func TestCreateMeetingConclusiveRejectionsCreateNothing(t *testing.T) {
 			require.Equal(t, 1, provider.requestCount())
 		})
 	}
+}
+
+func lastSingleDispatchMarker(t *testing.T, context *singledispatchtest.Context) singledispatch.Marker {
+	t.Helper()
+	frames := context.Heartbeats()
+	require.NotEmpty(t, frames)
+	var marker singledispatch.Marker
+	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &marker))
+	return marker
 }
 
 func requireCheckpointState(t *testing.T, checkpoint json.RawMessage, state singledispatch.State) {
@@ -351,7 +486,7 @@ func TestCreateMeetingFenceRetriesOnlyAfterDefiniteRejection(t *testing.T) {
 	}
 }
 
-func TestCreateMeetingFenceFailsClosedWithoutCurrentResendMarker(t *testing.T) {
+func TestCreateMeetingFenceCountsALostResendMarkerAsASend(t *testing.T) {
 	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
 	})
@@ -361,11 +496,14 @@ func TestCreateMeetingFenceFailsClosedWithoutCurrentResendMarker(t *testing.T) {
 	_, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
+	context.SetLocalPhase(false)
 	context.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
-	require.NoError(t, err)
-	require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
+	_, err = sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.ErrorAs(t, err, &retry)
+	marker := lastSingleDispatchMarker(t, context)
+	require.Equal(t, singledispatch.StateCanResend, marker.State)
+	require.Equal(t, int32(1), marker.SendCount, "the first attempt's lost marker still counts as a possible send")
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestCreateMeetingFenceRecordsCredentialFailureAsNotSent(t *testing.T) {
@@ -416,7 +554,7 @@ func TestCreateMeetingFenceHandlesCheckpointFailuresBeforeSending(t *testing.T) 
 		branch     sdkgo.BranchID
 	}{
 		{name: "write failure", setFailure: func(ctx *singledispatchtest.Context) { ctx.SetWriteError(errors.New("checkpoint unavailable")) }},
-		{name: "read failure", setFailure: func(ctx *singledispatchtest.Context) { ctx.SetReadError(errors.New("checkpoint unavailable")) }, branch: zoom.CreateMeetingBranchUncertain},
+		{name: "read failure", setFailure: func(ctx *singledispatchtest.Context) { ctx.SetReadError(errors.New("checkpoint unavailable")) }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			context := singledispatchtest.NewContext("zoom-flow", test.name)
@@ -611,9 +749,10 @@ func TestCreateMeetingFenceCutsOffDispatchedRequestBeforeAttemptDeadline(t *test
 	context := singledispatchtest.NewContext("zoom-flow", "create-meeting")
 	cancel := context.SetDeadline(time.Now().Add(500 * time.Millisecond))
 	defer cancel()
-	result, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
-	require.NoError(t, err)
-	require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
+	_, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, singledispatch.StateClaimed, lastSingleDispatchMarker(t, context).State)
 	require.Equal(t, 1, provider.requestCount())
 }
 
@@ -675,9 +814,11 @@ func TestCreateMeetingDoesNotReplayPostOnReusedConnection(t *testing.T) {
 	require.NoError(t, prime.Body.Close())
 	client, err := zoom.New(zoom.Config{Endpoint: server.URL}, staticZoomCredentials(), zoom.WithHTTPClient(httpClient))
 	require.NoError(t, err)
-	result, err := sdkgo.RunMutation(newZoomDexContext("reused-connection"), client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
-	require.NoError(t, err)
-	require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
+	context := newZoomDexContext("reused-connection")
+	_, err = sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the dropped reply is an unknown outcome below the send cap")
+	requireCheckpointState(t, context.lastHeartbeat(), singledispatch.StateClaimed)
 	require.Equal(t, int32(1), postRequests.Load())
 	require.Equal(t, primeRemoteAddress.Load(), postRemoteAddress.Load())
 }

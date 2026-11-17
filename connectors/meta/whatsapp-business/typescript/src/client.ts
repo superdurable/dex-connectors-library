@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { SecretString, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { SecretString, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { ListPhoneNumbersDefinition, SendTemplateMessageDefinition, SendTextMessageDefinition } from './generated/definitions.js';
@@ -84,16 +84,38 @@ export class WhatsAppBusinessClient {
 
   private async sendMessage(call: Call, operation: string, phoneNumberID: string, payload: object, definition: MutationDefinition): Promise<MutationAttempt<SentMessage>> {
     const zero = emptyMessage();
-    let fence: ReturnType<typeof newFence>;
-    try { fence = newFence(call, definition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
-    catch { return newMutationBranch('defect', zero, {}, failure(operation, 'LOCAL_DEFECT', 'Meta dispatch fence is unavailable')); }
-    if (fence.decide().kind !== 'sendAllowed') return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta send outcome cannot be confirmed; do not resend'));
-    const token = await this.resolveToken(call);
-    if (!token) return newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid'));
     let body: Buffer;
     try { body = Buffer.from(JSON.stringify(payload), 'utf8'); }
     catch { return newMutationBranch('defect', zero, {}, failure(operation, 'VALIDATION', 'message request is invalid or too large')); }
     if (body.length > 65_536) return newMutationBranch('defect', zero, {}, failure(operation, 'VALIDATION', 'message request is invalid or too large'));
+    const operationMaxSends = definitionMaxSends(definition);
+    let fence: ReturnType<typeof newFence>;
+    try { fence = newFence(call, definition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends }); }
+    catch { return newMutationBranch('defect', zero, {}, failure(operation, 'LOCAL_DEFECT', 'Meta dispatch fence is unavailable')); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'Meta dispatch checkpoint is unreadable; no message was sent in this attempt'));
+    if (decision.kind === 'readBackRequired' || decision.kind === 'readBackThenResendAllowed') {
+      const savedMessageId = decision.marker?.providerId ?? '';
+      // Meta returned this wamid only for a message it accepted, so the message is never resent.
+      if (isMessageID(savedMessageId)) return newMutationBranch('sent', { messageId: savedMessageId });
+      if (decision.kind === 'readBackRequired') return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'an earlier attempt may have sent the WhatsApp message, and the send cap is reached'));
+    }
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    // This attempt's send would be the last one the cap allows when no further send remains.
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
+    // An earlier send may have delivered, so a refusal of a resend proves nothing.
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
+    const resendOrSelectUncertain = (kind: Failure['kind'], message: string, retryAfterMs = 0): MutationAttempt<SentMessage> =>
+      // The claim stays the last marker, so the next attempt counts this send.
+      canResendUnknownOutcome ? newMutationRetry(failure(operation, kind, message), retryAfterMs) : newMutationUncertain(zero, failure(operation, kind, message));
+    const token = await this.resolveToken(call);
+    if (!token) {
+      // notSent would hide the earlier possible send, so nothing is recorded.
+      if (hasPossibleEarlierSend) return newMutationRetry(failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid; no message was sent in this attempt'));
+      try { await fence.recordNotSent(); }
+      catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
+      return newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid'));
+    }
     const request: ProviderRequest = {
       url: `${this.baseUrl}/${phoneNumberID}/messages`, method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -102,41 +124,48 @@ export class WhatsAppBusinessClient {
       signal: call.context.cancellationSignal,
     };
     let response: ProviderResponse;
+    let isBodyReadable = true;
     try { response = await fence.dispatch(signal => this.sendRequest({ ...request, signal })); }
     catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure(operation, 'TRANSPORT', 'Meta dispatch was not started'));
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) {
-        try { await fence.recordCanResend(); return newMutationRetry(failure(operation, 'TRANSPORT', 'Meta could not be reached before sending')); }
-        catch { return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta message outcome is unknown')); }
+        try { await fence.recordCanResend(); }
+        catch { /* A lost canResend checkpoint leaves the claim, which the next attempt counts. */ }
+        return newMutationRetry(failure(operation, 'TRANSPORT', 'Meta could not be reached before sending'));
       }
-      if (error instanceof BodyTooLargeError && error.status !== undefined) {
-        if (error.status === 200) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta send response could not be confirmed'));
-        response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
-      } else return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta message outcome is unknown'));
+      if (!(error instanceof BodyTooLargeError && error.status !== undefined)) return resendOrSelectUncertain('TRANSPORT', 'Meta message outcome is unknown');
+      response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      isBodyReadable = false;
     }
+    if (response.body.length > this.maxResponseBytes) isBodyReadable = false;
+    const status = response.status;
+    const retryAfterMs = parseRetryAfter(headerValue(response.headers['retry-after']));
     // A Graph or Cloud API throttling code means Meta refused the send before processing it.
-    const isRateLimited = response.status === 429 || (response.status >= 400 && response.status < 500 && decodeGraphError(response.body)?.isThrottled === true);
-    if (isRateLimited || response.status === 503) {
+    const isRateLimited = status === 429 || (isBodyReadable && status >= 400 && status < 500 && decodeGraphError(response.body)?.isThrottled === true);
+    if (isRateLimited || status === 503) {
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Meta retry checkpoint is unavailable')); }
       const kind = isRateLimited ? 'RATE_LIMIT' : 'AVAILABILITY';
-      return newMutationRetry(failure(operation, kind, 'Meta did not process the send'), parseRetryAfter(headerValue(response.headers['retry-after'])));
+      return newMutationRetry(failure(operation, kind, 'Meta did not process the send'), retryAfterMs);
     }
-    if (response.status >= 500 || response.status === 408 || response.status === 409) return newMutationUncertain(zero, failure(operation, 'AVAILABILITY', 'Meta message outcome is unknown'));
-    if (response.status >= 400 && response.status < 500) {
-      const kind = response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
-      return newMutationBranch('providerRejected', zero, {}, failure(operation, kind, `Meta rejected HTTP ${response.status}`));
+    const { messageId, isComplete } = isBodyReadable ? readSentMessageID(response.body) : { messageId: '', isComplete: false };
+    if (definiteRefusalStatuses.has(status)) {
+      // A body that reports an accepted message means a resend could duplicate it.
+      if (messageId) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta returned a contradictory send response'));
+      const kind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
+      if (hasPossibleEarlierSend) return newMutationUncertain(zero, failure(operation, kind, `Meta rejected HTTP ${status}`));
+      try { await fence.recordCanResend(); }
+      catch { /* The branch is terminal, so a lost canResend checkpoint cannot cause a resend. */ }
+      return newMutationBranch('providerRejected', zero, {}, failure(operation, kind, `Meta rejected HTTP ${status}`));
     }
-    const document = parseJSON(response.body);
-    const messages = isObject(document) ? document.messages : undefined;
-    const message = Array.isArray(messages) && messages.length === 1 ? messages[0] : undefined;
-    const messageID = isObject(message) ? message.id : undefined;
-    if (response.status !== 200 || !isObject(document) || document.messaging_product !== 'whatsapp' || typeof messageID !== 'string' || !messageID.startsWith('wamid.')) {
-      return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta send response is incomplete'));
-    }
-    try { await fence.recordProviderId(messageID); }
-    catch { return newMutationUncertain(zero, failure(operation, 'LOCAL_DEFECT', 'Meta message ID could not be checkpointed')); }
-    return newMutationBranch('sent', { messageId: messageID });
+    if (status < 200 || status >= 300) return resendOrSelectUncertain('AVAILABILITY', `Meta message outcome is unknown after HTTP ${status}`, retryAfterMs);
+    if (!isBodyReadable) return resendOrSelectUncertain('TRANSPORT', 'Meta send response could not be read');
+    if (!messageId) return resendOrSelectUncertain('PROTOCOL', 'Meta send response is malformed');
+    // Meta returned a wamid, so a resend could duplicate the message.
+    if (!isComplete) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta send response is incomplete'));
+    try { await fence.recordProviderId(messageId); }
+    catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
+    return newMutationBranch('sent', { messageId });
   }
 
   private async resolveToken(call: Call): Promise<string | undefined> {
@@ -245,6 +274,24 @@ function decodeGraphError(body: Uint8Array): { isThrottled: boolean; isTransient
   // Meta documents these Graph and Cloud API rate-limit codes, which it returns with HTTP 4xx.
   const isThrottled = [4, 17, 32, 341, 613, 130429, 131056].includes(numericCode) || (numericCode >= 80_000 && numericCode <= 80_014);
   return { isThrottled, isTransient };
+}
+// Only these statuses prove Meta refused a send; other 4xx statuses leave the outcome unknown.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+}
+function isMessageID(value: unknown): value is string {
+  return typeof value === 'string' && value.startsWith('wamid.') && value.length > 'wamid.'.length;
+}
+/** Return the first wamid in a send response and whether the response is complete. */
+function readSentMessageID(body: Uint8Array): { messageId: string; isComplete: boolean } {
+  const document = parseJSON(body);
+  const messages = isObject(document) ? document.messages : undefined;
+  const first: unknown = Array.isArray(messages) ? messages[0] : undefined;
+  const messageId = isObject(first) ? first.id : undefined;
+  if (!isObject(document) || !Array.isArray(messages) || !isMessageID(messageId)) return { messageId: '', isComplete: false };
+  return { messageId, isComplete: document.messaging_product === 'whatsapp' && messages.length === 1 };
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function parseJSON(body: Uint8Array): unknown { try { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; } }

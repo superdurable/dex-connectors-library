@@ -56,6 +56,8 @@ from .models import Chat, GetChatInput, SendMessageInput, SentMessage
 _BOT_TOKEN = re.compile(r"^[0-9]+:[A-Za-z0-9_-]+$")
 _CHAT_USERNAME = re.compile(r"^@[A-Za-z0-9_]{5,32}$")
 _CHAT_TYPES = frozenset({"private", "group", "supergroup", "channel"})
+# Only these statuses prove Telegram refused a send; other 4xx statuses leave the outcome unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 class Config(_GeneratedConfig):
@@ -159,16 +161,12 @@ class SendMessageOperation:
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: SendMessageInput) -> MutationAttempt[SentMessage]:
-        """Send once, retry proven unprocessed requests, and fail closed on ambiguity."""
-        try:
-            fence = Fence(call, SEND_MESSAGE_DEFINITION.step_defaults.execute_method_timeout)
-            decision = await fence.decide()
-        except ValueError:
-            return _send_failure(DEFECT, FailureKind.LOCAL_DEFECT, "Telegram dispatch fence is unavailable")
-        if decision.kind != DecisionKind.SEND_ALLOWED:
-            return _send_uncertain(
-                FailureKind.TRANSPORT, "Telegram send outcome cannot be confirmed; do not resend"
-            )
+        """Send under a single-dispatch fence, resending an unknown outcome below the send cap.
+
+        Telegram has no send idempotency key or message read-back, so an unknown outcome
+        retries while possible sends stay below `call.max_sends` and selects uncertain at
+        the cap. A definite refusal is never resent.
+        """
         if (
             not isinstance(input, SendMessageInput)
             or not _valid_chat_id(input.chat_id)
@@ -177,9 +175,47 @@ class SendMessageOperation:
             or len(input.text) > 4096
         ):
             return _send_failure(DEFECT, FailureKind.VALIDATION, "chatId or text is invalid")
+        try:
+            fence = Fence(
+                call,
+                SEND_MESSAGE_DEFINITION.step_defaults.execute_method_timeout,
+                max_sends=call.max_sends,
+            )
+            decision = await fence.decide()
+        except ValueError:
+            return _send_failure(DEFECT, FailureKind.LOCAL_DEFECT, "Telegram dispatch fence is unavailable")
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return _send_retry(
+                FailureKind.AVAILABILITY,
+                "Telegram dispatch checkpoint is unreadable; no message was sent in this attempt",
+            )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            return _send_uncertain(
+                FailureKind.TRANSPORT,
+                "an earlier attempt may have sent the Telegram message, and the send cap is reached",
+            )
+        if (
+            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+            and decision.marker is not None
+            and decision.marker.provider_id
+        ):
+            # A saved message ID proves Telegram created the message, so it is never resent.
+            return _send_uncertain(
+                FailureKind.TRANSPORT,
+                "an earlier attempt sent the Telegram message, but its confirmation was lost",
+            )
+        # This attempt's send would be the last one the cap allows when no further send remains.
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        # An earlier send may have created the message, so a refusal of a resend proves nothing.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         token = await self.client.resolve_bot_token(call)
         if not token:
-            return _send_failure(DEFECT, FailureKind.AUTHENTICATION, "bot token is unavailable or invalid")
+            return await _local_send_failure(
+                fence,
+                has_possible_earlier_send,
+                FailureKind.AUTHENTICATION,
+                "bot token is unavailable or invalid",
+            )
         try:
             request = self.client.http_client.build_request(
                 "POST",
@@ -188,7 +224,12 @@ class SendMessageOperation:
                 content=urlencode({"chat_id": input.chat_id, "text": input.text}).encode(),
             )
         except (httpx.HTTPError, ValueError):
-            return _send_failure(DEFECT, FailureKind.LOCAL_DEFECT, "Telegram send request could not be built")
+            return await _local_send_failure(
+                fence,
+                has_possible_earlier_send,
+                FailureKind.LOCAL_DEFECT,
+                "Telegram send request could not be built",
+            )
 
         async def send(_deadline: datetime) -> Exchange:
             return await self.client.request(request)
@@ -198,15 +239,19 @@ class SendMessageOperation:
         except (CheckpointError, InsufficientAttemptTimeError):
             return _send_retry(FailureKind.TRANSPORT, "Telegram dispatch was not started")
         except Exception:
-            return _send_uncertain(FailureKind.TRANSPORT, "Telegram message outcome is unknown")
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "Telegram message outcome is unknown"
+            )
         if exchange.error == "request":
             if not exchange.request_sent:
                 try:
                     await fence.record_can_resend()
-                    return _send_retry(FailureKind.TRANSPORT, "Telegram could not be reached before sending")
                 except Exception:
-                    pass
-            return _send_uncertain(FailureKind.TRANSPORT, "Telegram message outcome is unknown")
+                    pass  # A lost canResend checkpoint leaves the claim, which the next attempt counts.
+                return _send_retry(FailureKind.TRANSPORT, "Telegram could not be reached before sending")
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "Telegram message outcome is unknown"
+            )
         if exchange.status in (429, 503):
             try:
                 await fence.record_can_resend()
@@ -214,27 +259,42 @@ class SendMessageOperation:
                 return _send_retry(FailureKind.AVAILABILITY, "Telegram retry checkpoint is unavailable")
             kind = FailureKind.RATE_LIMIT if exchange.status == 429 else FailureKind.AVAILABILITY
             return _send_retry(kind, "Telegram did not process the send", exchange.retry_after)
-        if exchange.status >= 500 or exchange.status in (408, 409):
-            return _send_uncertain(FailureKind.AVAILABILITY, "Telegram message outcome is unknown")
+        is_definite_refusal_status = exchange.status in _DEFINITE_REFUSAL_STATUSES
+        if not is_definite_refusal_status and not 200 <= exchange.status < 300:
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome,
+                FailureKind.AVAILABILITY,
+                f"Telegram message outcome is unknown after HTTP {exchange.status}",
+            )
         if exchange.error:
-            return _send_uncertain(FailureKind.TRANSPORT, "Telegram send response could not be confirmed")
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "Telegram send response could not be read"
+            )
         try:
             envelope = json.loads(exchange.body)
         except (ValueError, UnicodeDecodeError):
-            return _send_uncertain(FailureKind.PROTOCOL, "Telegram send response is malformed")
-        if 400 <= exchange.status < 500 and isinstance(envelope, dict) and not envelope.get("ok"):
-            return _send_failure(
-                PROVIDER_REJECTED,
+            envelope = None
+        is_accepted = isinstance(envelope, dict) and envelope.get("ok") is True
+        if is_definite_refusal_status:
+            if is_accepted:
+                # The body reports acceptance, so a resend could duplicate the message.
+                return _send_uncertain(
+                    FailureKind.PROTOCOL, "Telegram returned a contradictory send response"
+                )
+            return await _reject_or_select_uncertain(
+                fence,
+                has_possible_earlier_send,
                 _rejection_kind(exchange.status),
                 f"Telegram rejected the message with HTTP {exchange.status}",
             )
-        result = envelope.get("result") if isinstance(envelope, dict) else None
+        if not isinstance(envelope, dict) or not is_accepted:
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.PROTOCOL, "Telegram send response is malformed"
+            )
+        result = envelope.get("result")
         chat = result.get("chat") if isinstance(result, dict) else None
         if (
-            exchange.status != 200
-            or not isinstance(envelope, dict)
-            or envelope.get("ok") is not True
-            or not isinstance(result, dict)
+            not isinstance(result, dict)
             or type(result.get("message_id")) is not int
             or result["message_id"] <= 0
             or type(result.get("date")) is not int
@@ -243,11 +303,12 @@ class SendMessageOperation:
             or type(chat.get("id")) is not int
             or chat["id"] == 0
         ):
+            # Telegram reported acceptance, so a resend could duplicate the message.
             return _send_uncertain(FailureKind.PROTOCOL, "Telegram send response is incomplete")
         try:
             await fence.record_provider_id(str(result["message_id"]))
         except Exception:
-            pass  # The claimed dispatch marker still forbids another send.
+            pass  # A lost provider-ID checkpoint leaves the claim, which still counts this send.
         return MutationAttempt.branch_result(
             SENT, SentMessage(chat["id"], result["message_id"], result["date"]), Receipt()
         )
@@ -408,6 +469,43 @@ def _send_retry(kind: FailureKind, message: str, after: float = 0) -> MutationAt
 
 def _send_uncertain(kind: FailureKind, message: str) -> MutationAttempt[SentMessage]:
     return MutationAttempt.uncertain(SentMessage(), _failure("sendMessage", kind, message), Receipt())
+
+
+def _resend_or_select_uncertain(
+    can_resend_unknown_outcome: bool, kind: FailureKind, message: str
+) -> MutationAttempt[SentMessage]:
+    """Retry a possibly sent message while the send cap allows another send."""
+    if can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return _send_retry(kind, message)
+    return _send_uncertain(kind, message)
+
+
+async def _reject_or_select_uncertain(
+    fence: Fence, has_possible_earlier_send: bool, kind: FailureKind, message: str
+) -> MutationAttempt[SentMessage]:
+    """Select providerRejected only when no earlier send may have created the message."""
+    if has_possible_earlier_send:
+        return _send_uncertain(kind, message)
+    try:
+        await fence.record_can_resend()
+    except Exception:
+        pass  # The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+    return _send_failure(PROVIDER_REJECTED, kind, message)
+
+
+async def _local_send_failure(
+    fence: Fence, has_possible_earlier_send: bool, kind: FailureKind, message: str
+) -> MutationAttempt[SentMessage]:
+    """Select defect only when no earlier send may have created the message."""
+    if has_possible_earlier_send:
+        # notSent would hide the earlier possible send, so nothing is recorded.
+        return _send_retry(kind, message + "; no message was sent in this attempt")
+    try:
+        await fence.record_not_sent()
+    except Exception:
+        pass  # The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+    return _send_failure(DEFECT, kind, message)
 
 
 def _chat_failure(branch: str, kind: FailureKind, message: str) -> QueryAttempt[Chat]:

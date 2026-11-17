@@ -6,18 +6,18 @@ metadata:
   description: List, read, schedule, and reschedule the authorized user's Zoom meetings, list who joined a past meeting, and receive meetings scheduled, changed, or removed.
   company: Zoom
   categories: [communication, productivity]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: zoom
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-zoom
       timestampFormat: rfc3339Nano
       operations: [listMeetings, getMeeting, createMeeting, updateMeeting, listPastMeetingParticipants]
       triggers: [meetingChanged]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-zoom'
       operations: [listMeetings, getMeeting, createMeeting, updateMeeting, listPastMeetingParticipants]
       triggers: [meetingChanged]
@@ -184,19 +184,19 @@ spec:
       inputType: CreateMeetingInput
       outputType: Meeting
       kind: mutation
-      description: Schedule one meeting for the authorized user at an explicit start instant and IANA time zone; a synchronous dispatch fence makes the pre-send checkpoint visible across attempts and prevents a second send after an unknown outcome.
+      description: Schedule one meeting for the authorized user at an explicit start instant and IANA time zone; a synchronous dispatch fence counts possible sends across attempts, so an unknown outcome resends up to the send cap and may create a duplicate meeting.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: Zoom created the meeting and returned its ID and join URL.}
-        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the meeting, including a documented daily-limit 429 or a user who cannot host; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; the meeting may exist and must not be created again automatically.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Zoom may have created the meeting, but the send cap was reached, a resend was refused, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid before any send.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Zoom has no create idempotency key or Call ID lookup; the fence prevents a second send after an unconfirmed create."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Zoom has no create idempotency key or Call ID lookup, so each resend after an unknown outcome can duplicate the meeting; a short budget bounds the attempts."}}
       mocks:
         - name: createdDefaultAnswer
           branch: created

@@ -58,7 +58,7 @@ func TestSendMessageFenceAllowsOneRetryAfterProviderRateLimitOrUnavailability(t 
 	}
 }
 
-func TestSendMessageFenceFailsClosedWhenClaimIsLost(t *testing.T) {
+func TestSendMessageFenceCountsEveryAttemptWhenTheClaimIsLost(t *testing.T) {
 	var requests int
 	transport := roundTripFunc(func(*http.Request) (*http.Response, error) {
 		requests++
@@ -67,6 +67,12 @@ func TestSendMessageFenceFailsClosedWhenClaimIsLost(t *testing.T) {
 	client := newTwilioClient(t, "https://api.twilio.test/2010-04-01", messaging.Config{DefaultSender: testSender}, authTokenCredentials(), messaging.WithHTTPClient(&http.Client{Transport: transport}))
 	ctx := singledispatchtest.NewContext("twilio-fence-lost-claim", "send-message")
 	ctx.LoseNextHeartbeat()
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d is below the send cap", attempt)
+		ctx.AdvanceAttempt()
+	}
 	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
 	require.NoError(t, err)
 	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
@@ -74,7 +80,95 @@ func TestSendMessageFenceFailsClosedWhenClaimIsLost(t *testing.T) {
 	result, err = sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
 	require.NoError(t, err)
 	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
-	require.Equal(t, 1, requests)
+	require.Equal(t, 3, requests)
+}
+
+func TestSendMessageFenceResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T) {
+	var posts atomic.Int32
+	provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
+		if posts.Add(1) < 3 {
+			response.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		response.WriteHeader(http.StatusCreated)
+		writeBody(response, messageJSON(testMessageSID, "queued", "null"))
+	})
+	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
+	ctx := singledispatchtest.NewContext("twilio-fence-resend", "send-message")
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+		ctx.AdvanceAttempt()
+	}
+	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	require.NoError(t, err)
+	require.Equal(t, messaging.SendMessageBranchAccepted, result.Branch)
+	var marker singledispatch.Marker
+	ctx.AdvanceAttempt()
+	_, err = ctx.GetLastHeartbeatValue(&marker)
+	require.NoError(t, err)
+	require.EqualValues(t, 3, marker.SendCount)
+	require.Len(t, provider.recordedRequests(), 3)
+}
+
+func TestSendMessageFenceNeverResendsADefiniteRefusal(t *testing.T) {
+	for _, statusCode := range []int{http.StatusBadRequest, http.StatusForbidden, http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusUnprocessableEntity} {
+		t.Run(http.StatusText(statusCode), func(t *testing.T) {
+			provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(statusCode)
+				writeBody(response, errorJSON(statusCode, 21211))
+			})
+			client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
+			ctx := singledispatchtest.NewContext("twilio-fence-refusal", "send-message")
+			result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+			require.NoError(t, err)
+			require.Equal(t, messaging.SendMessageBranchProviderRejected, result.Branch)
+			ctx.AdvanceAttempt()
+			var marker singledispatch.Marker
+			_, err = ctx.GetLastHeartbeatValue(&marker)
+			require.NoError(t, err)
+			require.Equal(t, singledispatch.StateCanResend, marker.State)
+			require.Len(t, provider.recordedRequests(), 1)
+		})
+	}
+}
+
+func TestSendMessageFenceSelectsUncertainForARefusalOfAResend(t *testing.T) {
+	var posts atomic.Int32
+	provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
+		if posts.Add(1) == 1 {
+			response.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		response.WriteHeader(http.StatusBadRequest)
+		writeBody(response, errorJSON(http.StatusBadRequest, 21211))
+	})
+	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
+	ctx := singledispatchtest.NewContext("twilio-fence-refused-resend", "send-message")
+	_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	require.NoError(t, err)
+	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+	require.Len(t, provider.recordedRequests(), 2)
+}
+
+func TestSendMessageFenceRetriesALocalFailureAfterAPossibleSend(t *testing.T) {
+	provider := newTwilioFake(t, respondWithStatus(http.StatusInternalServerError))
+	credentials := &switchingTwilioCredentials{credentials: messaging.Credentials{AuthMethodID: messaging.AuthTokenAuthMethodID, AuthToken: sdkgo.NewSecretString(testAuthToken)}}
+	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, credentials)
+	ctx := singledispatchtest.NewContext("twilio-fence-local-after-send", "send-message")
+	_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	credentials.setError(sdkgo.NewReauthorizationRequiredError(errors.New("revoked")))
+	ctx.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	require.ErrorAs(t, err, &retry, "defect would hide the earlier possible send")
+	require.Len(t, provider.recordedRequests(), 1)
 }
 
 func TestSendMessageFenceRecordsCredentialFailureBeforeRetry(t *testing.T) {
@@ -247,7 +341,10 @@ func TestSendMessageFenceKeepsReauthorizationFailureTerminal(t *testing.T) {
 }
 
 func TestSendMessageFenceRetriesFailedClaimWithoutSending(t *testing.T) {
-	provider := newTwilioFake(t, respondWithStatus(http.StatusCreated))
+	provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusCreated)
+		writeBody(response, messageJSON(testMessageSID, "queued", "null"))
+	})
 	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
 	ctx := singledispatchtest.NewContext("twilio-fence-claim-failed", "send-message")
 	ctx.SetWriteError(errors.New("heartbeat unavailable"))
@@ -258,9 +355,9 @@ func TestSendMessageFenceRetriesFailedClaimWithoutSending(t *testing.T) {
 	ctx.SetWriteError(nil)
 	ctx.AdvanceAttempt()
 	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
-	require.NoError(t, err)
-	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
-	require.Empty(t, provider.recordedRequests())
+	require.NoError(t, err, "the lost checkpoint counts as one possible send, which stays below the cap")
+	require.Equal(t, messaging.SendMessageBranchAccepted, result.Branch)
+	require.Len(t, provider.recordedRequests(), 1)
 }
 
 func TestSendMessageFenceReadsBackAcceptedMessageWithoutResend(t *testing.T) {
@@ -348,47 +445,47 @@ func TestSendMessageFenceCutsOffAnInFlightWrite(t *testing.T) {
 	ctx := singledispatchtest.NewContext("twilio-fence-cut", "send-message")
 	cancel := ctx.SetDeadline(time.Now().Add(500 * time.Millisecond))
 	defer cancel()
-	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
-	require.NoError(t, err)
-	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+	_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a cut-off write is an unknown outcome below the send cap")
+	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 	require.Len(t, provider.recordedRequests(), 1)
 }
 
-func TestSendMessageFenceDoesNotResendAnAcceptedBodyWithoutSID(t *testing.T) {
-	provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
-		response.WriteHeader(http.StatusCreated)
-		writeBody(response, `{"status":"queued"}`)
-	})
-	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
-	ctx := singledispatchtest.NewContext("twilio-fence-no-sid", "send-message")
-	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
-	require.NoError(t, err)
-	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
-	ctx.AdvanceAttempt()
-	result, err = sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
-	require.NoError(t, err)
-	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
-	require.Len(t, provider.recordedRequests(), 1)
-}
-
-func TestSendMessageFenceDoesNotResendAnInterruptedAcceptedResponse(t *testing.T) {
-	provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
-		response.Header().Set("Content-Length", "1000")
-		response.WriteHeader(http.StatusCreated)
-		writeBody(response, "{")
-	})
-	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
-	ctx := singledispatchtest.NewContext("twilio-fence-interrupted", "send-message")
-	for attempt := 1; attempt <= 2; attempt++ {
-		result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
-		require.NoError(t, err)
-		require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
-		if attempt == 1 {
-			require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-		}
-		ctx.AdvanceAttempt()
+func TestSendMessageFenceResendsUnconfirmedSuccessResponsesOnlyBelowTheSendCap(t *testing.T) {
+	for _, testCase := range []struct {
+		name    string
+		respond func(http.ResponseWriter, *http.Request)
+		kind    sdkgo.FailureKind
+	}{
+		{"body without SID", func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(http.StatusCreated)
+			writeBody(response, `{"status":"queued"}`)
+		}, sdkgo.FailureProtocol},
+		{"interrupted body", func(response http.ResponseWriter, _ *http.Request) {
+			response.Header().Set("Content-Length", "1000")
+			response.WriteHeader(http.StatusCreated)
+			writeBody(response, "{")
+		}, sdkgo.FailureTransport},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			provider := newTwilioFake(t, testCase.respond)
+			client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
+			ctx := singledispatchtest.NewContext("twilio-fence-unconfirmed", "send-message")
+			for attempt := 1; attempt < 3; attempt++ {
+				_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, testCase.kind, retry.Failure.Kind)
+				ctx.AdvanceAttempt()
+			}
+			result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+			require.NoError(t, err)
+			require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+			require.Equal(t, testCase.kind, result.Failure.Kind)
+			require.Len(t, provider.recordedRequests(), 3)
+		})
 	}
-	require.Len(t, provider.recordedRequests(), 1)
 }
 
 func TestSendMessageFenceLeavesUnconfirmableReadBackUncertain(t *testing.T) {
@@ -481,13 +578,13 @@ func TestSendMessageFencePreventsTransparentReplayOnReusedConnection(t *testing.
 	require.NoError(t, prime.Body.Close())
 	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials(), messaging.WithHTTPClient(httpClient))
 	ctx := singledispatchtest.NewContext("twilio-fence-reused", "send-message")
-	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
-	require.NoError(t, err)
-	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+	_, err = sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a connection lost after dispatch resends only on a later attempt")
 	require.EqualValues(t, 1, posts.Load())
 }
 
-func TestSendMessageFenceRejectsStaleResendMarker(t *testing.T) {
+func TestSendMessageFenceCountsAMissedAttemptAfterAStaleResendMarker(t *testing.T) {
 	provider := newTwilioFake(t, respondWithStatus(http.StatusServiceUnavailable))
 	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
 	ctx := singledispatchtest.NewContext("twilio-fence-stale", "send-message")
@@ -496,22 +593,26 @@ func TestSendMessageFenceRejectsStaleResendMarker(t *testing.T) {
 	require.ErrorAs(t, err, &retry)
 	ctx.AdvanceAttempt()
 	ctx.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	_, err = sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	require.ErrorAs(t, err, &retry, "the missed attempt counts as one possible send, which stays below the cap")
+	ctx.AdvanceAttempt()
+	var marker singledispatch.Marker
+	_, err = ctx.GetLastHeartbeatValue(&marker)
 	require.NoError(t, err)
-	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
-	require.Len(t, provider.recordedRequests(), 1)
+	require.EqualValues(t, 1, marker.SendCount)
+	require.Len(t, provider.recordedRequests(), 2)
 }
 
-func TestSendMessageFenceRejectsForeignCheckpoint(t *testing.T) {
+func TestSendMessageFenceRetriesAForeignCheckpointWithoutSending(t *testing.T) {
 	provider := newTwilioFake(t, respondWithStatus(http.StatusCreated))
 	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
 	ctx := singledispatchtest.NewContext("twilio-fence-foreign", "send-message")
 	marker := singledispatch.Marker{CallID: sdkgo.CallID("foreign-call"), Attempt: 1, State: singledispatch.StateCanResend}
 	require.NoError(t, ctx.SetPersistedCheckpoint(marker))
 	ctx.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
-	require.NoError(t, err)
-	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+	_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an untrusted checkpoint never selects a terminal branch")
 	require.Empty(t, provider.recordedRequests())
 }
 

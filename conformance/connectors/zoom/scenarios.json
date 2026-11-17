@@ -650,6 +650,7 @@
           "attempt": 1,
           "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
           "providerId": "92674392836",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -957,7 +958,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "agenda": "Review roadmap",
@@ -1000,8 +1001,79 @@
       "operation": "createMeeting"
     },
     {
+      "attempts": 3,
       "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
       "exchanges": [
+        {
+          "body": "{\"code\":500,\"message\":\"Unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/meetings",
+          "requestBody": {
+            "agenda": "Review roadmap",
+            "duration": 30,
+            "settings": {
+              "auto_recording": "none",
+              "host_video": true,
+              "join_before_host": false,
+              "mute_upon_entry": true,
+              "participant_video": false,
+              "waiting_room": true
+            },
+            "start_time": "2036-02-24T17:00:00Z",
+            "timezone": "America/Los_Angeles",
+            "topic": "Consultation",
+            "type": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"code\":409,\"message\":\"Conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/meetings",
+          "requestBody": {
+            "agenda": "Review roadmap",
+            "duration": 30,
+            "settings": {
+              "auto_recording": "none",
+              "host_video": true,
+              "join_before_host": false,
+              "mute_upon_entry": true,
+              "participant_video": false,
+              "waiting_room": true
+            },
+            "start_time": "2036-02-24T17:00:00Z",
+            "timezone": "America/Los_Angeles",
+            "topic": "Consultation",
+            "type": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
         {
           "body": "{\"code\":500,\"message\":\"Unknown\"}",
           "headers": {},
@@ -1042,8 +1114,9 @@
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -1062,7 +1135,7 @@
           "topic": "Consultation",
           "type": 2
         },
-        "requestCount": 1,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -1083,6 +1156,30 @@
         "timeZone": "America/Los_Angeles",
         "topic": "Consultation"
       },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "CONFLICT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
       "name": "createMeeting_uncertain_500",
       "operation": "createMeeting"
     },
@@ -1124,11 +1221,84 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "input": {
+        "agenda": "Review roadmap",
+        "durationMinutes": 30,
+        "settings": {
+          "autoRecording": "none",
+          "hostVideo": true,
+          "joinBeforeHost": false,
+          "muteUponEntry": true,
+          "participantVideo": false,
+          "waitingRoom": true
+        },
+        "startTime": "2036-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles",
+        "topic": "Consultation"
+      },
+      "name": "createMeeting_transport_after_send",
+      "operation": "createMeeting"
+    },
+    {
+      "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "exchanges": [
+        {
+          "body": "{\"id\":92674392836,\"start_time\":\"not a time\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/meetings",
+          "requestBody": {
+            "agenda": "Review roadmap",
+            "duration": 30,
+            "settings": {
+              "auto_recording": "none",
+              "host_video": true,
+              "join_before_host": false,
+              "mute_upon_entry": true,
+              "participant_video": false,
+              "waiting_room": true
+            },
+            "start_time": "2036-02-24T17:00:00Z",
+            "timezone": "America/Los_Angeles",
+            "topic": "Consultation",
+            "type": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1168,7 +1338,7 @@
         "timeZone": "America/Los_Angeles",
         "topic": "Consultation"
       },
-      "name": "createMeeting_uncertain_after_send",
+      "name": "createMeeting_invalid_accepted",
       "operation": "createMeeting"
     },
     {
@@ -1211,11 +1381,438 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "input": {
+        "agenda": "Review roadmap",
+        "durationMinutes": 30,
+        "settings": {
+          "autoRecording": "none",
+          "hostVideo": true,
+          "joinBeforeHost": false,
+          "muteUponEntry": true,
+          "participantVideo": false,
+          "waitingRoom": true
+        },
+        "startTime": "2036-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles",
+        "topic": "Consultation"
+      },
+      "name": "createMeeting_malformed_success_retry",
+      "operation": "createMeeting"
+    },
+    {
+      "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "exchanges": [
+        {
+          "body": "{\"code\":502,\"message\":\"Bad Gateway\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/meetings",
+          "requestBody": {
+            "agenda": "Review roadmap",
+            "duration": 30,
+            "settings": {
+              "auto_recording": "none",
+              "host_video": true,
+              "join_before_host": false,
+              "mute_upon_entry": true,
+              "participant_video": false,
+              "waiting_room": true
+            },
+            "start_time": "2036-02-24T17:00:00Z",
+            "timezone": "America/Los_Angeles",
+            "topic": "Consultation",
+            "type": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "input": {
+        "agenda": "Review roadmap",
+        "durationMinutes": 30,
+        "settings": {
+          "autoRecording": "none",
+          "hostVideo": true,
+          "joinBeforeHost": false,
+          "muteUponEntry": true,
+          "participantVideo": false,
+          "waitingRoom": true
+        },
+        "startTime": "2036-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles",
+        "topic": "Consultation"
+      },
+      "name": "createMeeting_server_error_retry",
+      "operation": "createMeeting"
+    },
+    {
+      "attempts": 2,
+      "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "exchanges": [
+        {
+          "body": "{\"code\":500,\"message\":\"Unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/meetings",
+          "requestBody": {
+            "agenda": "Review roadmap",
+            "duration": 30,
+            "settings": {
+              "auto_recording": "none",
+              "host_video": true,
+              "join_before_host": false,
+              "mute_upon_entry": true,
+              "participant_video": false,
+              "waiting_room": true
+            },
+            "start_time": "2036-02-24T17:00:00Z",
+            "timezone": "America/Los_Angeles",
+            "topic": "Consultation",
+            "type": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":92674392836,\"uuid\":\"meeting-instance-1\",\"host_id\":\"zoom-host-1\",\"host_email\":\"host@example.com\",\"topic\":\"Consultation\",\"type\":2,\"status\":\"waiting\",\"start_time\":\"2036-02-24T17:00:00Z\",\"duration\":30,\"timezone\":\"America/Los_Angeles\",\"agenda\":\"Review roadmap\",\"join_url\":\"https://us05web.zoom.us/j/92674392836?pwd=join\",\"created_at\":\"2026-09-30T17:04:05Z\",\"settings\":{\"host_video\":true,\"participant_video\":false,\"join_before_host\":false,\"mute_upon_entry\":true,\"waiting_room\":true,\"auto_recording\":\"none\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/meetings",
+          "requestBody": {
+            "agenda": "Review roadmap",
+            "duration": 30,
+            "settings": {
+              "auto_recording": "none",
+              "host_video": true,
+              "join_before_host": false,
+              "mute_upon_entry": true,
+              "participant_video": false,
+              "waiting_room": true
+            },
+            "start_time": "2036-02-24T17:00:00Z",
+            "timezone": "America/Los_Angeles",
+            "topic": "Consultation",
+            "type": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+          "providerId": "92674392836",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "agenda": "Review roadmap",
+          "createdAt": "2026-09-30T17:04:05Z",
+          "durationMinutes": 30,
+          "hostEmail": "host@example.com",
+          "hostId": "zoom-host-1",
+          "id": 92674392836,
+          "joinUrl": "https://us05web.zoom.us/j/92674392836?pwd=join",
+          "settings": {
+            "autoRecording": "none",
+            "hostVideo": true,
+            "joinBeforeHost": false,
+            "muteUponEntry": true,
+            "participantVideo": false,
+            "waitingRoom": true
+          },
+          "startTime": "2036-02-24T17:00:00Z",
+          "status": "waiting",
+          "timeZone": "America/Los_Angeles",
+          "topic": "Consultation",
+          "type": 2,
+          "uuid": "meeting-instance-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "input": {
+        "agenda": "Review roadmap",
+        "durationMinutes": 30,
+        "settings": {
+          "autoRecording": "none",
+          "hostVideo": true,
+          "joinBeforeHost": false,
+          "muteUponEntry": true,
+          "participantVideo": false,
+          "waitingRoom": true
+        },
+        "startTime": "2036-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles",
+        "topic": "Consultation"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createMeeting_resend_then_created",
+      "operation": "createMeeting"
+    },
+    {
+      "attempts": 2,
+      "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "exchanges": [
+        {
+          "body": "{\"code\":500,\"message\":\"Unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/meetings",
+          "requestBody": {
+            "agenda": "Review roadmap",
+            "duration": 30,
+            "settings": {
+              "auto_recording": "none",
+              "host_video": true,
+              "join_before_host": false,
+              "mute_upon_entry": true,
+              "participant_video": false,
+              "waiting_room": true
+            },
+            "start_time": "2036-02-24T17:00:00Z",
+            "timezone": "America/Los_Angeles",
+            "topic": "Consultation",
+            "type": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"code\":300,\"message\":\"Invalid start time\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/meetings",
+          "requestBody": {
+            "agenda": "Review roadmap",
+            "duration": 30,
+            "settings": {
+              "auto_recording": "none",
+              "host_video": true,
+              "join_before_host": false,
+              "mute_upon_entry": true,
+              "participant_video": false,
+              "waiting_room": true
+            },
+            "start_time": "2036-02-24T17:00:00Z",
+            "timezone": "America/Los_Angeles",
+            "topic": "Consultation",
+            "type": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "agenda": "Review roadmap",
+          "durationMinutes": 30,
+          "id": 0,
+          "settings": {
+            "hostVideo": false,
+            "joinBeforeHost": false,
+            "muteUponEntry": false,
+            "participantVideo": false,
+            "waitingRoom": false
+          },
+          "startTime": "2036-02-24T17:00:00Z",
+          "timeZone": "America/Los_Angeles",
+          "topic": "Consultation",
+          "type": 2
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "input": {
+        "agenda": "Review roadmap",
+        "durationMinutes": 30,
+        "settings": {
+          "autoRecording": "none",
+          "hostVideo": true,
+          "joinBeforeHost": false,
+          "muteUponEntry": true,
+          "participantVideo": false,
+          "waitingRoom": true
+        },
+        "startTime": "2036-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles",
+        "topic": "Consultation"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createMeeting_refused_resend_uncertain",
+      "operation": "createMeeting"
+    },
+    {
+      "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "exchanges": [
+        {
+          "body": "{\"code\":124,\"message\":\"Invalid access token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/meetings",
+          "requestBody": {
+            "agenda": "Review roadmap",
+            "duration": 30,
+            "settings": {
+              "auto_recording": "none",
+              "host_video": true,
+              "join_before_host": false,
+              "mute_upon_entry": true,
+              "participant_video": false,
+              "waiting_room": true
+            },
+            "start_time": "2036-02-24T17:00:00Z",
+            "timezone": "America/Los_Angeles",
+            "topic": "Consultation",
+            "type": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+          "sendCount": 2,
           "state": "claimed"
         },
         "output": {
@@ -1255,8 +1852,56 @@
         "timeZone": "America/Los_Angeles",
         "topic": "Consultation"
       },
-      "name": "createMeeting_invalid_accepted",
-      "operation": "createMeeting"
+      "name": "createMeeting_unauthorized_after_possible_send",
+      "operation": "createMeeting",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "exchanges": [
+        {
+          "body": "{\"code\":307,\"message\":\"Redirected\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/meetings/92674392836",
+          "requestBody": {
+            "topic": "Renamed consultation"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer zoom-test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 307
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d095d4cd-8f7d-53db-926e-50307d935d1f",
+      "input": {
+        "meetingId": 92674392836,
+        "topic": "Renamed consultation"
+      },
+      "name": "updateMeeting_redirect_retry",
+      "operation": "updateMeeting"
     },
     {
       "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
@@ -2440,7 +3085,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "d095d4cd-8f7d-53db-926e-50307d935d1f",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "agenda": "Review roadmap",
