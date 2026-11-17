@@ -16,12 +16,520 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createContact/createContactDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactReference](`{"id":"contact-1"}`)
+			return err
+		}},
+		{name: "createDomain/createDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainReference](`{"id":"domain-1"}`)
+			return err
+		}},
+		{name: "updateContact/updateContactDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactReference](`{"id":"contact-1"}`)
+			return err
+		}},
+		{name: "deleteContact/deleteContactDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedContact](`{"contact":"contact-1","deleted":true}`)
+			return err
+		}},
+		{name: "deleteDomain/deleteDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedDomain](`{"id":"domain-1","deleted":true}`)
+			return err
+		}},
+		{name: "updateDomain/updateDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainReference](`{"id":"domain-1"}`)
+			return err
+		}},
+		{name: "verifyDomain/verifyDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainReference](`{"id":"domain-1"}`)
+			return err
+		}},
+		{name: "updateScheduledEmail/updateScheduledEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailReference](`{"id":"email-1"}`)
+			return err
+		}},
+		{name: "cancelScheduledEmail/cancelScheduledEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailReference](`{"id":"email-1"}`)
+			return err
+		}},
 		{name: "sendEmail/sendEmailDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.SentEmail](`{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4"}`)
 			return err
 		}},
+		{name: "sendBatchEmails/sendBatchEmailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SentEmailPage](`{"data":[{"id":"email-1"},{"id":"email-2"}]}`)
+			return err
+		}},
 		{name: "getEmail/getEmailDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.Email](`{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4","from":"Acme \u003chello@example.test\u003e","to":["reader@example.test"],"subject":"Welcome","created_at":"2026-10-26T12:00:00Z"}`)
+			return err
+		}},
+		{name: "listEmails/listEmailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailPage](`{"data":[{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4","from":"Acme \u003chello@example.test\u003e","to":["reader@example.test"],"subject":"Welcome","created_at":"2026-10-26T12:00:00Z"}],"has_more":false}`)
+			return err
+		}},
+		{name: "createTopic/createTopicDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TopicReference](`{"id":"topic-1"}`)
+			return err
+		}},
+		{name: "getTopic/getTopicDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Topic](`{"id":"topic-1","name":"News","default_subscription":"opt_in","visibility":"public"}`)
+			return err
+		}},
+		{name: "listTopics/listTopicsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TopicPage](`{"data":[{"id":"topic-1","name":"News","default_subscription":"opt_in","visibility":"public"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateTopic/updateTopicDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TopicReference](`{"id":"topic-1"}`)
+			return err
+		}},
+		{name: "deleteTopic/deleteTopicDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedTopic](`{"id":"topic-1","deleted":true}`)
+			return err
+		}},
+		{name: "listEmailAttachments/listEmailAttachmentsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailAttachmentPage](`{"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}`)
+			return err
+		}},
+		{name: "getEmailAttachment/getEmailAttachmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailAttachment](`{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}`)
+			return err
+		}},
+		{name: "listReceivedEmails/listReceivedEmailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ReceivedEmailPage](`{"data":[{"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getReceivedEmail/getReceivedEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ReceivedEmail](`{"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}`)
+			return err
+		}},
+		{name: "listReceivedEmailAttachments/listReceivedEmailAttachmentsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailAttachmentPage](`{"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}`)
+			return err
+		}},
+		{name: "getReceivedEmailAttachment/getReceivedEmailAttachmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailAttachment](`{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}`)
+			return err
+		}},
+		{name: "getEmailMetrics/getEmailMetricsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailMetrics](`{"start_date":"2026-11-01T00:00:00Z","end_date":"2026-11-02T00:00:00Z","metrics":["sent"],"dimensions":[],"granularity":"daily","totals":{"sent":1}}`)
+			return err
+		}},
+		{name: "createSegment/createSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SegmentReference](`{"id":"segment-1"}`)
+			return err
+		}},
+		{name: "getSegment/getSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Segment](`{"id":"segment-1","name":"Active Users"}`)
+			return err
+		}},
+		{name: "listSegments/listSegmentsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SegmentPage](`{"data":[{"id":"segment-1","name":"Active Users"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateSegment/updateSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SegmentReference](`{"id":"segment-1"}`)
+			return err
+		}},
+		{name: "deleteSegment/deleteSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedSegment](`{"id":"segment-1","deleted":true}`)
+			return err
+		}},
+		{name: "listSegmentContacts/listSegmentContactsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPage](`{"data":[{"id":"contact-1","email":"reader@example.test"}],"has_more":false}`)
+			return err
+		}},
+		{name: "addContactToSegment/addContactToSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactSegmentReference](`{"contact_id":"contact-1","segment_id":"segment-1"}`)
+			return err
+		}},
+		{name: "removeContactFromSegment/removeContactFromSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.RemovedContactSegment](`{"contact_id":"contact-1","segment_id":"segment-1","deleted":true}`)
+			return err
+		}},
+		{name: "listContactSegments/listContactSegmentsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SegmentPage](`{"data":[{"id":"segment-1","name":"Active Users"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getContactTopics/getContactTopicsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactTopicPage](`{"data":[{"id":"topic-1","name":"News","subscription":"opt_in"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateContactTopics/updateContactTopicsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.UpdatedContactTopics](`{"contact_id":"contact-1","topics":[{"id":"topic-1","subscription":"opt_in"}]}`)
+			return err
+		}},
+		{name: "listContactImports/listContactImportsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactImportPage](`{"data":[{"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getContactImport/getContactImportDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactImport](`{"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}`)
+			return err
+		}},
+		{name: "createContactProperty/createContactPropertyDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPropertyReference](`{"id":"property-1"}`)
+			return err
+		}},
+		{name: "getContactProperty/getContactPropertyDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactProperty](`{"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}`)
+			return err
+		}},
+		{name: "listContactProperties/listContactPropertiesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPropertyPage](`{"data":[{"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateContactProperty/updateContactPropertyDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPropertyReference](`{"id":"property-1"}`)
+			return err
+		}},
+		{name: "deleteContactProperty/deleteContactPropertyDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedContactProperty](`{"id":"property-1","deleted":true}`)
+			return err
+		}},
+		{name: "createBroadcast/createBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+			return err
+		}},
+		{name: "getBroadcast/getBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Broadcast](`{"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","from":"news@example.test","subject":"Hello","status":"draft"}`)
+			return err
+		}},
+		{name: "listBroadcasts/listBroadcastsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastPage](`{"data":[{"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","status":"draft"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateBroadcast/updateBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+			return err
+		}},
+		{name: "deleteBroadcast/deleteBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedBroadcast](`{"id":"broadcast-1","deleted":true}`)
+			return err
+		}},
+		{name: "sendBroadcast/sendBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+			return err
+		}},
+		{name: "cancelBroadcast/cancelBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-1"}`)
+			return err
+		}},
+		{name: "duplicateBroadcast/duplicateBroadcastDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastReference](`{"id":"broadcast-2"}`)
+			return err
+		}},
+		{name: "listBroadcastRecipients/listBroadcastRecipientsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastRecipientPage](`{"data":[{"id":"recipient-1","email":"reader@example.test"}],"has_more":false}`)
+			return err
+		}},
+		{name: "listBroadcastClickedLinks/listBroadcastClickedLinksDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.BroadcastClickedLinkPage](`{"data":[{"id":"link-1","url":"https://example.test","clicks":2,"unique_clicks":1}],"has_more":false}`)
+			return err
+		}},
+		{name: "getContact/getContactDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Contact](`{"id":"contact-1","email":"reader@example.test","unsubscribed":false}`)
+			return err
+		}},
+		{name: "listContacts/listContactsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPage](`{"data":[{"id":"contact-1","email":"reader@example.test","unsubscribed":false}],"has_more":false}`)
+			return err
+		}},
+		{name: "getDomain/getDomainDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Domain](`{"id":"domain-1","name":"example.test","status":"verified"}`)
+			return err
+		}},
+		{name: "listDomains/listDomainsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainPage](`{"data":[{"id":"domain-1","name":"example.test","status":"verified"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getUsage/getUsageDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AccountUsage](`{"emails":{"daily":{"used":2,"limit":100,"sent":2,"received":0},"monthly":{"used":20,"limit":3000,"sent":18,"received":2}}}`)
+			return err
+		}},
+		{name: "listLogs/listLogsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.RequestLogPage](`{"data":[{"id":"00000000-0000-0000-0000-000000000001","endpoint":"/emails","method":"POST","response_status":200}],"has_more":false}`)
+			return err
+		}},
+		{name: "getLog/getLogDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.RequestLog](`{"id":"00000000-0000-0000-0000-000000000001","endpoint":"/emails","method":"POST","response_status":200}`)
+			return err
+		}},
+		{name: "createTemplate/createTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplateReference](`{"id":"template-1"}`)
+			return err
+		}},
+		{name: "getTemplate/getTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Template](`{"id":"template-1","name":"Welcome","status":"draft"}`)
+			return err
+		}},
+		{name: "listTemplates/listTemplatesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplatePage](`{"data":[{"id":"template-1","name":"Welcome","status":"draft"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateTemplate/updateTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplateReference](`{"id":"template-1"}`)
+			return err
+		}},
+		{name: "deleteTemplate/deleteTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedTemplate](`{"id":"template-1","deleted":true}`)
+			return err
+		}},
+		{name: "publishTemplate/publishTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplateReference](`{"id":"template-1"}`)
+			return err
+		}},
+		{name: "duplicateTemplate/duplicateTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplateReference](`{"id":"template-2"}`)
+			return err
+		}},
+		{name: "createSuppression/createSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SuppressionReference](`{"id":"suppression-1"}`)
+			return err
+		}},
+		{name: "listSuppressions/listSuppressionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SuppressionPage](`{"data":[{"id":"suppression-1","email":"blocked@example.test","origin":"manual"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getSuppression/getSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Suppression](`{"id":"suppression-1","email":"blocked@example.test","origin":"manual"}`)
+			return err
+		}},
+		{name: "deleteSuppression/deleteSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedSuppression](`{"id":"suppression-1","deleted":true}`)
+			return err
+		}},
+		{name: "batchAddSuppressions/batchAddSuppressionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SuppressionBatch](`{"data":[{"id":"suppression-1"}]}`)
+			return err
+		}},
+		{name: "batchRemoveSuppressions/batchRemoveSuppressionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.RemovedSuppressionBatch](`{"data":[{"id":"suppression-1","deleted":true}]}`)
+			return err
+		}},
+		{name: "createWebhook/createWebhookDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookReference](`{"id":"webhook-1"}`)
+			return err
+		}},
+		{name: "getWebhook/getWebhookDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Webhook](`{"id":"webhook-1","endpoint":"https://hooks.example.test/resend","events":["email.sent"],"status":"enabled"}`)
+			return err
+		}},
+		{name: "listWebhooks/listWebhooksDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookPage](`{"data":[{"id":"webhook-1","endpoint":"https://hooks.example.test/resend","events":["email.sent"],"status":"enabled"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateWebhook/updateWebhookDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookReference](`{"id":"webhook-1"}`)
+			return err
+		}},
+		{name: "deleteWebhook/deleteWebhookDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedWebhook](`{"id":"webhook-1","deleted":true}`)
+			return err
+		}},
+		{name: "listWebhookEvents/listWebhookEventsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookEventPage](`{"data":[{"id":"event-1","type":"email.sent","status":"success"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getWebhookEvent/getWebhookEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookEvent](`{"id":"event-1","type":"email.sent","status":"success"}`)
+			return err
+		}},
+		{name: "listWebhookEventAttempts/listWebhookEventAttemptsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookEventAttemptPage](`{"data":[{"id":"attempt-1","http_status_code":200}],"has_more":false}`)
+			return err
+		}},
+		{name: "replayWebhookEvent/replayWebhookEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.WebhookEvent](`{"id":"event-1"}`)
+			return err
+		}},
+		{name: "createEvent/createEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EventReference](`{"id":"event-1"}`)
+			return err
+		}},
+		{name: "getEvent/getEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Event](`{"id":"event-1","name":"order.paid","schema":{"total":"number"}}`)
+			return err
+		}},
+		{name: "listEvents/listEventsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EventPage](`{"data":[{"id":"event-1","name":"order.paid","schema":{"total":"number"}}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateEvent/updateEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EventReference](`{"id":"event-1"}`)
+			return err
+		}},
+		{name: "deleteEvent/deleteEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedEvent](`{"id":"event-1","deleted":true}`)
+			return err
+		}},
+		{name: "sendEvent/sendEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EventSendReference](`{"event":"order.paid"}`)
+			return err
+		}},
+		{name: "createAutomation/createAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationReference](`{"id":"automation-1"}`)
+			return err
+		}},
+		{name: "getAutomation/getAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Automation](`{"id":"automation-1","name":"Welcome","status":"disabled"}`)
+			return err
+		}},
+		{name: "listAutomations/listAutomationsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationPage](`{"data":[{"id":"automation-1","name":"Welcome","status":"disabled"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateAutomation/updateAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationReference](`{"id":"automation-1"}`)
+			return err
+		}},
+		{name: "deleteAutomation/deleteAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedAutomation](`{"id":"automation-1","deleted":true}`)
+			return err
+		}},
+		{name: "duplicateAutomation/duplicateAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationReference](`{"id":"automation-2"}`)
+			return err
+		}},
+		{name: "stopAutomation/stopAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationStatus](`{"id":"automation-1","status":"disabled"}`)
+			return err
+		}},
+		{name: "listAutomationRuns/listAutomationRunsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationRunPage](`{"data":[{"id":"run-1","status":"completed"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getAutomationRun/getAutomationRunDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationRun](`{"id":"run-1","status":"completed"}`)
+			return err
+		}},
+		{name: "createInbox/createInboxDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxReference](`{"id":"inbox-1"}`)
+			return err
+		}},
+		{name: "getInbox/getInboxDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Inbox](`{"id":"inbox-1","email_address":"support@example.test","name":"Support"}`)
+			return err
+		}},
+		{name: "listInboxes/listInboxesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxPage](`{"data":[{"id":"inbox-1","email_address":"support@example.test","name":"Support"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateInbox/updateInboxDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxReference](`{"id":"inbox-1"}`)
+			return err
+		}},
+		{name: "deleteInbox/deleteInboxDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedInbox](`{"id":"inbox-1","deleted":true}`)
+			return err
+		}},
+		{name: "getInboxAgent/getInboxAgentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxAgentSettings](`{"tone":"concise_professional","actions":["draft_reply"]}`)
+			return err
+		}},
+		{name: "updateInboxAgent/updateInboxAgentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxAgentReference](`{"id":"agent-1"}`)
+			return err
+		}},
+		{name: "listInboxLabels/listInboxLabelsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxLabelList](`{"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}`)
+			return err
+		}},
+		{name: "createInboxLabel/createInboxLabelDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxLabelReference](`{"id":"label-1"}`)
+			return err
+		}},
+		{name: "updateInboxLabel/updateInboxLabelDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxLabelReference](`{"id":"label-1"}`)
+			return err
+		}},
+		{name: "deleteInboxLabel/deleteInboxLabelDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedInboxLabel](`{"id":"label-1","deleted":true}`)
+			return err
+		}},
+		{name: "listInboxThreads/listInboxThreadsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadPage](`{"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false}],"has_more":false}`)
+			return err
+		}},
+		{name: "searchInboxThreads/searchInboxThreadsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadPage](`{"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false,"matched_email_id":"email-1"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getInboxThread/getInboxThreadDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadReference](`{"id":"thread-1","folder":"inbox","read":false}`)
+			return err
+		}},
+		{name: "updateInboxThread/updateInboxThreadDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadReference](`{"id":"thread-1","folder":"archive","read":true}`)
+			return err
+		}},
+		{name: "deleteInboxThread/deleteInboxThreadDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedInboxThread](`{"id":"thread-1","deleted":true}`)
+			return err
+		}},
+		{name: "addInboxThreadLabels/addInboxThreadLabelsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadLabelList](`{"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}`)
+			return err
+		}},
+		{name: "setInboxThreadLabels/setInboxThreadLabelsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadLabelList](`{"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}`)
+			return err
+		}},
+		{name: "removeInboxThreadLabel/removeInboxThreadLabelDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadLabelList](`{"data":[]}`)
+			return err
+		}},
+		{name: "listInboxThreadEmails/listInboxThreadEmailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadEmailPage](`{"data":[{"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getInboxThreadEmail/getInboxThreadEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxThreadEmail](`{"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}`)
+			return err
+		}},
+		{name: "replyInboxThreadEmail/replyInboxThreadEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SentInboxThreadEmail](`{"id":"email-2"}`)
+			return err
+		}},
+		{name: "forwardInboxThreadEmail/forwardInboxThreadEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SentInboxThreadEmail](`{"id":"email-3"}`)
+			return err
+		}},
+		{name: "listInboxDrafts/listInboxDraftsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxDraftPage](`{"data":[{"id":"draft-1","type":"standalone","subject":"Hello"}],"has_more":false}`)
+			return err
+		}},
+		{name: "createInboxDraft/createInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxDraftReference](`{"id":"draft-1"}`)
+			return err
+		}},
+		{name: "getInboxDraft/getInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxDraft](`{"id":"draft-1","type":"standalone","subject":"Hello"}`)
+			return err
+		}},
+		{name: "updateInboxDraft/updateInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.InboxDraftReference](`{"id":"draft-1"}`)
+			return err
+		}},
+		{name: "deleteInboxDraft/deleteInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedInboxDraft](`{"id":"draft-1","deleted":true}`)
+			return err
+		}},
+		{name: "sendInboxDraft/sendInboxDraftDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SentInboxDraft](`{"id":"email-1"}`)
+			return err
+		}},
+		{name: "createDomainClaim/createDomainClaimDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainClaim](`{"id":"claim-1","name":"example.test","status":"pending","domain_id":"domain-1","region":"us-east-1","record":{"type":"TXT","name":"example.test","value":"resend-domain-verification=example","ttl":"Auto"}}`)
+			return err
+		}},
+		{name: "getDomainClaim/getDomainClaimDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainClaim](`{"id":"claim-1","name":"example.test","status":"pending","domain_id":"domain-1","region":"us-east-1","record":{"type":"TXT","name":"example.test","value":"resend-domain-verification=example","ttl":"Auto"}}`)
+			return err
+		}},
+		{name: "verifyDomainClaim/verifyDomainClaimDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainClaim](`{"id":"claim-1","name":"example.test","status":"pending","domain_id":"domain-1","region":"us-east-1","record":{"type":"TXT","name":"example.test","value":"resend-domain-verification=example","ttl":"Auto"}}`)
 			return err
 		}},
 	}
@@ -34,10 +542,391 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
+	if mock.CreateDomain().Definition().Operation.OperationID != "createDomain" {
+		t.Errorf("createDomain mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.DeleteDomain().Definition().Operation.OperationID != "deleteDomain" {
+		t.Errorf("deleteDomain mock has another definition")
+	}
+	if mock.UpdateDomain().Definition().Operation.OperationID != "updateDomain" {
+		t.Errorf("updateDomain mock has another definition")
+	}
+	if mock.VerifyDomain().Definition().Operation.OperationID != "verifyDomain" {
+		t.Errorf("verifyDomain mock has another definition")
+	}
+	if mock.UpdateScheduledEmail().Definition().Operation.OperationID != "updateScheduledEmail" {
+		t.Errorf("updateScheduledEmail mock has another definition")
+	}
+	if mock.CancelScheduledEmail().Definition().Operation.OperationID != "cancelScheduledEmail" {
+		t.Errorf("cancelScheduledEmail mock has another definition")
+	}
 	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
 		t.Errorf("sendEmail mock has another definition")
 	}
+	if mock.SendBatchEmails().Definition().Operation.OperationID != "sendBatchEmails" {
+		t.Errorf("sendBatchEmails mock has another definition")
+	}
 	if mock.GetEmail().Definition().Operation.OperationID != "getEmail" {
 		t.Errorf("getEmail mock has another definition")
+	}
+	if mock.ListEmails().Definition().Operation.OperationID != "listEmails" {
+		t.Errorf("listEmails mock has another definition")
+	}
+	if mock.CreateTopic().Definition().Operation.OperationID != "createTopic" {
+		t.Errorf("createTopic mock has another definition")
+	}
+	if mock.GetTopic().Definition().Operation.OperationID != "getTopic" {
+		t.Errorf("getTopic mock has another definition")
+	}
+	if mock.ListTopics().Definition().Operation.OperationID != "listTopics" {
+		t.Errorf("listTopics mock has another definition")
+	}
+	if mock.UpdateTopic().Definition().Operation.OperationID != "updateTopic" {
+		t.Errorf("updateTopic mock has another definition")
+	}
+	if mock.DeleteTopic().Definition().Operation.OperationID != "deleteTopic" {
+		t.Errorf("deleteTopic mock has another definition")
+	}
+	if mock.ListEmailAttachments().Definition().Operation.OperationID != "listEmailAttachments" {
+		t.Errorf("listEmailAttachments mock has another definition")
+	}
+	if mock.GetEmailAttachment().Definition().Operation.OperationID != "getEmailAttachment" {
+		t.Errorf("getEmailAttachment mock has another definition")
+	}
+	if mock.ListReceivedEmails().Definition().Operation.OperationID != "listReceivedEmails" {
+		t.Errorf("listReceivedEmails mock has another definition")
+	}
+	if mock.GetReceivedEmail().Definition().Operation.OperationID != "getReceivedEmail" {
+		t.Errorf("getReceivedEmail mock has another definition")
+	}
+	if mock.ListReceivedEmailAttachments().Definition().Operation.OperationID != "listReceivedEmailAttachments" {
+		t.Errorf("listReceivedEmailAttachments mock has another definition")
+	}
+	if mock.GetReceivedEmailAttachment().Definition().Operation.OperationID != "getReceivedEmailAttachment" {
+		t.Errorf("getReceivedEmailAttachment mock has another definition")
+	}
+	if mock.GetEmailMetrics().Definition().Operation.OperationID != "getEmailMetrics" {
+		t.Errorf("getEmailMetrics mock has another definition")
+	}
+	if mock.CreateSegment().Definition().Operation.OperationID != "createSegment" {
+		t.Errorf("createSegment mock has another definition")
+	}
+	if mock.GetSegment().Definition().Operation.OperationID != "getSegment" {
+		t.Errorf("getSegment mock has another definition")
+	}
+	if mock.ListSegments().Definition().Operation.OperationID != "listSegments" {
+		t.Errorf("listSegments mock has another definition")
+	}
+	if mock.UpdateSegment().Definition().Operation.OperationID != "updateSegment" {
+		t.Errorf("updateSegment mock has another definition")
+	}
+	if mock.DeleteSegment().Definition().Operation.OperationID != "deleteSegment" {
+		t.Errorf("deleteSegment mock has another definition")
+	}
+	if mock.ListSegmentContacts().Definition().Operation.OperationID != "listSegmentContacts" {
+		t.Errorf("listSegmentContacts mock has another definition")
+	}
+	if mock.AddContactToSegment().Definition().Operation.OperationID != "addContactToSegment" {
+		t.Errorf("addContactToSegment mock has another definition")
+	}
+	if mock.RemoveContactFromSegment().Definition().Operation.OperationID != "removeContactFromSegment" {
+		t.Errorf("removeContactFromSegment mock has another definition")
+	}
+	if mock.ListContactSegments().Definition().Operation.OperationID != "listContactSegments" {
+		t.Errorf("listContactSegments mock has another definition")
+	}
+	if mock.GetContactTopics().Definition().Operation.OperationID != "getContactTopics" {
+		t.Errorf("getContactTopics mock has another definition")
+	}
+	if mock.UpdateContactTopics().Definition().Operation.OperationID != "updateContactTopics" {
+		t.Errorf("updateContactTopics mock has another definition")
+	}
+	if mock.ListContactImports().Definition().Operation.OperationID != "listContactImports" {
+		t.Errorf("listContactImports mock has another definition")
+	}
+	if mock.GetContactImport().Definition().Operation.OperationID != "getContactImport" {
+		t.Errorf("getContactImport mock has another definition")
+	}
+	if mock.CreateContactProperty().Definition().Operation.OperationID != "createContactProperty" {
+		t.Errorf("createContactProperty mock has another definition")
+	}
+	if mock.GetContactProperty().Definition().Operation.OperationID != "getContactProperty" {
+		t.Errorf("getContactProperty mock has another definition")
+	}
+	if mock.ListContactProperties().Definition().Operation.OperationID != "listContactProperties" {
+		t.Errorf("listContactProperties mock has another definition")
+	}
+	if mock.UpdateContactProperty().Definition().Operation.OperationID != "updateContactProperty" {
+		t.Errorf("updateContactProperty mock has another definition")
+	}
+	if mock.DeleteContactProperty().Definition().Operation.OperationID != "deleteContactProperty" {
+		t.Errorf("deleteContactProperty mock has another definition")
+	}
+	if mock.CreateBroadcast().Definition().Operation.OperationID != "createBroadcast" {
+		t.Errorf("createBroadcast mock has another definition")
+	}
+	if mock.GetBroadcast().Definition().Operation.OperationID != "getBroadcast" {
+		t.Errorf("getBroadcast mock has another definition")
+	}
+	if mock.ListBroadcasts().Definition().Operation.OperationID != "listBroadcasts" {
+		t.Errorf("listBroadcasts mock has another definition")
+	}
+	if mock.UpdateBroadcast().Definition().Operation.OperationID != "updateBroadcast" {
+		t.Errorf("updateBroadcast mock has another definition")
+	}
+	if mock.DeleteBroadcast().Definition().Operation.OperationID != "deleteBroadcast" {
+		t.Errorf("deleteBroadcast mock has another definition")
+	}
+	if mock.SendBroadcast().Definition().Operation.OperationID != "sendBroadcast" {
+		t.Errorf("sendBroadcast mock has another definition")
+	}
+	if mock.CancelBroadcast().Definition().Operation.OperationID != "cancelBroadcast" {
+		t.Errorf("cancelBroadcast mock has another definition")
+	}
+	if mock.DuplicateBroadcast().Definition().Operation.OperationID != "duplicateBroadcast" {
+		t.Errorf("duplicateBroadcast mock has another definition")
+	}
+	if mock.ListBroadcastRecipients().Definition().Operation.OperationID != "listBroadcastRecipients" {
+		t.Errorf("listBroadcastRecipients mock has another definition")
+	}
+	if mock.ListBroadcastClickedLinks().Definition().Operation.OperationID != "listBroadcastClickedLinks" {
+		t.Errorf("listBroadcastClickedLinks mock has another definition")
+	}
+	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
+		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.GetDomain().Definition().Operation.OperationID != "getDomain" {
+		t.Errorf("getDomain mock has another definition")
+	}
+	if mock.ListDomains().Definition().Operation.OperationID != "listDomains" {
+		t.Errorf("listDomains mock has another definition")
+	}
+	if mock.GetUsage().Definition().Operation.OperationID != "getUsage" {
+		t.Errorf("getUsage mock has another definition")
+	}
+	if mock.ListLogs().Definition().Operation.OperationID != "listLogs" {
+		t.Errorf("listLogs mock has another definition")
+	}
+	if mock.GetLog().Definition().Operation.OperationID != "getLog" {
+		t.Errorf("getLog mock has another definition")
+	}
+	if mock.CreateTemplate().Definition().Operation.OperationID != "createTemplate" {
+		t.Errorf("createTemplate mock has another definition")
+	}
+	if mock.GetTemplate().Definition().Operation.OperationID != "getTemplate" {
+		t.Errorf("getTemplate mock has another definition")
+	}
+	if mock.ListTemplates().Definition().Operation.OperationID != "listTemplates" {
+		t.Errorf("listTemplates mock has another definition")
+	}
+	if mock.UpdateTemplate().Definition().Operation.OperationID != "updateTemplate" {
+		t.Errorf("updateTemplate mock has another definition")
+	}
+	if mock.DeleteTemplate().Definition().Operation.OperationID != "deleteTemplate" {
+		t.Errorf("deleteTemplate mock has another definition")
+	}
+	if mock.PublishTemplate().Definition().Operation.OperationID != "publishTemplate" {
+		t.Errorf("publishTemplate mock has another definition")
+	}
+	if mock.DuplicateTemplate().Definition().Operation.OperationID != "duplicateTemplate" {
+		t.Errorf("duplicateTemplate mock has another definition")
+	}
+	if mock.CreateSuppression().Definition().Operation.OperationID != "createSuppression" {
+		t.Errorf("createSuppression mock has another definition")
+	}
+	if mock.ListSuppressions().Definition().Operation.OperationID != "listSuppressions" {
+		t.Errorf("listSuppressions mock has another definition")
+	}
+	if mock.GetSuppression().Definition().Operation.OperationID != "getSuppression" {
+		t.Errorf("getSuppression mock has another definition")
+	}
+	if mock.DeleteSuppression().Definition().Operation.OperationID != "deleteSuppression" {
+		t.Errorf("deleteSuppression mock has another definition")
+	}
+	if mock.BatchAddSuppressions().Definition().Operation.OperationID != "batchAddSuppressions" {
+		t.Errorf("batchAddSuppressions mock has another definition")
+	}
+	if mock.BatchRemoveSuppressions().Definition().Operation.OperationID != "batchRemoveSuppressions" {
+		t.Errorf("batchRemoveSuppressions mock has another definition")
+	}
+	if mock.CreateWebhook().Definition().Operation.OperationID != "createWebhook" {
+		t.Errorf("createWebhook mock has another definition")
+	}
+	if mock.GetWebhook().Definition().Operation.OperationID != "getWebhook" {
+		t.Errorf("getWebhook mock has another definition")
+	}
+	if mock.ListWebhooks().Definition().Operation.OperationID != "listWebhooks" {
+		t.Errorf("listWebhooks mock has another definition")
+	}
+	if mock.UpdateWebhook().Definition().Operation.OperationID != "updateWebhook" {
+		t.Errorf("updateWebhook mock has another definition")
+	}
+	if mock.DeleteWebhook().Definition().Operation.OperationID != "deleteWebhook" {
+		t.Errorf("deleteWebhook mock has another definition")
+	}
+	if mock.ListWebhookEvents().Definition().Operation.OperationID != "listWebhookEvents" {
+		t.Errorf("listWebhookEvents mock has another definition")
+	}
+	if mock.GetWebhookEvent().Definition().Operation.OperationID != "getWebhookEvent" {
+		t.Errorf("getWebhookEvent mock has another definition")
+	}
+	if mock.ListWebhookEventAttempts().Definition().Operation.OperationID != "listWebhookEventAttempts" {
+		t.Errorf("listWebhookEventAttempts mock has another definition")
+	}
+	if mock.ReplayWebhookEvent().Definition().Operation.OperationID != "replayWebhookEvent" {
+		t.Errorf("replayWebhookEvent mock has another definition")
+	}
+	if mock.CreateEvent().Definition().Operation.OperationID != "createEvent" {
+		t.Errorf("createEvent mock has another definition")
+	}
+	if mock.GetEvent().Definition().Operation.OperationID != "getEvent" {
+		t.Errorf("getEvent mock has another definition")
+	}
+	if mock.ListEvents().Definition().Operation.OperationID != "listEvents" {
+		t.Errorf("listEvents mock has another definition")
+	}
+	if mock.UpdateEvent().Definition().Operation.OperationID != "updateEvent" {
+		t.Errorf("updateEvent mock has another definition")
+	}
+	if mock.DeleteEvent().Definition().Operation.OperationID != "deleteEvent" {
+		t.Errorf("deleteEvent mock has another definition")
+	}
+	if mock.SendEvent().Definition().Operation.OperationID != "sendEvent" {
+		t.Errorf("sendEvent mock has another definition")
+	}
+	if mock.CreateAutomation().Definition().Operation.OperationID != "createAutomation" {
+		t.Errorf("createAutomation mock has another definition")
+	}
+	if mock.GetAutomation().Definition().Operation.OperationID != "getAutomation" {
+		t.Errorf("getAutomation mock has another definition")
+	}
+	if mock.ListAutomations().Definition().Operation.OperationID != "listAutomations" {
+		t.Errorf("listAutomations mock has another definition")
+	}
+	if mock.UpdateAutomation().Definition().Operation.OperationID != "updateAutomation" {
+		t.Errorf("updateAutomation mock has another definition")
+	}
+	if mock.DeleteAutomation().Definition().Operation.OperationID != "deleteAutomation" {
+		t.Errorf("deleteAutomation mock has another definition")
+	}
+	if mock.DuplicateAutomation().Definition().Operation.OperationID != "duplicateAutomation" {
+		t.Errorf("duplicateAutomation mock has another definition")
+	}
+	if mock.StopAutomation().Definition().Operation.OperationID != "stopAutomation" {
+		t.Errorf("stopAutomation mock has another definition")
+	}
+	if mock.ListAutomationRuns().Definition().Operation.OperationID != "listAutomationRuns" {
+		t.Errorf("listAutomationRuns mock has another definition")
+	}
+	if mock.GetAutomationRun().Definition().Operation.OperationID != "getAutomationRun" {
+		t.Errorf("getAutomationRun mock has another definition")
+	}
+	if mock.CreateInbox().Definition().Operation.OperationID != "createInbox" {
+		t.Errorf("createInbox mock has another definition")
+	}
+	if mock.GetInbox().Definition().Operation.OperationID != "getInbox" {
+		t.Errorf("getInbox mock has another definition")
+	}
+	if mock.ListInboxes().Definition().Operation.OperationID != "listInboxes" {
+		t.Errorf("listInboxes mock has another definition")
+	}
+	if mock.UpdateInbox().Definition().Operation.OperationID != "updateInbox" {
+		t.Errorf("updateInbox mock has another definition")
+	}
+	if mock.DeleteInbox().Definition().Operation.OperationID != "deleteInbox" {
+		t.Errorf("deleteInbox mock has another definition")
+	}
+	if mock.GetInboxAgent().Definition().Operation.OperationID != "getInboxAgent" {
+		t.Errorf("getInboxAgent mock has another definition")
+	}
+	if mock.UpdateInboxAgent().Definition().Operation.OperationID != "updateInboxAgent" {
+		t.Errorf("updateInboxAgent mock has another definition")
+	}
+	if mock.ListInboxLabels().Definition().Operation.OperationID != "listInboxLabels" {
+		t.Errorf("listInboxLabels mock has another definition")
+	}
+	if mock.CreateInboxLabel().Definition().Operation.OperationID != "createInboxLabel" {
+		t.Errorf("createInboxLabel mock has another definition")
+	}
+	if mock.UpdateInboxLabel().Definition().Operation.OperationID != "updateInboxLabel" {
+		t.Errorf("updateInboxLabel mock has another definition")
+	}
+	if mock.DeleteInboxLabel().Definition().Operation.OperationID != "deleteInboxLabel" {
+		t.Errorf("deleteInboxLabel mock has another definition")
+	}
+	if mock.ListInboxThreads().Definition().Operation.OperationID != "listInboxThreads" {
+		t.Errorf("listInboxThreads mock has another definition")
+	}
+	if mock.SearchInboxThreads().Definition().Operation.OperationID != "searchInboxThreads" {
+		t.Errorf("searchInboxThreads mock has another definition")
+	}
+	if mock.GetInboxThread().Definition().Operation.OperationID != "getInboxThread" {
+		t.Errorf("getInboxThread mock has another definition")
+	}
+	if mock.UpdateInboxThread().Definition().Operation.OperationID != "updateInboxThread" {
+		t.Errorf("updateInboxThread mock has another definition")
+	}
+	if mock.DeleteInboxThread().Definition().Operation.OperationID != "deleteInboxThread" {
+		t.Errorf("deleteInboxThread mock has another definition")
+	}
+	if mock.AddInboxThreadLabels().Definition().Operation.OperationID != "addInboxThreadLabels" {
+		t.Errorf("addInboxThreadLabels mock has another definition")
+	}
+	if mock.SetInboxThreadLabels().Definition().Operation.OperationID != "setInboxThreadLabels" {
+		t.Errorf("setInboxThreadLabels mock has another definition")
+	}
+	if mock.RemoveInboxThreadLabel().Definition().Operation.OperationID != "removeInboxThreadLabel" {
+		t.Errorf("removeInboxThreadLabel mock has another definition")
+	}
+	if mock.ListInboxThreadEmails().Definition().Operation.OperationID != "listInboxThreadEmails" {
+		t.Errorf("listInboxThreadEmails mock has another definition")
+	}
+	if mock.GetInboxThreadEmail().Definition().Operation.OperationID != "getInboxThreadEmail" {
+		t.Errorf("getInboxThreadEmail mock has another definition")
+	}
+	if mock.ReplyInboxThreadEmail().Definition().Operation.OperationID != "replyInboxThreadEmail" {
+		t.Errorf("replyInboxThreadEmail mock has another definition")
+	}
+	if mock.ForwardInboxThreadEmail().Definition().Operation.OperationID != "forwardInboxThreadEmail" {
+		t.Errorf("forwardInboxThreadEmail mock has another definition")
+	}
+	if mock.ListInboxDrafts().Definition().Operation.OperationID != "listInboxDrafts" {
+		t.Errorf("listInboxDrafts mock has another definition")
+	}
+	if mock.CreateInboxDraft().Definition().Operation.OperationID != "createInboxDraft" {
+		t.Errorf("createInboxDraft mock has another definition")
+	}
+	if mock.GetInboxDraft().Definition().Operation.OperationID != "getInboxDraft" {
+		t.Errorf("getInboxDraft mock has another definition")
+	}
+	if mock.UpdateInboxDraft().Definition().Operation.OperationID != "updateInboxDraft" {
+		t.Errorf("updateInboxDraft mock has another definition")
+	}
+	if mock.DeleteInboxDraft().Definition().Operation.OperationID != "deleteInboxDraft" {
+		t.Errorf("deleteInboxDraft mock has another definition")
+	}
+	if mock.SendInboxDraft().Definition().Operation.OperationID != "sendInboxDraft" {
+		t.Errorf("sendInboxDraft mock has another definition")
+	}
+	if mock.CreateDomainClaim().Definition().Operation.OperationID != "createDomainClaim" {
+		t.Errorf("createDomainClaim mock has another definition")
+	}
+	if mock.GetDomainClaim().Definition().Operation.OperationID != "getDomainClaim" {
+		t.Errorf("getDomainClaim mock has another definition")
+	}
+	if mock.VerifyDomainClaim().Definition().Operation.OperationID != "verifyDomainClaim" {
+		t.Errorf("verifyDomainClaim mock has another definition")
 	}
 }

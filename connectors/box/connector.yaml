@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: box
   displayName: Box
-  description: Download bounded files and replace existing file content through typed Dex operations.
+  description: Inspect, search, download, update, share, replace, and delete Box files and folders through typed Dex operations.
   company: Box
   categories: [files-documents]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: box
   languages:
@@ -104,6 +104,138 @@ spec:
         requiredScopes: [root_readwrite]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: createFolder
+      goName: CreateFolder
+      inputType: CreateBoxFolderInput
+      outputType: CreatedBoxItem
+      kind: mutation
+      description: Create one named Box folder under a parent folder.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Box created or confirmed the folder.}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected creation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+      mocks:
+        - {name: createFolderDefault, branch: created, default: true, description: One folder was created., output: {id: '54321', type: folder, name: New folder, parentId: '0'}}
+    - name: copyFile
+      goName: CopyFile
+      inputType: CopyBoxFileInput
+      outputType: CreatedBoxItem
+      kind: mutation
+      description: Copy a Box file to a parent folder under an explicit name.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: copied, goName: Copied, description: Box copied or confirmed the file.}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected copying., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming the copy., optional: true}
+      mocks:
+        - {name: copyFileDefault, branch: copied, default: true, description: One file was copied., output: {id: '67890', type: file, name: Copy.txt, parentId: '0'}}
+    - name: copyFolder
+      goName: CopyFolder
+      inputType: CopyBoxFolderInput
+      outputType: CreatedBoxItem
+      kind: mutation
+      description: Copy a Box folder to a parent folder under an explicit name.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: copied, goName: Copied, description: Box copied or confirmed the folder.}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected copying., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming the copy., optional: true}
+      mocks:
+        - {name: copyFolderDefault, branch: copied, default: true, description: One folder was copied., output: {id: '67891', type: folder, name: Copy folder, parentId: '0'}}
+    - name: updateFile
+      goName: UpdateFile
+      inputType: UpdateBoxFileInput
+      outputType: UpdatedBoxItem
+      kind: mutation
+      description: Rename or move a file, or create or change its shared link.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Box updated the file.}
+        - {id: notFound, goName: NotFound, description: Box did not find this file., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updateFileDefault, branch: updated, default: true, description: One file was renamed and shared., output: {id: '12345', type: file, name: renamed.txt, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/example'}}
+    - name: updateFolder
+      goName: UpdateFolder
+      inputType: UpdateBoxFolderInput
+      outputType: UpdatedBoxItem
+      kind: mutation
+      description: Rename or move a folder, or create or change its shared link.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Box updated the folder.}
+        - {id: notFound, goName: NotFound, description: Box did not find this folder., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updateFolderDefault, branch: updated, default: true, description: One folder was renamed and shared., output: {id: '54321', type: folder, name: Renamed, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/folder-example'}}
+    - name: shareFile
+      goName: ShareFile
+      inputType: ShareBoxFileInput
+      outputType: UpdatedBoxItem
+      kind: mutation
+      description: Create or replace a Box file's shared link access.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: shared, goName: Shared, description: Box returned the shared file link.}
+        - {id: notFound, goName: NotFound, description: Box did not find this file., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected sharing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: shareFileDefault, branch: shared, default: true, description: One file has a shared link., output: {id: '12345', type: file, name: report.txt, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/example'}}
+    - name: shareFolder
+      goName: ShareFolder
+      inputType: ShareBoxFolderInput
+      outputType: UpdatedBoxItem
+      kind: mutation
+      description: Create or replace a Box folder's shared link access.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: shared, goName: Shared, description: Box returned the shared folder link.}
+        - {id: notFound, goName: NotFound, description: Box did not find this folder., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected sharing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - {name: shareFolderDefault, branch: shared, default: true, description: One folder has a shared link., output: {id: '54321', type: folder, name: Reports, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/folder-example'}}
+    - name: createFile
+      goName: CreateFile
+      inputType: CreateBoxFileInput
+      outputType: CreatedBoxFile
+      kind: mutation
+      description: Upload one new bounded file under a Box folder.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Box created or confirmed the file.}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected creation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+      mocks:
+        - {name: createFileDefault, branch: created, default: true, description: One file was created., output: {fileId: '12345', name: report.txt, sha1: F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0, parentId: '0'}}
     - name: downloadFile
       goName: DownloadFile
       inputType: DownloadFileInput
@@ -147,3 +279,148 @@ spec:
           default: true
           description: One existing file has the requested content.
           output: {fileId: '12345', name: example.txt, sha1: F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0}
+    - name: getFile
+      goName: GetFile
+      inputType: GetFileInput
+      outputType: BoxFile
+      kind: query
+      description: Retrieve one Box file's metadata.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: getFileDefault
+          branch: found
+          default: true
+          description: A representative Box response.
+          output: {id: '12345', type: file, name: example.txt}
+    - name: getFolder
+      goName: GetFolder
+      inputType: GetFolderInput
+      outputType: BoxFolder
+      kind: query
+      description: Retrieve one Box folder's metadata.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: getFolderDefault
+          branch: found
+          default: true
+          description: A representative Box response.
+          output: {id: '54321', type: folder, name: Documents}
+    - name: listFolderItems
+      goName: ListFolderItems
+      inputType: ListFolderItemsInput
+      outputType: BoxItemPage
+      kind: query
+      description: List one page of files and folders in a Box folder.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listFolderItemsDefault
+          branch: listed
+          default: true
+          description: A representative Box response.
+          output: {entries: [{id: '12345', type: file, name: example.txt}], limit: 100, offset: 0, total_count: 1}
+    - name: searchFiles
+      goName: SearchFiles
+      inputType: SearchFilesInput
+      outputType: BoxItemPage
+      kind: query
+      description: Search accessible Box files by a text query.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Box returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: searchFilesDefault
+          branch: found
+          default: true
+          description: A representative Box response.
+          output: {entries: [{id: '12345', type: file, name: example.txt}], limit: 30, offset: 0, total_count: 1}
+    - name: searchFolders
+      goName: SearchFolders
+      inputType: SearchFoldersInput
+      outputType: BoxItemPage
+      kind: query
+      description: Search accessible Box folders by a text query.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Box returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: searchFoldersDefault
+          branch: found
+          default: true
+          description: A representative Box response.
+          output: {entries: [{id: '54321', type: folder, name: Documents}], limit: 30, offset: 0, total_count: 1}
+    - name: deleteFile
+      goName: DeleteFile
+      inputType: DeleteFileInput
+      outputType: DeletedBoxItem
+      kind: mutation
+      description: Delete one Box file by ID.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deleteFileDefault
+          branch: deleted
+          default: true
+          description: A representative Box response.
+          output: {id: '12345'}
+    - name: deleteFolder
+      goName: DeleteFolder
+      inputType: DeleteFolderInput
+      outputType: DeletedBoxItem
+      kind: mutation
+      description: Delete one empty Box folder by ID.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deleteFolderDefault
+          branch: deleted
+          default: true
+          description: A representative Box response.
+          output: {id: '54321'}

@@ -16,6 +16,38 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createFolder/createFolderDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.CreatedBoxItem](`{"id":"54321","type":"folder","name":"New folder","parentId":"0"}`)
+			return err
+		}},
+		{name: "copyFile/copyFileDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.CreatedBoxItem](`{"id":"67890","type":"file","name":"Copy.txt","parentId":"0"}`)
+			return err
+		}},
+		{name: "copyFolder/copyFolderDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.CreatedBoxItem](`{"id":"67891","type":"folder","name":"Copy folder","parentId":"0"}`)
+			return err
+		}},
+		{name: "updateFile/updateFileDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"renamed.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
+			return err
+		}},
+		{name: "updateFolder/updateFolderDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Renamed","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
+			return err
+		}},
+		{name: "shareFile/shareFileDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"report.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
+			return err
+		}},
+		{name: "shareFolder/shareFolderDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Reports","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
+			return err
+		}},
+		{name: "createFile/createFileDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.CreatedBoxFile](`{"fileId":"12345","name":"report.txt","sha1":"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0","parentId":"0"}`)
+			return err
+		}},
 		{name: "downloadFile/downloadedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[box.DownloadedFile](`{"fileId":"12345","contentBase64":"SGVsbG8=","contentBytes":5}`)
 			return err
@@ -24,6 +56,28 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[box.UploadedFile](`{"fileId":"12345","name":"example.txt","sha1":"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0"}`)
 			return err
 		}},
+		{name: "getFile/getFileDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.BoxFile](`{"id":"12345","type":"file","name":"example.txt"}`)
+			return err
+		}},
+		{name: "getFolder/getFolderDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.BoxFolder](`{"id":"54321","type":"folder","name":"Documents"}`)
+			return err
+		}},
+		{name: "listFolderItems/listFolderItemsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.BoxItemPage](`{"entries":[{"id":"12345","type":"file","name":"example.txt"}],"limit":100,"offset":0,"total_count":1}`)
+			return err
+		}},
+		{name: "searchFiles/searchFilesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.BoxItemPage](`{"entries":[{"id":"12345","type":"file","name":"example.txt"}],"limit":30,"offset":0,"total_count":1}`)
+			return err
+		}},
+		{name: "searchFolders/searchFoldersDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.BoxItemPage](`{"entries":[{"id":"54321","type":"folder","name":"Documents"}],"limit":30,"offset":0,"total_count":1}`)
+			return err
+		}},
+		{name: "deleteFile/deleteFileDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[box.DeletedBoxItem](`{"id":"12345"}`); return err }},
+		{name: "deleteFolder/deleteFolderDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[box.DeletedBoxItem](`{"id":"54321"}`); return err }},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -34,10 +88,55 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateFolder().Definition().Operation.OperationID != "createFolder" {
+		t.Errorf("createFolder mock has another definition")
+	}
+	if mock.CopyFile().Definition().Operation.OperationID != "copyFile" {
+		t.Errorf("copyFile mock has another definition")
+	}
+	if mock.CopyFolder().Definition().Operation.OperationID != "copyFolder" {
+		t.Errorf("copyFolder mock has another definition")
+	}
+	if mock.UpdateFile().Definition().Operation.OperationID != "updateFile" {
+		t.Errorf("updateFile mock has another definition")
+	}
+	if mock.UpdateFolder().Definition().Operation.OperationID != "updateFolder" {
+		t.Errorf("updateFolder mock has another definition")
+	}
+	if mock.ShareFile().Definition().Operation.OperationID != "shareFile" {
+		t.Errorf("shareFile mock has another definition")
+	}
+	if mock.ShareFolder().Definition().Operation.OperationID != "shareFolder" {
+		t.Errorf("shareFolder mock has another definition")
+	}
+	if mock.CreateFile().Definition().Operation.OperationID != "createFile" {
+		t.Errorf("createFile mock has another definition")
+	}
 	if mock.DownloadFile().Definition().Operation.OperationID != "downloadFile" {
 		t.Errorf("downloadFile mock has another definition")
 	}
 	if mock.UploadFile().Definition().Operation.OperationID != "uploadFile" {
 		t.Errorf("uploadFile mock has another definition")
+	}
+	if mock.GetFile().Definition().Operation.OperationID != "getFile" {
+		t.Errorf("getFile mock has another definition")
+	}
+	if mock.GetFolder().Definition().Operation.OperationID != "getFolder" {
+		t.Errorf("getFolder mock has another definition")
+	}
+	if mock.ListFolderItems().Definition().Operation.OperationID != "listFolderItems" {
+		t.Errorf("listFolderItems mock has another definition")
+	}
+	if mock.SearchFiles().Definition().Operation.OperationID != "searchFiles" {
+		t.Errorf("searchFiles mock has another definition")
+	}
+	if mock.SearchFolders().Definition().Operation.OperationID != "searchFolders" {
+		t.Errorf("searchFolders mock has another definition")
+	}
+	if mock.DeleteFile().Definition().Operation.OperationID != "deleteFile" {
+		t.Errorf("deleteFile mock has another definition")
+	}
+	if mock.DeleteFolder().Definition().Operation.OperationID != "deleteFolder" {
+		t.Errorf("deleteFolder mock has another definition")
 	}
 }

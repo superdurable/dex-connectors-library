@@ -1,7 +1,8 @@
 # Sentry issue-review example
 
 This runnable Worker starts `SentryIssueReview` with typed `issuereview.Request`, calls
-`sentry.NewListIssuesStep`, and completes with `sentry.IssuePage`. The
+`sentry.NewListIssuesStep`, then `sentry.NewListOrganizationsStep`, and completes
+with `sentry.IssuePage`. The
 static Dex Web connection name is `sentry`. Optional failure branches are
 unwired and fail the Flow when selected.
 
@@ -9,7 +10,7 @@ The completed provider result is available in the Dex Web summary and display vi
 
 ## Generate the strict FDG 2.0 definition
 
-From `connectors/sentry` with a current Dex CLI:
+From `connectors/sentry/go` with a current Dex CLI:
 
 ```bash
 mkdir -p build
@@ -29,11 +30,11 @@ mkdir -p /tmp/sentry-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/sentry/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/sentry/go \
-  --version v0.2.0 --tag connectors/sentry/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/sentry/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/sentry-release/connector-release.json \
   --digest-output /tmp/sentry-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/sentry/go/build" \
+dexcli dev -open=false --flow-rendering-dir "$PWD/connectors/sentry/go/build" \
   --connector-release-override sentry=/tmp/sentry-release
 ```
 

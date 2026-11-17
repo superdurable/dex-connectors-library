@@ -15,8 +15,9 @@ const (
 	// FlowType is the stable Dex Flow identity.
 	FlowType = "ResendWelcomeEmail"
 	// ConnectionName is the static Dex Web connection for this example.
-	ConnectionName    = "resend"
-	operationStepType = "SendEmail"
+	ConnectionName      = "resend"
+	operationStepType   = "SendEmail"
+	listDomainsStepType = "ListDomains"
 )
 
 var outcomeAttribute = dex.DefineAttribute[resend.SentEmail]("resend-welcome-email-outcome")
@@ -40,7 +41,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: operationStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "resend", GroupLabel: "Resend", Explanation: "Call the Resend SendEmail endpoint."},
 			MapToOperationInput: func(request Request) resend.SendEmailInput { return resend.SendEmailInput(request) },
-			Sent:                sdkgo.GoTo(completeRequest{}),
+			Sent:                sdkgo.GoTo(recordSentEmail{}),
+		})),
+		dex.DefineStep(recordSentEmail{}),
+		dex.DefineStep(resend.NewListDomainsStep(resend.ListDomainsStepConfig[dex.None]{
+			StepType: listDomainsStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "resend", GroupLabel: "Resend", Explanation: "List configured sending domains after queuing the email."},
+			MapToOperationInput: func(dex.None) resend.ListDomainsInput { return resend.ListDomainsInput{} },
+			Listed:              sdkgo.GoTo(completeRequest{}),
 		})),
 		dex.DefineStep(completeRequest{}),
 	}
@@ -99,18 +107,33 @@ func (prepareRequest) Execute(_ dex.Context, request Request) (*dex.StepDecision
 	return dex.GoTo(sdkgo.StepRef[Request](operationStepType), request), nil
 }
 
-// dex:group group-id:resend-complete group-label:"Complete request"
-// dex:explanation text:"Complete the Flow with the provider result."
-type completeRequest struct {
+// dex:group group-id:resend-record group-label:"Record sent email"
+// dex:explanation text:"Persist the queued email identifier before reading domains."
+type recordSentEmail struct {
 	dex.StepDefaultsNoWaitFor[resend.SendEmailResult]
 }
 
-func (completeRequest) GetStepType() string { return "CompleteRequest" }
-func (completeRequest) Execute(ctx dex.Context, result resend.SendEmailResult) (*dex.StepDecision, error) {
+func (recordSentEmail) GetStepType() string { return "RecordSentEmail" }
+func (recordSentEmail) Execute(ctx dex.Context, result resend.SendEmailResult) (*dex.StepDecision, error) {
 	if err := outcomeAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(result.Value), nil
+	return dex.GoTo(sdkgo.StepRef[dex.None](listDomainsStepType), dex.None(nil)), nil
+}
+
+// dex:group group-id:resend-complete group-label:"Complete request"
+// dex:explanation text:"Complete after listing the account's sending domains."
+type completeRequest struct {
+	dex.StepDefaultsNoWaitFor[resend.ListDomainsResult]
+}
+
+func (completeRequest) GetStepType() string { return "CompleteRequest" }
+func (completeRequest) Execute(ctx dex.Context, _ resend.ListDomainsResult) (*dex.StepDecision, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

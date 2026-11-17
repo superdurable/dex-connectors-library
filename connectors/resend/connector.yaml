@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: resend
   displayName: Resend
-  description: Read and act through the Resend public API.
+  description: Send and manage email, audiences, domains, webhooks, automations, and inboxes through the Resend API.
   company: Resend
   categories: [communication, developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: resend
   languages:
@@ -51,19 +51,168 @@ spec:
       type: secretString
       required: true
       description: Secret Resend token. Start at https://resend.com/api-keys, follow
-        API Keys > Create API Key. Create an API key with sending permission, then
+        API Keys > Create API Key. Create a full access API key for all operations, then
         copy its secret value. It is an opaque secret string; blank prevents requests.
         It is sent only in the Authorization header.
     guide:
       startURL: https://resend.com/api-keys
       steps:
       - Open https://resend.com/api-keys and sign in or create an account.
-      - Follow API Keys > Create API Key. Create an API key with sending permission,
-        then copy its secret value. It is an opaque secret string; blank prevents
-        requests.
+      - Follow API Keys > Create API Key. Create a full access API key for the declared operations; a sending-only key supports sending but cannot manage account resources. Copy the secret value.
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+  - name: createContact
+    goName: CreateContact
+    inputType: CreateContactInput
+    outputType: ContactReference
+    kind: mutation
+    description: Create one global contact by email address.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created or confirmed the contact.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected creation., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createContactDefault, branch: created, default: true, description: One contact was created., output: {id: contact-1}}
+  - name: createDomain
+    goName: CreateDomain
+    inputType: CreateDomainInput
+    outputType: DomainReference
+    kind: mutation
+    description: Create one sending domain by DNS name.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created or confirmed the domain.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected creation., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createDomainDefault, branch: created, default: true, description: One domain was created., output: {id: domain-1}}
+  - name: updateContact
+    goName: UpdateContact
+    inputType: UpdateContactInput
+    outputType: ContactReference
+    kind: mutation
+    description: Replace a global contact's name and subscription state.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the contact.}
+    - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateContactDefault, branch: updated, default: true, description: One contact was updated., output: {id: contact-1}}
+  - name: deleteContact
+    goName: DeleteContact
+    inputType: DeleteContactInput
+    outputType: DeletedContact
+    kind: mutation
+    description: Delete a global contact by ID or email address.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the contact.}
+    - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the deletion., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteContactDefault, branch: deleted, default: true, description: One contact was deleted., output: {contact: contact-1, deleted: true}}
+  - name: deleteDomain
+    goName: DeleteDomain
+    inputType: DeleteDomainInput
+    outputType: DeletedDomain
+    kind: mutation
+    description: Delete a sending domain by ID.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the domain.}
+    - {id: notFound, goName: NotFound, description: The domain does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the deletion., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteDomainDefault, branch: deleted, default: true, description: One domain was deleted., output: {id: domain-1, deleted: true}}
+  - name: updateDomain
+    goName: UpdateDomain
+    inputType: UpdateDomainInput
+    outputType: DomainReference
+    kind: mutation
+    description: Set absolute tracking, TLS, or capability settings on a domain.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the domain.}
+    - {id: notFound, goName: NotFound, description: The domain does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateDomainDefault, branch: updated, default: true, description: One domain was updated., output: {id: domain-1}}
+  - name: verifyDomain
+    goName: VerifyDomain
+    inputType: VerifyDomainInput
+    outputType: DomainReference
+    kind: mutation
+    description: Start or restart Resend's asynchronous DNS verification cycle.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: verificationStarted, goName: VerificationStarted, description: Resend started or confirmed verification.}
+    - {id: notFound, goName: NotFound, description: The domain does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected verification., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: verifyDomainDefault, branch: verificationStarted, default: true, description: Verification was started., output: {id: domain-1}}
+  - name: updateScheduledEmail
+    goName: UpdateScheduledEmail
+    inputType: UpdateScheduledEmailInput
+    outputType: EmailReference
+    kind: mutation
+    description: Replace the delivery time of a scheduled email.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the scheduled email.}
+    - {id: notFound, goName: NotFound, description: The email does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateScheduledEmailDefault, branch: updated, default: true, description: One schedule was updated., output: {id: email-1}}
+  - name: cancelScheduledEmail
+    goName: CancelScheduledEmail
+    inputType: CancelScheduledEmailInput
+    outputType: EmailReference
+    kind: mutation
+    description: Cancel a scheduled email before delivery.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: cancelled, goName: Cancelled, description: Resend cancelled the scheduled email.}
+    - {id: notFound, goName: NotFound, description: The email does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected cancellation., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: cancelScheduledEmailDefault, branch: cancelled, default: true, description: One schedule was cancelled., output: {id: email-1}}
   - name: sendEmail
     goName: SendEmail
     inputType: SendEmailInput
@@ -98,6 +247,22 @@ spec:
       default: true
       output:
         id: 5f9f777d-04e0-482a-bb65-088bb5bd44a4
+  - name: sendBatchEmails
+    goName: SendBatchEmails
+    inputType: SendBatchEmailsInput
+    outputType: SentEmailPage
+    kind: mutation
+    description: Send up to 100 emails with one provider idempotency key.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend accepted the batch.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the batch., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: sendBatchEmailsDefault, branch: sent, default: true, description: Two emails were queued., output: {data: [{id: email-1}, {id: email-2}]}}
   - name: getEmail
     goName: GetEmail
     inputType: GetEmailInput
@@ -141,3 +306,1961 @@ spec:
         - reader@example.test
         subject: Welcome
         created_at: '2026-10-26T12:00:00Z'
+  - name: listEmails
+    goName: ListEmails
+    inputType: ListEmailsInput
+    outputType: EmailPage
+    kind: query
+    description: List sent emails with bounded cursor pagination.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned sent email references.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: listEmailsDefault
+      branch: listed
+      default: true
+      description: One sent email appears on the page.
+      output: {data: [{id: 5f9f777d-04e0-482a-bb65-088bb5bd44a4, from: 'Acme <hello@example.test>', to: [reader@example.test], subject: Welcome, created_at: '2026-10-26T12:00:00Z'}], has_more: false}
+  - name: createTopic
+    goName: CreateTopic
+    inputType: CreateTopicInput
+    outputType: TopicReference
+    kind: mutation
+    description: Create a subscription topic with its immutable default subscription.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the topic.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createTopicDefault, branch: created, default: true, description: Resend created the topic., output: {"id":"topic-1"}}
+  - name: getTopic
+    goName: GetTopic
+    inputType: GetTopicInput
+    outputType: Topic
+    kind: query
+    description: Retrieve one subscription topic by ID.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the topic.}
+    - {id: notFound, goName: NotFound, description: The topic does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getTopicDefault, branch: found, default: true, description: Resend found the topic., output: {"id":"topic-1","name":"News","default_subscription":"opt_in","visibility":"public"}}
+  - name: listTopics
+    goName: ListTopics
+    inputType: ListTopicsInput
+    outputType: TopicPage
+    kind: query
+    description: List subscription topics with cursor pagination.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the topic.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listTopicsDefault, branch: listed, default: true, description: Resend listed the topic., output: {"data":[{"id":"topic-1","name":"News","default_subscription":"opt_in","visibility":"public"}],"has_more":false}}
+  - name: updateTopic
+    goName: UpdateTopic
+    inputType: UpdateTopicInput
+    outputType: TopicReference
+    kind: mutation
+    description: Set selected absolute name, description, and visibility fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the topic.}
+    - {id: notFound, goName: NotFound, description: The topic does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateTopicDefault, branch: updated, default: true, description: Resend updated the topic., output: {"id":"topic-1"}}
+  - name: deleteTopic
+    goName: DeleteTopic
+    inputType: DeleteTopicInput
+    outputType: DeletedTopic
+    kind: mutation
+    description: Delete one subscription topic by ID.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the topic.}
+    - {id: notFound, goName: NotFound, description: The topic does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteTopicDefault, branch: deleted, default: true, description: Resend deleted the topic., output: {"id":"topic-1","deleted":true}}
+  - name: listEmailAttachments
+    goName: ListEmailAttachments
+    inputType: ListEmailAttachmentsInput
+    outputType: EmailAttachmentPage
+    kind: query
+    description: Retrieve safe metadata for an email's attachments.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned the requested email information.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listEmailAttachmentsDefault, branch: listed, default: true, description: Resend returned email information., output: {"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}}
+  - name: getEmailAttachment
+    goName: GetEmailAttachment
+    inputType: GetEmailAttachmentInput
+    outputType: EmailAttachment
+    kind: query
+    description: Retrieve safe metadata for one email attachment.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the requested email information.}
+    - {id: notFound, goName: NotFound, description: The resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getEmailAttachmentDefault, branch: found, default: true, description: Resend returned email information., output: {"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}}
+  - name: listReceivedEmails
+    goName: ListReceivedEmails
+    inputType: ListReceivedEmailsInput
+    outputType: ReceivedEmailPage
+    kind: query
+    description: Retrieve received email summaries.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned the requested email information.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listReceivedEmailsDefault, branch: listed, default: true, description: Resend returned email information., output: {"data":[{"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}],"has_more":false}}
+  - name: getReceivedEmail
+    goName: GetReceivedEmail
+    inputType: GetReceivedEmailInput
+    outputType: ReceivedEmail
+    kind: query
+    description: Retrieve one received email.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the requested email information.}
+    - {id: notFound, goName: NotFound, description: The resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getReceivedEmailDefault, branch: found, default: true, description: Resend returned email information., output: {"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}}
+  - name: listReceivedEmailAttachments
+    goName: ListReceivedEmailAttachments
+    inputType: ListReceivedEmailAttachmentsInput
+    outputType: EmailAttachmentPage
+    kind: query
+    description: Retrieve safe metadata for an email's attachments.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned the requested email information.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listReceivedEmailAttachmentsDefault, branch: listed, default: true, description: Resend returned email information., output: {"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}}
+  - name: getReceivedEmailAttachment
+    goName: GetReceivedEmailAttachment
+    inputType: GetReceivedEmailAttachmentInput
+    outputType: EmailAttachment
+    kind: query
+    description: Retrieve safe metadata for one email attachment.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the requested email information.}
+    - {id: notFound, goName: NotFound, description: The resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getReceivedEmailAttachmentDefault, branch: found, default: true, description: Resend returned email information., output: {"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}}
+  - name: getEmailMetrics
+    goName: GetEmailMetrics
+    inputType: GetEmailMetricsInput
+    outputType: EmailMetrics
+    kind: query
+    description: Retrieve aggregate email delivery and engagement metrics.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the requested email information.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getEmailMetricsDefault, branch: found, default: true, description: Resend returned email information., output: {"start_date":"2026-11-01T00:00:00Z","end_date":"2026-11-02T00:00:00Z","metrics":["sent"],"dimensions":[],"granularity":"daily","totals":{"sent":1}}}
+  - name: createSegment
+    goName: CreateSegment
+    inputType: CreateSegmentInput
+    outputType: SegmentReference
+    kind: mutation
+    description: Create Segment through the Resend Segments API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the requested resource.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createSegmentDefault, branch: created, default: true, description: Resend created the requested resource., output: {"id":"segment-1"}}
+  - name: getSegment
+    goName: GetSegment
+    inputType: GetSegmentInput
+    outputType: Segment
+    kind: query
+    description: Get Segment through the Resend Segments API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the requested resource.}
+    - {id: notFound, goName: NotFound, description: The segment does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getSegmentDefault, branch: found, default: true, description: Resend found the requested resource., output: {"id":"segment-1","name":"Active Users"}}
+  - name: listSegments
+    goName: ListSegments
+    inputType: ListSegmentsInput
+    outputType: SegmentPage
+    kind: query
+    description: List Segments through the Resend Segments API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the requested resource.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listSegmentsDefault, branch: listed, default: true, description: Resend listed the requested resource., output: {"data":[{"id":"segment-1","name":"Active Users"}],"has_more":false}}
+  - name: updateSegment
+    goName: UpdateSegment
+    inputType: UpdateSegmentInput
+    outputType: SegmentReference
+    kind: mutation
+    description: Update Segment through the Resend Segments API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the requested resource.}
+    - {id: notFound, goName: NotFound, description: The segment does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateSegmentDefault, branch: updated, default: true, description: Resend updated the requested resource., output: {"id":"segment-1"}}
+  - name: deleteSegment
+    goName: DeleteSegment
+    inputType: DeleteSegmentInput
+    outputType: DeletedSegment
+    kind: mutation
+    description: Delete Segment through the Resend Segments API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the requested resource.}
+    - {id: notFound, goName: NotFound, description: The segment does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteSegmentDefault, branch: deleted, default: true, description: Resend deleted the requested resource., output: {"id":"segment-1","deleted":true}}
+  - name: listSegmentContacts
+    goName: ListSegmentContacts
+    inputType: ListSegmentContactsInput
+    outputType: ContactPage
+    kind: query
+    description: List global contacts belonging to a segment.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the requested resource.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listSegmentContactsDefault, branch: listed, default: true, description: Resend listed the requested resource., output: {"data":[{"id":"contact-1","email":"reader@example.test"}],"has_more":false}}
+  - name: addContactToSegment
+    goName: AddContactToSegment
+    inputType: ContactSegmentInput
+    outputType: ContactSegmentReference
+    kind: mutation
+    description: Add Contact To Segment through the Resend Contacts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: added, goName: Added, description: Resend added the contact relation.}
+    - {id: notFound, goName: NotFound, description: The contact relation does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: addContactToSegmentDefault, branch: added, default: true, description: Resend added the contact relation., output: {"contact_id":"contact-1","segment_id":"segment-1"}}
+  - name: removeContactFromSegment
+    goName: RemoveContactFromSegment
+    inputType: ContactSegmentInput
+    outputType: RemovedContactSegment
+    kind: mutation
+    description: Remove Contact From Segment through the Resend Contacts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: removed, goName: Removed, description: Resend removed the contact relation.}
+    - {id: notFound, goName: NotFound, description: The contact relation does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: removeContactFromSegmentDefault, branch: removed, default: true, description: Resend removed the contact relation., output: {"contact_id":"contact-1","segment_id":"segment-1","deleted":true}}
+  - name: listContactSegments
+    goName: ListContactSegments
+    inputType: ListContactSegmentsInput
+    outputType: SegmentPage
+    kind: query
+    description: List Contact Segments through the Resend Contacts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the contact relation.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listContactSegmentsDefault, branch: listed, default: true, description: Resend listed the contact relation., output: {"data":[{"id":"segment-1","name":"Active Users"}],"has_more":false}}
+  - name: getContactTopics
+    goName: GetContactTopics
+    inputType: GetContactTopicsInput
+    outputType: ContactTopicPage
+    kind: query
+    description: Get Contact Topics through the Resend Contacts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the contact relation.}
+    - {id: notFound, goName: NotFound, description: The contact relation does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getContactTopicsDefault, branch: found, default: true, description: Resend found the contact relation., output: {"data":[{"id":"topic-1","name":"News","subscription":"opt_in"}],"has_more":false}}
+  - name: updateContactTopics
+    goName: UpdateContactTopics
+    inputType: UpdateContactTopicsInput
+    outputType: UpdatedContactTopics
+    kind: mutation
+    description: Update Contact Topics through the Resend Contacts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the contact relation.}
+    - {id: notFound, goName: NotFound, description: The contact relation does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateContactTopicsDefault, branch: updated, default: true, description: Resend updated the contact relation., output: {"contact_id":"contact-1","topics":[{"id":"topic-1","subscription":"opt_in"}]}}
+  - name: listContactImports
+    goName: ListContactImports
+    inputType: ListContactImportsInput
+    outputType: ContactImportPage
+    kind: query
+    description: Retrieve Resend contact import status and counts.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned contact import status.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listContactImportsDefault, branch: listed, default: true, description: Resend returned contact import status., output: {"data":[{"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}],"has_more":false}}
+  - name: getContactImport
+    goName: GetContactImport
+    inputType: GetContactImportInput
+    outputType: ContactImport
+    kind: query
+    description: Retrieve Resend contact import status and counts.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned contact import status.}
+    - {id: notFound, goName: NotFound, description: The import does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getContactImportDefault, branch: found, default: true, description: Resend returned contact import status., output: {"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}}
+  - name: createContactProperty
+    goName: CreateContactProperty
+    inputType: CreateContactPropertyInput
+    outputType: ContactPropertyReference
+    kind: mutation
+    description: Create Contact Property through the Resend Contact Properties API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the contact property.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createContactPropertyDefault, branch: created, default: true, description: Resend created the contact property., output: {"id":"property-1"}}
+  - name: getContactProperty
+    goName: GetContactProperty
+    inputType: GetContactPropertyInput
+    outputType: ContactProperty
+    kind: query
+    description: Get Contact Property through the Resend Contact Properties API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the contact property.}
+    - {id: notFound, goName: NotFound, description: The property does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getContactPropertyDefault, branch: found, default: true, description: Resend found the contact property., output: {"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}}
+  - name: listContactProperties
+    goName: ListContactProperties
+    inputType: ListContactPropertiesInput
+    outputType: ContactPropertyPage
+    kind: query
+    description: List Contact Properties through the Resend Contact Properties API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the contact property.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listContactPropertiesDefault, branch: listed, default: true, description: Resend listed the contact property., output: {"data":[{"id":"property-1","key":"company_name","type":"string","fallback_value":"Acme"}],"has_more":false}}
+  - name: updateContactProperty
+    goName: UpdateContactProperty
+    inputType: UpdateContactPropertyInput
+    outputType: ContactPropertyReference
+    kind: mutation
+    description: Update Contact Property through the Resend Contact Properties API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the contact property.}
+    - {id: notFound, goName: NotFound, description: The property does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateContactPropertyDefault, branch: updated, default: true, description: Resend updated the contact property., output: {"id":"property-1"}}
+  - name: deleteContactProperty
+    goName: DeleteContactProperty
+    inputType: DeleteContactPropertyInput
+    outputType: DeletedContactProperty
+    kind: mutation
+    description: Delete Contact Property through the Resend Contact Properties API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the contact property.}
+    - {id: notFound, goName: NotFound, description: The property does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteContactPropertyDefault, branch: deleted, default: true, description: Resend deleted the contact property., output: {"id":"property-1","deleted":true}}
+  - name: createBroadcast
+    goName: CreateBroadcast
+    inputType: CreateBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Create Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createBroadcastDefault, branch: created, default: true, description: Resend created the broadcast., output: {"id":"broadcast-1"}}
+  - name: getBroadcast
+    goName: GetBroadcast
+    inputType: GetBroadcastInput
+    outputType: Broadcast
+    kind: query
+    description: Get Broadcast through the Resend Broadcasts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getBroadcastDefault, branch: found, default: true, description: Resend found the broadcast., output: {"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","from":"news@example.test","subject":"Hello","status":"draft"}}
+  - name: listBroadcasts
+    goName: ListBroadcasts
+    inputType: ListBroadcastsInput
+    outputType: BroadcastPage
+    kind: query
+    description: List Broadcasts through the Resend Broadcasts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listBroadcastsDefault, branch: listed, default: true, description: Resend listed the broadcast., output: {"data":[{"id":"broadcast-1","name":"Newsletter","segment_id":"segment-1","status":"draft"}],"has_more":false}}
+  - name: updateBroadcast
+    goName: UpdateBroadcast
+    inputType: UpdateBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Update Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateBroadcastDefault, branch: updated, default: true, description: Resend updated the broadcast., output: {"id":"broadcast-1"}}
+  - name: deleteBroadcast
+    goName: DeleteBroadcast
+    inputType: DeleteBroadcastInput
+    outputType: DeletedBroadcast
+    kind: mutation
+    description: Delete Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteBroadcastDefault, branch: deleted, default: true, description: Resend deleted the broadcast., output: {"id":"broadcast-1","deleted":true}}
+  - name: sendBroadcast
+    goName: SendBroadcast
+    inputType: SendBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Send Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend sent the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: sendBroadcastDefault, branch: sent, default: true, description: Resend sent the broadcast., output: {"id":"broadcast-1"}}
+  - name: cancelBroadcast
+    goName: CancelBroadcast
+    inputType: CancelBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Cancel Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: cancelled, goName: Cancelled, description: Resend cancelled the broadcast.}
+    - {id: notFound, goName: NotFound, description: The broadcast does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: cancelBroadcastDefault, branch: cancelled, default: true, description: Resend cancelled the broadcast., output: {"id":"broadcast-1"}}
+  - name: duplicateBroadcast
+    goName: DuplicateBroadcast
+    inputType: DuplicateBroadcastInput
+    outputType: BroadcastReference
+    kind: mutation
+    description: Duplicate Broadcast through the Resend Broadcasts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: duplicated, goName: Duplicated, description: Resend duplicated the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: duplicateBroadcastDefault, branch: duplicated, default: true, description: Resend duplicated the broadcast., output: {"id":"broadcast-2"}}
+  - name: listBroadcastRecipients
+    goName: ListBroadcastRecipients
+    inputType: ListBroadcastRecipientsInput
+    outputType: BroadcastRecipientPage
+    kind: query
+    description: List Broadcast Recipients through the Resend Broadcasts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listBroadcastRecipientsDefault, branch: listed, default: true, description: Resend listed the broadcast., output: {"data":[{"id":"recipient-1","email":"reader@example.test"}],"has_more":false}}
+  - name: listBroadcastClickedLinks
+    goName: ListBroadcastClickedLinks
+    inputType: ListBroadcastClickedLinksInput
+    outputType: BroadcastClickedLinkPage
+    kind: query
+    description: List Broadcast Clicked Links through the Resend Broadcasts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the broadcast.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listBroadcastClickedLinksDefault, branch: listed, default: true, description: Resend listed the broadcast., output: {"data":[{"id":"link-1","url":"https://example.test","clicks":2,"unique_clicks":1}],"has_more":false}}
+  - name: getContact
+    goName: GetContact
+    inputType: GetContactInput
+    outputType: Contact
+    kind: query
+    description: Retrieve a global contact by ID or email address.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the contact.}
+    - {id: notFound, goName: NotFound, description: No contact has this ID or email., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: getContactDefault
+      branch: found
+      default: true
+      description: One contact is found.
+      output: {id: contact-1, email: reader@example.test, unsubscribed: false}
+  - name: listContacts
+    goName: ListContacts
+    inputType: ListContactsInput
+    outputType: ContactPage
+    kind: query
+    description: List global contacts with bounded cursor pagination.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned a contact page.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: listContactsDefault
+      branch: listed
+      default: true
+      description: One contact appears on the page.
+      output: {data: [{id: contact-1, email: reader@example.test, unsubscribed: false}], has_more: false}
+  - name: getDomain
+    goName: GetDomain
+    inputType: GetDomainInput
+    outputType: Domain
+    kind: query
+    description: Retrieve a sending domain and its verification status.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the domain.}
+    - {id: notFound, goName: NotFound, description: No domain has this ID., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: getDomainDefault
+      branch: found
+      default: true
+      description: One domain is found.
+      output: {id: domain-1, name: example.test, status: verified}
+  - name: listDomains
+    goName: ListDomains
+    inputType: ListDomainsInput
+    outputType: DomainPage
+    kind: query
+    description: List sending domains with bounded cursor pagination.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned a domain page.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: listDomainsDefault
+      branch: listed
+      default: true
+      description: One domain appears on the page.
+      output: {data: [{id: domain-1, name: example.test, status: verified}], has_more: false}
+  - name: getUsage
+    goName: GetUsage
+    inputType: GetUsageInput
+    outputType: AccountUsage
+    kind: query
+    description: Get current daily and monthly email usage counters.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned current usage.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getUsageDefault, branch: found, default: true, description: Current account counters., output: {emails: {daily: {used: 2, limit: 100, sent: 2, received: 0}, monthly: {used: 20, limit: 3000, sent: 18, received: 2}}}}
+  - name: listLogs
+    goName: ListLogs
+    inputType: ListLogsInput
+    outputType: RequestLogPage
+    kind: query
+    description: List safe API request log metadata without request or response bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned a log page.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listLogsDefault, branch: listed, default: true, description: One request log., output: {data: [{id: 00000000-0000-0000-0000-000000000001, endpoint: /emails, method: POST, response_status: 200}], has_more: false}}
+  - name: getLog
+    goName: GetLog
+    inputType: GetLogInput
+    outputType: RequestLog
+    kind: query
+    description: Get safe API request log metadata without request or response bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the log.}
+    - {id: notFound, goName: NotFound, description: The log does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned invalid JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getLogDefault, branch: found, default: true, description: One request log., output: {id: 00000000-0000-0000-0000-000000000001, endpoint: /emails, method: POST, response_status: 200}}
+  - name: createTemplate
+    goName: CreateTemplate
+    inputType: CreateTemplateInput
+    outputType: TemplateReference
+    kind: mutation
+    description: Create an unpublished reusable email template.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the template request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the new draft., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createTemplateDefault, branch: created, default: true, description: Resend completed the template request., output: {id: template-1}}
+  - name: getTemplate
+    goName: GetTemplate
+    inputType: GetTemplateInput
+    outputType: Template
+    kind: query
+    description: Retrieve safe metadata for one email template.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the template request.}
+    - {id: notFound, goName: NotFound, description: The template does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getTemplateDefault, branch: found, default: true, description: Resend completed the template request., output: {id: template-1, name: Welcome, status: draft}}
+  - name: listTemplates
+    goName: ListTemplates
+    inputType: ListTemplatesInput
+    outputType: TemplatePage
+    kind: query
+    description: List safe metadata for reusable email templates.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the template request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listTemplatesDefault, branch: listed, default: true, description: Resend completed the template request., output: {data: [{id: template-1, name: Welcome, status: draft}], has_more: false}}
+  - name: updateTemplate
+    goName: UpdateTemplate
+    inputType: UpdateTemplateInput
+    outputType: TemplateReference
+    kind: mutation
+    description: Replace selected absolute fields of an email template.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the template request.}
+    - {id: notFound, goName: NotFound, description: The template does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateTemplateDefault, branch: updated, default: true, description: Resend completed the template request., output: {id: template-1}}
+  - name: deleteTemplate
+    goName: DeleteTemplate
+    inputType: DeleteTemplateInput
+    outputType: DeletedTemplate
+    kind: mutation
+    description: Delete one reusable email template.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the template request.}
+    - {id: notFound, goName: NotFound, description: The template does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteTemplateDefault, branch: deleted, default: true, description: Resend completed the template request., output: {id: template-1, deleted: true}}
+  - name: publishTemplate
+    goName: PublishTemplate
+    inputType: PublishTemplateInput
+    outputType: TemplateReference
+    kind: mutation
+    description: Publish the current draft version of an email template.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: published, goName: Published, description: Resend completed the template request.}
+    - {id: notFound, goName: NotFound, description: The template does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: publishTemplateDefault, branch: published, default: true, description: Resend completed the template request., output: {id: template-1}}
+  - name: duplicateTemplate
+    goName: DuplicateTemplate
+    inputType: DuplicateTemplateInput
+    outputType: TemplateReference
+    kind: mutation
+    description: Copy an email template into a new draft.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: duplicated, goName: Duplicated, description: Resend completed the template request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the new draft., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: duplicateTemplateDefault, branch: duplicated, default: true, description: Resend completed the template request., output: {id: template-2}}
+  - name: createSuppression
+    goName: CreateSuppression
+    inputType: CreateSuppressionInput
+    outputType: SuppressionReference
+    kind: mutation
+    description: Suppress one email address.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the suppression request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming suppression., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createSuppressionDefault, branch: created, default: true, description: Resend completed the suppression request., output: {id: suppression-1}}
+  - name: listSuppressions
+    goName: ListSuppressions
+    inputType: ListSuppressionsInput
+    outputType: SuppressionPage
+    kind: query
+    description: List suppressed addresses by origin and page.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the suppression request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listSuppressionsDefault, branch: listed, default: true, description: Resend completed the suppression request., output: {data: [{id: suppression-1, email: blocked@example.test, origin: manual}], has_more: false}}
+  - name: getSuppression
+    goName: GetSuppression
+    inputType: GetSuppressionInput
+    outputType: Suppression
+    kind: query
+    description: Retrieve one suppressed address by ID or email.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the suppression request.}
+    - {id: notFound, goName: NotFound, description: The suppression does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getSuppressionDefault, branch: found, default: true, description: Resend completed the suppression request., output: {id: suppression-1, email: blocked@example.test, origin: manual}}
+  - name: deleteSuppression
+    goName: DeleteSuppression
+    inputType: DeleteSuppressionInput
+    outputType: DeletedSuppression
+    kind: mutation
+    description: Remove one suppressed address.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the suppression request.}
+    - {id: notFound, goName: NotFound, description: The suppression does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteSuppressionDefault, branch: deleted, default: true, description: Resend completed the suppression request., output: {id: suppression-1, deleted: true}}
+  - name: batchAddSuppressions
+    goName: BatchAddSuppressions
+    inputType: BatchAddSuppressionsInput
+    outputType: SuppressionBatch
+    kind: mutation
+    description: Suppress 1 through 100 email addresses in one request.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: added, goName: Added, description: Resend completed the suppression request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming suppression., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: batchAddSuppressionsDefault, branch: added, default: true, description: Resend completed the suppression request., output: {data: [{id: suppression-1}]}}
+  - name: batchRemoveSuppressions
+    goName: BatchRemoveSuppressions
+    inputType: BatchRemoveSuppressionsInput
+    outputType: RemovedSuppressionBatch
+    kind: mutation
+    description: Remove 1 through 100 suppressions by email or ID.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: removed, goName: Removed, description: Resend completed the suppression request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: batchRemoveSuppressionsDefault, branch: removed, default: true, description: Resend completed the suppression request., output: {data: [{id: suppression-1, deleted: true}]}}
+  - name: createWebhook
+    goName: CreateWebhook
+    inputType: CreateWebhookInput
+    outputType: WebhookReference
+    kind: mutation
+    description: Create an HTTPS webhook subscription; discard its signing secret.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createWebhookDefault, branch: created, default: true, description: Resend completed the webhook request., output: {id: webhook-1}}
+  - name: getWebhook
+    goName: GetWebhook
+    inputType: GetWebhookInput
+    outputType: Webhook
+    kind: query
+    description: Retrieve webhook metadata without the signing secret.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the webhook request.}
+    - {id: notFound, goName: NotFound, description: The webhook resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getWebhookDefault, branch: found, default: true, description: Resend completed the webhook request., output: {id: webhook-1, endpoint: 'https://hooks.example.test/resend', events: [email.sent], status: enabled}}
+  - name: listWebhooks
+    goName: ListWebhooks
+    inputType: ListWebhooksInput
+    outputType: WebhookPage
+    kind: query
+    description: List webhook metadata without signing secrets.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listWebhooksDefault, branch: listed, default: true, description: Resend completed the webhook request., output: {data: [{id: webhook-1, endpoint: 'https://hooks.example.test/resend', events: [email.sent], status: enabled}], has_more: false}}
+  - name: updateWebhook
+    goName: UpdateWebhook
+    inputType: UpdateWebhookInput
+    outputType: WebhookReference
+    kind: mutation
+    description: Replace selected absolute webhook subscription fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the webhook request.}
+    - {id: notFound, goName: NotFound, description: The webhook resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateWebhookDefault, branch: updated, default: true, description: Resend completed the webhook request., output: {id: webhook-1}}
+  - name: deleteWebhook
+    goName: DeleteWebhook
+    inputType: DeleteWebhookInput
+    outputType: DeletedWebhook
+    kind: mutation
+    description: Delete a webhook subscription.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the webhook request.}
+    - {id: notFound, goName: NotFound, description: The webhook resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteWebhookDefault, branch: deleted, default: true, description: Resend completed the webhook request., output: {id: webhook-1, deleted: true}}
+  - name: listWebhookEvents
+    goName: ListWebhookEvents
+    inputType: ListWebhookEventsInput
+    outputType: WebhookEventPage
+    kind: query
+    description: List webhook delivery events without payloads.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listWebhookEventsDefault, branch: listed, default: true, description: Resend completed the webhook request., output: {data: [{id: event-1, type: email.sent, status: success}], has_more: false}}
+  - name: getWebhookEvent
+    goName: GetWebhookEvent
+    inputType: GetWebhookEventInput
+    outputType: WebhookEvent
+    kind: query
+    description: Get one webhook delivery event without its payload.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the webhook request.}
+    - {id: notFound, goName: NotFound, description: The webhook resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getWebhookEventDefault, branch: found, default: true, description: Resend completed the webhook request., output: {id: event-1, type: email.sent, status: success}}
+  - name: listWebhookEventAttempts
+    goName: ListWebhookEventAttempts
+    inputType: ListWebhookEventAttemptsInput
+    outputType: WebhookEventAttemptPage
+    kind: query
+    description: List webhook delivery attempt metadata without response bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listWebhookEventAttemptsDefault, branch: listed, default: true, description: Resend completed the webhook request., output: {data: [{id: attempt-1, http_status_code: 200}], has_more: false}}
+  - name: replayWebhookEvent
+    goName: ReplayWebhookEvent
+    inputType: ReplayWebhookEventInput
+    outputType: WebhookEvent
+    kind: mutation
+    description: Queue another delivery of one webhook event.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: replayed, goName: Replayed, description: Resend completed the webhook request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: replayWebhookEventDefault, branch: replayed, default: true, description: Resend completed the webhook request., output: {id: event-1}}
+  - name: createEvent
+    goName: CreateEvent
+    inputType: CreateEventInput
+    outputType: EventReference
+    kind: mutation
+    description: Create a named automation event type with a flat payload schema.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the event request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createEventDefault, branch: created, default: true, description: Resend completed the event request., output: {id: event-1}}
+  - name: getEvent
+    goName: GetEvent
+    inputType: GetEventInput
+    outputType: Event
+    kind: query
+    description: Retrieve one automation event type.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the event request.}
+    - {id: notFound, goName: NotFound, description: The event does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getEventDefault, branch: found, default: true, description: Resend completed the event request., output: {id: event-1, name: order.paid, schema: {total: number}}}
+  - name: listEvents
+    goName: ListEvents
+    inputType: ListEventsInput
+    outputType: EventPage
+    kind: query
+    description: List automation event types.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the event request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listEventsDefault, branch: listed, default: true, description: Resend completed the event request., output: {data: [{id: event-1, name: order.paid, schema: {total: number}}], has_more: false}}
+  - name: updateEvent
+    goName: UpdateEvent
+    inputType: UpdateEventInput
+    outputType: EventReference
+    kind: mutation
+    description: Replace or clear an event type's flat payload schema.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the event request.}
+    - {id: notFound, goName: NotFound, description: The event does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateEventDefault, branch: updated, default: true, description: Resend completed the event request., output: {id: event-1}}
+  - name: deleteEvent
+    goName: DeleteEvent
+    inputType: DeleteEventInput
+    outputType: DeletedEvent
+    kind: mutation
+    description: Delete one automation event type.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the event request.}
+    - {id: notFound, goName: NotFound, description: The event does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteEventDefault, branch: deleted, default: true, description: Resend completed the event request., output: {id: event-1, deleted: true}}
+  - name: sendEvent
+    goName: SendEvent
+    inputType: SendEventInput
+    outputType: EventSendReference
+    kind: mutation
+    description: Send one named event for a contact.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend completed the event request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: sendEventDefault, branch: sent, default: true, description: Resend completed the event request., output: {event: order.paid}}
+  - name: createAutomation
+    goName: CreateAutomation
+    inputType: CreateAutomationInput
+    outputType: AutomationReference
+    kind: mutation
+    description: Create a named automation graph with a trigger step.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the automation request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createAutomationDefault, branch: created, default: true, description: Resend completed the automation request., output: {id: automation-1}}
+  - name: getAutomation
+    goName: GetAutomation
+    inputType: GetAutomationInput
+    outputType: Automation
+    kind: query
+    description: Retrieve automation metadata without graph configuration.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getAutomationDefault, branch: found, default: true, description: Resend completed the automation request., output: {id: automation-1, name: Welcome, status: disabled}}
+  - name: listAutomations
+    goName: ListAutomations
+    inputType: ListAutomationsInput
+    outputType: AutomationPage
+    kind: query
+    description: List automation metadata by optional status.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the automation request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listAutomationsDefault, branch: listed, default: true, description: Resend completed the automation request., output: {data: [{id: automation-1, name: Welcome, status: disabled}], has_more: false}}
+  - name: updateAutomation
+    goName: UpdateAutomation
+    inputType: UpdateAutomationInput
+    outputType: AutomationReference
+    kind: mutation
+    description: Replace selected absolute automation graph or status fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateAutomationDefault, branch: updated, default: true, description: Resend completed the automation request., output: {id: automation-1}}
+  - name: deleteAutomation
+    goName: DeleteAutomation
+    inputType: DeleteAutomationInput
+    outputType: DeletedAutomation
+    kind: mutation
+    description: Delete an automation graph.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteAutomationDefault, branch: deleted, default: true, description: Resend completed the automation request., output: {id: automation-1, deleted: true}}
+  - name: duplicateAutomation
+    goName: DuplicateAutomation
+    inputType: DuplicateAutomationInput
+    outputType: AutomationReference
+    kind: mutation
+    description: Copy an automation graph.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: duplicated, goName: Duplicated, description: Resend completed the automation request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: duplicateAutomationDefault, branch: duplicated, default: true, description: Resend completed the automation request., output: {id: automation-2}}
+  - name: stopAutomation
+    goName: StopAutomation
+    inputType: StopAutomationInput
+    outputType: AutomationStatus
+    kind: mutation
+    description: Stop and disable an automation.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: stopped, goName: Stopped, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: stopAutomationDefault, branch: stopped, default: true, description: Resend completed the automation request., output: {id: automation-1, status: disabled}}
+  - name: listAutomationRuns
+    goName: ListAutomationRuns
+    inputType: ListAutomationRunsInput
+    outputType: AutomationRunPage
+    kind: query
+    description: List automation run status without step outputs.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the automation request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listAutomationRunsDefault, branch: listed, default: true, description: Resend completed the automation request., output: {data: [{id: run-1, status: completed}], has_more: false}}
+  - name: getAutomationRun
+    goName: GetAutomationRun
+    inputType: GetAutomationRunInput
+    outputType: AutomationRun
+    kind: query
+    description: Retrieve one automation run status without step outputs.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getAutomationRunDefault, branch: found, default: true, description: Resend completed the automation request., output: {id: run-1, status: completed}}
+  - name: createInbox
+    goName: CreateInbox
+    inputType: CreateInboxInput
+    outputType: InboxReference
+    kind: mutation
+    description: Create a sending and receiving inbox on a verified domain.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the inbox request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createInboxDefault, branch: created, default: true, description: Resend completed the inbox request., output: {id: inbox-1}}
+  - name: getInbox
+    goName: GetInbox
+    inputType: GetInboxInput
+    outputType: Inbox
+    kind: query
+    description: Retrieve inbox metadata by ID or email address.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the inbox request.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxDefault, branch: found, default: true, description: Resend completed the inbox request., output: {id: inbox-1, email_address: support@example.test, name: Support}}
+  - name: listInboxes
+    goName: ListInboxes
+    inputType: ListInboxesInput
+    outputType: InboxPage
+    kind: query
+    description: List inbox metadata.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the inbox request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxesDefault, branch: listed, default: true, description: Resend completed the inbox request., output: {data: [{id: inbox-1, email_address: support@example.test, name: Support}], has_more: false}}
+  - name: updateInbox
+    goName: UpdateInbox
+    inputType: UpdateInboxInput
+    outputType: InboxReference
+    kind: mutation
+    description: Replace the internal or recipient-visible inbox name.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the inbox request.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxDefault, branch: updated, default: true, description: Resend completed the inbox request., output: {id: inbox-1}}
+  - name: deleteInbox
+    goName: DeleteInbox
+    inputType: DeleteInboxInput
+    outputType: DeletedInbox
+    kind: mutation
+    description: Delete one inbox.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the inbox request.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteInboxDefault, branch: deleted, default: true, description: Resend completed the inbox request., output: {id: inbox-1, deleted: true}}
+  - name: getInboxAgent
+    goName: GetInboxAgent
+    inputType: GetInboxAgentInput
+    outputType: InboxAgentSettings
+    kind: query
+    description: Retrieve inbox agent tone and enabled actions without instructions.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the agent settings.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxAgentDefault, branch: found, default: true, description: Resend returned agent settings., output: {tone: concise_professional, actions: [draft_reply]}}
+  - name: updateInboxAgent
+    goName: UpdateInboxAgent
+    inputType: UpdateInboxAgentInput
+    outputType: InboxAgentReference
+    kind: mutation
+    description: Replace selected inbox agent settings.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated agent settings.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxAgentDefault, branch: updated, default: true, description: Resend updated agent settings., output: {id: agent-1}}
+  - name: listInboxLabels
+    goName: ListInboxLabels
+    inputType: ListInboxLabelsInput
+    outputType: InboxLabelList
+    kind: query
+    description: List all labels on an inbox.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the inbox labels.}
+    - {id: notFound, goName: NotFound, description: The inbox does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxLabelsDefault, branch: listed, default: true, description: Resend listed inbox labels., output: {data: [{id: label-1, name: Support, color: '#D4A6FF'}]}}
+  - name: createInboxLabel
+    goName: CreateInboxLabel
+    inputType: CreateInboxLabelInput
+    outputType: InboxLabelReference
+    kind: mutation
+    description: Create a named inbox label.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the label.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createInboxLabelDefault, branch: created, default: true, description: Resend created the label., output: {id: label-1}}
+  - name: updateInboxLabel
+    goName: UpdateInboxLabel
+    inputType: UpdateInboxLabelInput
+    outputType: InboxLabelReference
+    kind: mutation
+    description: Replace selected absolute label fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the label.}
+    - {id: notFound, goName: NotFound, description: The label does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxLabelDefault, branch: updated, default: true, description: Resend updated the label., output: {id: label-1}}
+  - name: deleteInboxLabel
+    goName: DeleteInboxLabel
+    inputType: DeleteInboxLabelInput
+    outputType: DeletedInboxLabel
+    kind: mutation
+    description: Delete a label from an inbox.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the label.}
+    - {id: notFound, goName: NotFound, description: The label does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteInboxLabelDefault, branch: deleted, default: true, description: Resend deleted the label., output: {id: label-1, deleted: true}}
+  - name: listInboxThreads
+    goName: ListInboxThreads
+    inputType: ListInboxThreadsInput
+    outputType: InboxThreadPage
+    kind: query
+    description: ListInboxThreads on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxThreadsDefault, branch: listed, default: true, description: Resend completed the request., output: {"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false}],"has_more":false}}
+  - name: searchInboxThreads
+    goName: SearchInboxThreads
+    inputType: SearchInboxThreadsInput
+    outputType: InboxThreadPage
+    kind: query
+    description: SearchInboxThreads on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: searchInboxThreadsDefault, branch: listed, default: true, description: Resend completed the request., output: {"data":[{"id":"thread-1","subject":"Hello","folder":"inbox","read":false,"matched_email_id":"email-1"}],"has_more":false}}
+  - name: getInboxThread
+    goName: GetInboxThread
+    inputType: GetInboxThreadInput
+    outputType: InboxThreadReference
+    kind: query
+    description: GetInboxThread on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxThreadDefault, branch: found, default: true, description: Resend completed the request., output: {"id":"thread-1","folder":"inbox","read":false}}
+  - name: updateInboxThread
+    goName: UpdateInboxThread
+    inputType: UpdateInboxThreadInput
+    outputType: InboxThreadReference
+    kind: mutation
+    description: UpdateInboxThread on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxThreadDefault, branch: updated, default: true, description: Resend completed the request., output: {"id":"thread-1","folder":"archive","read":true}}
+  - name: deleteInboxThread
+    goName: DeleteInboxThread
+    inputType: DeleteInboxThreadInput
+    outputType: DeletedInboxThread
+    kind: mutation
+    description: DeleteInboxThread on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteInboxThreadDefault, branch: deleted, default: true, description: Resend completed the request., output: {"id":"thread-1","deleted":true}}
+  - name: addInboxThreadLabels
+    goName: AddInboxThreadLabels
+    inputType: ChangeInboxThreadLabelsInput
+    outputType: InboxThreadLabelList
+    kind: mutation
+    description: AddInboxThreadLabels on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: addInboxThreadLabelsDefault, branch: updated, default: true, description: Resend completed the request., output: {"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}}
+  - name: setInboxThreadLabels
+    goName: SetInboxThreadLabels
+    inputType: ChangeInboxThreadLabelsInput
+    outputType: InboxThreadLabelList
+    kind: mutation
+    description: SetInboxThreadLabels on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: setInboxThreadLabelsDefault, branch: updated, default: true, description: Resend completed the request., output: {"data":[{"id":"label-1","name":"Support","color":"#D4A6FF"}]}}
+  - name: removeInboxThreadLabel
+    goName: RemoveInboxThreadLabel
+    inputType: RemoveInboxThreadLabelInput
+    outputType: InboxThreadLabelList
+    kind: mutation
+    description: RemoveInboxThreadLabel on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: removeInboxThreadLabelDefault, branch: updated, default: true, description: Resend completed the request., output: {"data":[]}}
+  - name: listInboxThreadEmails
+    goName: ListInboxThreadEmails
+    inputType: ListInboxThreadEmailsInput
+    outputType: InboxThreadEmailPage
+    kind: query
+    description: ListInboxThreadEmails on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxThreadEmailsDefault, branch: listed, default: true, description: Resend completed the request., output: {"data":[{"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}],"has_more":false}}
+  - name: getInboxThreadEmail
+    goName: GetInboxThreadEmail
+    inputType: GetInboxThreadEmailInput
+    outputType: InboxThreadEmail
+    kind: query
+    description: GetInboxThreadEmail on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxThreadEmailDefault, branch: found, default: true, description: Resend completed the request., output: {"id":"email-1","direction":"inbound","from":"customer@example.test","to":["support@example.test"],"subject":"Hello"}}
+  - name: replyInboxThreadEmail
+    goName: ReplyInboxThreadEmail
+    inputType: ReplyInboxThreadEmailInput
+    outputType: SentInboxThreadEmail
+    kind: mutation
+    description: ReplyInboxThreadEmail on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: replyInboxThreadEmailDefault, branch: sent, default: true, description: Resend completed the request., output: {"id":"email-2"}}
+  - name: forwardInboxThreadEmail
+    goName: ForwardInboxThreadEmail
+    inputType: ForwardInboxThreadEmailInput
+    outputType: SentInboxThreadEmail
+    kind: mutation
+    description: ForwardInboxThreadEmail on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend completed the request.}
+    - {id: notFound, goName: NotFound, description: The inbox resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: forwardInboxThreadEmailDefault, branch: sent, default: true, description: Resend completed the request., output: {"id":"email-3"}}
+  - name: listInboxDrafts
+    goName: ListInboxDrafts
+    inputType: ListInboxDraftsInput
+    outputType: InboxDraftPage
+    kind: query
+    description: ListInboxDrafts on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listInboxDraftsDefault, branch: listed, default: true, description: Resend completed the draft request., output: {"data":[{"id":"draft-1","type":"standalone","subject":"Hello"}],"has_more":false}}
+  - name: createInboxDraft
+    goName: CreateInboxDraft
+    inputType: CreateInboxDraftInput
+    outputType: InboxDraftReference
+    kind: mutation
+    description: CreateInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: createInboxDraftDefault, branch: created, default: true, description: Resend completed the draft request., output: {"id":"draft-1"}}
+  - name: getInboxDraft
+    goName: GetInboxDraft
+    inputType: GetInboxDraftInput
+    outputType: InboxDraft
+    kind: query
+    description: GetInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getInboxDraftDefault, branch: found, default: true, description: Resend completed the draft request., output: {"id":"draft-1","type":"standalone","subject":"Hello"}}
+  - name: updateInboxDraft
+    goName: UpdateInboxDraft
+    inputType: UpdateInboxDraftInput
+    outputType: InboxDraftReference
+    kind: mutation
+    description: UpdateInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateInboxDraftDefault, branch: updated, default: true, description: Resend completed the draft request., output: {"id":"draft-1"}}
+  - name: deleteInboxDraft
+    goName: DeleteInboxDraft
+    inputType: DeleteInboxDraftInput
+    outputType: DeletedInboxDraft
+    kind: mutation
+    description: DeleteInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteInboxDraftDefault, branch: deleted, default: true, description: Resend completed the draft request., output: {"id":"draft-1","deleted":true}}
+  - name: sendInboxDraft
+    goName: SendInboxDraft
+    inputType: SendInboxDraftInput
+    outputType: SentInboxDraft
+    kind: mutation
+    description: SendInboxDraft on a Resend inbox without exposing message bodies.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend completed the draft request.}
+    - {id: notFound, goName: NotFound, description: The draft resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: sendInboxDraftDefault, branch: sent, default: true, description: Resend completed the draft request., output: {"id":"email-1"}}
+  - name: createDomainClaim
+    goName: CreateDomainClaim
+    inputType: CreateDomainClaimInput
+    outputType: DomainClaim
+    kind: mutation
+    description: CreateDomainClaim using the Resend domain claim API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the claim request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the claim., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createDomainClaimDefault, branch: created, default: true, description: Resend completed the claim request., output: {id: claim-1, name: example.test, status: pending, domain_id: domain-1, region: us-east-1, record: {type: TXT, name: example.test, value: "resend-domain-verification=example", ttl: Auto}}}
+  - name: getDomainClaim
+    goName: GetDomainClaim
+    inputType: GetDomainClaimInput
+    outputType: DomainClaim
+    kind: query
+    description: GetDomainClaim using the Resend domain claim API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the claim request.}
+    - {id: notFound, goName: NotFound, description: The claim does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getDomainClaimDefault, branch: found, default: true, description: Resend completed the claim request., output: {id: claim-1, name: example.test, status: pending, domain_id: domain-1, region: us-east-1, record: {type: TXT, name: example.test, value: "resend-domain-verification=example", ttl: Auto}}}
+  - name: verifyDomainClaim
+    goName: VerifyDomainClaim
+    inputType: VerifyDomainClaimInput
+    outputType: DomainClaim
+    kind: mutation
+    description: VerifyDomainClaim using the Resend domain claim API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: verificationStarted, goName: VerificationStarted, description: Resend completed the claim request.}
+    - {id: notFound, goName: NotFound, description: The claim does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: verifyDomainClaimDefault, branch: verificationStarted, default: true, description: Resend completed the claim request., output: {id: claim-1, name: example.test, status: pending, domain_id: domain-1, region: us-east-1, record: {type: TXT, name: example.test, value: "resend-domain-verification=example", ttl: Auto}}}
