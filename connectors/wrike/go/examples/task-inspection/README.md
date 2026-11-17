@@ -1,6 +1,6 @@
 # Wrike task inspection Flow
 
-This runnable Flow calls `getTask` through the static `wrike` connection. It persists the selected task status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+These runnable Flows call `getTask` and `updateTask` through the static `wrike` connection. Each persists the selected task status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -8,6 +8,7 @@ From `connectors/wrike/go`, run:
 
 ```bash
 dexcli visualize ./examples/task-inspection/flow/workflow.go --schema-version 2.0 --json --out /tmp/wrike-task-inspection-fdg
+dexcli visualize ./examples/task-inspection/flow/task_update.go --schema-version 2.0 --json --out /tmp/wrike-task-update-fdg --lint app
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -23,5 +24,7 @@ GOWORK=off go run ./examples/task-inspection
 ```
 
 Start `WrikeTaskInspection` with a unique Flow ID and input `{"taskId":"IEAAAABC"}`. Replace the sample with a task ID returned by Wrike. The Worker connects to Dex Server without an inbound listener.
+
+Start `WrikeTaskUpdate` with `{"taskId":"IEAAAABC","title":"Updated task"}` to replace its title. Use an accessible task ID from Wrike.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Wrike authorization and retrieval remain unverified.
