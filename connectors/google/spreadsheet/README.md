@@ -1,6 +1,6 @@
 # Google Sheets Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go@v0.26.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go@v0.27.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet`.
 
@@ -12,6 +12,8 @@ The Google Sheets Connector exposes operation-specific Dex Step factories:
 - `spreadsheet.NewGetSpreadsheetStep`
 - `spreadsheet.NewCreateSpreadsheetStep`
 - `spreadsheet.NewDeleteSpreadsheetStep`
+- `spreadsheet.NewCreateSheetStep`, `spreadsheet.NewDeleteSheetStep`, and `spreadsheet.NewClearValuesStep`
+- `spreadsheet.NewAppendRowStep` and `spreadsheet.NewUpdateRowStep`
 
 | Name | Kind | What it does | Happy branch | Languages |
 | --- | --- | --- | --- | --- |
@@ -21,6 +23,11 @@ The Google Sheets Connector exposes operation-specific Dex Step factories:
 | `getSpreadsheet` | Query | Reads spreadsheet title and tab IDs | `found` | Go |
 | `createSpreadsheet` | Mutation | Creates a titled spreadsheet with a bounded three-send budget | `created` | Go |
 | `deleteSpreadsheet` | Mutation | Permanently deletes an app-accessible spreadsheet through Drive | `deleted` | Go |
+| `createSheet` | Mutation | Adds a tab with a stable call-derived tab ID, allowing safe retries | `created` | Go |
+| `deleteSheet` | Mutation | Deletes a tab by numeric ID; a missing tab is already deleted | `deleted` | Go |
+| `clearValues` | Mutation | Clears an A1 range without changing formatting | `cleared` | Go |
+| `appendRow` | Mutation | Appends RAW values with a three-send cap because duplicates are possible | `appended` | Go |
+| `updateRow` | Mutation | Replaces an absolute row with RAW values | `updated` | Go |
 | `rowAdded` | Trigger | Each row appended below the last processed row of one picked tab | | Go, Python, TypeScript |
 
 It uses a separate `google-sheets-oauth` Connection with the least-privilege

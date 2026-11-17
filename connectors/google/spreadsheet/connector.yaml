@@ -214,6 +214,56 @@ spec:
         - {id: defect, goName: Defect, description: Local spreadsheet ID or credentials are invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Google deleted the sample spreadsheet., output: {spreadsheetId: sample-spreadsheet}}
+    - name: createSheet
+      goName: CreateSheet
+      inputType: CreateSheetInput
+      outputType: SpreadsheetTab
+      kind: mutation
+      description: Add a worksheet tab with a stable call-derived sheet ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Google added the tab.}
+        - {id: notFound, goName: NotFound, description: The spreadsheet does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google rejected the new tab., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed tab metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local spreadsheet ID or title is invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A Contacts tab was added., output: {sheetId: 1, title: Contacts}}
+    - name: deleteSheet
+      goName: DeleteSheet
+      inputType: DeleteSheetInput
+      outputType: DeletedSheet
+      kind: mutation
+      description: Delete a worksheet tab by its stable numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Google deleted the tab or it was already absent.}
+        - {id: notFound, goName: NotFound, description: The spreadsheet does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google rejected the tab deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local spreadsheet or tab ID is invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: A Contacts tab was deleted., output: {spreadsheetId: sample-spreadsheet, sheetId: 1}}
+    - name: clearValues
+      goName: ClearValues
+      inputType: ClearValuesInput
+      outputType: ClearedValues
+      kind: mutation
+      description: Clear values in a selected A1 range without changing formatting.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: cleared, goName: Cleared, description: Google cleared the range.}
+        - {id: notFound, goName: NotFound, description: The spreadsheet or range does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google rejected the clear., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed clear metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local spreadsheet ID or range is invalid., optional: true}
+      mocks:
+        - {name: clearedDefault, branch: cleared, default: true, description: Contact values were cleared., output: {spreadsheetId: sample-spreadsheet, clearedRange: Contacts!A2:C3}}
     - name: getValues
       goName: GetValues
       inputType: GetValuesInput
@@ -288,6 +338,40 @@ spec:
           branch: providerRejected
           description: Google rejects the row lookup because the account lacks access.
           failure: {kind: AUTHORIZATION, message: Google Sheets rejected the row lookup.}
+    - name: appendRow
+      goName: AppendRow
+      inputType: AppendRowInput
+      outputType: RowWriteResult
+      kind: mutation
+      description: Append one row to a worksheet, allowing bounded repeats when the outcome is unknown.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: appended, goName: Appended, description: Google appended the row.}
+        - {id: notFound, goName: NotFound, description: The spreadsheet or sheet does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google rejected the append., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed append metadata., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The bounded send cap ended without confirmation., optional: true}
+        - {id: defect, goName: Defect, description: "Local spreadsheet ID, tab, or values are invalid.", optional: true}
+      mocks:
+        - {name: appendedDefault, branch: appended, default: true, description: A contact row was appended., output: {rowNumber: 2, updatedRange: Contacts!A2:C2}}
+    - name: updateRow
+      goName: UpdateRow
+      inputType: UpdateRowInput
+      outputType: RowWriteResult
+      kind: mutation
+      description: Replace one row by its stable row position with RAW values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Google replaced the row.}
+        - {id: notFound, goName: NotFound, description: The spreadsheet or sheet does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google rejected the replacement., optional: true}
+        - {id: defect, goName: Defect, description: "Local spreadsheet ID, tab, row, or values are invalid.", optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: A contact row was replaced., output: {rowNumber: 2, updatedRange: Contacts!A2:C2}}
     - name: upsertRow
       goName: UpsertRow
       inputType: UpsertRowInput

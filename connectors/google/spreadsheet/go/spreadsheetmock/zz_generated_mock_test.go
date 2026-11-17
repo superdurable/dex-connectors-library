@@ -28,6 +28,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[spreadsheet.DeletedSpreadsheet](`{"spreadsheetId":"sample-spreadsheet"}`)
 			return err
 		}},
+		{name: "createSheet/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spreadsheet.SpreadsheetTab](`{"sheetId":1,"title":"Contacts"}`)
+			return err
+		}},
+		{name: "deleteSheet/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spreadsheet.DeletedSheet](`{"spreadsheetId":"sample-spreadsheet","sheetId":1}`)
+			return err
+		}},
+		{name: "clearValues/clearedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spreadsheet.ClearedValues](`{"spreadsheetId":"sample-spreadsheet","clearedRange":"Contacts!A2:C3"}`)
+			return err
+		}},
 		{name: "getValues/contactsRange/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[spreadsheet.GetValuesOutput](`{"range":"Contacts!A1:C3","majorDimension":"ROWS","values":[["email","name","status"],["ada@example.test","Ada Lovelace","active"],["grace@example.test","Grace Hopper","pending"]]}`)
 			return err
@@ -39,6 +51,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		{name: "findRow/contactNotFound/1", decode: func() error { _, err := connectormock.DecodeOutput[spreadsheet.FindRowOutput](`{}`); return err }},
 		{name: "findRow/duplicateContacts/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[spreadsheet.FindRowOutput](`{"conflictingRows":[2,4]}`)
+			return err
+		}},
+		{name: "appendRow/appendedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spreadsheet.RowWriteResult](`{"rowNumber":2,"updatedRange":"Contacts!A2:C2"}`)
+			return err
+		}},
+		{name: "updateRow/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spreadsheet.RowWriteResult](`{"rowNumber":2,"updatedRange":"Contacts!A2:C2"}`)
 			return err
 		}},
 		{name: "upsertRow/contactUpserted/1", decode: func() error {
@@ -64,11 +84,26 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	if mock.DeleteSpreadsheet().Definition().Operation.OperationID != "deleteSpreadsheet" {
 		t.Errorf("deleteSpreadsheet mock has another definition")
 	}
+	if mock.CreateSheet().Definition().Operation.OperationID != "createSheet" {
+		t.Errorf("createSheet mock has another definition")
+	}
+	if mock.DeleteSheet().Definition().Operation.OperationID != "deleteSheet" {
+		t.Errorf("deleteSheet mock has another definition")
+	}
+	if mock.ClearValues().Definition().Operation.OperationID != "clearValues" {
+		t.Errorf("clearValues mock has another definition")
+	}
 	if mock.GetValues().Definition().Operation.OperationID != "getValues" {
 		t.Errorf("getValues mock has another definition")
 	}
 	if mock.FindRow().Definition().Operation.OperationID != "findRow" {
 		t.Errorf("findRow mock has another definition")
+	}
+	if mock.AppendRow().Definition().Operation.OperationID != "appendRow" {
+		t.Errorf("appendRow mock has another definition")
+	}
+	if mock.UpdateRow().Definition().Operation.OperationID != "updateRow" {
+		t.Errorf("updateRow mock has another definition")
 	}
 	if mock.UpsertRow().Definition().Operation.OperationID != "upsertRow" {
 		t.Errorf("upsertRow mock has another definition")

@@ -60,8 +60,13 @@ type Operations interface {
 	GetSpreadsheet() sdkgo.Query[GetSpreadsheetInput, SpreadsheetInfo]
 	CreateSpreadsheet() sdkgo.Mutation[CreateSpreadsheetInput, SpreadsheetInfo]
 	DeleteSpreadsheet() sdkgo.Mutation[DeleteSpreadsheetInput, DeletedSpreadsheet]
+	CreateSheet() sdkgo.Mutation[CreateSheetInput, SpreadsheetTab]
+	DeleteSheet() sdkgo.Mutation[DeleteSheetInput, DeletedSheet]
+	ClearValues() sdkgo.Mutation[ClearValuesInput, ClearedValues]
 	GetValues() sdkgo.Query[GetValuesInput, GetValuesOutput]
 	FindRow() sdkgo.Query[FindRowInput, FindRowOutput]
+	AppendRow() sdkgo.Mutation[AppendRowInput, RowWriteResult]
+	UpdateRow() sdkgo.Mutation[UpdateRowInput, RowWriteResult]
 	UpsertRow() sdkgo.Mutation[UpsertRowInput, UpsertRowOutput]
 }
 
@@ -76,11 +81,26 @@ func (operations clientOperations) CreateSpreadsheet() sdkgo.Mutation[CreateSpre
 func (operations clientOperations) DeleteSpreadsheet() sdkgo.Mutation[DeleteSpreadsheetInput, DeletedSpreadsheet] {
 	return operations.client.DeleteSpreadsheet()
 }
+func (operations clientOperations) CreateSheet() sdkgo.Mutation[CreateSheetInput, SpreadsheetTab] {
+	return operations.client.CreateSheet()
+}
+func (operations clientOperations) DeleteSheet() sdkgo.Mutation[DeleteSheetInput, DeletedSheet] {
+	return operations.client.DeleteSheet()
+}
+func (operations clientOperations) ClearValues() sdkgo.Mutation[ClearValuesInput, ClearedValues] {
+	return operations.client.ClearValues()
+}
 func (operations clientOperations) GetValues() sdkgo.Query[GetValuesInput, GetValuesOutput] {
 	return operations.client.GetValues()
 }
 func (operations clientOperations) FindRow() sdkgo.Query[FindRowInput, FindRowOutput] {
 	return operations.client.FindRow()
+}
+func (operations clientOperations) AppendRow() sdkgo.Mutation[AppendRowInput, RowWriteResult] {
+	return operations.client.AppendRow()
+}
+func (operations clientOperations) UpdateRow() sdkgo.Mutation[UpdateRowInput, RowWriteResult] {
+	return operations.client.UpdateRow()
 }
 func (operations clientOperations) UpsertRow() sdkgo.Mutation[UpsertRowInput, UpsertRowOutput] {
 	return operations.client.UpsertRow()
@@ -581,6 +601,240 @@ func NewDeleteSpreadsheetStep[IN any](config DeleteSpreadsheetStepConfig[IN]) sd
 	})
 }
 
+const CreateSheetBranchCreated sdkgo.BranchID = "created"
+const CreateSheetBranchNotFound sdkgo.BranchID = "notFound"
+const CreateSheetBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSheetBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateSheetBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateSheetDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSheet"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSheetBranchCreated, Description: "Google added the tab."},
+		{ID: CreateSheetBranchNotFound, Description: "The spreadsheet does not exist.", Optional: true},
+		{ID: CreateSheetBranchProviderRejected, Description: "Google rejected the new tab.", Optional: true},
+		{ID: CreateSheetBranchInvalidResponse, Description: "Google returned malformed tab metadata.", Optional: true},
+		{ID: CreateSheetBranchDefect, Description: "Local spreadsheet ID or title is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateSheetResult = sdkgo.MutationResult[SpreadsheetTab]
+
+type CreateSheetStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=google-sheets"`
+	operationID                       struct{}                                             `connector:"operationId=createSheet"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                       `connector:"configurationUI"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSheetInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSheetResult]                      `connector:"branch=created"`
+	NotFound                          sdkgo.Target[CreateSheetResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateSheetResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateSheetResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateSheetResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SpreadsheetTab]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewCreateSheetStep[IN any](config CreateSheetStepConfig[IN]) sdkgo.MutationStep[IN, CreateSheetInput, SpreadsheetTab] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSheetInput, SpreadsheetTab]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateSheet(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSheetResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSheetResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSheetBranchCreated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateSheetBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSheetBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateSheetBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSheetBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSheetBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSheetBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteSheetBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSheetBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSheetDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSheet"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSheetBranchDeleted, Description: "Google deleted the tab or it was already absent."},
+		{ID: DeleteSheetBranchNotFound, Description: "The spreadsheet does not exist.", Optional: true},
+		{ID: DeleteSheetBranchProviderRejected, Description: "Google rejected the tab deletion.", Optional: true},
+		{ID: DeleteSheetBranchDefect, Description: "Local spreadsheet or tab ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteSheetResult = sdkgo.MutationResult[DeletedSheet]
+
+type DeleteSheetStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=google-sheets"`
+	operationID                       struct{}                                           `connector:"operationId=deleteSheet"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSheetInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSheetResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteSheetResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteSheetResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteSheetResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedSheet]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSheetStep[IN any](config DeleteSheetStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSheetInput, DeletedSheet] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSheetInput, DeletedSheet]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteSheet(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSheetResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSheetResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSheetBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteSheetBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSheetBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSheetBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ClearValuesBranchCleared sdkgo.BranchID = "cleared"
+const ClearValuesBranchNotFound sdkgo.BranchID = "notFound"
+const ClearValuesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ClearValuesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ClearValuesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ClearValuesDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "clearValues"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ClearValuesBranchCleared, Description: "Google cleared the range."},
+		{ID: ClearValuesBranchNotFound, Description: "The spreadsheet or range does not exist.", Optional: true},
+		{ID: ClearValuesBranchProviderRejected, Description: "Google rejected the clear.", Optional: true},
+		{ID: ClearValuesBranchInvalidResponse, Description: "Google returned malformed clear metadata.", Optional: true},
+		{ID: ClearValuesBranchDefect, Description: "Local spreadsheet ID or range is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ClearValuesResult = sdkgo.MutationResult[ClearedValues]
+
+type ClearValuesStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=google-sheets"`
+	operationID                       struct{}                                            `connector:"operationId=clearValues"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                      `connector:"configurationUI"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) ClearValuesInput                           `connector:"mapToOperationInput"`
+	Cleared                           sdkgo.Target[ClearValuesResult]                     `connector:"branch=cleared"`
+	NotFound                          sdkgo.Target[ClearValuesResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ClearValuesResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ClearValuesResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ClearValuesResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ClearedValues]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewClearValuesStep[IN any](config ClearValuesStepConfig[IN]) sdkgo.MutationStep[IN, ClearValuesInput, ClearedValues] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ClearValuesInput, ClearedValues]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ClearValues(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ClearValuesResult] {
+			branches := make([]sdkgo.BranchTarget[ClearValuesResult], 0, 5)
+			if config.Cleared.HasStep() {
+				branches = append(branches, config.Cleared.BranchTarget(ClearValuesBranchCleared))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ClearValuesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ClearValuesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ClearValuesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ClearValuesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const GetValuesBranchRead sdkgo.BranchID = "read"
 const GetValuesBranchNotFound sdkgo.BranchID = "notFound"
 const GetValuesBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -737,6 +991,170 @@ func NewFindRowStep[IN any](config FindRowStepConfig[IN]) sdkgo.QueryStep[IN, Fi
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(FindRowBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AppendRowBranchAppended sdkgo.BranchID = "appended"
+const AppendRowBranchNotFound sdkgo.BranchID = "notFound"
+const AppendRowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AppendRowBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const AppendRowBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const AppendRowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AppendRowDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "appendRow"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AppendRowBranchAppended, Description: "Google appended the row."},
+		{ID: AppendRowBranchNotFound, Description: "The spreadsheet or sheet does not exist.", Optional: true},
+		{ID: AppendRowBranchProviderRejected, Description: "Google rejected the append.", Optional: true},
+		{ID: AppendRowBranchInvalidResponse, Description: "Google returned malformed append metadata.", Optional: true},
+		{ID: AppendRowBranchUncertain, Description: "The bounded send cap ended without confirmation.", Optional: true},
+		{ID: AppendRowBranchDefect, Description: "Local spreadsheet ID, tab, or values are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type AppendRowResult = sdkgo.MutationResult[RowWriteResult]
+
+type AppendRowStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=google-sheets"`
+	operationID                       struct{}                                             `connector:"operationId=appendRow"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                       `connector:"configurationUI"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) AppendRowInput                              `connector:"mapToOperationInput"`
+	Appended                          sdkgo.Target[AppendRowResult]                        `connector:"branch=appended"`
+	NotFound                          sdkgo.Target[AppendRowResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[AppendRowResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[AppendRowResult]                        `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[AppendRowResult]                        `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[AppendRowResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RowWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewAppendRowStep[IN any](config AppendRowStepConfig[IN]) sdkgo.MutationStep[IN, AppendRowInput, RowWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AppendRowInput, RowWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.AppendRow(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AppendRowResult] {
+			branches := make([]sdkgo.BranchTarget[AppendRowResult], 0, 6)
+			if config.Appended.HasStep() {
+				branches = append(branches, config.Appended.BranchTarget(AppendRowBranchAppended))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(AppendRowBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AppendRowBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(AppendRowBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(AppendRowBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AppendRowBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateRowBranchUpdated sdkgo.BranchID = "updated"
+const UpdateRowBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateRowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateRowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateRowDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateRow"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateRowBranchUpdated, Description: "Google replaced the row."},
+		{ID: UpdateRowBranchNotFound, Description: "The spreadsheet or sheet does not exist.", Optional: true},
+		{ID: UpdateRowBranchProviderRejected, Description: "Google rejected the replacement.", Optional: true},
+		{ID: UpdateRowBranchDefect, Description: "Local spreadsheet ID, tab, row, or values are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateRowResult = sdkgo.MutationResult[RowWriteResult]
+
+type UpdateRowStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=google-sheets"`
+	operationID                       struct{}                                             `connector:"operationId=updateRow"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                       `connector:"configurationUI"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateRowInput                              `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateRowResult]                        `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateRowResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateRowResult]                        `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateRowResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RowWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateRowStep[IN any](config UpdateRowStepConfig[IN]) sdkgo.MutationStep[IN, UpdateRowInput, RowWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateRowInput, RowWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpdateRow(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateRowResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateRowResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateRowBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateRowBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateRowBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateRowBranchDefect))
 			}
 			return branches
 		}(),
