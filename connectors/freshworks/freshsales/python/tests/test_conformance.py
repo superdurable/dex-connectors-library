@@ -15,7 +15,10 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
 SCENARIOS = [
-    scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/freshworks/freshsales/scenarios.json")
+    scenario
+    for scenario in conformance.load_scenarios(
+        ROOT / "conformance/connectors/freshworks/freshsales/scenarios.json"
+    )
     if scenario["operation"] in {"listContactViews", "getContact"}
 ]
 CONNECTION = sdk.ConnectionRef("freshsales", "freshsales")
@@ -28,9 +31,7 @@ ADAPTER = conformance.PythonOperationAdapter(
         freshsales.Config(base_url="http://127.0.0.1:8848/crm/sales/api"),
         conformance.static_credentials(CONNECTION, TEST_CREDENTIALS)
         if recorder.scenario["name"] != "listContactViews-defect"
-        else conformance.static_credentials(
-            sdk.ConnectionRef("freshsales", "missing"), TEST_CREDENTIALS
-        ),
+        else conformance.static_credentials(sdk.ConnectionRef("freshsales", "missing"), TEST_CREDENTIALS),
         http_client,
     ),
 )
