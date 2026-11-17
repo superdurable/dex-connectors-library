@@ -9,10 +9,10 @@ import { createSecureContext, type TLSSocket } from 'node:tls';
 import sql from 'mssql';
 import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
-import { QueryRowsOperation, ExecuteStatementOperation } from './operations.js';
+import { QueryRowsOperation, ExecuteStatementOperation, ExecuteStatementNonIdempotentOperation } from './operations.js';
 
 type Phase = 'connect' | 'begin' | 'statement' | 'commit';
-export type Disposition = 'retry' | 'rejected' | 'uncertain' | 'invalidResponse' | 'defect';
+export type Disposition = 'retry' | 'rejected' | 'uncertain' | 'invalidResponse' | 'defect' | 'limitExceeded';
 export interface ClassifiedFailure { disposition: Disposition; kind: Failure['kind']; message: string; number?: number; state?: number; severity?: number; }
 interface ServerErrorToken { number: number; class: number; state: number; }
 const connectionTokens = new WeakMap<object, ServerErrorToken>();
@@ -172,7 +172,8 @@ export class SQLServerClient {
     if (this.config.encrypt === 'strict') throw new UnsupportedStrictVerificationError('strict TLS hostname verification is unavailable in this Tedious version');
   }
   /** Bind the read operation. */ query(): QueryRowsOperation { return new QueryRowsOperation(this); }
-  /** Bind the write operation. */ execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
+  /** Bind the repeat-safe write operation. */ execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
+  /** Bind the fenced write operation, which never runs its statement twice. */ executeNonIdempotent(): ExecuteStatementNonIdempotentOperation { return new ExecuteStatementNonIdempotentOperation(this); }
   /** Build a receipt without including connection settings or credentials. */
   receipt(call: Call, pool?: sql.ConnectionPool, classification?: ClassifiedFailure): ReceiptDraft {
     const metadata = { ...(pool ? sessionIdentities.get(pool) : {}), ...(classification?.number ? { errorNumber: String(classification.number), errorState: String(classification.state), errorSeverity: String(classification.severity) } : {}) };
