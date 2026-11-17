@@ -28,6 +28,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[eventbrite.AttendeeMetadata](`{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}`)
 			return err
 		}},
+		{name: "getEvent/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"live"}`)
+			return err
+		}},
+		{name: "publishEvent/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"live"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -46,5 +54,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetAttendee().Definition().Operation.OperationID != "getAttendee" {
 		t.Errorf("getAttendee mock has another definition")
+	}
+	if mock.GetEvent().Definition().Operation.OperationID != "getEvent" {
+		t.Errorf("getEvent mock has another definition")
+	}
+	if mock.PublishEvent().Definition().Operation.OperationID != "publishEvent" {
+		t.Errorf("publishEvent mock has another definition")
 	}
 }

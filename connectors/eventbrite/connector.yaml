@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: eventbrite
   displayName: Eventbrite
-  description: Read organization and event metadata through Eventbrite API v3.
+  description: Read organization and event metadata and publish events through Eventbrite API v3.
   company: Eventbrite
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: eventbrite
   languages:
@@ -117,3 +117,45 @@ spec:
           default: true
           description: Metadata for one example attendee.
           output: {id: "13579", eventId: "67890", status: "attending", createdAt: "2026-11-07T10:00:00Z"}
+    - name: getEvent
+      goName: GetEvent
+      inputType: GetEventInput
+      outputType: EventMetadata
+      kind: query
+      description: Read one event's ID, name, and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Eventbrite returned the event.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example published event.
+          output: {id: "67890", name: "Example event", status: "live"}
+    - name: publishEvent
+      goName: PublishEvent
+      inputType: PublishEventInput
+      outputType: EventMetadata
+      kind: mutation
+      description: Publish a draft event; a retry checks its current status before sending again.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: published, goName: Published, description: The event is published.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively refused publication., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: publishedDefault
+          branch: published
+          default: true
+          description: One example event is live.
+          output: {id: "67890", name: "Example event", status: "live"}

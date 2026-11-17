@@ -21,6 +21,8 @@ type Mock struct {
 	listOrganizations *connectormock.Query[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage]
 	listEvents        *connectormock.Query[eventbrite.ListEventsInput, eventbrite.EventsPage]
 	getAttendee       *connectormock.Query[eventbrite.GetAttendeeInput, eventbrite.AttendeeMetadata]
+	getEvent          *connectormock.Query[eventbrite.GetEventInput, eventbrite.EventMetadata]
+	publishEvent      *connectormock.Mutation[eventbrite.PublishEventInput, eventbrite.EventMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,10 +33,14 @@ func New(t testing.TB, connectionName string) *Mock {
 		listOrganizations: connectormock.NewQuery[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage](t, eventbrite.ListOrganizationsDefinition),
 		listEvents:        connectormock.NewQuery[eventbrite.ListEventsInput, eventbrite.EventsPage](t, eventbrite.ListEventsDefinition),
 		getAttendee:       connectormock.NewQuery[eventbrite.GetAttendeeInput, eventbrite.AttendeeMetadata](t, eventbrite.GetAttendeeDefinition),
+		getEvent:          connectormock.NewQuery[eventbrite.GetEventInput, eventbrite.EventMetadata](t, eventbrite.GetEventDefinition),
+		publishEvent:      connectormock.NewMutation[eventbrite.PublishEventInput, eventbrite.EventMetadata](t, eventbrite.PublishEventDefinition),
 	}
 	mock.listOrganizations.Default(ListOrganizationsDefault())
 	mock.listEvents.Default(ListEventsDefault())
 	mock.getAttendee.Default(GetAttendeeDefault())
+	mock.getEvent.Default(GetEventDefault())
+	mock.publishEvent.Default(PublishEventDefault())
 	connection, err := eventbrite.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "eventbrite", Name: connectionName})
 	if err != nil {
 		t.Fatalf("eventbrite mock connection: %v", err)
@@ -61,6 +67,16 @@ func (mock *Mock) GetAttendee() *connectormock.Query[eventbrite.GetAttendeeInput
 	return mock.getAttendee
 }
 
+// GetEvent returns the getEvent script.
+func (mock *Mock) GetEvent() *connectormock.Query[eventbrite.GetEventInput, eventbrite.EventMetadata] {
+	return mock.getEvent
+}
+
+// PublishEvent returns the publishEvent script.
+func (mock *Mock) PublishEvent() *connectormock.Mutation[eventbrite.PublishEventInput, eventbrite.EventMetadata] {
+	return mock.publishEvent
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOrganizations() sdkgo.Query[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage] {
@@ -71,6 +87,12 @@ func (operations mockOperations) ListEvents() sdkgo.Query[eventbrite.ListEventsI
 }
 func (operations mockOperations) GetAttendee() sdkgo.Query[eventbrite.GetAttendeeInput, eventbrite.AttendeeMetadata] {
 	return operations.mock.getAttendee
+}
+func (operations mockOperations) GetEvent() sdkgo.Query[eventbrite.GetEventInput, eventbrite.EventMetadata] {
+	return operations.mock.getEvent
+}
+func (operations mockOperations) PublishEvent() sdkgo.Mutation[eventbrite.PublishEventInput, eventbrite.EventMetadata] {
+	return operations.mock.publishEvent
 }
 
 // ListOrganizationsListed selects the listed branch: Eventbrite returned the organization page.
@@ -187,4 +209,84 @@ func GetAttendeeFoundDefault() connectormock.Case[eventbrite.AttendeeMetadata] {
 // GetAttendeeDefault is the manifest default, foundDefault, which New installs.
 func GetAttendeeDefault() connectormock.Case[eventbrite.AttendeeMetadata] {
 	return GetAttendeeFoundDefault()
+}
+
+// GetEventFound selects the found branch: Eventbrite returned the event.
+func GetEventFound(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.GetEventBranchFound, value, failure)
+}
+
+// GetEventNotFound selects the notFound branch: The event does not exist or is inaccessible.
+func GetEventNotFound(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.GetEventBranchNotFound, value, failure)
+}
+
+// GetEventProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the request.
+func GetEventProviderRejected(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.GetEventBranchProviderRejected, value, failure)
+}
+
+// GetEventInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func GetEventInvalidResponse(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.GetEventBranchInvalidResponse, value, failure)
+}
+
+// GetEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetEventDefect(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.GetEventBranchDefect, value, failure)
+}
+
+// GetEventRetry asks Dex to retry the getEvent Step, after the delay when it is positive.
+func GetEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Retry[eventbrite.EventMetadata](failure, after)
+}
+
+// GetEventFoundDefault is the manifest mock foundDefault: One example published event.
+func GetEventFoundDefault() connectormock.Case[eventbrite.EventMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"live"}`)
+	return connectormock.Branch(eventbrite.GetEventBranchFound, value, nil)
+}
+
+// GetEventDefault is the manifest default, foundDefault, which New installs.
+func GetEventDefault() connectormock.Case[eventbrite.EventMetadata] { return GetEventFoundDefault() }
+
+// PublishEventPublished selects the published branch: The event is published.
+func PublishEventPublished(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.PublishEventBranchPublished, value, failure)
+}
+
+// PublishEventNotFound selects the notFound branch: The event does not exist or is inaccessible.
+func PublishEventNotFound(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.PublishEventBranchNotFound, value, failure)
+}
+
+// PublishEventProviderRejected selects the providerRejected branch: Eventbrite conclusively refused publication.
+func PublishEventProviderRejected(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.PublishEventBranchProviderRejected, value, failure)
+}
+
+// PublishEventInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func PublishEventInvalidResponse(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.PublishEventBranchInvalidResponse, value, failure)
+}
+
+// PublishEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func PublishEventDefect(value eventbrite.EventMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Branch(eventbrite.PublishEventBranchDefect, value, failure)
+}
+
+// PublishEventRetry asks Dex to retry the publishEvent Step, after the delay when it is positive.
+func PublishEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.EventMetadata] {
+	return connectormock.Retry[eventbrite.EventMetadata](failure, after)
+}
+
+// PublishEventPublishedDefault is the manifest mock publishedDefault: One example event is live.
+func PublishEventPublishedDefault() connectormock.Case[eventbrite.EventMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"live"}`)
+	return connectormock.Branch(eventbrite.PublishEventBranchPublished, value, nil)
+}
+
+// PublishEventDefault is the manifest default, publishedDefault, which New installs.
+func PublishEventDefault() connectormock.Case[eventbrite.EventMetadata] {
+	return PublishEventPublishedDefault()
 }

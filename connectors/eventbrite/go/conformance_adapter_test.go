@@ -25,5 +25,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listOrganizations": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrganizations(), reference),
 		"listEvents":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEvents(), reference),
 		"getAttendee":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAttendee(), reference),
+		"getEvent":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEvent(), reference),
+		"publishEvent":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PublishEvent(), reference, scenario.CallID),
 	}}
 }

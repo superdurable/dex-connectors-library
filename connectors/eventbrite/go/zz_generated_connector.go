@@ -43,6 +43,8 @@ type Operations interface {
 	ListOrganizations() sdkgo.Query[ListOrganizationsInput, OrganizationsPage]
 	ListEvents() sdkgo.Query[ListEventsInput, EventsPage]
 	GetAttendee() sdkgo.Query[GetAttendeeInput, AttendeeMetadata]
+	GetEvent() sdkgo.Query[GetEventInput, EventMetadata]
+	PublishEvent() sdkgo.Mutation[PublishEventInput, EventMetadata]
 }
 
 type clientOperations struct{ client *Client }
@@ -55,6 +57,12 @@ func (operations clientOperations) ListEvents() sdkgo.Query[ListEventsInput, Eve
 }
 func (operations clientOperations) GetAttendee() sdkgo.Query[GetAttendeeInput, AttendeeMetadata] {
 	return operations.client.GetAttendee()
+}
+func (operations clientOperations) GetEvent() sdkgo.Query[GetEventInput, EventMetadata] {
+	return operations.client.GetEvent()
+}
+func (operations clientOperations) PublishEvent() sdkgo.Mutation[PublishEventInput, EventMetadata] {
+	return operations.client.PublishEvent()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -411,6 +419,160 @@ func NewGetAttendeeStep[IN any](config GetAttendeeStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetAttendeeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetEventBranchFound sdkgo.BranchID = "found"
+const GetEventBranchNotFound sdkgo.BranchID = "notFound"
+const GetEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEventBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEventDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEventBranchFound, Description: "Eventbrite returned the event."},
+		{ID: GetEventBranchNotFound, Description: "The event does not exist or is inaccessible.", Optional: true},
+		{ID: GetEventBranchProviderRejected, Description: "Eventbrite conclusively rejected the request.", Optional: true},
+		{ID: GetEventBranchInvalidResponse, Description: "Eventbrite returned malformed or oversized JSON.", Optional: true},
+		{ID: GetEventBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEventResult = sdkgo.QueryResult[EventMetadata]
+
+type GetEventStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=eventbrite"`
+	operationID                    struct{}                                         `connector:"operationId=getEvent"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetEventInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEventResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetEventResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetEventResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEventResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEventResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EventMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetEventStep[IN any](config GetEventStepConfig[IN]) sdkgo.QueryStep[IN, GetEventInput, EventMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("eventbrite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEventInput, EventMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEventResult] {
+			branches := make([]sdkgo.BranchTarget[GetEventResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEventBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetEventBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEventBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEventBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEventBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PublishEventBranchPublished sdkgo.BranchID = "published"
+const PublishEventBranchNotFound sdkgo.BranchID = "notFound"
+const PublishEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PublishEventBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PublishEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PublishEventDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "publishEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PublishEventBranchPublished, Description: "The event is published."},
+		{ID: PublishEventBranchNotFound, Description: "The event does not exist or is inaccessible.", Optional: true},
+		{ID: PublishEventBranchProviderRejected, Description: "Eventbrite conclusively refused publication.", Optional: true},
+		{ID: PublishEventBranchInvalidResponse, Description: "Eventbrite returned malformed or oversized JSON.", Optional: true},
+		{ID: PublishEventBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type PublishEventResult = sdkgo.MutationResult[EventMetadata]
+
+type PublishEventStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=eventbrite"`
+	operationID                       struct{}                                            `connector:"operationId=publishEvent"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) PublishEventInput                          `connector:"mapToOperationInput"`
+	Published                         sdkgo.Target[PublishEventResult]                    `connector:"branch=published"`
+	NotFound                          sdkgo.Target[PublishEventResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[PublishEventResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[PublishEventResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[PublishEventResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EventMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewPublishEventStep[IN any](config PublishEventStepConfig[IN]) sdkgo.MutationStep[IN, PublishEventInput, EventMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("eventbrite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PublishEventInput, EventMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PublishEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PublishEventResult] {
+			branches := make([]sdkgo.BranchTarget[PublishEventResult], 0, 5)
+			if config.Published.HasStep() {
+				branches = append(branches, config.Published.BranchTarget(PublishEventBranchPublished))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(PublishEventBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PublishEventBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PublishEventBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PublishEventBranchDefect))
 			}
 			return branches
 		}(),
