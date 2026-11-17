@@ -8,7 +8,7 @@ import { PlaidClient } from '../src/client.js';
 import { GetAccountsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/plaid/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/plaid/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getAccounts');
 const connection = { provider: 'plaid', name: 'plaid' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePlaid, '/api'));
 

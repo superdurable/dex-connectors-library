@@ -42,13 +42,21 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetItem() sdkgo.Query[GetItemInput, ItemSummary]
 	GetAccounts() sdkgo.Query[GetAccountsInput, AccountsSnapshot]
+	RemoveItem() sdkgo.Mutation[RemoveItemInput, ItemRemoval]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetItem() sdkgo.Query[GetItemInput, ItemSummary] {
+	return operations.client.GetItem()
+}
 func (operations clientOperations) GetAccounts() sdkgo.Query[GetAccountsInput, AccountsSnapshot] {
 	return operations.client.GetAccounts()
+}
+func (operations clientOperations) RemoveItem() sdkgo.Mutation[RemoveItemInput, ItemRemoval] {
+	return operations.client.RemoveItem()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -198,6 +206,83 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const GetItemBranchFound sdkgo.BranchID = "found"
+const GetItemBranchNotFound sdkgo.BranchID = "notFound"
+const GetItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetItemDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetItemBranchFound, Description: "Plaid returned the linked Item."},
+		{ID: GetItemBranchNotFound, Description: "Plaid did not expose the Item.", Optional: true},
+		{ID: GetItemBranchProviderRejected, Description: "Plaid conclusively rejected the lookup.", Optional: true},
+		{ID: GetItemBranchInvalidResponse, Description: "Plaid returned malformed or oversized Item JSON.", Optional: true},
+		{ID: GetItemBranchDefect, Description: "Connection credentials are unavailable or invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetItemResult = sdkgo.QueryResult[ItemSummary]
+
+type GetItemStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=plaid"`
+	operationID                    struct{}                                       `connector:"operationId=getItem"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetItemInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetItemResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetItemResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetItemResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetItemResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetItemResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ItemSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetItemStep[IN any](config GetItemStepConfig[IN]) sdkgo.QueryStep[IN, GetItemInput, ItemSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("plaid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetItemInput, ItemSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetItemResult] {
+			branches := make([]sdkgo.BranchTarget[GetItemResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetItemBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const GetAccountsBranchFound sdkgo.BranchID = "found"
 const GetAccountsBranchNotFound sdkgo.BranchID = "notFound"
 const GetAccountsBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -267,6 +352,71 @@ func NewGetAccountsStep[IN any](config GetAccountsStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetAccountsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemoveItemBranchRemoved sdkgo.BranchID = "removed"
+const RemoveItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveItemBranchRemoved, Description: "Plaid removed the Item or confirmed it was already absent."},
+		{ID: RemoveItemBranchProviderRejected, Description: "Plaid conclusively rejected the removal.", Optional: true},
+		{ID: RemoveItemBranchDefect, Description: "Connection credentials are unavailable or invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type RemoveItemResult = sdkgo.MutationResult[ItemRemoval]
+
+type RemoveItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=plaid"`
+	operationID                       struct{}                                          `connector:"operationId=removeItem"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) RemoveItemInput                          `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveItemResult]                    `connector:"branch=removed"`
+	ProviderRejected                  sdkgo.Target[RemoveItemResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RemoveItemResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ItemRemoval]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveItemStep[IN any](config RemoveItemStepConfig[IN]) sdkgo.MutationStep[IN, RemoveItemInput, ItemRemoval] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("plaid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RemoveItemInput, ItemRemoval]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveItemResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveItemResult], 0, 3)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveItemBranchRemoved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveItemBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveItemBranchDefect))
 			}
 			return branches
 		}(),

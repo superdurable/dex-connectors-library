@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: plaid
   displayName: Plaid
-  description: Read account identifiers and categories for one linked Plaid Item.
+  description: Read linked account and Item identities, and disconnect a Plaid Item.
   company: Plaid
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: plaid
   languages:
@@ -66,6 +66,27 @@ spec:
         - Link one Item through Plaid Link, exchange its public token through POST /item/public_token/exchange, and store the returned opaque access_token in this connection. Supply the non-secret item_id returned by that exchange as Flow input itemId; blank is invalid. One connection binds one Item access token.
         - Leave baseUrl blank for Sandbox or set https://production.plaid.com for Production. Match the secret and Item token to that environment. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: getItem
+      goName: GetItem
+      inputType: GetItemInput
+      outputType: ItemSummary
+      kind: query
+      description: Read the linked Item's ID, institution identity, and enabled products.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Plaid returned the linked Item.}
+        - {id: notFound, goName: NotFound, description: Plaid did not expose the Item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Plaid conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Plaid returned malformed or oversized Item JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are unavailable or invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample Item is linked.
+          output: {itemId: item_123456, institutionId: ins_109508, products: [auth]}
     - name: getAccounts
       goName: GetAccounts
       inputType: GetAccountsInput
@@ -74,7 +95,7 @@ spec:
       description: Read linked account IDs, types, and subtypes without names, masks, or balances.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Plaid returned the Item's accounts.}
         - {id: notFound, goName: NotFound, description: Plaid did not expose the Item., optional: true}
@@ -87,3 +108,22 @@ spec:
           default: true
           description: One sample checking account is returned.
           output: {itemId: item_123456, accounts: [{id: account_123456, type: depository, subtype: checking}]}
+    - name: removeItem
+      goName: RemoveItem
+      inputType: RemoveItemInput
+      outputType: ItemRemoval
+      kind: mutation
+      description: Disconnect the Item bound to this connection and invalidate its access token.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: Plaid removed the Item or confirmed it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Plaid conclusively rejected the removal., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are unavailable or invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: The linked Item is disconnected.
+          output: {removed: true}
