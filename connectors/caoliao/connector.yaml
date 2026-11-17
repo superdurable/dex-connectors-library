@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: caoliao
+  languages:
+    python: {version: v0.1.0, operations: [listQRCodes], triggers: []}
   codegen:
     go:
       package: caoliao
