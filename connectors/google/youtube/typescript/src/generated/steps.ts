@@ -154,9 +154,9 @@ export interface AddPlaylistItemStepConfig<StepInput, OperationInput = AddPlayli
   quotaExhausted?: StepTarget<MutationResult<OperationOutput>>;
   /** YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** YouTube returned an invalid or oversized check response, or an invalid item after accepting the insert. */
+  /** YouTube returned an invalid or oversized response to the check before any insert. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** An earlier insert may have added the video, but the playlist listing does not show it; check the playlist before adding it again. */
+  /** An earlier insert may have added the video, and the playlist listing does not show it at the send cap; check the playlist before adding it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

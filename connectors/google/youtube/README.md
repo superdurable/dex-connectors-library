@@ -1,6 +1,6 @@
 # YouTube Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/youtube/go@v0.4.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/youtube/go@v0.4.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/youtube`.
 
@@ -14,8 +14,8 @@ operation-specific Dex Step factories:
   authorized account's own channel, including its uploads playlist;
 - `youtube.NewListPlaylistItemsStep` pages through a playlist, optionally
   filtered to one video;
-- `youtube.NewAddPlaylistItemStep` adds a video to a playlist the account owns,
-  at most once.
+- `youtube.NewAddPlaylistItemStep` adds a video to a playlist the account owns
+  unless the playlist already holds it.
 
 ## Scopes
 
@@ -49,19 +49,28 @@ that `playlistItems.list` shows an item that was just inserted. The first
 attempt of `AddPlaylistItem` lists the playlist filtered to the video and
 returns `added` with `wasAlreadyPresent: true` when the playlist already holds
 it. Otherwise it sends one insert through a single-dispatch fence
-(`execution.dispatchFence`, which requires sync durability). Only an insert
-that YouTube provably did not process, after HTTP 429, a `rateLimitExceeded`
-or `userRateLimitExceeded` refusal, or a connection that never opened, may be
-sent again on a later attempt.
+(`execution.dispatchFence`, which requires sync durability) that counts the
+inserts that may have reached YouTube. An insert that YouTube provably did not
+process, after HTTP 429, a `rateLimitExceeded` or `userRateLimitExceeded`
+refusal, or a connection that never opened, is sent again without counting.
 
-After any other failure that may have applied the insert, such as a timeout,
+After an unknown outcome that may have applied the insert, such as a timeout,
 HTTP 500 or 503 (Google documents `backendError` without saying the write did
-not happen), or a malformed or oversized 2xx response, the next attempt only
-lists the playlist. It returns `added` when the video is shown and `uncertain`
-when it is not, because the listing can lag behind the insert. Wire
-`uncertain` to a Step that checks the playlist before adding the video again.
-An interrupted attempt that leaves no checkpoint also leads to this read-back.
-The operation cannot intentionally add a video a playlist already holds.
+not happen), HTTP 409, a redirect, another unlisted status, or a malformed or
+oversized 2xx response, the next attempt lists the playlist first. It returns
+`added` when the video is shown and otherwise inserts again while the possible
+inserts stay below the send cap (`execution.maxSends`, default 3, overridable
+per Step with `MaxSends`). Because the listing can lag behind an insert, such a
+resend can add the video twice. At the cap, or after YouTube returned the new
+item's ID, the attempt only lists the playlist and selects `uncertain` when the
+video is not shown. Wire `uncertain` to a Step that checks the playlist before
+adding the video again. An interrupted attempt that leaves no checkpoint also
+leads to this read-back.
+
+Only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, or Google's
+`quotaExceeded` reason, is a definite refusal of the insert. On a first insert
+it selects its branch and is never resent; after an earlier insert that may have
+taken effect it selects `uncertain`.
 
 ## Agent tools
 
@@ -69,8 +78,9 @@ All five operations carry a reviewed `agent` block, so an agent host may offer
 them as tools. The four reads change nothing, so each optional branch is
 `rejected`. `addPlaylistItem` recommends approval because it changes a playlist
 that other people may see. It does not claim `retry: safe`, and its
-`invalidResponse` and `uncertain` branches are `unknown`, so a host reports
-them as unconfirmed instead of letting a model repeat the call.
+`uncertain` branch is `unknown`, so a host reports it as unconfirmed instead of
+letting a model repeat the call. `invalidResponse` comes only from the check
+before any insert, so it is `rejected`.
 
 ## Branches
 
@@ -80,8 +90,8 @@ spent, `providerRejected` for conclusive refusals such as HTTP 403 or 400, and
 `invalidResponse` for malformed or oversized responses. Reads of an unknown
 video, channel, or playlist use `notFound`. Rate limits, timeouts, and HTTP 5xx
 retry instead of producing a branch; for `addPlaylistItem`, see
-[Idempotency](#idempotency) for when a retry only reads the playlist back and
-selects `uncertain`. Failure messages carry Google's documented
+[Idempotency](#idempotency) for when a retry reads the playlist back, resends,
+or selects `uncertain`. Failure messages carry Google's documented
 error reason, never its message text. Titles and descriptions are untrusted
 provider text.
 

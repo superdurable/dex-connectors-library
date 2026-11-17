@@ -366,7 +366,7 @@ func AddPlaylistItemProviderRejected(value youtube.AddedPlaylistItem, failure *s
 	return connectormock.Branch(youtube.AddPlaylistItemBranchProviderRejected, value, failure)
 }
 
-// AddPlaylistItemInvalidResponse selects the invalidResponse branch: YouTube returned an invalid or oversized check response, or an invalid item after accepting the insert.
+// AddPlaylistItemInvalidResponse selects the invalidResponse branch: YouTube returned an invalid or oversized response to the check before any insert.
 func AddPlaylistItemInvalidResponse(value youtube.AddedPlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.AddedPlaylistItem] {
 	return connectormock.Branch(youtube.AddPlaylistItemBranchInvalidResponse, value, failure)
 }

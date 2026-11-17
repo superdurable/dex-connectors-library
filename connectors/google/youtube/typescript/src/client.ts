@@ -93,8 +93,13 @@ export class YouTubeClient {
     if (response.isTooLarge) throw new YouTubeExchangeError(isFencedWrite ? 'writeUnconfirmed' : 'invalidResponse', 'RESPONSE_TOO_LARGE', 'YouTube response exceeds the configured size limit', response);
     if (response.status >= 200 && response.status < 300) return response;
     const classified = classifyError(response, operation, this.now());
-    if (!isFencedWrite || classified.disposition !== 'retry') throw classified;
-    throw new YouTubeExchangeError(classified.kind === 'RATE_LIMIT' ? 'retryUnprocessed' : 'writeUnconfirmed', classified.kind, classified.message, response, classified.retryAfterMs);
+    if (!isFencedWrite) throw classified;
+    if (classified.disposition === 'retry')
+      throw new YouTubeExchangeError(classified.kind === 'RATE_LIMIT' ? 'retryUnprocessed' : 'writeUnconfirmed', classified.kind, classified.message, response, classified.retryAfterMs);
+    // Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert.
+    if (classified.disposition !== 'quotaExhausted' && (!definiteRefusalStatuses.has(response.status) || bodyIndicatesInsertedItem(response.body)))
+      throw new YouTubeExchangeError('writeUnconfirmed', classified.kind, classified.message, response);
+    throw classified;
   }
 
   private async request(url: string, token: string, body: string | undefined, signal: AbortSignal, isFencedWrite: boolean): Promise<YouTubeResponse> {
@@ -109,6 +114,19 @@ export class YouTubeClient {
       throw new YouTubeExchangeError(isFencedWrite ? 'writeUnconfirmed' : 'retry', 'TRANSPORT', 'YouTube did not return a complete response');
     }
   }
+}
+
+// Only these statuses prove YouTube refused a write; every other status is an unknown outcome.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Report an error response that still carries a created playlist item. */
+function bodyIndicatesInsertedItem(body: Uint8Array): boolean {
+  try {
+    const value = JSON.parse(new TextDecoder().decode(body)) as unknown;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const item = value as Record<string, unknown>;
+    return item.kind === 'youtube#playlistItem' && typeof item.id === 'string' && item.id !== '';
+  } catch { return false; }
 }
 
 /** Encode one query component exactly as Go url.QueryEscape. */
