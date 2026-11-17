@@ -50,7 +50,7 @@ func TestConnectionGuidanceCoversVisibleFields(t *testing.T) {
 	}
 	require.Equal(t, []string{"timeout", "maxResponseBytes", "apiKey"}, names)
 	require.Equal(t, "secretString", fields[2].Type)
-	require.Equal(t, "https://open.bocha.cn/api-keys", manifest.Spec.Auth.Guide.StartURL)
+	require.Equal(t, "https://open.bochaai.com/api-keys", manifest.Spec.Auth.Guide.StartURL)
 	guide := strings.Join(manifest.Spec.Auth.Guide.Steps, " ")
 	for _, text := range []string{"API KEY", "query", "five", "credit"} {
 		require.Contains(t, guide, text)
