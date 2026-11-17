@@ -120,8 +120,7 @@ class HeartbeatContext:
     async def heartbeat(self, value: object = _NO_HEARTBEAT_VALUE) -> None:
         """Record the last heartbeat for the next fixture invocation."""
         is_clear = value is _NO_HEARTBEAT_VALUE
-        encoded = (None if is_clear else value.to_wire() if isinstance(value, Marker)
-                   else json.loads(CodecRegistry().resolve(type(value)).encode(value).data))
+        encoded = (None if is_clear else _encoded_heartbeat(value))
         if os.environ.get("CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT") == self.scenario_name:
             encoded = {"__wrong_heartbeat_shape__": True}
             is_clear = False
@@ -130,6 +129,16 @@ class HeartbeatContext:
         self.heartbeat_payload = encoded
         self.has_heartbeat_value = not is_clear
         self.has_written_heartbeat = True
+
+
+def _encoded_heartbeat(value: object) -> object:
+    """Encode a heartbeat as Dex persists it, including the SDK's plain-JSON checkpoint map."""
+    if isinstance(value, Marker):
+        return value.to_wire()
+    if isinstance(value, (dict, list)):
+        # Dex encodes a JSON collection without a registered codec as plain JSON.
+        return json.loads(json.dumps(value))
+    return json.loads(CodecRegistry().resolve(type(value)).encode(value).data)
 
 
 def _keys(value: object, required: set[str], optional: set[str], where: str) -> dict[str, Any]:

@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: MIT
 """Verify the Python conformance clock and fixture decoder."""
 
+import asyncio
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from connector_scenarios import load_scenarios
+from connector_scenarios import HeartbeatContext, load_scenarios
 from dex_connectors.sdk.singledispatch import Marker
 
 
@@ -55,6 +56,19 @@ class PriorHeartbeatTest(unittest.TestCase):
                                                   "sendCount": send_count}
                     path.write_text(json.dumps(source))
                     self.assertRaises(ValueError, load_scenarios, path)
+
+
+class HeartbeatEncodingTest(unittest.TestCase):
+    def test_records_marker_and_checkpoint_map_heartbeats(self) -> None:
+        call_id = "5af8fafa-06ff-5b2d-bb13-04693809fabf"
+        marker = {"callId": call_id, "attempt": 1, "state": "claimed"}
+        checkpoint = {"singleDispatchMarkers": {call_id: marker}}
+        context = HeartbeatContext()
+        asyncio.run(context.heartbeat(checkpoint))
+        self.assertEqual(context.heartbeat_payload, checkpoint)
+        self.assertTrue(context.has_heartbeat_value)
+        asyncio.run(context.heartbeat(Marker.from_wire(marker)))
+        self.assertEqual(context.heartbeat_payload, marker)
 
 
 if __name__ == "__main__":

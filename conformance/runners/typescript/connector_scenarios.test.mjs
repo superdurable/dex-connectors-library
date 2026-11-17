@@ -7,7 +7,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
-import { loadScenarios } from './connector_scenarios.ts';
+import { HeartbeatContext, loadScenarios } from './connector_scenarios.ts';
+
+test('HeartbeatContext records the checkpoint map heartbeat as written', async () => {
+  const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
+  const checkpoint = { singleDispatchMarkers: { [callId]: { callId, attempt: 1, state: 'claimed' } } };
+  const context = new HeartbeatContext(undefined);
+  await context.recordHeartbeat(checkpoint);
+  assert.deepEqual(context.getLastHeartbeatValue(), checkpoint);
+  assert.equal(context.hasWrittenHeartbeat, true);
+  const retried = new HeartbeatContext({ attempt: 1, value: checkpoint });
+  assert.equal(retried.attempt, 2);
+  assert.deepEqual(retried.getLastHeartbeatValue(), checkpoint);
+});
 
 const cases = JSON.parse(readFileSync(new URL('../clock_cases.json', import.meta.url), 'utf8'));
 
