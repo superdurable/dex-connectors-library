@@ -1,6 +1,6 @@
 # Stripe TypeScript connector
 
-`@superdurable/connector-stripe` provides the same five API operations as the Go Stripe connector: hosted card and ACH Checkout Session creation, Checkout Session lookup, PaymentIntent lookup, and refund creation. The package uses `@superdurable/connectors-sdk` for Dex operation and connection contracts, including operation-specific Step factories. Its `mock` export supplies typed manifest scenarios for application tests.
+`@superdurable/connector-stripe` provides five Stripe API operations and the signed `checkoutSessionUpdated` Trigger. The package uses `@superdurable/connectors-sdk` for Dex operation and connection contracts, including operation-specific Step factories and a durable webhook runner. Its `mock` export supplies typed manifest scenarios for application tests.
 
 The checked-in `src/generated/` contracts come from `connector.yaml` and the
 Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/stripe/connector.yaml` from the repository root after either source changes.
@@ -18,17 +18,27 @@ types.
 npm install @superdurable/connector-stripe @superdurable/connectors-sdk @superdurable/dex
 ```
 
-Use Node.js 22 or 24 and Dex TypeScript SDK 1.28.0 or later. The connector's `spec.languages.typescript.version` in `connector.yaml` is the published package version; it is independent of the Go connector version.
+Use Node.js 22 or 24 and Dex TypeScript SDK 1.45.4 or later. The connector's `spec.languages.typescript.version` in `connector.yaml` is the published package version; it is independent of the Go connector version.
 
 ## Configure a connection
 
 Create a restricted `rk_test_` or `rk_live_` key in [Stripe Dashboard > Developers > API keys](https://dashboard.stripe.com/apikeys). For PaymentIntent reads and refunds, grant PaymentIntent, Charge, and Refund read access plus Refund write access. Choose **API key only** in Dex Web Connections if the application uses only these API operations. Choose **API key and webhook** only when a separate webhook receiver is configured, and store the matching `whsec_` signing secret in that connection. Keep test and live modes aligned.
 
-This TypeScript package provides the five API operations only. The `checkoutSessionUpdated` Trigger and webhook receiver are currently available in Go; **API key only** is the recommended TypeScript connection method.
+Choose **API key and webhook** for the [Checkout Session event example](examples/checkout-session-events/). Stripe returns the `whsec_` signing secret after you create a webhook endpoint in Developers > Webhooks. The receiver reads the current secret for every delivery, checks the raw body against `Stripe-Signature` within the configured time window, and records matching events in the binding's durable project inbox before answering `200`. Unsupported event types receive `200` without a Flow; invalid signatures receive `400`; missing credentials or a stopped binding receive `503`.
 
 Load the project's connection at Worker startup with `loadFromEnvironment` from `@superdurable/connectors-sdk/projectconfig`, then call `newProjectConnection(project, ConnectionName)` with a static name defined by the application. Ordinary settings are pinned at startup; the private key is resolved immediately before each provider request. Never put the key in Flow input, Attributes, results, Streams, logs, or mock reports. For isolated tests, pass a `StaticCredentialProvider` holding a `SecretString` to `StripeClient` and bind it with `newConnection`.
 
-Dex Web release identity and FDG 2.0 recognition for TypeScript depend on Dex CLI/Web R4 support. Until that release is available, a TypeScript Flow can run through Dex, but Dex Web Connections may not discover its operation configuration automatically. Configure the connection through the private project configuration path and verify it at Worker startup; do not put credentials in application code or Flow state.
+The runnable examples use a static `stripe-payments` connection and strict Flow Definition Graph 2.0 declarations. Keep credentials in Dex Web Connections or the private project configuration; do not put them in application code or Flow state.
+
+## Run the Checkout Session event example
+
+The [runnable event example](examples/checkout-session-events/) receives a signed `checkout.session.async_payment_succeeded` webhook and starts one Flow keyed by Stripe's event ID. It persists only the normalized Checkout Session. `newProjectCheckoutSessionWebhookRuntime` replays the durable inbox after a Worker restart. Configure the `registration-payments` binding and a matching **API key and webhook** connection, then run:
+
+```sh
+npm run example:checkout-events
+```
+
+Set `STRIPE_WEBHOOK_BIND_ADDRESS` to change the local bind address (default `127.0.0.1:8854`); expose `/webhooks/stripe` through HTTPS, and use `GET /readyz` for readiness. Configure `webhookMaxBodyBytes` in bytes and `webhookSignatureTolerance` as a positive Go duration only when the manifest defaults need adjustment. Blank keeps the displayed defaults.
 
 ## Run the card Checkout example
 
@@ -62,4 +72,4 @@ All three writes retry 429, an in-progress 409, and safe 5xx responses using the
 
 Queries return `found`, `notFound`, `providerRejected`, `invalidResponse`, or `defect`. Writes return their happy path (`created` or `refunded`), `providerRejected`, `uncertain`, `invalidResponse`, or `defect`. Every route except the happy path is optional; an unwired route fails the Flow when selected. Provider response bodies are bounded; oversized successful responses select `invalidResponse`, while oversized error responses use HTTP status and headers for classification. The provider transport pins checked DNS addresses, rejects unsafe destinations, and does not follow redirects.
 
-No live Stripe credentials are included with this package. The integration test runs the example Flow through a real Dex Worker and Client against a local Stripe HTTP fixture, including keyed retry and an unwired rejection. It does not verify live Stripe authorization, key permissions, Checkout settlement, or refund reconciliation against a real Stripe account.
+No live Stripe credentials are included with this package. The integration tests run both examples through a real Dex Worker and Client: keyed API retries and rejection, plus signed webhook delivery, replay after Dex downtime, and redelivery deduplication. Live Stripe authorization, key permissions, Checkout settlement, webhook delivery, and refund reconciliation remain unverified.

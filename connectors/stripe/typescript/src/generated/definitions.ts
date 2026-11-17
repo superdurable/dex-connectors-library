@@ -38,6 +38,8 @@ export const CreateCardCheckoutSessionDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createCardCheckoutSession. */
 export const CreateCardCheckoutSessionMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -71,6 +73,8 @@ export const CreateACHCheckoutSessionDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createACHCheckoutSession. */
 export const CreateACHCheckoutSessionMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -170,6 +174,7 @@ export const CreateRefundDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for createRefund. */
 export const CreateRefundMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

@@ -5,6 +5,7 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 Moved from `github.com/superdurable/dex-connectors-library/connectors/stripe`.
 
 The Python package is documented in [python/README.md](python/README.md).
+The TypeScript package now includes the signed `checkoutSessionUpdated` Trigger and a [runnable Dex Flow and Worker](typescript/examples/checkout-session-events/).
 
 This module creates and reconciles Stripe-hosted Checkout Sessions that accept
 card or US bank account (ACH Direct Debit) payments. It also receives signed Checkout

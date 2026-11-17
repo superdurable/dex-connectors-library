@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { BodyTooLargeError, isHeaderSafeCredential, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Call, CredentialProvider, Receipt } from '@superdurable/connectors-sdk';
+import { defaultTriggerLogger, type Call, type CredentialProvider, type Receipt, type TriggerLogger } from '@superdurable/connectors-sdk';
 import type { CheckoutSession, Config, Credentials, PaymentIntent, Refund } from './models.js';
 import { CreateACHCheckoutSessionOperation, CreateCardCheckoutSessionOperation, CreateRefundOperation, GetCheckoutSessionOperation, GetPaymentIntentOperation } from './operations.js';
 
@@ -26,13 +26,18 @@ export type StripeRequestSender = (request: ProviderRequest) => Promise<Provider
 export interface StripeClientOptions {
   /** Substitute a safe sender for tests; production should omit this. */ send?: StripeRequestSender;
   /** Receipt clock, called after a provider response. */ now?: () => Date;
+  /** Destination of secret-safe Trigger records. */ logger?: TriggerLogger;
 }
 
 /** Authenticated Stripe API client. Secrets are resolved only at invocation time. */
 export class StripeClient {
   private readonly endpoint: string;
   private readonly maxResponseBytes: number;
-  private readonly credentials: CredentialProvider<Credentials>;
+  /** Private credential source for provider calls and per-delivery webhook verification. */ readonly credentials: CredentialProvider<Credentials>;
+  /** Largest accepted webhook body in bytes. */ readonly webhookMaxBodyBytes: number;
+  /** Maximum signature age or future skew in milliseconds. */ readonly webhookSignatureToleranceMs: number;
+  /** Trigger record destination. */ readonly triggerLogger: TriggerLogger;
+  /** Clock for webhook validation. */ readonly triggerNow: () => Date;
   private readonly send: StripeRequestSender;
   private readonly now: () => Date;
 
@@ -43,6 +48,12 @@ export class StripeClient {
     const size = config.maxResponseBytes || defaultMaxResponseBytes;
     if (!Number.isSafeInteger(size) || size < 0) throw new TypeError('configuration maxResponseBytes cannot be negative');
     this.maxResponseBytes = size;
+    this.webhookMaxBodyBytes = config.webhookMaxBodyBytes || 1_048_576;
+    this.webhookSignatureToleranceMs = config.webhookSignatureToleranceMs || 300_000;
+    if (!Number.isSafeInteger(this.webhookMaxBodyBytes) || this.webhookMaxBodyBytes <= 0) throw new TypeError('configuration webhookMaxBodyBytes must be positive');
+    if (!Number.isSafeInteger(this.webhookSignatureToleranceMs) || this.webhookSignatureToleranceMs <= 0) throw new TypeError('configuration webhookSignatureTolerance must be positive');
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
+    this.triggerNow = options.now ?? (() => new Date());
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());

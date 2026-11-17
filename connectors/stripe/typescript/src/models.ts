@@ -69,6 +69,8 @@ export const CreateRefundInputSchema = z.strictObject({
 export interface Config {
   /** Stripe v1 API base URL, or an explicitly supported compatible gateway. */ endpoint?: string;
   /** Maximum complete API response size in bytes. */ maxResponseBytes?: number;
+  /** Maximum signed webhook body in bytes; blank uses the manifest limit. */ webhookMaxBodyBytes?: number;
+  /** Maximum Stripe-Signature timestamp difference in milliseconds; blank uses five minutes. */ webhookSignatureToleranceMs?: number;
 }
 
 /** Private Stripe credential resolved for each provider call. */

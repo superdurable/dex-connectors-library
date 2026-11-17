@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-stripe",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "factories": [
     {
@@ -322,7 +322,8 @@
           "invalidResponse": "unknown",
           "providerRejected": "rejected",
           "uncertain": "unknown"
-        }
+        },
+        "repeatOnUnknown": "safe"
       },
       "fields": {
         "stepType": "stepType",
@@ -391,6 +392,16 @@
           "paymentIntentId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineCheckoutSessionUpdatedTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "checkoutSessionUpdated",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]
