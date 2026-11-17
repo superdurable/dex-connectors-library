@@ -383,6 +383,1578 @@
       },
       "name": "getCustomer-defect",
       "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"107\"}],\"totalResults\":3,\"hasMore\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "items": [
+            {
+              "id": "107"
+            }
+          ],
+          "totalResults": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listCustomers-listed",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "totalResults": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listCustomers-provider-rejected",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "totalResults": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listCustomers-invalid-response",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listCustomers-rate-limit",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listCustomers-service-unavailable",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listCustomers-server-error",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 2
+      },
+      "name": "listCustomers-transport",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "totalResults": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 0,
+        "offset": 2
+      },
+      "name": "listCustomers-defect",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "/services/rest/record/v1/customer/107"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+          "providerId": "107",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "entityId": "CUST107",
+          "id": "107"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "1"
+      },
+      "name": "createCustomer-created",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "1"
+      },
+      "name": "createCustomer-provider-rejected",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "1"
+      },
+      "name": "createCustomer-rate-limit",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "1"
+      },
+      "name": "createCustomer-service-unavailable",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "1"
+      },
+      "name": "createCustomer-server-error",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "1"
+      },
+      "name": "createCustomer-transport",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "bad"
+      },
+      "name": "createCustomer-defect",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestBody": {
+            "entityId": "CUST108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "entityId": "CUST108",
+          "id": "107"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "input": {
+        "customerId": "107",
+        "entityId": "CUST108"
+      },
+      "name": "updateCustomer-updated",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestBody": {
+            "entityId": "CUST108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "input": {
+        "customerId": "107",
+        "entityId": "CUST108"
+      },
+      "name": "updateCustomer-not-found",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestBody": {
+            "entityId": "CUST108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "input": {
+        "customerId": "107",
+        "entityId": "CUST108"
+      },
+      "name": "updateCustomer-provider-rejected",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestBody": {
+            "entityId": "CUST108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "input": {
+        "customerId": "107",
+        "entityId": "CUST108"
+      },
+      "name": "updateCustomer-rate-limit",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestBody": {
+            "entityId": "CUST108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "input": {
+        "customerId": "107",
+        "entityId": "CUST108"
+      },
+      "name": "updateCustomer-service-unavailable",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestBody": {
+            "entityId": "CUST108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "input": {
+        "customerId": "107",
+        "entityId": "CUST108"
+      },
+      "name": "updateCustomer-server-error",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestBody": {
+            "entityId": "CUST108"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "input": {
+        "customerId": "107",
+        "entityId": "CUST108"
+      },
+      "name": "updateCustomer-transport",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47a6dc36-c8cc-5e4e-a034-97ea46fdecaa",
+      "input": {
+        "customerId": "bad",
+        "entityId": "CUST108"
+      },
+      "name": "updateCustomer-defect",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "entityId": "",
+          "id": "107"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "input": {
+        "customerId": "107"
+      },
+      "name": "deleteCustomer-deleted",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "input": {
+        "customerId": "107"
+      },
+      "name": "deleteCustomer-not-found",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "input": {
+        "customerId": "107"
+      },
+      "name": "deleteCustomer-provider-rejected",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "input": {
+        "customerId": "107"
+      },
+      "name": "deleteCustomer-rate-limit",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "input": {
+        "customerId": "107"
+      },
+      "name": "deleteCustomer-service-unavailable",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "input": {
+        "customerId": "107"
+      },
+      "name": "deleteCustomer-server-error",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/services/rest/record/v1/customer/107",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "input": {
+        "customerId": "107"
+      },
+      "name": "deleteCustomer-transport",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab2361c2-d584-5aac-ad4b-528d4e24428d",
+      "input": {
+        "customerId": "bad"
+      },
+      "name": "deleteCustomer-defect",
+      "operation": "deleteCustomer"
+    },
+    {
+      "attempts": 2,
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"107\",\"entityId\":\"CUST107\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer/eid:dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "entityId": "CUST107",
+          "id": "107"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCustomer-read-back",
+      "operation": "createCustomer"
+    },
+    {
+      "attempts": 4,
+      "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer/eid:dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer/eid:dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/services/rest/record/v1/customer",
+          "requestBody": {
+            "companyName": "Meridian",
+            "entityId": "CUST107",
+            "externalId": "dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+            "subsidiary": {
+              "id": "1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/rest/record/v1/customer/eid:dex-588a9cf7-7906-5c37-8962-c41adce89c75",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-oracle-netsuite-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "output": {
+          "entityId": "",
+          "id": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "588a9cf7-7906-5c37-8962-c41adce89c75",
+      "input": {
+        "companyName": "Meridian",
+        "entityId": "CUST107",
+        "subsidiaryId": "1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "588a9cf7-7906-5c37-8962-c41adce89c75",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCustomer-send-cap",
+      "operation": "createCustomer"
     }
   ],
   "schemaVersion": 1

@@ -8,7 +8,7 @@ import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk'
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Non-secret account REST origin from https://system.netsuite.com > Setup > Company > Company Information > Account ID, formatted https://ACCOUNT.suitetalk.api.netsuite.com. Blank prevents customer reads. */
+  /** Non-secret account REST origin from https://system.netsuite.com > Setup > Company > Company Information > Account ID, formatted https://ACCOUNT.suitetalk.api.netsuite.com. Blank prevents customer operations. */
   baseUrl: string;
   /** Non-secret OAuth authorization URL https://ACCOUNT.app.netsuite.com/app/login/oauth2/authorize.nl for the same Account ID. Blank prevents authorization. */
   authorizationEndpoint: string;

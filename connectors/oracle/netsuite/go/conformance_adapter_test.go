@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = ""
@@ -24,7 +25,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getCustomer": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomer(), reference),
+	context := singledispatchtest.NewContext("conformance-flow", "netsuite-customer")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			context.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"getCustomer":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomer(), reference),
+		"listCustomers":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListCustomers(), reference),
+		"createCustomer": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCustomer(), reference, scenario.CallID),
+		"updateCustomer": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateCustomer(), reference, scenario.CallID),
+		"deleteCustomer": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteCustomer(), reference, scenario.CallID),
 	}}
 }

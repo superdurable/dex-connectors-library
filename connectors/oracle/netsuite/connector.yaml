@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: oracle-netsuite
   displayName: Oracle NetSuite
-  description: Read a customer record through NetSuite REST Web Services.
+  description: Read and manage customer records through NetSuite REST Web Services.
   company: Oracle
   categories: [finance-payments, crm-sales]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: oracle-netsuite
   languages:
@@ -29,7 +29,7 @@ spec:
         goName: BaseURL
         type: url
         required: true
-        description: Non-secret account REST origin from https://system.netsuite.com > Setup > Company > Company Information > Account ID, formatted https://ACCOUNT.suitetalk.api.netsuite.com. Blank prevents customer reads.
+        description: Non-secret account REST origin from https://system.netsuite.com > Setup > Company > Company Information > Account ID, formatted https://ACCOUNT.suitetalk.api.netsuite.com. Blank prevents customer operations.
       - name: authorizationEndpoint
         goName: AuthorizationEndpoint
         type: url
@@ -99,6 +99,26 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listCustomers
+      goName: ListCustomers
+      inputType: ListCustomersInput
+      outputType: CustomerList
+      kind: query
+      description: List customer records with offset pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: NetSuite returned a page of customers.}
+        - {id: providerRejected, goName: ProviderRejected, description: NetSuite rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: NetSuite returned an invalid list., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample customer page is returned.
+          output: {items: [{id: '107'}], totalResults: 1, hasMore: false}
     - name: getCustomer
       goName: GetCustomer
       inputType: GetCustomerInput
@@ -107,7 +127,7 @@ spec:
       description: Read one customer internal ID and entity name.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: NetSuite returned the customer.}
         - {id: notFound, goName: NotFound, description: No accessible customer has this internal ID., optional: true}
@@ -119,4 +139,63 @@ spec:
           branch: found
           default: true
           description: A sample customer is returned.
+          output: {id: '107', entityId: CUST107}
+    - name: createCustomer
+      goName: CreateCustomer
+      inputType: CreateCustomerInput
+      outputType: CustomerSummary
+      kind: mutation
+      description: Create a company customer.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: NetSuite created the customer.}
+        - {id: providerRejected, goName: ProviderRejected, description: NetSuite rejected customer creation., optional: true}
+        - {id: defect, goName: Defect, description: Customer input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample customer is created.
+          output: {id: '107', entityId: CUST107}
+    - name: updateCustomer
+      goName: UpdateCustomer
+      inputType: UpdateCustomerInput
+      outputType: CustomerSummary
+      kind: mutation
+      description: Replace a customer's displayed entity ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: NetSuite updated the customer.}
+        - {id: notFound, goName: NotFound, description: Customer is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: NetSuite rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample customer is updated.
+          output: {id: '107', entityId: CUST107}
+    - name: deleteCustomer
+      goName: DeleteCustomer
+      inputType: GetCustomerInput
+      outputType: CustomerSummary
+      kind: mutation
+      description: Delete a customer by internal ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: NetSuite deleted the customer.}
+        - {id: notFound, goName: NotFound, description: Customer is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: NetSuite rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample customer is deleted.
           output: {id: '107', entityId: CUST107}

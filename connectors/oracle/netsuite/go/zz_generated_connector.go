@@ -45,13 +45,29 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListCustomers() sdkgo.Query[ListCustomersInput, CustomerList]
 	GetCustomer() sdkgo.Query[GetCustomerInput, CustomerSummary]
+	CreateCustomer() sdkgo.Mutation[CreateCustomerInput, CustomerSummary]
+	UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, CustomerSummary]
+	DeleteCustomer() sdkgo.Mutation[GetCustomerInput, CustomerSummary]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListCustomers() sdkgo.Query[ListCustomersInput, CustomerList] {
+	return operations.client.ListCustomers()
+}
 func (operations clientOperations) GetCustomer() sdkgo.Query[GetCustomerInput, CustomerSummary] {
 	return operations.client.GetCustomer()
+}
+func (operations clientOperations) CreateCustomer() sdkgo.Mutation[CreateCustomerInput, CustomerSummary] {
+	return operations.client.CreateCustomer()
+}
+func (operations clientOperations) UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, CustomerSummary] {
+	return operations.client.UpdateCustomer()
+}
+func (operations clientOperations) DeleteCustomer() sdkgo.Mutation[GetCustomerInput, CustomerSummary] {
+	return operations.client.DeleteCustomer()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -271,6 +287,77 @@ func (credentials Credentials) validateSharedCredential() error {
 	return nil
 }
 
+const ListCustomersBranchListed sdkgo.BranchID = "listed"
+const ListCustomersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCustomersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCustomersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCustomersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCustomers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCustomersBranchListed, Description: "NetSuite returned a page of customers."},
+		{ID: ListCustomersBranchProviderRejected, Description: "NetSuite rejected the listing.", Optional: true},
+		{ID: ListCustomersBranchInvalidResponse, Description: "NetSuite returned an invalid list.", Optional: true},
+		{ID: ListCustomersBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCustomersResult = sdkgo.QueryResult[CustomerList]
+
+type ListCustomersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=oracle-netsuite"`
+	operationID                    struct{}                                        `connector:"operationId=listCustomers"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCustomersInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCustomersResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCustomersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCustomersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCustomersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CustomerList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListCustomersStep[IN any](config ListCustomersStepConfig[IN]) sdkgo.QueryStep[IN, ListCustomersInput, CustomerList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oracle-netsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCustomersInput, CustomerList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCustomers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCustomersResult] {
+			branches := make([]sdkgo.BranchTarget[ListCustomersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCustomersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCustomersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCustomersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCustomersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const GetCustomerBranchFound sdkgo.BranchID = "found"
 const GetCustomerBranchNotFound sdkgo.BranchID = "notFound"
 const GetCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -340,6 +427,220 @@ func NewGetCustomerStep[IN any](config GetCustomerStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCustomerBranchCreated sdkgo.BranchID = "created"
+const CreateCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCustomerBranchCreated, Description: "NetSuite created the customer."},
+		{ID: CreateCustomerBranchProviderRejected, Description: "NetSuite rejected customer creation.", Optional: true},
+		{ID: CreateCustomerBranchDefect, Description: "Customer input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCustomerResult = sdkgo.MutationResult[CustomerSummary]
+
+type CreateCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=oracle-netsuite"`
+	operationID                       struct{}                                              `connector:"operationId=createCustomer"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCustomerInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCustomerResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCustomerResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateCustomerResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomerSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCustomerStep[IN any](config CreateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, CreateCustomerInput, CustomerSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oracle-netsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCustomerInput, CustomerSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCustomerResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCustomerBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCustomerBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCustomerBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCustomerBranchUpdated, Description: "NetSuite updated the customer."},
+		{ID: UpdateCustomerBranchNotFound, Description: "Customer is absent.", Optional: true},
+		{ID: UpdateCustomerBranchProviderRejected, Description: "NetSuite rejected the update.", Optional: true},
+		{ID: UpdateCustomerBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCustomerResult = sdkgo.MutationResult[CustomerSummary]
+
+type UpdateCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=oracle-netsuite"`
+	operationID                       struct{}                                              `connector:"operationId=updateCustomer"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCustomerInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCustomerResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCustomerResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCustomerResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateCustomerResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomerSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCustomerStep[IN any](config UpdateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCustomerInput, CustomerSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oracle-netsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCustomerInput, CustomerSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCustomerResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCustomerBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCustomerBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCustomerBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCustomerBranchDeleted, Description: "NetSuite deleted the customer."},
+		{ID: DeleteCustomerBranchNotFound, Description: "Customer is absent.", Optional: true},
+		{ID: DeleteCustomerBranchProviderRejected, Description: "NetSuite rejected the deletion.", Optional: true},
+		{ID: DeleteCustomerBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteCustomerResult = sdkgo.MutationResult[CustomerSummary]
+
+type DeleteCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=oracle-netsuite"`
+	operationID                       struct{}                                              `connector:"operationId=deleteCustomer"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetCustomerInput                             `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCustomerResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteCustomerResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteCustomerResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteCustomerResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomerSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCustomerStep[IN any](config DeleteCustomerStepConfig[IN]) sdkgo.MutationStep[IN, GetCustomerInput, CustomerSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oracle-netsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetCustomerInput, CustomerSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCustomerResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCustomerBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCustomerBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCustomerBranchDefect))
 			}
 			return branches
 		}(),

@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted oracle-netsuite connection. Script each operation through its accessor.
 type Mock struct {
-	connection  oraclenetsuite.Connection
-	getCustomer *connectormock.Query[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary]
+	connection     oraclenetsuite.Connection
+	listCustomers  *connectormock.Query[oraclenetsuite.ListCustomersInput, oraclenetsuite.CustomerList]
+	getCustomer    *connectormock.Query[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary]
+	createCustomer *connectormock.Mutation[oraclenetsuite.CreateCustomerInput, oraclenetsuite.CustomerSummary]
+	updateCustomer *connectormock.Mutation[oraclenetsuite.UpdateCustomerInput, oraclenetsuite.CustomerSummary]
+	deleteCustomer *connectormock.Mutation[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getCustomer: connectormock.NewQuery[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary](t, oraclenetsuite.GetCustomerDefinition),
+		listCustomers:  connectormock.NewQuery[oraclenetsuite.ListCustomersInput, oraclenetsuite.CustomerList](t, oraclenetsuite.ListCustomersDefinition),
+		getCustomer:    connectormock.NewQuery[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary](t, oraclenetsuite.GetCustomerDefinition),
+		createCustomer: connectormock.NewMutation[oraclenetsuite.CreateCustomerInput, oraclenetsuite.CustomerSummary](t, oraclenetsuite.CreateCustomerDefinition),
+		updateCustomer: connectormock.NewMutation[oraclenetsuite.UpdateCustomerInput, oraclenetsuite.CustomerSummary](t, oraclenetsuite.UpdateCustomerDefinition),
+		deleteCustomer: connectormock.NewMutation[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary](t, oraclenetsuite.DeleteCustomerDefinition),
 	}
+	mock.listCustomers.Default(ListCustomersDefault())
 	mock.getCustomer.Default(GetCustomerDefault())
+	mock.createCustomer.Default(CreateCustomerDefault())
+	mock.updateCustomer.Default(UpdateCustomerDefault())
+	mock.deleteCustomer.Default(DeleteCustomerDefault())
 	connection, err := oraclenetsuite.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "oracle-netsuite", Name: connectionName})
 	if err != nil {
 		t.Fatalf("oracle-netsuite mock connection: %v", err)
@@ -40,15 +52,83 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() oraclenetsuite.Connection { return mock.connection }
 
+// ListCustomers returns the listCustomers script.
+func (mock *Mock) ListCustomers() *connectormock.Query[oraclenetsuite.ListCustomersInput, oraclenetsuite.CustomerList] {
+	return mock.listCustomers
+}
+
 // GetCustomer returns the getCustomer script.
 func (mock *Mock) GetCustomer() *connectormock.Query[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary] {
 	return mock.getCustomer
 }
 
+// CreateCustomer returns the createCustomer script.
+func (mock *Mock) CreateCustomer() *connectormock.Mutation[oraclenetsuite.CreateCustomerInput, oraclenetsuite.CustomerSummary] {
+	return mock.createCustomer
+}
+
+// UpdateCustomer returns the updateCustomer script.
+func (mock *Mock) UpdateCustomer() *connectormock.Mutation[oraclenetsuite.UpdateCustomerInput, oraclenetsuite.CustomerSummary] {
+	return mock.updateCustomer
+}
+
+// DeleteCustomer returns the deleteCustomer script.
+func (mock *Mock) DeleteCustomer() *connectormock.Mutation[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary] {
+	return mock.deleteCustomer
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCustomers() sdkgo.Query[oraclenetsuite.ListCustomersInput, oraclenetsuite.CustomerList] {
+	return operations.mock.listCustomers
+}
 func (operations mockOperations) GetCustomer() sdkgo.Query[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary] {
 	return operations.mock.getCustomer
+}
+func (operations mockOperations) CreateCustomer() sdkgo.Mutation[oraclenetsuite.CreateCustomerInput, oraclenetsuite.CustomerSummary] {
+	return operations.mock.createCustomer
+}
+func (operations mockOperations) UpdateCustomer() sdkgo.Mutation[oraclenetsuite.UpdateCustomerInput, oraclenetsuite.CustomerSummary] {
+	return operations.mock.updateCustomer
+}
+func (operations mockOperations) DeleteCustomer() sdkgo.Mutation[oraclenetsuite.GetCustomerInput, oraclenetsuite.CustomerSummary] {
+	return operations.mock.deleteCustomer
+}
+
+// ListCustomersListed selects the listed branch: NetSuite returned a page of customers.
+func ListCustomersListed(value oraclenetsuite.CustomerList, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerList] {
+	return connectormock.Branch(oraclenetsuite.ListCustomersBranchListed, value, failure)
+}
+
+// ListCustomersProviderRejected selects the providerRejected branch: NetSuite rejected the listing.
+func ListCustomersProviderRejected(value oraclenetsuite.CustomerList, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerList] {
+	return connectormock.Branch(oraclenetsuite.ListCustomersBranchProviderRejected, value, failure)
+}
+
+// ListCustomersInvalidResponse selects the invalidResponse branch: NetSuite returned an invalid list.
+func ListCustomersInvalidResponse(value oraclenetsuite.CustomerList, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerList] {
+	return connectormock.Branch(oraclenetsuite.ListCustomersBranchInvalidResponse, value, failure)
+}
+
+// ListCustomersDefect selects the defect branch: Local input or credentials are invalid.
+func ListCustomersDefect(value oraclenetsuite.CustomerList, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerList] {
+	return connectormock.Branch(oraclenetsuite.ListCustomersBranchDefect, value, failure)
+}
+
+// ListCustomersRetry asks Dex to retry the listCustomers Step, after the delay when it is positive.
+func ListCustomersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oraclenetsuite.CustomerList] {
+	return connectormock.Retry[oraclenetsuite.CustomerList](failure, after)
+}
+
+// ListCustomersListedDefault is the manifest mock listedDefault: A sample customer page is returned.
+func ListCustomersListedDefault() connectormock.Case[oraclenetsuite.CustomerList] {
+	value := connectormock.MustDecodeOutput[oraclenetsuite.CustomerList](`{"items":[{"id":"107"}],"totalResults":1,"hasMore":false}`)
+	return connectormock.Branch(oraclenetsuite.ListCustomersBranchListed, value, nil)
+}
+
+// ListCustomersDefault is the manifest default, listedDefault, which New installs.
+func ListCustomersDefault() connectormock.Case[oraclenetsuite.CustomerList] {
+	return ListCustomersListedDefault()
 }
 
 // GetCustomerFound selects the found branch: NetSuite returned the customer.
@@ -90,4 +170,107 @@ func GetCustomerFoundDefault() connectormock.Case[oraclenetsuite.CustomerSummary
 // GetCustomerDefault is the manifest default, foundDefault, which New installs.
 func GetCustomerDefault() connectormock.Case[oraclenetsuite.CustomerSummary] {
 	return GetCustomerFoundDefault()
+}
+
+// CreateCustomerCreated selects the created branch: NetSuite created the customer.
+func CreateCustomerCreated(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.CreateCustomerBranchCreated, value, failure)
+}
+
+// CreateCustomerProviderRejected selects the providerRejected branch: NetSuite rejected customer creation.
+func CreateCustomerProviderRejected(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.CreateCustomerBranchProviderRejected, value, failure)
+}
+
+// CreateCustomerDefect selects the defect branch: Customer input or credentials are invalid.
+func CreateCustomerDefect(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.CreateCustomerBranchDefect, value, failure)
+}
+
+// CreateCustomerRetry asks Dex to retry the createCustomer Step, after the delay when it is positive.
+func CreateCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Retry[oraclenetsuite.CustomerSummary](failure, after)
+}
+
+// CreateCustomerCreatedDefault is the manifest mock createdDefault: A sample customer is created.
+func CreateCustomerCreatedDefault() connectormock.Case[oraclenetsuite.CustomerSummary] {
+	value := connectormock.MustDecodeOutput[oraclenetsuite.CustomerSummary](`{"id":"107","entityId":"CUST107"}`)
+	return connectormock.Branch(oraclenetsuite.CreateCustomerBranchCreated, value, nil)
+}
+
+// CreateCustomerDefault is the manifest default, createdDefault, which New installs.
+func CreateCustomerDefault() connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return CreateCustomerCreatedDefault()
+}
+
+// UpdateCustomerUpdated selects the updated branch: NetSuite updated the customer.
+func UpdateCustomerUpdated(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.UpdateCustomerBranchUpdated, value, failure)
+}
+
+// UpdateCustomerNotFound selects the notFound branch: Customer is absent.
+func UpdateCustomerNotFound(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.UpdateCustomerBranchNotFound, value, failure)
+}
+
+// UpdateCustomerProviderRejected selects the providerRejected branch: NetSuite rejected the update.
+func UpdateCustomerProviderRejected(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.UpdateCustomerBranchProviderRejected, value, failure)
+}
+
+// UpdateCustomerDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCustomerDefect(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.UpdateCustomerBranchDefect, value, failure)
+}
+
+// UpdateCustomerRetry asks Dex to retry the updateCustomer Step, after the delay when it is positive.
+func UpdateCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Retry[oraclenetsuite.CustomerSummary](failure, after)
+}
+
+// UpdateCustomerUpdatedDefault is the manifest mock updatedDefault: A sample customer is updated.
+func UpdateCustomerUpdatedDefault() connectormock.Case[oraclenetsuite.CustomerSummary] {
+	value := connectormock.MustDecodeOutput[oraclenetsuite.CustomerSummary](`{"id":"107","entityId":"CUST107"}`)
+	return connectormock.Branch(oraclenetsuite.UpdateCustomerBranchUpdated, value, nil)
+}
+
+// UpdateCustomerDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCustomerDefault() connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return UpdateCustomerUpdatedDefault()
+}
+
+// DeleteCustomerDeleted selects the deleted branch: NetSuite deleted the customer.
+func DeleteCustomerDeleted(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.DeleteCustomerBranchDeleted, value, failure)
+}
+
+// DeleteCustomerNotFound selects the notFound branch: Customer is absent.
+func DeleteCustomerNotFound(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.DeleteCustomerBranchNotFound, value, failure)
+}
+
+// DeleteCustomerProviderRejected selects the providerRejected branch: NetSuite rejected the deletion.
+func DeleteCustomerProviderRejected(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.DeleteCustomerBranchProviderRejected, value, failure)
+}
+
+// DeleteCustomerDefect selects the defect branch: Input or credentials are invalid.
+func DeleteCustomerDefect(value oraclenetsuite.CustomerSummary, failure *sdkgo.Failure) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Branch(oraclenetsuite.DeleteCustomerBranchDefect, value, failure)
+}
+
+// DeleteCustomerRetry asks Dex to retry the deleteCustomer Step, after the delay when it is positive.
+func DeleteCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return connectormock.Retry[oraclenetsuite.CustomerSummary](failure, after)
+}
+
+// DeleteCustomerDeletedDefault is the manifest mock deletedDefault: A sample customer is deleted.
+func DeleteCustomerDeletedDefault() connectormock.Case[oraclenetsuite.CustomerSummary] {
+	value := connectormock.MustDecodeOutput[oraclenetsuite.CustomerSummary](`{"id":"107","entityId":"CUST107"}`)
+	return connectormock.Branch(oraclenetsuite.DeleteCustomerBranchDeleted, value, nil)
+}
+
+// DeleteCustomerDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCustomerDefault() connectormock.Case[oraclenetsuite.CustomerSummary] {
+	return DeleteCustomerDeletedDefault()
 }

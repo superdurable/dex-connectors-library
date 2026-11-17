@@ -24,7 +24,8 @@ import (
 func TestCustomerInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := oraclenetsuitemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	listFlow := NewListFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, listFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,14 @@ func TestCustomerInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "107", output.ID)
 	require.Equal(t, "CUST107", output.EntityID)
 	require.Len(t, mock.GetCustomer().Calls(), 1)
+	listFlowID := "oracle-netsuite-customer-list-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, listFlow, listFlowID, oraclenetsuite.ListCustomersInput{Limit: 2, Offset: 0}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	listResult, err := client.WaitForFlow(ctx, listFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, listResult.Status, listResult.ErrorMessage)
+	var page oraclenetsuite.CustomerList
+	require.NoError(t, listResult.DecodeSingleOutput(&page))
+	require.Equal(t, "107", page.Items[0].ID)
+	require.Len(t, mock.ListCustomers().Calls(), 1)
 }
