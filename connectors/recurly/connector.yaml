@@ -293,6 +293,44 @@ spec:
           default: true
           description: A sample account page is returned.
           output: {accounts: [{id: e28zov4fw0v2, code: acme-corp}], hasMore: false}
+    - name: setAccountTimeZone
+      goName: SetAccountTimeZone
+      inputType: SetAccountTimeZoneInput
+      outputType: AccountTimeZone
+      kind: mutation
+      description: Replace an account's preferred IANA time zone.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Recurly updated the account time zone.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected the account update., optional: true}
+        - {id: defect, goName: Defect, description: Invalid account ID or time zone or credentials., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample account time zone was updated.
+          output: {id: e28zov4fw0v2, code: acme-corp, timeZone: America/Los_Angeles}
+    - name: reactivateAccount
+      goName: ReactivateAccount
+      inputType: ReactivateAccountInput
+      outputType: AccountLifecycle
+      kind: mutation
+      description: Reactivate an inactive account without restoring deleted billing details.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: reactivated, goName: Reactivated, description: Recurly reactivated or confirmed the account.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected account reactivation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid account ID or credentials., optional: true}
+      mocks:
+        - name: reactivatedDefault
+          branch: reactivated
+          default: true
+          description: A sample account is active again.
+          output: {id: e28zov4fw0v2, code: acme-corp, state: active}
     - name: createAccount
       goName: CreateAccount
       inputType: CreateAccountInput

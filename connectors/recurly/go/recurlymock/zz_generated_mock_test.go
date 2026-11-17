@@ -64,6 +64,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[recurly.AccountPage](`{"accounts":[{"id":"e28zov4fw0v2","code":"acme-corp"}],"hasMore":false}`)
 			return err
 		}},
+		{name: "setAccountTimeZone/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.AccountTimeZone](`{"id":"e28zov4fw0v2","code":"acme-corp","timeZone":"America/Los_Angeles"}`)
+			return err
+		}},
+		{name: "reactivateAccount/reactivatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.AccountLifecycle](`{"id":"e28zov4fw0v2","code":"acme-corp","state":"active"}`)
+			return err
+		}},
 		{name: "createAccount/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[recurly.AccountIdentity](`{"id":"e28zov4fw0v2","code":"dex_0123456789abcdef0123456789abcdef"}`)
 			return err
@@ -117,6 +125,12 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
 		t.Errorf("listAccounts mock has another definition")
+	}
+	if mock.SetAccountTimeZone().Definition().Operation.OperationID != "setAccountTimeZone" {
+		t.Errorf("setAccountTimeZone mock has another definition")
+	}
+	if mock.ReactivateAccount().Definition().Operation.OperationID != "reactivateAccount" {
+		t.Errorf("reactivateAccount mock has another definition")
 	}
 	if mock.CreateAccount().Definition().Operation.OperationID != "createAccount" {
 		t.Errorf("createAccount mock has another definition")

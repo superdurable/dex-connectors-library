@@ -30,6 +30,8 @@ type Mock struct {
 	cancelSubscription     *connectormock.Mutation[recurly.CancelSubscriptionInput, recurly.SubscriptionSummary]
 	reactivateSubscription *connectormock.Mutation[recurly.ReactivateSubscriptionInput, recurly.SubscriptionSummary]
 	listAccounts           *connectormock.Query[recurly.ListAccountsInput, recurly.AccountPage]
+	setAccountTimeZone     *connectormock.Mutation[recurly.SetAccountTimeZoneInput, recurly.AccountTimeZone]
+	reactivateAccount      *connectormock.Mutation[recurly.ReactivateAccountInput, recurly.AccountLifecycle]
 	createAccount          *connectormock.Mutation[recurly.CreateAccountInput, recurly.AccountIdentity]
 	getAccount             *connectormock.Query[recurly.GetAccountInput, recurly.AccountIdentity]
 }
@@ -51,6 +53,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		cancelSubscription:     connectormock.NewMutation[recurly.CancelSubscriptionInput, recurly.SubscriptionSummary](t, recurly.CancelSubscriptionDefinition),
 		reactivateSubscription: connectormock.NewMutation[recurly.ReactivateSubscriptionInput, recurly.SubscriptionSummary](t, recurly.ReactivateSubscriptionDefinition),
 		listAccounts:           connectormock.NewQuery[recurly.ListAccountsInput, recurly.AccountPage](t, recurly.ListAccountsDefinition),
+		setAccountTimeZone:     connectormock.NewMutation[recurly.SetAccountTimeZoneInput, recurly.AccountTimeZone](t, recurly.SetAccountTimeZoneDefinition),
+		reactivateAccount:      connectormock.NewMutation[recurly.ReactivateAccountInput, recurly.AccountLifecycle](t, recurly.ReactivateAccountDefinition),
 		createAccount:          connectormock.NewMutation[recurly.CreateAccountInput, recurly.AccountIdentity](t, recurly.CreateAccountDefinition),
 		getAccount:             connectormock.NewQuery[recurly.GetAccountInput, recurly.AccountIdentity](t, recurly.GetAccountDefinition),
 	}
@@ -66,6 +70,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.cancelSubscription.Default(CancelSubscriptionDefault())
 	mock.reactivateSubscription.Default(ReactivateSubscriptionDefault())
 	mock.listAccounts.Default(ListAccountsDefault())
+	mock.setAccountTimeZone.Default(SetAccountTimeZoneDefault())
+	mock.reactivateAccount.Default(ReactivateAccountDefault())
 	mock.createAccount.Default(CreateAccountDefault())
 	mock.getAccount.Default(GetAccountDefault())
 	connection, err := recurly.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "recurly", Name: connectionName})
@@ -139,6 +145,16 @@ func (mock *Mock) ListAccounts() *connectormock.Query[recurly.ListAccountsInput,
 	return mock.listAccounts
 }
 
+// SetAccountTimeZone returns the setAccountTimeZone script.
+func (mock *Mock) SetAccountTimeZone() *connectormock.Mutation[recurly.SetAccountTimeZoneInput, recurly.AccountTimeZone] {
+	return mock.setAccountTimeZone
+}
+
+// ReactivateAccount returns the reactivateAccount script.
+func (mock *Mock) ReactivateAccount() *connectormock.Mutation[recurly.ReactivateAccountInput, recurly.AccountLifecycle] {
+	return mock.reactivateAccount
+}
+
 // CreateAccount returns the createAccount script.
 func (mock *Mock) CreateAccount() *connectormock.Mutation[recurly.CreateAccountInput, recurly.AccountIdentity] {
 	return mock.createAccount
@@ -186,6 +202,12 @@ func (operations mockOperations) ReactivateSubscription() sdkgo.Mutation[recurly
 }
 func (operations mockOperations) ListAccounts() sdkgo.Query[recurly.ListAccountsInput, recurly.AccountPage] {
 	return operations.mock.listAccounts
+}
+func (operations mockOperations) SetAccountTimeZone() sdkgo.Mutation[recurly.SetAccountTimeZoneInput, recurly.AccountTimeZone] {
+	return operations.mock.setAccountTimeZone
+}
+func (operations mockOperations) ReactivateAccount() sdkgo.Mutation[recurly.ReactivateAccountInput, recurly.AccountLifecycle] {
+	return operations.mock.reactivateAccount
 }
 func (operations mockOperations) CreateAccount() sdkgo.Mutation[recurly.CreateAccountInput, recurly.AccountIdentity] {
 	return operations.mock.createAccount
@@ -602,6 +624,68 @@ func ListAccountsListedDefault() connectormock.Case[recurly.AccountPage] {
 // ListAccountsDefault is the manifest default, listedDefault, which New installs.
 func ListAccountsDefault() connectormock.Case[recurly.AccountPage] {
 	return ListAccountsListedDefault()
+}
+
+// SetAccountTimeZoneUpdated selects the updated branch: Recurly updated the account time zone.
+func SetAccountTimeZoneUpdated(value recurly.AccountTimeZone, failure *sdkgo.Failure) connectormock.Case[recurly.AccountTimeZone] {
+	return connectormock.Branch(recurly.SetAccountTimeZoneBranchUpdated, value, failure)
+}
+
+// SetAccountTimeZoneProviderRejected selects the providerRejected branch: Recurly rejected the account update.
+func SetAccountTimeZoneProviderRejected(value recurly.AccountTimeZone, failure *sdkgo.Failure) connectormock.Case[recurly.AccountTimeZone] {
+	return connectormock.Branch(recurly.SetAccountTimeZoneBranchProviderRejected, value, failure)
+}
+
+// SetAccountTimeZoneDefect selects the defect branch: Invalid account ID or time zone or credentials.
+func SetAccountTimeZoneDefect(value recurly.AccountTimeZone, failure *sdkgo.Failure) connectormock.Case[recurly.AccountTimeZone] {
+	return connectormock.Branch(recurly.SetAccountTimeZoneBranchDefect, value, failure)
+}
+
+// SetAccountTimeZoneRetry asks Dex to retry the setAccountTimeZone Step, after the delay when it is positive.
+func SetAccountTimeZoneRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.AccountTimeZone] {
+	return connectormock.Retry[recurly.AccountTimeZone](failure, after)
+}
+
+// SetAccountTimeZoneUpdatedDefault is the manifest mock updatedDefault: A sample account time zone was updated.
+func SetAccountTimeZoneUpdatedDefault() connectormock.Case[recurly.AccountTimeZone] {
+	value := connectormock.MustDecodeOutput[recurly.AccountTimeZone](`{"id":"e28zov4fw0v2","code":"acme-corp","timeZone":"America/Los_Angeles"}`)
+	return connectormock.Branch(recurly.SetAccountTimeZoneBranchUpdated, value, nil)
+}
+
+// SetAccountTimeZoneDefault is the manifest default, updatedDefault, which New installs.
+func SetAccountTimeZoneDefault() connectormock.Case[recurly.AccountTimeZone] {
+	return SetAccountTimeZoneUpdatedDefault()
+}
+
+// ReactivateAccountReactivated selects the reactivated branch: Recurly reactivated or confirmed the account.
+func ReactivateAccountReactivated(value recurly.AccountLifecycle, failure *sdkgo.Failure) connectormock.Case[recurly.AccountLifecycle] {
+	return connectormock.Branch(recurly.ReactivateAccountBranchReactivated, value, failure)
+}
+
+// ReactivateAccountProviderRejected selects the providerRejected branch: Recurly rejected account reactivation.
+func ReactivateAccountProviderRejected(value recurly.AccountLifecycle, failure *sdkgo.Failure) connectormock.Case[recurly.AccountLifecycle] {
+	return connectormock.Branch(recurly.ReactivateAccountBranchProviderRejected, value, failure)
+}
+
+// ReactivateAccountDefect selects the defect branch: Invalid account ID or credentials.
+func ReactivateAccountDefect(value recurly.AccountLifecycle, failure *sdkgo.Failure) connectormock.Case[recurly.AccountLifecycle] {
+	return connectormock.Branch(recurly.ReactivateAccountBranchDefect, value, failure)
+}
+
+// ReactivateAccountRetry asks Dex to retry the reactivateAccount Step, after the delay when it is positive.
+func ReactivateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[recurly.AccountLifecycle] {
+	return connectormock.Retry[recurly.AccountLifecycle](failure, after)
+}
+
+// ReactivateAccountReactivatedDefault is the manifest mock reactivatedDefault: A sample account is active again.
+func ReactivateAccountReactivatedDefault() connectormock.Case[recurly.AccountLifecycle] {
+	value := connectormock.MustDecodeOutput[recurly.AccountLifecycle](`{"id":"e28zov4fw0v2","code":"acme-corp","state":"active"}`)
+	return connectormock.Branch(recurly.ReactivateAccountBranchReactivated, value, nil)
+}
+
+// ReactivateAccountDefault is the manifest default, reactivatedDefault, which New installs.
+func ReactivateAccountDefault() connectormock.Case[recurly.AccountLifecycle] {
+	return ReactivateAccountReactivatedDefault()
 }
 
 // CreateAccountCreated selects the created branch: Recurly created or confirmed the account.

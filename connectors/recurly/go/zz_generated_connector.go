@@ -52,6 +52,8 @@ type Operations interface {
 	CancelSubscription() sdkgo.Mutation[CancelSubscriptionInput, SubscriptionSummary]
 	ReactivateSubscription() sdkgo.Mutation[ReactivateSubscriptionInput, SubscriptionSummary]
 	ListAccounts() sdkgo.Query[ListAccountsInput, AccountPage]
+	SetAccountTimeZone() sdkgo.Mutation[SetAccountTimeZoneInput, AccountTimeZone]
+	ReactivateAccount() sdkgo.Mutation[ReactivateAccountInput, AccountLifecycle]
 	CreateAccount() sdkgo.Mutation[CreateAccountInput, AccountIdentity]
 	GetAccount() sdkgo.Query[GetAccountInput, AccountIdentity]
 }
@@ -93,6 +95,12 @@ func (operations clientOperations) ReactivateSubscription() sdkgo.Mutation[React
 }
 func (operations clientOperations) ListAccounts() sdkgo.Query[ListAccountsInput, AccountPage] {
 	return operations.client.ListAccounts()
+}
+func (operations clientOperations) SetAccountTimeZone() sdkgo.Mutation[SetAccountTimeZoneInput, AccountTimeZone] {
+	return operations.client.SetAccountTimeZone()
+}
+func (operations clientOperations) ReactivateAccount() sdkgo.Mutation[ReactivateAccountInput, AccountLifecycle] {
+	return operations.client.ReactivateAccount()
 }
 func (operations clientOperations) CreateAccount() sdkgo.Mutation[CreateAccountInput, AccountIdentity] {
 	return operations.client.CreateAccount()
@@ -1070,6 +1078,136 @@ func NewListAccountsStep[IN any](config ListAccountsStepConfig[IN]) sdkgo.QueryS
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListAccountsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetAccountTimeZoneBranchUpdated sdkgo.BranchID = "updated"
+const SetAccountTimeZoneBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetAccountTimeZoneBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetAccountTimeZoneDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setAccountTimeZone"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetAccountTimeZoneBranchUpdated, Description: "Recurly updated the account time zone."},
+		{ID: SetAccountTimeZoneBranchProviderRejected, Description: "Recurly rejected the account update.", Optional: true},
+		{ID: SetAccountTimeZoneBranchDefect, Description: "Invalid account ID or time zone or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SetAccountTimeZoneResult = sdkgo.MutationResult[AccountTimeZone]
+
+type SetAccountTimeZoneStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=recurly"`
+	operationID                       struct{}                                              `connector:"operationId=setAccountTimeZone"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetAccountTimeZoneInput                      `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[SetAccountTimeZoneResult]                `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[SetAccountTimeZoneResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SetAccountTimeZoneResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountTimeZone]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewSetAccountTimeZoneStep[IN any](config SetAccountTimeZoneStepConfig[IN]) sdkgo.MutationStep[IN, SetAccountTimeZoneInput, AccountTimeZone] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetAccountTimeZoneInput, AccountTimeZone]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetAccountTimeZone(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetAccountTimeZoneResult] {
+			branches := make([]sdkgo.BranchTarget[SetAccountTimeZoneResult], 0, 3)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(SetAccountTimeZoneBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetAccountTimeZoneBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetAccountTimeZoneBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ReactivateAccountBranchReactivated sdkgo.BranchID = "reactivated"
+const ReactivateAccountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ReactivateAccountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ReactivateAccountDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "reactivateAccount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ReactivateAccountBranchReactivated, Description: "Recurly reactivated or confirmed the account."},
+		{ID: ReactivateAccountBranchProviderRejected, Description: "Recurly rejected account reactivation.", Optional: true},
+		{ID: ReactivateAccountBranchDefect, Description: "Invalid account ID or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ReactivateAccountResult = sdkgo.MutationResult[AccountLifecycle]
+
+type ReactivateAccountStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=recurly"`
+	operationID                       struct{}                                               `connector:"operationId=reactivateAccount"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) ReactivateAccountInput                        `connector:"mapToOperationInput"`
+	Reactivated                       sdkgo.Target[ReactivateAccountResult]                  `connector:"branch=reactivated"`
+	ProviderRejected                  sdkgo.Target[ReactivateAccountResult]                  `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[ReactivateAccountResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AccountLifecycle]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewReactivateAccountStep[IN any](config ReactivateAccountStepConfig[IN]) sdkgo.MutationStep[IN, ReactivateAccountInput, AccountLifecycle] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ReactivateAccountInput, AccountLifecycle]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ReactivateAccount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ReactivateAccountResult] {
+			branches := make([]sdkgo.BranchTarget[ReactivateAccountResult], 0, 3)
+			if config.Reactivated.HasStep() {
+				branches = append(branches, config.Reactivated.BranchTarget(ReactivateAccountBranchReactivated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ReactivateAccountBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ReactivateAccountBranchDefect))
 			}
 			return branches
 		}(),
