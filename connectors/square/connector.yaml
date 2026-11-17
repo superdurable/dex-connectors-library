@@ -183,3 +183,65 @@ spec:
           description: A captured Square payment.
           default: true
           output: {id: pay_101, status: COMPLETED, amount_money: {amount: 2900, currency: USD}}
+    - name: listRefunds
+      goName: ListRefunds
+      inputType: ListRefundsInput
+      outputType: RefundPage
+      kind: query
+      description: List one page of Square payment refunds.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Square listed the refunds.}
+        - {id: notFound, goName: NotFound, description: The requested refund resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: One page with a completed Square refund.
+          default: true
+          output: {refunds: [{id: refund_101, payment_id: pay_101, status: COMPLETED, amount_money: {amount: 1000, currency: USD}}], cursor: ""}
+    - name: getRefund
+      goName: GetRefund
+      inputType: GetRefundInput
+      outputType: Refund
+      kind: query
+      description: Read one Square payment refund.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Square returned the refund.}
+        - {id: notFound, goName: NotFound, description: The refund was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: A completed Square refund.
+          default: true
+          output: {id: refund_101, payment_id: pay_101, status: COMPLETED, amount_money: {amount: 1000, currency: USD}}
+    - name: refundPayment
+      goName: RefundPayment
+      inputType: RefundPaymentInput
+      outputType: Refund
+      kind: mutation
+      description: Refund part or all of a completed Square payment with a stable idempotency key.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: refunded, goName: Refunded, description: Square accepted the refund.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the refund., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: refunded
+          description: Square accepted a partial refund.
+          default: true
+          output: {id: refund_101, payment_id: pay_101, status: PENDING, amount_money: {amount: 1000, currency: USD}}

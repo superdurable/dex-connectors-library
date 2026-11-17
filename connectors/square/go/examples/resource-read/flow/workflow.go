@@ -18,6 +18,7 @@ const (
 	ConnectionName        = "square"
 	readStepType          = "ReadSquareResource"
 	createPaymentStepType = "CreateSquareCashPayment"
+	refundPaymentStepType = "RefundSquarePayment"
 )
 
 // Request is the typed start input for this example.
@@ -28,6 +29,8 @@ type Request struct {
 	RecordCashPayment bool `json:"recordCashPayment,omitempty"`
 	// AmountMoney is the positive cash payment amount in minor currency units when recording a payment.
 	AmountMoney square.Money `json:"amountMoney,omitempty"`
+	// RefundPaymentID selects a completed payment to refund when set.
+	RefundPaymentID string `json:"refundPaymentId,omitempty"`
 }
 
 // Outcome is the completed resource read.
@@ -36,6 +39,8 @@ type Outcome struct {
 	Value square.PaymentPage `json:"value"`
 	// Payment is the created cash payment when RecordCashPayment was selected.
 	Payment square.Payment `json:"payment,omitempty"`
+	// Refund is the accepted payment refund when RefundPaymentID was set.
+	Refund square.Refund `json:"refund,omitempty"`
 }
 
 var outcomeAttribute = dex.DefineAttribute[Outcome]("square-resource-read-outcome")
@@ -67,8 +72,15 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToCreatePaymentInput,
 			Created:             sdkgo.GoTo(completeCashPayment{}),
 		})),
+		dex.DefineStep(square.NewRefundPaymentStep(square.RefundPaymentStepConfig[Request]{
+			StepType: refundPaymentStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "square", GroupLabel: "Square", Explanation: "Refund the selected Square payment."},
+			MapToOperationInput: MapToRefundPaymentInput,
+			Refunded:            sdkgo.GoTo(completeRefund{}),
+		})),
 		dex.DefineStep(completeRead{}),
 		dex.DefineStep(completeCashPayment{}),
+		dex.DefineStep(completeRefund{}),
 	}
 }
 
@@ -106,10 +118,21 @@ func MapToCreatePaymentInput(request Request) square.CreatePaymentInput {
 	return square.CreatePaymentInput{SourceID: "CASH", AmountMoney: request.AmountMoney}
 }
 
+// MapToRefundPaymentInput maps a completed payment and refund amount.
+func MapToRefundPaymentInput(request Request) square.RefundPaymentInput {
+	return square.RefundPaymentInput{PaymentID: request.RefundPaymentID, AmountMoney: request.AmountMoney}
+}
+
 // PrepareRequest rejects invalid local input before a provider call.
 func PrepareRequest(request Request) (Request, error) {
 	if request.RecordCashPayment && (request.AmountMoney.Amount <= 0 || request.AmountMoney.Currency == "") {
 		return Request{}, errors.New("cash payment amount and currency are required")
+	}
+	if request.RefundPaymentID != "" && (request.AmountMoney.Amount <= 0 || request.AmountMoney.Currency == "") {
+		return Request{}, errors.New("refund amount and currency are required")
+	}
+	if request.RecordCashPayment && request.RefundPaymentID != "" {
+		return Request{}, errors.New("choose one payment action")
 	}
 	return request, nil
 }
@@ -129,6 +152,9 @@ func (prepareRequest) Execute(ctx dex.Context, request Request) (*dex.StepDecisi
 	}
 	if prepared.RecordCashPayment {
 		return dex.GoTo(sdkgo.StepRef[Request](createPaymentStepType), prepared), nil
+	}
+	if prepared.RefundPaymentID != "" {
+		return dex.GoTo(sdkgo.StepRef[Request](refundPaymentStepType), prepared), nil
 	}
 	return dex.GoTo(sdkgo.StepRef[Request](readStepType), prepared), nil
 }
@@ -157,6 +183,21 @@ type completeCashPayment struct {
 func (completeCashPayment) GetStepType() string { return "CompleteCashPayment" }
 func (completeCashPayment) Execute(ctx dex.Context, result square.CreatePaymentResult) (*dex.StepDecision, error) {
 	outcome := Outcome{Payment: result.Value}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:resource-result group-label:"Resource result"
+// dex:explanation text:"Persist the accepted refund as the Flow outcome."
+type completeRefund struct {
+	dex.StepDefaultsNoWaitFor[square.RefundPaymentResult]
+}
+
+func (completeRefund) GetStepType() string { return "CompleteRefund" }
+func (completeRefund) Execute(ctx dex.Context, result square.RefundPaymentResult) (*dex.StepDecision, error) {
+	outcome := Outcome{Refund: result.Value}
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

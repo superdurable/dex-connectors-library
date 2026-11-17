@@ -24,6 +24,9 @@ type Mock struct {
 	updatePayment   *connectormock.Mutation[square.UpdatePaymentInput, square.Payment]
 	cancelPayment   *connectormock.Mutation[square.CancelPaymentInput, square.Payment]
 	completePayment *connectormock.Mutation[square.CompletePaymentInput, square.Payment]
+	listRefunds     *connectormock.Query[square.ListRefundsInput, square.RefundPage]
+	getRefund       *connectormock.Query[square.GetRefundInput, square.Refund]
+	refundPayment   *connectormock.Mutation[square.RefundPaymentInput, square.Refund]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -37,6 +40,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		updatePayment:   connectormock.NewMutation[square.UpdatePaymentInput, square.Payment](t, square.UpdatePaymentDefinition),
 		cancelPayment:   connectormock.NewMutation[square.CancelPaymentInput, square.Payment](t, square.CancelPaymentDefinition),
 		completePayment: connectormock.NewMutation[square.CompletePaymentInput, square.Payment](t, square.CompletePaymentDefinition),
+		listRefunds:     connectormock.NewQuery[square.ListRefundsInput, square.RefundPage](t, square.ListRefundsDefinition),
+		getRefund:       connectormock.NewQuery[square.GetRefundInput, square.Refund](t, square.GetRefundDefinition),
+		refundPayment:   connectormock.NewMutation[square.RefundPaymentInput, square.Refund](t, square.RefundPaymentDefinition),
 	}
 	mock.listPayments.Default(ListPaymentsDefault())
 	mock.getPayment.Default(GetPaymentDefault())
@@ -44,6 +50,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updatePayment.Default(UpdatePaymentDefault())
 	mock.cancelPayment.Default(CancelPaymentDefault())
 	mock.completePayment.Default(CompletePaymentDefault())
+	mock.listRefunds.Default(ListRefundsDefault())
+	mock.getRefund.Default(GetRefundDefault())
+	mock.refundPayment.Default(RefundPaymentDefault())
 	connection, err := square.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "square", Name: connectionName})
 	if err != nil {
 		t.Fatalf("square mock connection: %v", err)
@@ -85,6 +94,21 @@ func (mock *Mock) CompletePayment() *connectormock.Mutation[square.CompletePayme
 	return mock.completePayment
 }
 
+// ListRefunds returns the listRefunds script.
+func (mock *Mock) ListRefunds() *connectormock.Query[square.ListRefundsInput, square.RefundPage] {
+	return mock.listRefunds
+}
+
+// GetRefund returns the getRefund script.
+func (mock *Mock) GetRefund() *connectormock.Query[square.GetRefundInput, square.Refund] {
+	return mock.getRefund
+}
+
+// RefundPayment returns the refundPayment script.
+func (mock *Mock) RefundPayment() *connectormock.Mutation[square.RefundPaymentInput, square.Refund] {
+	return mock.refundPayment
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListPayments() sdkgo.Query[square.ListPaymentsInput, square.PaymentPage] {
@@ -104,6 +128,15 @@ func (operations mockOperations) CancelPayment() sdkgo.Mutation[square.CancelPay
 }
 func (operations mockOperations) CompletePayment() sdkgo.Mutation[square.CompletePaymentInput, square.Payment] {
 	return operations.mock.completePayment
+}
+func (operations mockOperations) ListRefunds() sdkgo.Query[square.ListRefundsInput, square.RefundPage] {
+	return operations.mock.listRefunds
+}
+func (operations mockOperations) GetRefund() sdkgo.Query[square.GetRefundInput, square.Refund] {
+	return operations.mock.getRefund
+}
+func (operations mockOperations) RefundPayment() sdkgo.Mutation[square.RefundPaymentInput, square.Refund] {
+	return operations.mock.refundPayment
 }
 
 // ListPaymentsListed selects the listed branch: List one page of Square payments.
@@ -336,3 +369,115 @@ func CompletePaymentDefaultAnswer() connectormock.Case[square.Payment] {
 func CompletePaymentDefault() connectormock.Case[square.Payment] {
 	return CompletePaymentDefaultAnswer()
 }
+
+// ListRefundsListed selects the listed branch: Square listed the refunds.
+func ListRefundsListed(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchListed, value, failure)
+}
+
+// ListRefundsNotFound selects the notFound branch: The requested refund resource was not found.
+func ListRefundsNotFound(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchNotFound, value, failure)
+}
+
+// ListRefundsProviderRejected selects the providerRejected branch: Square conclusively rejected the read.
+func ListRefundsProviderRejected(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchProviderRejected, value, failure)
+}
+
+// ListRefundsInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func ListRefundsInvalidResponse(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchInvalidResponse, value, failure)
+}
+
+// ListRefundsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListRefundsDefect(value square.RefundPage, failure *sdkgo.Failure) connectormock.Case[square.RefundPage] {
+	return connectormock.Branch(square.ListRefundsBranchDefect, value, failure)
+}
+
+// ListRefundsRetry asks Dex to retry the listRefunds Step, after the delay when it is positive.
+func ListRefundsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.RefundPage] {
+	return connectormock.Retry[square.RefundPage](failure, after)
+}
+
+// ListRefundsDefaultAnswer is the manifest mock defaultAnswer: One page with a completed Square refund.
+func ListRefundsDefaultAnswer() connectormock.Case[square.RefundPage] {
+	value := connectormock.MustDecodeOutput[square.RefundPage](`{"refunds":[{"id":"refund_101","payment_id":"pay_101","status":"COMPLETED","amount_money":{"amount":1000,"currency":"USD"}}],"cursor":""}`)
+	return connectormock.Branch(square.ListRefundsBranchListed, value, nil)
+}
+
+// ListRefundsDefault is the manifest default, defaultAnswer, which New installs.
+func ListRefundsDefault() connectormock.Case[square.RefundPage] { return ListRefundsDefaultAnswer() }
+
+// GetRefundFound selects the found branch: Square returned the refund.
+func GetRefundFound(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchFound, value, failure)
+}
+
+// GetRefundNotFound selects the notFound branch: The refund was not found.
+func GetRefundNotFound(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchNotFound, value, failure)
+}
+
+// GetRefundProviderRejected selects the providerRejected branch: Square conclusively rejected the read.
+func GetRefundProviderRejected(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchProviderRejected, value, failure)
+}
+
+// GetRefundInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetRefundInvalidResponse(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchInvalidResponse, value, failure)
+}
+
+// GetRefundDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetRefundDefect(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.GetRefundBranchDefect, value, failure)
+}
+
+// GetRefundRetry asks Dex to retry the getRefund Step, after the delay when it is positive.
+func GetRefundRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Refund] {
+	return connectormock.Retry[square.Refund](failure, after)
+}
+
+// GetRefundDefaultAnswer is the manifest mock defaultAnswer: A completed Square refund.
+func GetRefundDefaultAnswer() connectormock.Case[square.Refund] {
+	value := connectormock.MustDecodeOutput[square.Refund](`{"id":"refund_101","payment_id":"pay_101","status":"COMPLETED","amount_money":{"amount":1000,"currency":"USD"}}`)
+	return connectormock.Branch(square.GetRefundBranchFound, value, nil)
+}
+
+// GetRefundDefault is the manifest default, defaultAnswer, which New installs.
+func GetRefundDefault() connectormock.Case[square.Refund] { return GetRefundDefaultAnswer() }
+
+// RefundPaymentRefunded selects the refunded branch: Square accepted the refund.
+func RefundPaymentRefunded(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.RefundPaymentBranchRefunded, value, failure)
+}
+
+// RefundPaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the refund.
+func RefundPaymentProviderRejected(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.RefundPaymentBranchProviderRejected, value, failure)
+}
+
+// RefundPaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func RefundPaymentInvalidResponse(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.RefundPaymentBranchInvalidResponse, value, failure)
+}
+
+// RefundPaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func RefundPaymentDefect(value square.Refund, failure *sdkgo.Failure) connectormock.Case[square.Refund] {
+	return connectormock.Branch(square.RefundPaymentBranchDefect, value, failure)
+}
+
+// RefundPaymentRetry asks Dex to retry the refundPayment Step, after the delay when it is positive.
+func RefundPaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Refund] {
+	return connectormock.Retry[square.Refund](failure, after)
+}
+
+// RefundPaymentDefaultAnswer is the manifest mock defaultAnswer: Square accepted a partial refund.
+func RefundPaymentDefaultAnswer() connectormock.Case[square.Refund] {
+	value := connectormock.MustDecodeOutput[square.Refund](`{"id":"refund_101","payment_id":"pay_101","status":"PENDING","amount_money":{"amount":1000,"currency":"USD"}}`)
+	return connectormock.Branch(square.RefundPaymentBranchRefunded, value, nil)
+}
+
+// RefundPaymentDefault is the manifest default, defaultAnswer, which New installs.
+func RefundPaymentDefault() connectormock.Case[square.Refund] { return RefundPaymentDefaultAnswer() }

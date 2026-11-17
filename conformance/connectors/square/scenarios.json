@@ -2395,6 +2395,1170 @@
       },
       "name": "completePayment-not-found",
       "operation": "completePayment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000011",
+      "exchanges": [
+        {
+          "body": "{\"refunds\":[{\"id\":\"refund_101\",\"payment_id\":\"pay_101\",\"status\":\"COMPLETED\",\"amount_money\":{\"amount\":1000,\"currency\":\"USD\"}}],\"cursor\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "",
+          "refunds": [
+            {
+              "amount_money": {
+                "amount": 1000,
+                "currency": "USD"
+              },
+              "id": "refund_101",
+              "payment_id": "pay_101",
+              "status": "COMPLETED"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listRefunds-success",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000012",
+      "exchanges": [
+        {
+          "body": "{\"refund\":{\"id\":\"refund_101\",\"payment_id\":\"pay_101\",\"status\":\"COMPLETED\",\"amount_money\":{\"amount\":1000,\"currency\":\"USD\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/refund_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amount_money": {
+            "amount": 1000,
+            "currency": "USD"
+          },
+          "id": "refund_101",
+          "payment_id": "pay_101",
+          "status": "COMPLETED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "refund_101"
+      },
+      "name": "getRefund-success",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{\"refund\":{\"id\":\"refund_101\",\"payment_id\":\"pay_101\",\"status\":\"PENDING\",\"amount_money\":{\"amount\":1000,\"currency\":\"USD\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "refunded",
+        "failureKind": "",
+        "output": {
+          "amount_money": {
+            "amount": 1000,
+            "currency": "USD"
+          },
+          "id": "refund_101",
+          "payment_id": "pay_101",
+          "status": "PENDING"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-success",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "cursor": "",
+          "refunds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listRefunds-rejected",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000011",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "refunds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listRefunds-invalid",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listRefunds-rate-limit",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listRefunds-unavailable",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listRefunds-server-error",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000011",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listRefunds-transport",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000011",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "cursor": "",
+          "refunds": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listRefunds-defect",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "cursor": "",
+          "refunds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listRefunds-not-found",
+      "operation": "listRefunds"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/refund_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "payment_id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "refund_101"
+      },
+      "name": "getRefund-rejected",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000012",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/refund_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "payment_id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "refund_101"
+      },
+      "name": "getRefund-invalid",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/refund_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "refund_101"
+      },
+      "name": "getRefund-rate-limit",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/refund_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "refund_101"
+      },
+      "name": "getRefund-unavailable",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/refund_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "refund_101"
+      },
+      "name": "getRefund-server-error",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000012",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/refund_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "refund_101"
+      },
+      "name": "getRefund-transport",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000012",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "payment_id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": ""
+      },
+      "name": "getRefund-defect",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds/refund_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "payment_id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "refundId": "refund_101"
+      },
+      "name": "getRefund-not-found",
+      "operation": "getRefund"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "payment_id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-rejected",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "payment_id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-invalid",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-rate-limit",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-unavailable",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-server-error",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/refunds",
+          "requestBody": {
+            "amount_money": {
+              "amount": 1000,
+              "currency": "USD"
+            },
+            "idempotency_key": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+            "payment_id": "pay_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 1000,
+          "currency": "USD"
+        },
+        "paymentId": "pay_101"
+      },
+      "name": "refundPayment-transport",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "0fb57267-2e41-55c2-a7dc-9e49a7ef2665",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "payment_id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-380a7cd9631ff7b6f3287f3c925d2fb6cee171d2",
+      "input": {
+        "amountMoney": {
+          "amount": 0,
+          "currency": ""
+        },
+        "paymentId": ""
+      },
+      "name": "refundPayment-defect",
+      "operation": "refundPayment"
     }
   ],
   "schemaVersion": 1

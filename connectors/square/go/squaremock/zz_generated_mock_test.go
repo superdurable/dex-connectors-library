@@ -40,6 +40,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_101","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
 			return err
 		}},
+		{name: "listRefunds/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.RefundPage](`{"refunds":[{"id":"refund_101","payment_id":"pay_101","status":"COMPLETED","amount_money":{"amount":1000,"currency":"USD"}}],"cursor":""}`)
+			return err
+		}},
+		{name: "getRefund/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Refund](`{"id":"refund_101","payment_id":"pay_101","status":"COMPLETED","amount_money":{"amount":1000,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "refundPayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Refund](`{"id":"refund_101","payment_id":"pay_101","status":"PENDING","amount_money":{"amount":1000,"currency":"USD"}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -67,5 +79,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CompletePayment().Definition().Operation.OperationID != "completePayment" {
 		t.Errorf("completePayment mock has another definition")
+	}
+	if mock.ListRefunds().Definition().Operation.OperationID != "listRefunds" {
+		t.Errorf("listRefunds mock has another definition")
+	}
+	if mock.GetRefund().Definition().Operation.OperationID != "getRefund" {
+		t.Errorf("getRefund mock has another definition")
+	}
+	if mock.RefundPayment().Definition().Operation.OperationID != "refundPayment" {
+		t.Errorf("refundPayment mock has another definition")
 	}
 }

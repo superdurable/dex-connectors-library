@@ -83,4 +83,19 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, cashFlowID, cashCalls[0].FlowID)
 	require.Equal(t, square.CreatePaymentInput{SourceID: "CASH", AmountMoney: cashInput.AmountMoney}, cashCalls[0].Input)
 	require.Equal(t, square.CreatePaymentBranchCreated, cashCalls[0].Branch)
+	refundFlowID := "square-refund-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	refundInput := Request{RefundPaymentID: "pay_101", AmountMoney: square.Money{Amount: 1000, Currency: "USD"}}
+	_, err = client.StartFlow(ctx, flow, refundFlowID, refundInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	refundResult, err := client.WaitForFlow(ctx, refundFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, refundResult.Status, refundResult.ErrorMessage)
+	var refundOutcome Outcome
+	require.NoError(t, refundResult.DecodeSingleOutput(&refundOutcome))
+	require.Equal(t, "refund_101", refundOutcome.Refund.ID)
+	refundCalls := mock.RefundPayment().Calls()
+	require.Len(t, refundCalls, 1)
+	require.Equal(t, refundFlowID, refundCalls[0].FlowID)
+	require.Equal(t, square.RefundPaymentInput{PaymentID: "pay_101", AmountMoney: refundInput.AmountMoney}, refundCalls[0].Input)
+	require.Equal(t, square.RefundPaymentBranchRefunded, refundCalls[0].Branch)
 }

@@ -46,6 +46,9 @@ type Operations interface {
 	UpdatePayment() sdkgo.Mutation[UpdatePaymentInput, Payment]
 	CancelPayment() sdkgo.Mutation[CancelPaymentInput, Payment]
 	CompletePayment() sdkgo.Mutation[CompletePaymentInput, Payment]
+	ListRefunds() sdkgo.Query[ListRefundsInput, RefundPage]
+	GetRefund() sdkgo.Query[GetRefundInput, Refund]
+	RefundPayment() sdkgo.Mutation[RefundPaymentInput, Refund]
 }
 
 type clientOperations struct{ client *Client }
@@ -67,6 +70,15 @@ func (operations clientOperations) CancelPayment() sdkgo.Mutation[CancelPaymentI
 }
 func (operations clientOperations) CompletePayment() sdkgo.Mutation[CompletePaymentInput, Payment] {
 	return operations.client.CompletePayment()
+}
+func (operations clientOperations) ListRefunds() sdkgo.Query[ListRefundsInput, RefundPage] {
+	return operations.client.ListRefunds()
+}
+func (operations clientOperations) GetRefund() sdkgo.Query[GetRefundInput, Refund] {
+	return operations.client.GetRefund()
+}
+func (operations clientOperations) RefundPayment() sdkgo.Mutation[RefundPaymentInput, Refund] {
+	return operations.client.RefundPayment()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -654,6 +666,231 @@ func NewCompletePaymentStep[IN any](config CompletePaymentStepConfig[IN]) sdkgo.
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CompletePaymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListRefundsBranchListed sdkgo.BranchID = "listed"
+const ListRefundsBranchNotFound sdkgo.BranchID = "notFound"
+const ListRefundsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListRefundsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListRefundsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListRefundsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listRefunds"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListRefundsBranchListed, Description: "Square listed the refunds."},
+		{ID: ListRefundsBranchNotFound, Description: "The requested refund resource was not found.", Optional: true},
+		{ID: ListRefundsBranchProviderRejected, Description: "Square conclusively rejected the read.", Optional: true},
+		{ID: ListRefundsBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: ListRefundsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListRefundsResult = sdkgo.QueryResult[RefundPage]
+
+type ListRefundsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=square"`
+	operationID                    struct{}                                      `connector:"operationId=listRefunds"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListRefundsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListRefundsResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListRefundsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListRefundsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListRefundsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListRefundsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RefundPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListRefundsStep[IN any](config ListRefundsStepConfig[IN]) sdkgo.QueryStep[IN, ListRefundsInput, RefundPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListRefundsInput, RefundPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListRefunds(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListRefundsResult] {
+			branches := make([]sdkgo.BranchTarget[ListRefundsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListRefundsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListRefundsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListRefundsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListRefundsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListRefundsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetRefundBranchFound sdkgo.BranchID = "found"
+const GetRefundBranchNotFound sdkgo.BranchID = "notFound"
+const GetRefundBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetRefundBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetRefundBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetRefundDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getRefund"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetRefundBranchFound, Description: "Square returned the refund."},
+		{ID: GetRefundBranchNotFound, Description: "The refund was not found.", Optional: true},
+		{ID: GetRefundBranchProviderRejected, Description: "Square conclusively rejected the read.", Optional: true},
+		{ID: GetRefundBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: GetRefundBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetRefundResult = sdkgo.QueryResult[Refund]
+
+type GetRefundStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=square"`
+	operationID                    struct{}                                  `connector:"operationId=getRefund"`
+	StepType                       string                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetRefundInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetRefundResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetRefundResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetRefundResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetRefundResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetRefundResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Refund]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetRefundStep[IN any](config GetRefundStepConfig[IN]) sdkgo.QueryStep[IN, GetRefundInput, Refund] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetRefundInput, Refund]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetRefund(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetRefundResult] {
+			branches := make([]sdkgo.BranchTarget[GetRefundResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetRefundBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetRefundBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetRefundBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetRefundBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetRefundBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RefundPaymentBranchRefunded sdkgo.BranchID = "refunded"
+const RefundPaymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RefundPaymentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RefundPaymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RefundPaymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "refundPayment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RefundPaymentBranchRefunded, Description: "Square accepted the refund."},
+		{ID: RefundPaymentBranchProviderRejected, Description: "Square conclusively rejected the refund.", Optional: true},
+		{ID: RefundPaymentBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: RefundPaymentBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type RefundPaymentResult = sdkgo.MutationResult[Refund]
+
+type RefundPaymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=square"`
+	operationID                       struct{}                                     `connector:"operationId=refundPayment"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) RefundPaymentInput                  `connector:"mapToOperationInput"`
+	Refunded                          sdkgo.Target[RefundPaymentResult]            `connector:"branch=refunded"`
+	ProviderRejected                  sdkgo.Target[RefundPaymentResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[RefundPaymentResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[RefundPaymentResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Refund]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewRefundPaymentStep[IN any](config RefundPaymentStepConfig[IN]) sdkgo.MutationStep[IN, RefundPaymentInput, Refund] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RefundPaymentInput, Refund]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RefundPayment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RefundPaymentResult] {
+			branches := make([]sdkgo.BranchTarget[RefundPaymentResult], 0, 4)
+			if config.Refunded.HasStep() {
+				branches = append(branches, config.Refunded.BranchTarget(RefundPaymentBranchRefunded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RefundPaymentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RefundPaymentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RefundPaymentBranchDefect))
 			}
 			return branches
 		}(),

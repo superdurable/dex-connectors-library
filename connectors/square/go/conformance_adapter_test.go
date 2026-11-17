@@ -18,7 +18,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	t.Helper()
 	connection := sdkgo.ConnectionRef{Provider: "square", Name: "square"}
 	credentials := Credentials{AccessToken: sdkgo.NewSecretString("test-token")}
-	if scenario.Name == "listPayments-defect" {
+	if scenario.Name == "listPayments-defect" || scenario.Name == "listRefunds-defect" {
 		credentials = Credentials{}
 	}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{connection: credentials}, WithHTTPClient(transport))
@@ -30,5 +30,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"updatePayment": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdatePayment(), connection, scenario.CallID),
 		"cancelPayment": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelPayment(), connection, scenario.CallID),
 		"completePayment": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CompletePayment(), connection, scenario.CallID),
+		"listRefunds": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListRefunds(), connection),
+		"getRefund": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetRefund(), connection),
+		"refundPayment": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.RefundPayment(), connection, scenario.CallID),
 	}}
 }

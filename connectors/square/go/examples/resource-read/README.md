@@ -1,6 +1,6 @@
 # Square resource-read example
 
-This Flow uses the static `square` connection. By default, `square.NewListPaymentsStep` reads payments. With `recordCashPayment: true`, `square.NewCreatePaymentStep` records a cash payment. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
+This Flow uses the static `square` connection. By default, `square.NewListPaymentsStep` reads payments. With `recordCashPayment: true`, `square.NewCreatePaymentStep` records a cash payment. With `refundPaymentId`, `square.NewRefundPaymentStep` refunds a completed payment. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
 
 ## Generate strict FDG 2.0
 
@@ -40,4 +40,6 @@ The Flow completes with the provider value. A missing resource selects the unwir
 
 To record a cash payment, enable `PAYMENTS_WRITE` in the Square application and start with `{"recordCashPayment":true,"amountMoney":{"amount":2900,"currency":"USD"}}`. The amount is in minor currency units. The connector sets `source_id` to `CASH`; no card token is stored in the Flow.
 
-The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs both read and cash write paths through a real Dex Worker using manifest mocks.
+To refund a completed payment, start with `{"refundPaymentId":"pay_101","amountMoney":{"amount":1000,"currency":"USD"}}`. Use the payment's Square ID and a positive amount in the currency's minor unit. The connector derives the required refund idempotency key from the Dex call identity.
+
+The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs the read, cash write, and refund paths through a real Dex Worker using manifest mocks.

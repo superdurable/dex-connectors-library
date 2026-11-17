@@ -21,8 +21,11 @@ The Python package is [`dex-connector-square`](python/README.md), imported as
 | `UpdatePayment` | `UpdatePaymentInput` | `Payment` | `updated` |
 | `CancelPayment` | `CancelPaymentInput` | `Payment` | `canceled` |
 | `CompletePayment` | `CompletePaymentInput` | `Payment` | `completed` |
+| `ListRefunds` | `ListRefundsInput` | `RefundPage` | `listed` |
+| `GetRefund` | `GetRefundInput` | `Refund` | `found` |
+| `RefundPayment` | `RefundPaymentInput` | `Refund` | `refunded` |
 
-Each operation has optional `providerRejected`, `invalidResponse`, and `defect` branches; reads and payment actions also have optional `notFound` where applicable. Unwired optional branches fail the Flow. Reads and writes use async Execute durability and the default one-hour retry budget. All writes use the `safe` repeat tier. `CreatePayment` and `UpdatePayment` pass a stable Square idempotency key in the request body. `CancelPayment` and `CompletePayment` read the payment status after an unknown response before repeating the action.
+Each operation has optional `providerRejected`, `invalidResponse`, and `defect` branches; reads and payment actions also have optional `notFound` where applicable. Unwired optional branches fail the Flow. Reads and writes use async Execute durability and the default one-hour retry budget. All writes use the `safe` repeat tier. `CreatePayment`, `UpdatePayment`, and `RefundPayment` pass a stable Square idempotency key in the request body. `CancelPayment` and `CompletePayment` read the payment status after an unknown response before repeating the action.
 
 `CreatePaymentInput.SourceID` accepts `CASH` or `EXTERNAL` only. This records a payment received outside Square without persisting a payment token in Dex Flow input. Amounts are positive integers in the currency's minor unit, with an uppercase ISO currency code.
 
@@ -60,6 +63,9 @@ flow := resourceread.NewFlow(mock.Connection())
 - [https://developer.squareup.com/reference/square/payments-api/update-payment](https://developer.squareup.com/reference/square/payments-api/update-payment)
 - [https://developer.squareup.com/reference/square/payments-api/cancel-payment](https://developer.squareup.com/reference/square/payments-api/cancel-payment)
 - [https://developer.squareup.com/reference/square/payments-api/complete-payment](https://developer.squareup.com/reference/square/payments-api/complete-payment)
+- [https://developer.squareup.com/reference/square/refunds-api/list-payment-refunds](https://developer.squareup.com/reference/square/refunds-api/list-payment-refunds)
+- [https://developer.squareup.com/reference/square/refunds-api/get-payment-refund](https://developer.squareup.com/reference/square/refunds-api/get-payment-refund)
+- [https://developer.squareup.com/reference/square/refunds-api/refund-payment](https://developer.squareup.com/reference/square/refunds-api/refund-payment)
 - [https://developer.squareup.com/docs/payments-api/retrieve-payments](https://developer.squareup.com/docs/payments-api/retrieve-payments)
 
 ## Unverified live behavior
