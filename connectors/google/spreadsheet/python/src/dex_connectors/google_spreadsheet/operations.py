@@ -4,6 +4,7 @@
 
 import math
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
@@ -401,6 +402,32 @@ def _first_row(updated_range: str) -> int:
     return int(match.group()) if match and int(match.group()) > 0 else 0
 
 
+# Only these statuses prove Google refused a write; every other status is an unknown outcome.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+
+@dataclass(frozen=True)
+class _AppendSend:
+    """Send-cap facts of this attempt's possible append."""
+
+    # False when this append is the last one the cap allows.
+    can_resend_unknown_outcome: bool
+    has_possible_earlier_send: bool
+
+
+def _has_append_acceptance(response: ProviderResponse) -> bool:
+    """Report a response body that names the appended range."""
+    if response.too_large:
+        return False
+    try:
+        body = strict_json_loads(response.body)
+    except (ValueError, UnicodeDecodeError):
+        return False
+    updates = body.get("updates") if isinstance(body, dict) else None
+    updated = updates.get("updatedRange") if isinstance(updates, dict) else None
+    return isinstance(updated, str) and bool(updated)
+
+
 class _AppendWriteAttempt:
     def __init__(
         self,
@@ -481,7 +508,12 @@ class UpsertRowOperation:
         return MutationAttempt.retry(failure("upsertRow", kind, message), delay)
 
     async def invoke(self, call: Call, input: UpsertRowInput) -> MutationAttempt[UpsertRowOutput]:
-        """Preserve Go's prewrite, append, readback, and uncertainty decisions."""
+        """Preserve Go's prewrite, append, readback, and uncertainty decisions.
+
+        The key lookup reads back an earlier possible append; an unconfirmed
+        append is resent while possible sends stay below the send cap, and
+        uncertain is selected only at the cap.
+        """
         find_input = FindRowInput(input.spreadsheet_id, input.sheet_name, input.key_column, input.key_value)
         if not _required_find_input(find_input) or not input.values:
             message = (
@@ -491,18 +523,28 @@ class UpsertRowOperation:
             )
             return self._branch("defect", FailureKind.VALIDATION, message)
         try:
-            fence = Fence(call, UPSERT_ROW_DEFINITION.step_defaults.execute_method_timeout)
+            fence = Fence(
+                call, UPSERT_ROW_DEFINITION.step_defaults.execute_method_timeout, max_sends=call.max_sends
+            )
         except Exception:
             return self._branch(
                 "defect", FailureKind.LOCAL_DEFECT, "single-dispatch fence could not be constructed"
             )
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return self._uncertain(call, "prior dispatch checkpoint cannot be trusted")
+            return MutationAttempt.retry(
+                failure(
+                    "upsertRow",
+                    FailureKind.AVAILABILITY,
+                    "prior dispatch checkpoint is unreadable; no row was written in this attempt",
+                )
+            )
+        # An earlier append may have taken effect, so a terminal non-uncertain branch could hide it.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         credential, credential_failure, terminal = await self.client.resolve(call, "upsertRow")
         if credential_failure is not None or credential is None:
             if terminal:
-                if decision.kind == DecisionKind.SEND_ALLOWED:
+                if not has_possible_earlier_send and decision.kind == DecisionKind.SEND_ALLOWED:
                     try:
                         await fence.record_not_sent()
                     except Exception:
@@ -540,13 +582,15 @@ class UpsertRowOperation:
             )
         except RequestError as error:
             if error.kind == FailureKind.LOCAL_DEFECT:
+                if has_possible_earlier_send:
+                    return self._uncertain(call, f"prior append cannot be checked: {error}")
                 return self._branch("defect", error.kind, str(error))
             return await self._retry_before_write(
                 fence, decision.kind, FailureKind.AVAILABILITY, "sheet lookup is unavailable"
             )
         receipt = self.client.receipt(call, lookup)
         if lookup.too_large:
-            if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            if has_possible_earlier_send:
                 return self._uncertain(call, "read-back response is oversized", lookup)
             return self._branch(
                 "invalidResponse",
@@ -566,7 +610,7 @@ class UpsertRowOperation:
                 delay if valid else 0,
             )
         if not 200 <= lookup.status < 300:
-            if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            if has_possible_earlier_send:
                 return self._uncertain(call, "read-back was rejected", lookup)
             return self._branch(
                 "providerRejected",
@@ -576,7 +620,7 @@ class UpsertRowOperation:
             )
         decoded, decode_failure = _decode_values(lookup, self.client.config.max_rows)
         if decode_failure is not None or decoded is None:
-            if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            if has_possible_earlier_send:
                 return self._uncertain(call, "read-back response is invalid", lookup)
             message = (
                 "provider response exceeds configured row limit"
@@ -588,11 +632,7 @@ class UpsertRowOperation:
         if branch == "conflict":
             return MutationAttempt.branch_result("conflict", UpsertRowOutput(), receipt, find_failure)
         if branch not in ("found", "notFound"):
-            if (
-                decision.kind == DecisionKind.READ_BACK_REQUIRED
-                and decision.marker
-                and decision.marker.state == State.CLAIMED
-            ):
+            if has_possible_earlier_send:
                 return self._uncertain(call, "prior append cannot be checked against the row key", lookup)
             return MutationAttempt.branch_result(
                 "defect",
@@ -606,11 +646,7 @@ class UpsertRowOperation:
             )
         row, row_error = _build_row(decoded.values, input)
         if row is None:
-            if (
-                decision.kind == DecisionKind.READ_BACK_REQUIRED
-                and decision.marker
-                and decision.marker.state == State.CLAIMED
-            ):
+            if has_possible_earlier_send:
                 return self._uncertain(call, "prior append cannot be checked against the row schema", lookup)
             return self._branch("defect", FailureKind.VALIDATION, row_error, receipt)
         if (
@@ -631,8 +667,28 @@ class UpsertRowOperation:
         ):
             return self._uncertain(call, "prior append cannot be confirmed by the row key", lookup)
         if branch == "found":
-            return await self._replace(call, credential, input, row, found.row_number, fence, decision.kind)
-        return await self._append(call, credential, input, row, fence)
+            return await self._replace(
+                call,
+                credential,
+                input,
+                row,
+                found.row_number,
+                fence,
+                decision.kind,
+                has_possible_earlier_send,
+            )
+        if (
+            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+            and decision.marker is not None
+            and decision.marker.provider_id
+        ):
+            # Google accepted an earlier append, so a missing row is read lag and never resent.
+            return self._uncertain(call, "accepted append is not yet visible by the row key", lookup)
+        append_send = _AppendSend(
+            can_resend_unknown_outcome=decision.prior_send_upper_bound + 1 < call.max_sends,
+            has_possible_earlier_send=has_possible_earlier_send,
+        )
+        return await self._append(call, credential, input, row, fence, append_send)
 
     async def _replace(
         self,
@@ -643,6 +699,7 @@ class UpsertRowOperation:
         number: int,
         fence: Fence,
         decision: DecisionKind,
+        has_possible_earlier_send: bool,
     ) -> MutationAttempt[UpsertRowOutput]:
         target_range = f"{_sheet_range(input.sheet_name)}!A{number}"
         payload: dict[str, object] = {"range": target_range, "majorDimension": "ROWS", "values": [list(row)]}
@@ -663,6 +720,8 @@ class UpsertRowOperation:
                 )
             except RequestError as error:
                 if error.kind == FailureKind.LOCAL_DEFECT:
+                    if has_possible_earlier_send:
+                        return self._uncertain(call, f"prior append cannot be checked: {error}")
                     return self._branch("defect", error.kind, str(error))
                 return await self._retry_before_write(
                     fence, decision, FailureKind.TRANSPORT, "row replacement response is unavailable"
@@ -673,7 +732,8 @@ class UpsertRowOperation:
             if replacement is None:
                 break
             credential = replacement
-        if response.status in (429, 409) or response.status >= 500:
+        # An absolute replacement is repeatable, so every outcome except a definite refusal retries.
+        if not 200 <= response.status < 300 and response.status not in _DEFINITE_REFUSAL_STATUSES:
             delay, valid = _retry_delay(response)
             return await self._retry_before_write(
                 fence,
@@ -691,10 +751,12 @@ class UpsertRowOperation:
                 if terminal
                 else "provider rejected the write credential; credential refresh is temporarily unavailable"
             )
-            return self._branch("providerRejected", FailureKind.AUTHENTICATION, message, receipt)
+            return self._reject_or_select_uncertain(
+                has_possible_earlier_send, FailureKind.AUTHENTICATION, message, receipt
+            )
         if not 200 <= response.status < 300:
-            return self._branch(
-                "providerRejected",
+            return self._reject_or_select_uncertain(
+                has_possible_earlier_send,
                 _status_kind(response.status),
                 "provider rejected the row replacement",
                 receipt,
@@ -714,7 +776,13 @@ class UpsertRowOperation:
         return MutationAttempt.branch_result("upserted", UpsertRowOutput("updated", number, updated), receipt)
 
     async def _append(
-        self, call: Call, credential: Credentials, input: UpsertRowInput, row: tuple[str, ...], fence: Fence
+        self,
+        call: Call,
+        credential: Credentials,
+        input: UpsertRowInput,
+        row: tuple[str, ...],
+        fence: Fence,
+        append_send: _AppendSend,
     ) -> MutationAttempt[UpsertRowOutput]:
         target_range = _sheet_range(input.sheet_name)
         payload: dict[str, object] = {"range": target_range, "majorDimension": "ROWS", "values": [list(row)]}
@@ -731,12 +799,15 @@ class UpsertRowOperation:
         except DispatchNotAllowedError:
             return self._uncertain(call, "single-dispatch permission is unavailable", attempt.response)
         except TimeoutError:
-            return await self._reconcile(call, credential, input, row)
+            return await self._reconcile(call, credential, input, row, append_send)
         response = attempt.response
         request_error = attempt.request_error
         if request_error and request_error.kind == FailureKind.LOCAL_DEFECT:
+            if append_send.has_possible_earlier_send:
+                return self._uncertain(call, f"prior append cannot be checked: {request_error}", response)
             return self._branch("defect", request_error.kind, str(request_error))
-        if response.status == 401:
+        is_append_accepted = request_error is None and _has_append_acceptance(response)
+        if response.status == 401 and not is_append_accepted:
             replacement, terminal = await self.client.refresh_after_rejection(call, credential)
             if replacement is not None:
                 return await self._retry_rejected_append(fence, response)
@@ -745,22 +816,22 @@ class UpsertRowOperation:
                 if terminal
                 else "provider rejected the write credential; credential refresh is temporarily unavailable"
             )
-            return self._branch(
-                "providerRejected", FailureKind.AUTHENTICATION, message, self.client.receipt(call, response)
+            return await self._reject_append_or_select_uncertain(
+                fence, append_send, FailureKind.AUTHENTICATION, message, self.client.receipt(call, response)
             )
-        if response.status in (429, 503, 409):
+        if response.status in (429, 503):
             return await self._retry_rejected_append(fence, response)
         if response.status == 0:
             if request_error and request_error.not_sent:
                 return await self._retry_rejected_append(fence, response)
-            return await self._reconcile(call, credential, input, row)
+            return await self._reconcile(call, credential, input, row, append_send)
         receipt = self.client.receipt(call, response)
-        if response.status >= 500:
-            return await self._reconcile(call, credential, input, row)
-        if not 200 <= response.status < 300:
-            return self._branch(
-                "providerRejected", _status_kind(response.status), "provider rejected the append", receipt
+        if response.status in _DEFINITE_REFUSAL_STATUSES and not is_append_accepted:
+            return await self._reject_append_or_select_uncertain(
+                fence, append_send, _status_kind(response.status), "provider rejected the append", receipt
             )
+        if not 200 <= response.status < 300:
+            return await self._reconcile(call, credential, input, row, append_send)
         if not response.too_large:
             try:
                 body = strict_json_loads(response.body)
@@ -778,7 +849,7 @@ class UpsertRowOperation:
                     )
             except (ValueError, UnicodeDecodeError):
                 pass  # Readback checks an accepted append when its response cannot locate the row.
-        return await self._reconcile(call, credential, input, row)
+        return await self._reconcile(call, credential, input, row, append_send)
 
     async def _retry_rejected_append(
         self, fence: Fence, response: ProviderResponse
@@ -800,9 +871,52 @@ class UpsertRowOperation:
             delay if valid else 0,
         )
 
-    async def _reconcile(
-        self, call: Call, credential: Credentials, input: UpsertRowInput, row: tuple[str, ...]
+    def _resend_or_select_uncertain(
+        self, call: Call, append_send: _AppendSend, response: ProviderResponse, message: str
     ) -> MutationAttempt[UpsertRowOutput]:
+        """Retry an unconfirmed append while the send cap allows another send."""
+        if append_send.can_resend_unknown_outcome:
+            # The claim stays the last marker, so the next attempt counts this append and reads back first.
+            return MutationAttempt.retry(failure("upsertRow", FailureKind.TRANSPORT, message))
+        return self._uncertain(call, message + "; the send cap is reached", response)
+
+    async def _reject_append_or_select_uncertain(
+        self,
+        fence: Fence,
+        append_send: _AppendSend,
+        kind: FailureKind,
+        message: str,
+        receipt: Receipt,
+    ) -> MutationAttempt[UpsertRowOutput]:
+        """Select providerRejected only when no earlier append may have taken effect."""
+        if not append_send.has_possible_earlier_send:
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                pass  # The refusal ends the Step, so a lost checkpoint cannot cause a resend.
+        return self._reject_or_select_uncertain(append_send.has_possible_earlier_send, kind, message, receipt)
+
+    def _reject_or_select_uncertain(
+        self, has_possible_earlier_send: bool, kind: FailureKind, message: str, receipt: Receipt
+    ) -> MutationAttempt[UpsertRowOutput]:
+        """Select uncertain for a refusal after an earlier possible append."""
+        if has_possible_earlier_send:
+            return MutationAttempt.uncertain(
+                UpsertRowOutput(),
+                failure("upsertRow", kind, message + " after an earlier unconfirmed append"),
+                receipt,
+            )
+        return self._branch("providerRejected", kind, message, receipt)
+
+    async def _reconcile(
+        self,
+        call: Call,
+        credential: Credentials,
+        input: UpsertRowInput,
+        row: tuple[str, ...],
+        append_send: _AppendSend,
+    ) -> MutationAttempt[UpsertRowOutput]:
+        """Read back an append with an unknown outcome and resend it below the send cap."""
         try:
             response, _ = await self.client.request(
                 call,
@@ -829,10 +943,14 @@ class UpsertRowOperation:
                 delay if valid else 0,
             )
         if not 200 <= response.status < 300:
-            return self._uncertain(call, "append read-back was rejected", response)
+            return self._resend_or_select_uncertain(
+                call, append_send, response, "append read-back was rejected"
+            )
         decoded, decode_failure = _decode_values(response, self.client.config.max_rows)
         if decode_failure is not None or decoded is None:
-            return self._uncertain(call, "append read-back is invalid", response)
+            return self._resend_or_select_uncertain(
+                call, append_send, response, "append read-back is invalid"
+            )
         branch, found, find_failure = _find_row(decoded.values, input.key_column, input.key_value)
         if branch == "conflict":
             return MutationAttempt.branch_result(
@@ -843,7 +961,9 @@ class UpsertRowOperation:
             or found.values.get(input.key_column) != input.key_value
             or any(found.values.get(key, "") != value for key, value in (input.values or {}).items())
         ):
-            return self._uncertain(call, "append cannot be confirmed by the row key", response)
+            return self._resend_or_select_uncertain(
+                call, append_send, response, "append cannot be confirmed by the row key"
+            )
         return MutationAttempt.branch_result(
             "upserted",
             _upsert_output("inserted", found.row_number, input.sheet_name, len(row)),

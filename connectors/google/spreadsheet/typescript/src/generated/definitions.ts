@@ -96,7 +96,7 @@ export const UpsertRowBranchConflict = UpsertRowBranch.Conflict;
 export const UpsertRowBranchProviderRejected = UpsertRowBranch.ProviderRejected;
 /** Google returned an invalid or oversized pre-write response. */
 export const UpsertRowBranchInvalidResponse = UpsertRowBranch.InvalidResponse;
-/** The dispatched write outcome cannot be confirmed. */
+/** The dispatched append was still not confirmed by its key when the send cap was reached. */
 export const UpsertRowBranchUncertain = UpsertRowBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpsertRowBranchDefect = UpsertRowBranch.Defect;
@@ -108,7 +108,7 @@ export const UpsertRowDefinition: MutationDefinition = {
     { id: "conflict", description: "Existing duplicate key rows prevent a safe write.", optional: true },
     { id: "providerRejected", description: "Google conclusively rejected the row write.", optional: true },
     { id: "invalidResponse", description: "Google returned an invalid or oversized pre-write response.", optional: true },
-    { id: "uncertain", description: "The dispatched write outcome cannot be confirmed.", optional: true },
+    { id: "uncertain", description: "The dispatched append was still not confirmed by its key when the send cap was reached.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

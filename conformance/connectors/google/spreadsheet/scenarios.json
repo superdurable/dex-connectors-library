@@ -828,6 +828,7 @@
           "attempt": 1,
           "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
           "providerId": "'Contacts'!A2:C2",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1371,22 +1372,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "action": "",
-          "rowNumber": 0,
-          "updatedRange": ""
-        },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
       "input": {
@@ -1400,7 +1397,7 @@
           "status": "pending"
         }
       },
-      "name": "upsertRow-uncertain",
+      "name": "upsertRow-unknown-append-retries",
       "operation": "upsertRow"
     },
     {
@@ -1757,22 +1754,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "action": "",
-          "rowNumber": 0,
-          "updatedRange": ""
-        },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
       "input": {
@@ -1879,6 +1872,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 3,
@@ -1991,6 +1985,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 3,
@@ -2101,6 +2096,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "sendCount": 1,
           "state": "claimed"
         },
         "requestCount": 2,
@@ -2493,11 +2489,12 @@
           "status": "pending"
         }
       },
-      "name": "upsertRow-claimed-missing",
+      "name": "upsertRow-claimed-missing-at-send-cap",
       "operation": "upsertRow",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -2571,6 +2568,7 @@
           "attempt": 2,
           "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
           "providerId": "'Contacts'!A2:C2",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -2733,6 +2731,7 @@
           "attempt": 2,
           "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
           "providerId": "'Contacts'!A2:C2",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -3143,6 +3142,924 @@
       },
       "name": "getValues-numeric-cells",
       "operation": "getValues"
+    },
+    {
+      "attempts": 3,
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "action": "",
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 9,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 6,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "upsertRow-send-cap-reached-uncertain",
+      "operation": "upsertRow"
+    },
+    {
+      "attempts": 2,
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"updates\":{\"updatedRange\":\"'Contacts'!A2:C2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "providerId": "'Contacts'!A2:C2",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "action": "inserted",
+          "rowNumber": 2,
+          "updatedRange": "'Contacts'!A2:C2"
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "upsertRow-resend-after-unknown-append",
+      "operation": "upsertRow"
+    },
+    {
+      "attempts": 2,
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "action": "",
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 3,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "upsertRow-refusal-after-unknown-append-uncertain",
+      "operation": "upsertRow"
+    },
+    {
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":400,\"status\":\"INVALID_ARGUMENT\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "canResend"
+        },
+        "output": {
+          "action": "",
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "name": "upsertRow-append-refused",
+      "operation": "upsertRow"
+    },
+    {
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"updates\":{\"updatedRange\":\"'Contacts'!A2:C2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "providerId": "'Contacts'!A2:C2",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "action": "inserted",
+          "rowNumber": 2,
+          "updatedRange": "'Contacts'!A2:C2"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "name": "upsertRow-claimed-missing-below-send-cap-resends",
+      "operation": "upsertRow",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "name": "upsertRow-invalid-checkpoint-retries",
+      "operation": "upsertRow",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+        "sendCount": 3,
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

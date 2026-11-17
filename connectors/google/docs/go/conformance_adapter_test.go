@@ -22,7 +22,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
     require.NoError(t, err)
     context := newDexContext("conformance")
     prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) { context.previousHeartbeat = raw })
-    return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = prior + int32(attempt) },
+    return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+        // A later attempt sees the last heartbeat an earlier attempt stored.
+        if attempt > 1 && context.recordedHeartbeat != nil {
+            context.previousHeartbeat, context.recordedHeartbeat = context.recordedHeartbeat, nil
+        }
+        context.attempt = prior + int32(attempt)
+    },
         actions: map[string]conformanceOperationInvocation{
             "getDocumentText": newConformanceQueryInvocation(t, scenario.Input, context, client.GetDocumentText(), docsConnection),
             "createDocument": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateDocument(), docsConnection, scenario.CallID),

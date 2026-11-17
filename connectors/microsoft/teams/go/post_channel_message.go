@@ -41,10 +41,11 @@ func (PostChannelMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ PostCha
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /teams/{team-id}/channels/{channel-id}/messages at most once per Step execution. An
-// attempt that finds an earlier attempt's fence claim reads the channel's 50 most recently active root
-// messages and reports the one with the same subject and text, created by a person after the first send,
-// as sent; otherwise it selects uncertain. Reading back needs ChannelMessage.Read.All.
+// Invoke sends POST /teams/{team-id}/channels/{channel-id}/messages. An attempt that finds an earlier
+// attempt's fence claim reads the channel's 50 most recently active root messages and reports the one with
+// the same subject and text, created by a person after the first send, as sent. Without a match it resends
+// while possible sends stay below the send cap (call.MaxSends()) and selects uncertain at the cap or when
+// several messages match. Reading back needs ChannelMessage.Read.All.
 func (operation PostChannelMessageOperation) Invoke(call sdkgo.Call, input PostChannelMessageInput) sdkgo.MutationAttempt[PostMessageOutput] {
 	client := operation.client
 	teamID, channelID := strings.TrimSpace(input.TeamID), strings.TrimSpace(input.ChannelID)

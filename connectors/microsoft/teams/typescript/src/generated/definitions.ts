@@ -53,7 +53,7 @@ export const PostChannelMessageBranch = {
 export const PostChannelMessageBranchSent = PostChannelMessageBranch.Sent;
 /** Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted. */
 export const PostChannelMessageBranchProviderRejected = PostChannelMessageBranch.ProviderRejected;
-/** An attempt sent the message and neither its response nor a read-back confirms it; it is never sent again automatically. */
+/** The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found. */
 export const PostChannelMessageBranchUncertain = PostChannelMessageBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const PostChannelMessageBranchDefect = PostChannelMessageBranch.Defect;
@@ -63,10 +63,12 @@ export const PostChannelMessageDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found." },
     { id: "providerRejected", description: "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", optional: true },
-    { id: "uncertain", description: "An attempt sent the message and neither its response nor a read-back confirms it; it is never sent again automatically.", optional: true },
+    { id: "uncertain", description: "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for postChannelMessage. */
 export const PostChannelMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -82,7 +84,7 @@ export const PostThreadReplyBranch = {
 export const PostThreadReplyBranchSent = PostThreadReplyBranch.Sent;
 /** Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted. */
 export const PostThreadReplyBranchProviderRejected = PostThreadReplyBranch.ProviderRejected;
-/** An attempt sent the message and neither its response nor a read-back confirms it; it is never sent again automatically. */
+/** The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found. */
 export const PostThreadReplyBranchUncertain = PostThreadReplyBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const PostThreadReplyBranchDefect = PostThreadReplyBranch.Defect;
@@ -92,10 +94,12 @@ export const PostThreadReplyDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found." },
     { id: "providerRejected", description: "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", optional: true },
-    { id: "uncertain", description: "An attempt sent the message and neither its response nor a read-back confirms it; it is never sent again automatically.", optional: true },
+    { id: "uncertain", description: "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for postThreadReply. */
 export const PostThreadReplyMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -111,7 +115,7 @@ export const PostChatMessageBranch = {
 export const PostChatMessageBranchSent = PostChatMessageBranch.Sent;
 /** Microsoft Graph conclusively rejected the message, such as an unknown chat, an account that left it, or invalid HTML; nothing was sent. */
 export const PostChatMessageBranchProviderRejected = PostChatMessageBranch.ProviderRejected;
-/** An attempt sent the message and its response does not confirm it; the connection cannot read chats, so it is never sent again automatically. */
+/** The message may have been sent, and no response confirmed it before the send cap was reached; the connection cannot read chats to check. */
 export const PostChatMessageBranchUncertain = PostChatMessageBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const PostChatMessageBranchDefect = PostChatMessageBranch.Defect;
@@ -121,10 +125,12 @@ export const PostChatMessageDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "Teams stored the message in the chat." },
     { id: "providerRejected", description: "Microsoft Graph conclusively rejected the message, such as an unknown chat, an account that left it, or invalid HTML; nothing was sent.", optional: true },
-    { id: "uncertain", description: "An attempt sent the message and its response does not confirm it; the connection cannot read chats, so it is never sent again automatically.", optional: true },
+    { id: "uncertain", description: "The message may have been sent, and no response confirmed it before the send cap was reached; the connection cannot read chats to check.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for postChatMessage. */
 export const PostChatMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

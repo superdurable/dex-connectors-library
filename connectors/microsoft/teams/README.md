@@ -1,14 +1,14 @@
 # Microsoft Teams Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go@v0.24.1`.
 
-The TypeScript package `@superdurable/connector-microsoft-teams@0.1.0`
+The TypeScript package `@superdurable/connector-microsoft-teams@0.1.1`
 implements all four operations with the generated manifest OAuth refresh
 declaration. See its [runnable thread-reply example](typescript/examples/list-thread-replies/README.md)
 and [package guide](typescript/README.md). The example passed against a real
 local Dex stack and a Graph stand-in; live Microsoft authorization and Graph
 requests remain unverified.
-The Python package `dex-connector-microsoft-teams==0.1.0` implements all four
+The Python package `dex-connector-microsoft-teams==0.1.1` implements all four
 operations. See its [runnable thread-reply example](python/examples/list_thread_replies/README.md)
 and [package guide](python/README.md). It uses the manifest's generated OAuth
 refresh declaration and requires a named Dex Web Microsoft Teams connection.
@@ -58,17 +58,21 @@ only when it stays on the endpoint's scheme and host and names the same thread.
 Every operation selects `defect` for invalid input or configuration without a
 request. A conclusive Graph refusal selects `providerRejected` (and `notFound`
 for a missing thread when reading); the failure names the HTTP status and
-Graph's `error.code`, never `error.message`. Reads may refresh a rejected
-token and retry once. A post refreshes a rejected token when supported and
-records permission for the next Dex attempt to resend only when refresh returns
-a different valid token; otherwise 401 selects `providerRejected`. A credential
-failure requiring reauthorization selects `defect` with a reconnect hint after
-recording `notSent`; if an earlier post may have been sent, it selects
-`uncertain` with the reconnect hint. A transient credential failure retries. A
-429 or 503 on a post records permission for the immediately following attempt
-to retry; 409 and other ambiguous write responses are reconciled or select
-`uncertain`. Reads retry transient failures after `Retry-After` when Graph
-sends one. Teams allows about one request per second per channel or chat.
+Graph's `error.code`, never `error.message`. For a post, only 400, 401, 403,
+404, 411, 413, 414, 415, and 422 are conclusive, and only on a first send; after
+an earlier send that may have posted, a refusal selects `uncertain`. Reads may
+refresh a rejected token and retry once. A post refreshes a rejected token when
+supported and records permission for the next Dex attempt to resend only when
+refresh returns a different valid token; otherwise 401 selects
+`providerRejected`. A credential failure requiring reauthorization selects
+`defect` with a reconnect hint after recording `notSent`; if an earlier post may
+have been sent, it selects `uncertain` with the reconnect hint. A transient
+credential failure retries. A 429 or 503 on a post records permission for the
+immediately following attempt to retry; 409, 5xx, and other unknown write
+outcomes are read back and resent up to the send cap, as described below. An
+unreadable dispatch checkpoint retries without sending. Reads retry transient
+failures after `Retry-After` when Graph sends one. Teams allows about one
+request per second per channel or chat.
 
 ## Duplicate-safe posting
 
@@ -79,25 +83,30 @@ request can post a second message. Dex can replay a Step after Worker loss
 or a result lost before commit, so every post:
 
 1. runs with `sync` Execute durability so its heartbeat is visible to later attempts;
-2. uses the Connector SDK single-dispatch fence to claim the write before it sends;
-3. sends again only on the immediately following attempt after a recorded
-   `notSent` or `canResend` checkpoint. Graph's 401 after a successful token
-   refresh, 429 and 503 responses, and a traced connection failure before any
-   connection opened, permit a retry;
-4. after an ambiguous send, reads a known message ID when possible. Without
-   one, a channel post searches the 50 most recently active root messages and
-   a reply searches the thread's 50 newest replies. Exactly one matching
-   undeleted message may confirm the post; no match or several matches select
-   `uncertain`.
+2. uses the Connector SDK single-dispatch fence to claim the write before it
+   sends and to count possible sends against the operation's send cap
+   (`maxSends`, default 3; the factory's `MaxSends` overrides it);
+3. sends again without a read-back after a recorded `notSent` or `canResend`
+   checkpoint. Graph's 401 after a successful token refresh, 429 and 503
+   responses, and a traced connection failure before any connection opened,
+   permit a retry;
+4. after an unknown outcome, reads a known message ID when possible and never
+   resends a message Graph confirmed storing. Without one, a channel post
+   searches the 50 most recently active root messages and a reply searches the
+   thread's 50 newest replies. Exactly one matching undeleted message confirms
+   the post. Several matches select `uncertain`. No match, or a read-back that
+   fails, permits one more send while possible sends stay below the cap; at the
+   cap it selects `uncertain`.
 
-An ambiguous response (timeout, 408, 409, 500, 504, an unreadable or oversized
-2xx) keeps the claim and retries after at least five seconds so the read-back can see
-the message. Reading back needs `ChannelMessage.Read.All`; without it the
-attempt selects `uncertain`. The connection cannot read chat messages (that
+An unknown outcome (timeout, 408, 409, 5xx other than 503, another unlisted
+status, an unreadable or oversized 2xx) keeps the claim and retries after at
+least five seconds so the read-back can see the message. Reading back needs
+`ChannelMessage.Read.All`. The connection cannot read chat messages (that
 needs [delegated `Chat.Read`](https://learn.microsoft.com/graph/api/chatmessage-get)),
-so an unconfirmed chat message selects `uncertain` at once.
-A Flow must treat `uncertain` as "may have been posted" and never resend it
-automatically.
+so an unconfirmed chat message is resent without a read-back until the cap and
+then selects `uncertain`; a chat response that names a stored message but is
+otherwise unusable selects `uncertain` at once. A Flow must treat `uncertain`
+as "may have been posted" and never resend it automatically.
 
 [Microsoft Graph's error reference](https://learn.microsoft.com/graph/errors)
 defines 401 as missing or invalid authentication. We infer that authentication
@@ -111,10 +120,9 @@ documents that 429 requests fail before processing. Its
 [error reference](https://learn.microsoft.com/graph/errors) recommends retrying
 503 after a delay. The exact 503 no-acceptance behavior for Teams messages and
 the completeness of the recent-message read-back remain unverified against a
-live tenant; an inconclusive read-back never permits another write.
-An in-flight Step from an older connector release carries a legacy heartbeat
-marker that this fence cannot read. Its next attempt fails closed and needs
-operator reconciliation; upgrade while no post Step is in flight when possible.
+live tenant; an inconclusive read-back permits another write only below the
+send cap. A marker from an older connector release without a send count is read
+as the largest count its attempt could produce, so it can only overcount sends.
 
 ## Mocks
 

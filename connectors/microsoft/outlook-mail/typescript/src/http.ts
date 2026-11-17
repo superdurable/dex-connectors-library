@@ -11,6 +11,8 @@ export type GraphTransport = (request: ProviderRequest) => Promise<ProviderRespo
 export type GraphOutcome = 'succeeded' | 'notFound' | 'retry' | 'rejected' | 'invalid' | 'ambiguous' | 'defect';
 export interface GraphExchange { outcome: GraphOutcome; status: number; body: Uint8Array; requestId: string; errorCode: string; failure?: Failure; retryAfterMs: number }
 export interface GraphRequest { method: string; path?: string; absoluteURL?: string; query?: readonly (readonly [string,string])[]; payload?: unknown; prefersTextBody?: boolean }
+/** HTTP statuses that prove Graph refused a write; every other answer is an unknown outcome. */
+export const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 const emptyBody = new Uint8Array();
 const graphURL = 'https://graph.microsoft.com/v1.0';
 

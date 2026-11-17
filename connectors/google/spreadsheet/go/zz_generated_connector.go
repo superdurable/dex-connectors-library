@@ -511,7 +511,7 @@ var UpsertRowDefinition = sdkgo.MutationDefinition{
 		{ID: UpsertRowBranchConflict, Description: "Existing duplicate key rows prevent a safe write.", Optional: true},
 		{ID: UpsertRowBranchProviderRejected, Description: "Google conclusively rejected the row write.", Optional: true},
 		{ID: UpsertRowBranchInvalidResponse, Description: "Google returned an invalid or oversized pre-write response.", Optional: true},
-		{ID: UpsertRowBranchUncertain, Description: "The dispatched write outcome cannot be confirmed.", Optional: true},
+		{ID: UpsertRowBranchUncertain, Description: "The dispatched append was still not confirmed by its key when the send cap was reached.", Optional: true},
 		{ID: UpsertRowBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

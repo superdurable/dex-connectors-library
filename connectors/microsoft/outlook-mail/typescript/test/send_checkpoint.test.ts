@@ -50,15 +50,55 @@ it.each(['sendMessage', 'replyToMessage'] as const)('%s releases a provably unse
   expect(requests.filter(request => request.endsWith('/draft1/send'))).toHaveLength(2);
 });
 
-it('classifies an unreadable send checkpoint before credential resolution', async () => {
+it('retries an unreadable send checkpoint before credential resolution', async () => {
   const context = new HeartbeatContext({ value: { invalid: true }, attempt: 1 });
   const scenario = { callId: 'send-call', operation: 'sendMessage' } as Scenario;
   const call = scenarioCall(scenario, connection, 'outlook-mail', context, { idempotencyKey: 'send-call' }) as Call;
   let resolutions = 0;
   const client = new OutlookMailClient({}, { resolve: async () => { resolutions++; throw new Error('unavailable'); } }, { refreshDriver: driver });
   const attempt = await client.sendMessage().invoke(call, { to: ['a@example.com'], subject: 'Test', text: 'Body' });
-  expect(attempt).toMatchObject({ kind: 'uncertain', failure: { kind: 'LOCAL_DEFECT' } });
+  expect(attempt).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
   expect(resolutions).toBe(0);
+});
+
+it('reads an unconfirmed send back and resends it until the send cap, then selects uncertain', async () => {
+  const context = new HeartbeatContext(undefined);
+  const call = scenarioCall({ callId: 'cap-call', operation: 'sendMessage' } as Scenario, connection, 'outlook-mail', context, { idempotencyKey: 'cap-call' }) as Call;
+  let sends = 0, reads = 0;
+  const client = new OutlookMailClient({}, new StaticCredentialProvider([[connection, credentials]]), { refreshDriver: driver,
+    transport: async request => {
+      const path = new URL(request.url).pathname;
+      if (request.method === 'GET' && path.endsWith('/messages')) return answer(200, { value: [] });
+      if (request.method === 'POST' && path.endsWith('/messages')) return answer(201, { id: 'draft1', isDraft: true, toRecipients: [{ emailAddress: { address: 'a@example.com' } }] });
+      if (request.method === 'GET' && path.endsWith('/draft1')) { reads++; return answer(200, { id: 'draft1', isDraft: true }); }
+      if (request.method === 'POST' && path.endsWith('/draft1/send')) { sends++; return answer(504, { error: { code: 'UnknownError' } }); }
+      throw new Error(`unexpected request ${request.method} ${path}`);
+    } });
+  const input = { to: ['a@example.com'], subject: 'Test', text: 'Body' };
+  for (let sendCount = 1; sendCount <= 3; sendCount++) {
+    expect(await client.sendMessage().invoke(call, input)).toMatchObject({ kind: 'retry', retryAfterMs: 3000 });
+    expect(context.marker).toMatchObject({ outlookMailSendPhase: 'sendDispatched', outlookMailSendCount: sendCount });
+  }
+  expect(await client.sendMessage().invoke(call, input)).toMatchObject({ kind: 'uncertain' });
+  expect(sends).toBe(3);
+  expect(reads).toBe(3);
+});
+
+it('records a released dispatch before rejecting a refused first send', async () => {
+  const context = new HeartbeatContext(undefined);
+  const call = scenarioCall({ callId: 'refused-call', operation: 'sendMessage' } as Scenario, connection, 'outlook-mail', context, { idempotencyKey: 'refused-call' }) as Call;
+  let sends = 0;
+  const client = new OutlookMailClient({}, new StaticCredentialProvider([[connection, credentials]]), { refreshDriver: driver,
+    transport: async request => {
+      const path = new URL(request.url).pathname;
+      if (request.method === 'GET' && path.endsWith('/messages')) return answer(200, { value: [] });
+      if (request.method === 'POST' && path.endsWith('/messages')) return answer(201, { id: 'draft1', isDraft: true, toRecipients: [{ emailAddress: { address: 'a@example.com' } }] });
+      if (request.method === 'POST' && path.endsWith('/draft1/send')) { sends++; return answer(400, { error: { code: 'ErrorInvalidRecipients' } }); }
+      throw new Error(`unexpected request ${request.method} ${path}`);
+    } });
+  expect(await client.sendMessage().invoke(call, { to: ['a@example.com'], subject: 'Test', text: 'Body' })).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+  expect(context.marker).toEqual({ outlookMailSendPhase: 'draftReady', outlookMailDraftMessageId: 'draft1' });
+  expect(sends).toBe(1);
 });
 
 it('chooses the earliest draft by parsed instant rather than timestamp text', async () => {

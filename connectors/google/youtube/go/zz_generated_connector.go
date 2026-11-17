@@ -640,8 +640,8 @@ var AddPlaylistItemDefinition = sdkgo.MutationDefinition{
 		{ID: AddPlaylistItemBranchNotFound, Description: "No playlist the account can manage or no visible video has the ID.", Optional: true},
 		{ID: AddPlaylistItemBranchQuotaExhausted, Description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", Optional: true},
 		{ID: AddPlaylistItemBranchProviderRejected, Description: "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", Optional: true},
-		{ID: AddPlaylistItemBranchInvalidResponse, Description: "YouTube returned an invalid or oversized check response, or an invalid item after accepting the insert.", Optional: true},
-		{ID: AddPlaylistItemBranchUncertain, Description: "An earlier insert may have added the video, but the playlist listing does not show it; check the playlist before adding it again.", Optional: true},
+		{ID: AddPlaylistItemBranchInvalidResponse, Description: "YouTube returned an invalid or oversized response to the check before any insert.", Optional: true},
+		{ID: AddPlaylistItemBranchUncertain, Description: "An earlier insert may have added the video, and the playlist listing does not show it at the send cap; check the playlist before adding it again.", Optional: true},
 		{ID: AddPlaylistItemBranchDefect, Description: "Local input, connection configuration, or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -649,6 +649,8 @@ var AddPlaylistItemDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AddPlaylistItemResult = sdkgo.MutationResult[AddedPlaylistItem]
@@ -671,6 +673,8 @@ type AddPlaylistItemStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddPlaylistItemResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddedPlaylistItem]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddPlaylistItemStep[IN any](config AddPlaylistItemStepConfig[IN]) sdkgo.MutationStep[IN, AddPlaylistItemInput, AddedPlaylistItem] {
@@ -711,5 +715,6 @@ func NewAddPlaylistItemStep[IN any](config AddPlaylistItemStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

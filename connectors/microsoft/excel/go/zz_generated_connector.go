@@ -476,6 +476,7 @@ var UpdateValuesDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateValuesResult = sdkgo.MutationResult[UpdateValuesOutput]
@@ -547,7 +548,7 @@ var AppendTableRowsDefinition = sdkgo.MutationDefinition{
 		{ID: AppendTableRowsBranchColumnsMismatch, Description: "The table has no column with the key column's name or with a name a row uses; nothing was written.", Optional: true},
 		{ID: AppendTableRowsBranchProviderRejected, Description: "Microsoft conclusively rejected the append or the key lookup, such as a protected worksheet or a missing permission; nothing was written.", Optional: true},
 		{ID: AppendTableRowsBranchInvalidResponse, Description: "Microsoft returned an invalid or oversized response before the append was sent.", Optional: true},
-		{ID: AppendTableRowsBranchUncertain, Description: "The append was sent but its outcome cannot be confirmed and the table does not show its rows yet; the connector never sends it again.", Optional: true},
+		{ID: AppendTableRowsBranchUncertain, Description: "The append reached the send cap, or a send was refused after an earlier unconfirmed send, and the table still does not show every row.", Optional: true},
 		{ID: AppendTableRowsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -555,6 +556,8 @@ var AppendTableRowsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AppendTableRowsResult = sdkgo.MutationResult[AppendTableRowsOutput]
@@ -578,6 +581,8 @@ type AppendTableRowsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AppendTableRowsResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AppendTableRowsOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAppendTableRowsStep[IN any](config AppendTableRowsStepConfig[IN]) sdkgo.MutationStep[IN, AppendTableRowsInput, AppendTableRowsOutput] {
@@ -619,5 +624,6 @@ func NewAppendTableRowsStep[IN any](config AppendTableRowsStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

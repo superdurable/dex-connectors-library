@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, zeroReceipt, type Call, type Failure, type Query, type Mutation, type QueryAttempt, type MutationAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, zeroReceipt, type Call, type Failure, type Query, type Mutation, type QueryAttempt, type MutationAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { SearchVideosDefinition, GetVideoDefinition, GetChannelDefinition, ListPlaylistItemsDefinition, AddPlaylistItemDefinition } from './generated/definitions.js';
 import type { SearchVideosInput, VideoSearchPage, VideoSearchResult, GetVideoInput, Video, GetChannelInput, Channel, ListPlaylistItemsInput, PlaylistItemPage, PlaylistItem, AddPlaylistItemInput, AddedPlaylistItem } from './generated/models.js';
 import { Fence } from '@superdurable/connectors-sdk/singledispatch';
@@ -37,6 +37,18 @@ function mutationError(operation: string, error: unknown, call: Call, objectID: 
   const detail = failure(operation, error.kind as Failure['kind'], error.message);
   if (error.disposition === 'retry') return newMutationRetry(detail, error.retryAfterMs);
   return newMutationBranch(error.disposition, zeroAdded, error.response || error.message.startsWith('addPlaylistItem requires') ? receipt(call, objectID, error.response) : zeroReceipt(), detail);
+}
+/** Retry a possibly applied insert while the send cap allows another insert. */
+function resendOrSelectUncertain(canResendUnknownOutcome: boolean, detail: Failure, retryAfterMs: number, draft: ReceiptDraft): MutationAttempt<AddedPlaylistItem> {
+  // The claim stays the last marker, so the next attempt reads back and counts this insert.
+  if (canResendUnknownOutcome) return newMutationRetry(detail, retryAfterMs);
+  return newMutationUncertain(zeroAdded, { ...detail, message: `${detail.message}; the send cap is reached, so check the playlist before adding the video again` }, draft);
+}
+/** Select the error's branch only when no earlier insert of this call may have taken effect. */
+function rejectOrSelectUncertain(hasPossibleEarlierSend: boolean, operation: string, error: unknown, call: Call, objectID: string, uncertainPrefix: string): MutationAttempt<AddedPlaylistItem> {
+  if (!(error instanceof YouTubeExchangeError) || error.disposition === 'retry' || !hasPossibleEarlierSend) return mutationError(operation, error, call, objectID);
+  const draft = error.response || error.message.startsWith('addPlaylistItem requires') ? receipt(call, objectID, error.response) : zeroReceipt();
+  return newMutationUncertain(zeroAdded, failure(operation, error.kind as Failure['kind'], `${uncertainPrefix}${error.message}`), draft);
 }
 function defect<T>(operation: string, empty: T, message: string): QueryAttempt<T> { return newQueryBranch('defect', empty, zeroReceipt(), failure(operation, 'VALIDATION', message)); }
 function invalid<T>(operation: string, empty: T, message: string, call: Call, objectID: string, response: YouTubeResponse): QueryAttempt<T> { return newQueryBranch('invalidResponse', empty, receipt(call, objectID, response), failure(operation, 'PROTOCOL', message)); }
@@ -194,54 +206,69 @@ export class ListPlaylistItemsOperation implements Query<ListPlaylistItemsInput,
 
 /** Add a video once after checking playlist membership. */
 /**
- * Add a video at most once per Step call after checking the playlist for it. YouTube has no idempotency key
- * and its listing can lag behind an insert, so a single-dispatch fence forbids a second insert after one that
- * may have reached YouTube; such a later attempt only reads the playlist back.
+ * Add a video after checking the playlist for it. YouTube has no idempotency key and its listing can lag behind
+ * an insert, so a single-dispatch fence counts the inserts that may have reached YouTube. After an unknown
+ * outcome a later attempt lists the playlist first and inserts again only while possible inserts stay below the
+ * send cap; at the cap, or after an accepted insert, it only reads the playlist back.
  */
 export class AddPlaylistItemOperation implements Mutation<AddPlaylistItemInput, AddedPlaylistItem> {
   /** Bind a client. */ constructor(private readonly client: YouTubeClient) {}
   /** Return manifest definition. */ definition() { return AddPlaylistItemDefinition; }
   /** Use the stable Call ID as the Dex idempotency key; YouTube does not accept it. */ idempotencyKey(callID: string) { return callID; }
-  /** Check membership and insert at most once per Step call. */ async invoke(call: Call, input: AddPlaylistItemInput): Promise<MutationAttempt<AddedPlaylistItem>> {
+  /** Check membership and insert; an unknown insert outcome is resent below the send cap. */ async invoke(call: Call, input: AddPlaylistItemInput): Promise<MutationAttempt<AddedPlaylistItem>> {
     const operation = 'addPlaylistItem', listInput = { playlistId: input.playlistId, videoId: input.videoId, maxResults: 1 }, encoded = playlistQuery(listInput);
     if (encoded.error || !input.videoId) return newMutationBranch('defect', zeroAdded, zeroReceipt(), failure(operation, 'VALIDATION', encoded.error ?? 'videoId must be an 11-character YouTube video ID'));
+    const operationMaxSends = definitionMaxSends(AddPlaylistItemDefinition);
     let fence: Fence;
-    try { fence = new Fence(call, AddPlaylistItemDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
+    try { fence = new Fence(call, AddPlaylistItemDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends }); }
     catch { return newMutationBranch('defect', zeroAdded, zeroReceipt(), failure(operation, 'LOCAL_DEFECT', 'the YouTube dispatch fence is unavailable')); }
     const decision = fence.decide();
-    if (decision.kind === 'readBackRequired') return this.confirmEarlierInsert(call, listInput, encoded.query!);
-    if (decision.kind !== 'sendAllowed') return newMutationUncertain(zeroAdded, failure(operation, 'TRANSPORT', 'the YouTube dispatch checkpoint is unreadable, so an earlier insert cannot be ruled out; check the playlist before adding the video again'), zeroReceipt());
+    if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'the YouTube dispatch checkpoint is unreadable; nothing was inserted in this attempt'));
+    // YouTube returns an item ID only for an insert it accepted, so a saved one is never resent.
+    if (decision.kind === 'readBackRequired' || (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId))
+      return this.confirmEarlierInsert(call, listInput, encoded.query!);
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    // This attempt's insert is the last one the cap allows when no further send remains.
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < (operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1);
+    // An earlier insert may have taken effect, so no refusal or local failure can prove nothing changed.
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
+    const readBackPrefix = 'an earlier attempt may have added the video, and the playlist could not be read back: ';
     let response: YouTubeResponse;
+    // After a possible earlier insert this listing is also the read-back.
     try { response = await this.client.exchange(call, operation, '/playlistItems', encoded.query!, true); }
     catch (cause) {
-      if (cause instanceof YouTubeExchangeError && cause.disposition === 'retry') {
-        try { await fence.recordNotSent(); } catch { /* A lost notSent marker makes the next attempt read back instead of inserting. */ }
+      if (cause instanceof YouTubeExchangeError && cause.disposition === 'retry' && decision.kind === 'sendAllowed') {
+        try { await fence.recordNotSent(); } catch { /* A lost notSent marker makes the next attempt count one more possible insert. */ }
       }
-      return mutationError(operation, cause, call, input.playlistId);
+      return rejectOrSelectUncertain(hasPossibleEarlierSend, operation, cause, call, input.playlistId, readBackPrefix);
     }
     let page: PlaylistItemPage;
     try { page = playlistPage(response, listInput); }
-    catch { return newMutationBranch('invalidResponse', zeroAdded, receipt(call, input.playlistId, response), failure(operation, 'PROTOCOL', 'YouTube returned an incomplete playlist page')); }
+    catch { return rejectOrSelectUncertain(hasPossibleEarlierSend, operation, new YouTubeExchangeError('invalidResponse', 'PROTOCOL', 'YouTube returned an incomplete playlist page', response), call, input.playlistId, readBackPrefix); }
     if (page.items?.length) return newMutationBranch('added', { item: page.items[0]!, wasAlreadyPresent: true }, receipt(call, page.items[0]!.id, response));
     const body = JSON.stringify({ snippet: { playlistId: input.playlistId, resourceId: { kind: 'youtube#video', videoId: input.videoId } } });
     try { response = await this.client.exchange(call, operation, '/playlistItems', { part: 'snippet,contentDetails' }, true, body, fence); }
     catch (cause) {
       if (cause instanceof YouTubeExchangeError && cause.disposition === 'retryUnprocessed') {
-        try { await fence.recordCanResend(); } catch { /* A lost canResend marker makes the next attempt read back instead of inserting. */ }
+        try { await fence.recordCanResend(); } catch { /* A lost canResend marker makes the next attempt count this insert. */ }
         return newMutationRetry(failure(operation, cause.kind as Failure['kind'], cause.message), cause.retryAfterMs);
       }
-      // The claim marker stays, so the next attempt only reads the playlist back.
-      if (cause instanceof YouTubeExchangeError && cause.disposition === 'writeUnconfirmed') return newMutationRetry(failure(operation, cause.kind as Failure['kind'], cause.message));
-      return mutationError(operation, cause, call, input.playlistId);
+      if (cause instanceof YouTubeExchangeError && cause.disposition === 'writeUnconfirmed')
+        return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, cause.kind as Failure['kind'], cause.message), cause.retryAfterMs, receipt(call, input.playlistId, cause.response));
+      if (cause instanceof YouTubeExchangeError && cause.disposition !== 'retry' && !hasPossibleEarlierSend) {
+        try { await fence.recordCanResend(); } catch { /* The refusal ends the Step, so a lost checkpoint cannot cause another insert. */ }
+      }
+      return rejectOrSelectUncertain(hasPossibleEarlierSend, operation, cause, call, input.playlistId, 'an earlier attempt may have added the video, and YouTube refused the resend: ');
     }
     let inserted: Record<string, unknown>;
-    try { inserted = decoded(response); } catch { return newMutationRetry(failure(operation, 'PROTOCOL', 'YouTube returned a malformed insert response; the next attempt reads the playlist back')); }
+    try { inserted = decoded(response); }
+    catch { return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'PROTOCOL', 'YouTube returned a malformed insert response'), 0, receipt(call, input.playlistId, response)); }
     let item: PlaylistItem;
     try {
       item = playlistItem(inserted, input.playlistId);
       if (item.videoId !== input.videoId) throw new TypeError('YouTube returned an item for a different video');
-    } catch { return newMutationBranch('invalidResponse', zeroAdded, receipt(call, input.playlistId, response), failure(operation, 'PROTOCOL', 'YouTube returned an invalid or different inserted item')); }
-    try { await fence.recordProviderId(item.id); } catch { /* A lost provider ID marker still forbids another insert. */ }
+    } catch { return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'PROTOCOL', 'YouTube returned an invalid or different inserted item'), 0, receipt(call, input.playlistId, response)); }
+    try { await fence.recordProviderId(item.id); } catch { /* A lost provider ID marker still counts this insert, so the cap still holds. */ }
     return newMutationBranch('added', { item, wasAlreadyPresent: false }, receipt(call, item.id, response));
   }
 

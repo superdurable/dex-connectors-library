@@ -264,21 +264,26 @@ func TestUnconfirmedPostIsConfirmedByReadingTheChannelBackWithoutAResend(t *test
 	require.Equal(t, 1, provider.countRequests(http.MethodPost), "an unconfirmed post is never sent again")
 }
 
-func TestUnconfirmedPostWithoutAMatchSelectsUncertain(t *testing.T) {
-	for name, readBack := range map[string]func(*testing.T, http.ResponseWriter){
-		"no match": func(t *testing.T, response http.ResponseWriter) {
+func TestUnconfirmedPostWithoutAMatchIsResentUntilTheCapThenUncertain(t *testing.T) {
+	for name, test := range map[string]struct {
+		readBack      func(*testing.T, http.ResponseWriter)
+		expectedPosts int
+	}{
+		"no match": {func(t *testing.T, response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, collectionJSON("", chatMessageJSON(t, "1616990099000", "", "", "text", "unrelated", time.Now())))
-		},
-		"two identical messages": func(t *testing.T, response http.ResponseWriter) {
+		}, 3},
+		// Several matches mean a duplicate may exist, so the post is never resent.
+		"two identical messages": {func(t *testing.T, response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, collectionJSON("",
 				chatMessageJSON(t, "1616990032035", "", testIncidentSubject, "html", testIncidentHTML, time.Now()),
 				chatMessageJSON(t, "1616990032036", "", testIncidentSubject, "html", testIncidentHTML, time.Now()),
 			))
-		},
-		"read-back forbidden": func(t *testing.T, response http.ResponseWriter) {
+		}, 1},
+		"read-back forbidden": {func(t *testing.T, response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusForbidden, graphErrorJSON("Forbidden"))
-		},
+		}, 3},
 	} {
+		readBack := test.readBack
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 				if request.Method == http.MethodPost {
@@ -295,12 +300,13 @@ func TestUnconfirmedPostWithoutAMatchSelectsUncertain(t *testing.T) {
 			require.Contains(t, retry.Failure.Message, "HTTP 500 InternalServerError")
 
 			dexContext.advanceAttempt()
-			result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-			require.NoError(t, err)
+			result := runPostUntilTerminal(t, func() (sdkgo.MutationResult[teams.PostMessageOutput], error) {
+				return sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+			}, dexContext.advanceAttempt)
 			require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
 			require.Contains(t, result.Failure.Message, "not sent again")
 			requireNoSentinel(t, result)
-			require.Equal(t, 1, provider.countRequests(http.MethodPost))
+			require.Equal(t, test.expectedPosts, provider.countRequests(http.MethodPost))
 		})
 	}
 }
@@ -354,8 +360,10 @@ func TestPostResponseReflectingTheAccessTokenIsNotTrusted(t *testing.T) {
 	retry := requireRetry(t, err, sdkgo.FailureProtocol)
 	require.Contains(t, retry.Failure.Message, "credential material")
 	dexContext.advanceAttempt()
-	result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-	require.NoError(t, err)
+	result := runPostUntilTerminal(t, func() (sdkgo.MutationResult[teams.PostMessageOutput], error) {
+		return sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	}, dexContext.advanceAttempt)
 	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Equal(t, 3, provider.countRequests(http.MethodPost))
 	requireNoSentinel(t, result)
 }

@@ -35,6 +35,8 @@ if TYPE_CHECKING:
     )
 
 DRIVE_ID = re.compile(r"[A-Za-z0-9_-]{1,256}\Z")
+# Only these statuses prove Google refused a write; every other status is an unknown outcome.
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 TAB_ID = re.compile(r"[A-Za-z0-9_.-]{1,256}\Z")
 GO_PATH_SAFE = "-._~$&+=:@"
 READ_FIELDS = (

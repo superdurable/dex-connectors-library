@@ -32,7 +32,7 @@ class ManageRefreshingCredentials:
         return youtube.Credentials("google-oauth-manage", access_token=sdk.SecretString("replacement-token"))
 
 
-async def test_ambiguous_resend_after_refresh_keeps_claim() -> None:
+async def test_ambiguous_resend_after_refresh_counts_toward_the_send_cap() -> None:
     inserts: list[str] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -53,12 +53,11 @@ async def test_ambiguous_resend_after_refresh_keeps_claim() -> None:
             context.attempt = attempt
             call = sdk.Call(
                 sdk.CallID(CALL_ID), CONNECTION, sdk.OperationRef("google-youtube", "addPlaylistItem"),
-                sdk.IdempotencyKey(CALL_ID), context=context,
+                sdk.IdempotencyKey(CALL_ID), context=context, max_sends=3,
             )
             attempts.append(await client.add_playlist_item().invoke(call, input_value))
-    assert attempts[0].kind == "retry"
-    assert attempts[1].kind == "uncertain"
-    assert attempts[2].kind == "uncertain"
-    assert inserts == ["rejected-token", "replacement-token"]
+    assert [attempt.kind for attempt in attempts] == ["retry", "retry", "uncertain"]
+    # The refreshed resend shares one fence claim with the rejected insert.
+    assert inserts == ["rejected-token", "replacement-token", "rejected-token", "rejected-token"]
     assert credentials.forced_refreshes == 1
-    assert context.heartbeat_payload == {"attempt": 1, "callId": CALL_ID, "state": "claimed"}
+    assert context.heartbeat_payload == {"attempt": 3, "callId": CALL_ID, "sendCount": 3, "state": "claimed"}

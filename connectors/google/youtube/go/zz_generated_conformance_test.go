@@ -1314,7 +1314,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 			}
 		}
 		if prior, ok := fields["priorHeartbeat"]; ok {
-			priorFields, err := conformanceObject(prior, []string{"attempt"}, []string{"value", "callId", "state", "providerId"})
+			priorFields, err := conformanceObject(prior, []string{"attempt"}, []string{"value", "callId", "state", "providerId", "sendCount"})
 			if err != nil {
 				return nil, err
 			}
@@ -1323,7 +1323,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 					return nil, errors.New("invalid prior heartbeat value")
 				}
 			} else {
-				if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId"}); err != nil {
+				if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId", "sendCount"}); err != nil {
 					return nil, err
 				}
 				var marker struct {
@@ -1338,6 +1338,12 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 				}
 				if marker.State != "notSent" && marker.State != "claimed" && marker.State != "canResend" {
 					return nil, errors.New("invalid prior heartbeat")
+				}
+				if rawSendCount, counted := priorFields["sendCount"]; counted {
+					var sendCount int32
+					if bytes.Equal(bytes.TrimSpace(rawSendCount), []byte("null")) || json.Unmarshal(rawSendCount, &sendCount) != nil || sendCount < 0 {
+						return nil, errors.New("invalid prior heartbeat send count")
+					}
 				}
 			}
 			var attempt struct {

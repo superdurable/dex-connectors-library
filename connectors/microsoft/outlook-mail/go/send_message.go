@@ -49,8 +49,9 @@ func (SendMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ SendMessageInp
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates a draft in Drafts that carries the Step's marker, then sends it at most once; see
-// SentMessage and the package documentation for the retry behavior.
+// Invoke creates a draft in Drafts that carries the Step's marker, then sends it. A lost answer is read
+// back from the draft before any resend, and resends stop at the send cap; see SentMessage and the
+// package documentation for the retry behavior.
 func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageInput) sdkgo.MutationAttempt[SentMessage] {
 	if err := validateSendMessageInput(input); err != nil {
 		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SentMessage{}, graphFailurePointer(sdkgo.FailureValidation, sendMessageOperationID, err.Error()), sdkgo.Receipt{})

@@ -6,17 +6,17 @@ metadata:
   description: Find Google Drive files by name, read metadata and bounded text, upload files without creating duplicates on retry, and start Flows when files are created, updated, or trashed.
   company: Google
   categories: [files-documents]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: google
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-google-drive
       operations: [searchFiles, getFile, readFileText, uploadFile]
       triggers: [fileCreated, fileUpdated, fileTrashed]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-google-drive'
       operations: [searchFiles, getFile, readFileText, uploadFile]
       triggers: [fileCreated, fileUpdated, fileTrashed]
@@ -344,19 +344,19 @@ spec:
       inputType: UploadFileInput
       outputType: UploadFileOutput
       kind: mutation
-      description: Create one file from text or bytes in an optional parent folder. Sync durability makes the single-dispatch heartbeat fence visible to retries, while the app property supports read-back of ambiguous uploads.
+      description: Create one file from text or bytes in an optional parent folder. Sync durability makes the single-dispatch heartbeat fence visible to retries. Each attempt reads back an earlier upload by its app property, and an unconfirmed upload is resent until the send cap.
       idempotency: required
       branches:
         - {id: uploaded, goName: Uploaded, description: Google Drive created the file or returned the file an earlier attempt created.}
         - {id: providerRejected, goName: ProviderRejected, description: "Google conclusively rejected the upload or duplicate lookup, such as a missing or read-only parent folder.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Google returned an invalid or oversized duplicate-lookup response before any upload was sent., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The dispatched upload outcome cannot be confirmed., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The upload outcome was still unconfirmed when the send cap was reached., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Drive does not enforce the stored application idempotency property, so ambiguous uploads cannot be resent without a reliable fence checkpoint."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Drive does not enforce the stored application idempotency property, so bound retries while a property read-back that lags can let an ambiguous upload be resent up to the send cap."}}
       mocks:
         - name: uploadedDefaultAnswer
           branch: uploaded

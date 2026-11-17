@@ -1,6 +1,6 @@
 # Google Drive Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/drive/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/drive/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/drive`.
 
@@ -9,8 +9,8 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/google/dri
 > is not verified.
 
 The Google Drive Connector resolves Drive files by name, reads their metadata
-and bounded text, and uploads new files without creating a duplicate when a
-Step retries. It exposes operation-specific Dex Step factories:
+and bounded text, and uploads new files, reading back an earlier upload before
+each retry resends it. It exposes operation-specific Dex Step factories:
 
 - `drive.NewSearchFilesStep` finds non-trashed files by exact or prefix name,
   MIME type, and parent folder, newest first, one bounded page at a time.
@@ -73,7 +73,8 @@ require reauthorization. A Google 5xx on a read is retryable; an ambiguous
 upload 5xx requires read-back. If Google omits a new refresh token, the prior
 value is kept. After a read 401 the connector asks once for a refresh and
 resends once. After an upload 401, it forces a refresh and retries the Step on
-the next attempt; if refresh cannot help, the 401 selects `providerRejected`.
+the next attempt; if refresh cannot help, the 401 selects `providerRejected`
+on a first send and `uncertain` after an earlier unconfirmed upload.
 There is never a refresh loop.
 
 The driver never owns persistence. The project connection that
@@ -174,16 +175,21 @@ durability to async. The operation:
    for a file from an earlier attempt or an ambiguous accepted upload;
 2. sends a multipart upload only when the fence permits a send and the lookup
    finds no file;
-3. reads back an ambiguous sent upload before selecting `uncertain`.
+3. reads back an upload with an unknown outcome, and resends it on a later
+   attempt while possible sends stay below the send cap (`maxSends`, default 3).
 
 An accepted 2xx response with a valid file ID completes and checkpoints that
-ID. An unusable 2xx body, dropped response, other 5xx, or 409 triggers
-read-back. A confirmed file completes without resending. A transient read-back
-failure retries the Step; a conclusive read-back that cannot confirm the
-upload selects `uncertain`. A 429, 503, or documented 403 rate-limit response
-records a resend checkpoint and retries with the same key. The next attempt
-looks up the key before sending. A missing or stale checkpoint never permits a
-resend. Read requests reserve up to one second before the observed Step
+ID; a later attempt reads that ID back and never resends. An unusable 2xx body,
+dropped response, 5xx, 409, or any status other than a definite refusal is an
+unknown outcome that triggers read-back. A confirmed file completes without
+resending and checkpoints its ID. A transient read-back failure retries the
+Step; a read-back that cannot confirm the upload retries so the next attempt
+reads back and resends, and selects `uncertain` only at the send cap. A 400,
+401, 403, 404, 411, 413, 414, 415, or 422 refusal selects `providerRejected`
+on a first send and is never resent; after an earlier unconfirmed upload it
+selects `uncertain`. A 429, 503, or documented 403 rate-limit response records a
+resend checkpoint and retries with the same key. An unreadable checkpoint
+retries without sending. Read requests reserve up to one second before the observed Step
 deadline; the fenced upload uses its shorter write window. These response
 classifications follow Google's [Drive error guidance](https://developers.google.com/workspace/drive/api/guides/handle-errors);
 the exact write-acceptance timing of a 503 remains unverified against a live
@@ -194,12 +200,12 @@ Limits of this design:
 - App properties are private to the OAuth client or service account that wrote
   them, so the lookup finds only files created through the same connection.
 - Google documents `incompleteSearch` but does not promise immediate indexing
-  of app properties after creation. A stale lookup after a 503 is an unverified
-  duplicate risk; the fence prevents resends after claimed, missing, or stale
-  checkpoints.
+  of app properties after creation. A stale lookup after an unknown outcome
+  can let a resend create a duplicate; the fence counts every possible send,
+  so at most `maxSends` uploads happen for one Step execution. Set the Step's
+  `MaxSends` to 1 to never resend.
 - The prior async release had no fence. Existing in-flight calls should be
-  reconciled before moving them to this version; a missing old heartbeat
-  cannot authorize a resend.
+  reconciled before moving them to this version.
 - The content must be at most `maxUploadBytes`, which cannot exceed Google's
   5 MiB multipart limit. Google Workspace MIME types are rejected, so Drive
   never converts an upload.

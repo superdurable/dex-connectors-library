@@ -250,6 +250,7 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 // exchangeFencedWrite sends a write once through its fence. Only a rate-limit refusal or a
 // connection that never opened proves YouTube did not act, so only those are an unprocessed
 // Retry; any other failure after the claim, including HTTP 503, may have applied the write.
+// Only a definite refusal status or Google's quota reason stays a terminal outcome.
 func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, request providerRequest, objectID string, credential Credentials) (providerResponse, *providerOutcome) {
 	observation := &writeDispatchObservation{}
 	var response providerResponse
@@ -279,13 +280,38 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	}
 	classified := classifyErrorResponse(operation, response, client.now())
 	classified.receipt = receipt
-	if classified.disposition == outcomeRetry {
+	switch {
+	case classified.disposition == outcomeRetry && classified.failure.Kind == sdkgo.FailureRateLimit:
+		classified.disposition = outcomeRetryUnprocessed
+	case classified.disposition == outcomeRetry:
 		classified.disposition = outcomeWriteUnconfirmed
-		if classified.failure.Kind == sdkgo.FailureRateLimit {
-			classified.disposition = outcomeRetryUnprocessed
-		}
+	case classified.disposition == outcomeQuotaExhausted:
+		// Google's quotaExceeded reason is an explicit refusal of the request.
+	case !isDefiniteRefusalStatus(response.statusCode) || bodyIndicatesInsertedItem(response.body):
+		// Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert.
+		classified.disposition = outcomeWriteUnconfirmed
 	}
 	return response, &classified
+}
+
+// isDefiniteRefusalStatus reports a status that proves YouTube refused a write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+// bodyIndicatesInsertedItem reports an error response that still carries a created playlist item.
+func bodyIndicatesInsertedItem(body []byte) bool {
+	var item struct {
+		Kind string `json:"kind"`
+		ID   string `json:"id"`
+	}
+	return json.Unmarshal(body, &item) == nil && item.Kind == "youtube#playlistItem" && item.ID != ""
 }
 
 // sendWithRefresh sends a request and, after a 401 from a refreshing source, refreshes once and resends.

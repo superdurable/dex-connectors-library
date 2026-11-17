@@ -53,7 +53,7 @@ export interface CreateDocumentStepConfig<StepInput, OperationInput = CreateDocu
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Google returned an invalid or oversized duplicate-lookup response before the creation was sent. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** A creation may have been sent but its outcome cannot be confirmed, so the document may exist; the connector sends nothing after selecting this branch. */
+  /** A creation may have been sent, and the duplicate lookup still could not confirm it when the send cap was reached, so the document may exist; the connector sends nothing after selecting this branch. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

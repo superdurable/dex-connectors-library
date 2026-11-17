@@ -3,8 +3,10 @@
 This package binds `getValues`, `findRow`, and `upsertRow` to Dex Steps. The
 `google-sheets-contacts` example in `examples/upsert-contact/` is a runnable
 Flow that reads a stable contact key and replaces or appends a row. The upsert
-uses a durable single dispatch fence before an append and confirms uncertain
-responses by reading the key again.
+uses a durable single dispatch fence before an append and confirms an unknown
+outcome by reading the key again. An unconfirmed append is resent until the
+send cap (`maxSends`, default 3); only an append still unconfirmed at the cap is
+`uncertain`, and a definite refusal is never resent.
 
 Use `newProjectConnection(project, ConnectionName)` in a Worker after loading
 Dex project configuration. The generated OAuth refresh driver exchanges stored

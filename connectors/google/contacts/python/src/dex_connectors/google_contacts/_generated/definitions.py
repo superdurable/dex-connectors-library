@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -64,7 +65,7 @@ CREATE_CONTACT_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Google created the contact and returned its resource name.", False),
         BranchDefinition(PROVIDER_REJECTED, "Google conclusively rejected the contact.", True),
-        BranchDefinition(UNCERTAIN, "Google may have created the contact but its resource name was not confirmed; do not resend automatically.", True),
+        BranchDefinition(UNCERTAIN, "Google may have created the contact, and its resource name was still not confirmed when the send cap was reached.", True),
         BranchDefinition(DEFECT, "Local contact input, connection credentials, or dispatch checkpoint is invalid.", True),
     ),
     StepDefaults(
@@ -72,4 +73,6 @@ CREATE_CONTACT_DEFINITION = MutationDefinition(
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { readErrorTokens } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { GetFileDefinition, ReadFileTextDefinition, SearchFilesDefinition, UploadFileDefinition } from './generated/definitions.js';
@@ -134,26 +134,34 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
   constructor(readonly client: DriveClient) { if (!client) throw new TypeError('Drive client is required'); }
   /** Return the manifest definition. */ definition() { return UploadFileDefinition; }
   /** Derive the stable provider key from the call ID. */ idempotencyKey(callId: string): string { return callId; }
-  /** Reconcile retries before allowing a new upload. */
+  /**
+   * Read back an earlier upload by its app property before each send. An unknown outcome is resent
+   * while the send cap allows, and uncertain is selected only at the cap.
+   */
   async invoke(call: Call, input: UploadFileInput): Promise<MutationAttempt<UploadFileOutput>> {
-    let fence: Fence;
-    try { fence = newFence(call, UploadFileDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
-    catch { return newMutationBranch('defect', emptyUpload(), zeroReceipt(), failure('LOCAL_DEFECT', 'uploadFile', 'single-dispatch fence could not be created')); }
-    const decision = fence.decide();
-    if (decision.kind === 'failClosed') return this.uncertain(call, 'upload checkpoint cannot be trusted');
-    if (decision.kind === 'readBackRequired' && decision.marker?.callId && decision.marker.callId !== call.id) return this.uncertain(call, 'upload checkpoint belongs to another call');
     let content: Buffer;
     try { content = uploadContent(input, this.client.maxUploadBytes); }
     catch (error) { return newMutationBranch('defect', emptyUpload(), zeroReceipt(), failure('VALIDATION', 'uploadFile', error instanceof Error ? error.message : 'invalid upload input')); }
     const key = call.idempotencyKey ?? '';
     if (!key || Buffer.byteLength(key) > 100) return newMutationBranch('defect', emptyUpload(), zeroReceipt(), failure('LOCAL_DEFECT', 'uploadFile', 'idempotency key is missing or too long'));
+    const operationMaxSends = definitionMaxSends(UploadFileDefinition);
+    let fence: Fence;
+    try { fence = newFence(call, UploadFileDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends }); }
+    catch { return newMutationBranch('defect', emptyUpload(), zeroReceipt(), failure('LOCAL_DEFECT', 'uploadFile', 'single-dispatch fence could not be created')); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(failure('AVAILABILITY', 'uploadFile', 'upload checkpoint is unreadable; nothing was uploaded in this attempt'));
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    // This attempt's send is the last one the cap allows when no further send remains.
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
     let credentials: Credentials;
     try { credentials = await this.client.resolve(call); }
     catch {
       const unavailable = failure('AUTHENTICATION', 'uploadFile', 'connection credentials are unavailable');
       return decision.kind === 'sendAllowed' ? this.retryBeforeSend(fence, unavailable, 0) : newMutationRetry(unavailable);
     }
-    if (decision.kind === 'readBackRequired' && decision.marker?.providerId) {
+    // Drive returns a file ID only for an upload it accepted, so a saved one is read back and never resent.
+    if (decision.kind !== 'sendAllowed' && decision.marker?.providerId) {
       const byID = await this.client.read(call, credentials, this.client.fileMetadataURL(decision.marker.providerId, `${fullFileFields},appProperties`), this.client.maxResponseBytes, 'providerRejected', 'invalidResponse', 'providerRejected', 'defect', 'uploadFile');
       if (byID.outcome) return byID.outcome.branch ? this.uncertain(call, 'upload ID read-back could not confirm the outcome') : newMutationRetry(byID.outcome.failure, byID.outcome.retryAfterMs);
       try {
@@ -165,9 +173,11 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
     }
     const lookup = await this.lookup(call, credentials, key);
     if (lookup.outcome) {
-      if (decision.kind === 'readBackRequired') return lookup.outcome.branch ? this.uncertain(call, 'upload read-back could not confirm the outcome') : newMutationRetry(lookup.outcome.failure, lookup.outcome.retryAfterMs);
-      return lookup.outcome.branch ? newMutationBranch(lookup.outcome.branch, emptyUpload(), lookup.outcome.receipt, lookup.outcome.failure)
-        : this.retryBeforeSend(fence, lookup.outcome.failure, lookup.outcome.retryAfterMs);
+      if (decision.kind === 'sendAllowed' && !lookup.outcome.branch) return this.retryBeforeSend(fence, lookup.outcome.failure, lookup.outcome.retryAfterMs);
+      if (!lookup.outcome.branch) return newMutationRetry(lookup.outcome.failure, lookup.outcome.retryAfterMs);
+      if (decision.kind === 'readBackRequired') return this.uncertain(call, 'upload read-back could not confirm the outcome');
+      if (!hasPossibleEarlierSend) return newMutationBranch(lookup.outcome.branch, emptyUpload(), lookup.outcome.receipt, lookup.outcome.failure);
+      // An inconclusive read-back after a possible send permits this attempt's resend.
     }
     if (lookup.file) return newMutationBranch('uploaded', { file: lookup.file, isFromEarlierAttempt: true }, this.client.receipt(call, lookup.result!.requestId, lookup.file.id));
     if (lookup.incomplete) {
@@ -187,21 +197,40 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
     const receipt = this.client.receipt(call, requestID);
     if (sendError && isProvablyUndispatched(sendError)) return this.retryAfterRejection(fence, 'TRANSPORT', 'upload failed before a connection was obtained', 0);
     if (response?.status === 429 || response?.status === 503) return this.retryAfterRejection(fence, statusFailureKind(response.status, []), 'provider returned a retryable upload status', this.client.retryDelay(response.headers));
-    if (sendError || !response || response.status >= 500 || response.status === 409) return this.reconcile(call, credentials, key, requestID);
+    if (sendError || !response) return this.reconcile(call, fence, credentials, key, requestID, canResendUnknownOutcome);
     const reasons = readErrorTokens(response.body, ['/error/errors/0/reason', '/error/status']);
-    if (response.status === 401) {
+    const hasAcceptedFile = hasFileID(response.body);
+    if (response.status === 401 && !hasAcceptedFile) {
       if (await this.client.refreshAfterRejection(call)) return this.retryAfterRejection(fence, 'AUTHENTICATION', 'provider rejected the upload credential', 0);
-      return newMutationBranch('providerRejected', emptyUpload(), receipt, failure('AUTHENTICATION', 'uploadFile', 'provider rejected the upload credential'));
+      return this.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, 'AUTHENTICATION', 'provider rejected the upload credential', receipt);
     }
-    if (isRateLimited(response.status, reasons)) return this.retryAfterRejection(fence, 'RATE_LIMIT', 'provider returned a retryable upload status', this.client.retryDelay(response.headers));
+    if (isRateLimited(response.status, reasons) && !hasAcceptedFile) return this.retryAfterRejection(fence, 'RATE_LIMIT', 'provider returned a retryable upload status', this.client.retryDelay(response.headers));
     if (response.status >= 200 && response.status < 300) {
       try {
+        if (!hasAcceptedFile) throw new TypeError('upload response has no file ID');
         const file = convertFile(jsonObject(response.body));
         try { await fence.recordProviderId(file.id); } catch { /* The accepted provider identity remains authoritative. */ }
         return newMutationBranch('uploaded', { file }, this.client.receipt(call, requestID, file.id));
-      } catch { return this.reconcile(call, credentials, key, requestID); }
+      } catch { return this.reconcile(call, fence, credentials, key, requestID, canResendUnknownOutcome); }
     }
-    return newMutationBranch('providerRejected', emptyUpload(), receipt, failure(statusFailureKind(response.status, reasons), 'uploadFile', 'provider rejected the upload'));
+    if (definiteRefusalStatuses.has(response.status) && !hasAcceptedFile)
+      return this.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, statusFailureKind(response.status, reasons), 'provider rejected the upload', receipt);
+    return this.reconcile(call, fence, credentials, key, requestID, canResendUnknownOutcome);
+  }
+
+  /** Select providerRejected only when no earlier send may have uploaded. */
+  async rejectOrSelectUncertain(call: Call, fence: Fence, hasPossibleEarlierSend: boolean, kind: Failure['kind'], message: string, receipt: ReceiptDraft): Promise<MutationAttempt<UploadFileOutput>> {
+    if (hasPossibleEarlierSend) return this.uncertain(call, `${message} after an earlier unconfirmed upload`);
+    try { await fence.recordCanResend(); }
+    catch { /* The refusal ends the Step, so a lost checkpoint cannot cause a resend. */ }
+    return newMutationBranch('providerRejected', emptyUpload(), receipt, failure(kind, 'uploadFile', message));
+  }
+
+  /** Retry a possibly accepted upload while the send cap allows another send. */
+  resendOrSelectUncertain(call: Call, canResendUnknownOutcome: boolean, message: string, requestID: string): MutationAttempt<UploadFileOutput> {
+    // The claim stays the last marker, so the next attempt reads back again and counts this send.
+    if (canResendUnknownOutcome) return newMutationRetry(failure('AVAILABILITY', 'uploadFile', message));
+    return newMutationUncertain(emptyUpload(), failure('AVAILABILITY', 'uploadFile', `${message}; the send cap is reached`), this.client.receipt(call, requestID));
   }
 
   async lookup(call: Call, credentials: Credentials, key: string): Promise<{ file?: File; incomplete?: boolean; result?: DriveResponse; outcome?: ReadOutcome }> {
@@ -219,12 +248,17 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
     } catch { return { outcome: { branch: 'invalidResponse', failure: failure('PROTOCOL', 'uploadFile', 'provider returned an invalid duplicate-lookup response'), receipt: this.client.receipt(call, answer.result!.requestId), retryAfterMs: 0 } }; }
   }
 
-  async reconcile(call: Call, credentials: Credentials, key: string, requestID: string): Promise<MutationAttempt<UploadFileOutput>> {
+  /** Read back an upload with an unknown outcome, then resend while the cap allows. */
+  async reconcile(call: Call, fence: Fence, credentials: Credentials, key: string, requestID: string, canResendUnknownOutcome: boolean): Promise<MutationAttempt<UploadFileOutput>> {
     const lookup = await this.lookup(call, credentials, key);
-    if (lookup.outcome) return lookup.outcome.branch ? this.uncertain(call, 'upload read-back could not confirm the outcome') : newMutationRetry(lookup.outcome.failure, lookup.outcome.retryAfterMs);
-    if (lookup.file) return newMutationBranch('uploaded', { file: lookup.file }, this.client.receipt(call, lookup.result!.requestId, lookup.file.id));
+    if (lookup.outcome) return lookup.outcome.branch ? this.resendOrSelectUncertain(call, canResendUnknownOutcome, 'upload read-back could not confirm the outcome', requestID) : newMutationRetry(lookup.outcome.failure, lookup.outcome.retryAfterMs);
+    if (lookup.file) {
+      try { await fence.recordProviderId(lookup.file.id); }
+      catch { /* A later attempt still finds the file by its app property. */ }
+      return newMutationBranch('uploaded', { file: lookup.file }, this.client.receipt(call, lookup.result!.requestId, lookup.file.id));
+    }
     if (lookup.incomplete) return newMutationRetry(failure('AVAILABILITY', 'uploadFile', 'provider did not complete upload read-back'));
-    return newMutationUncertain(emptyUpload(), failure('AVAILABILITY', 'uploadFile', 'upload was sent but read-back found no matching file'), this.client.receipt(call, requestID));
+    return this.resendOrSelectUncertain(call, canResendUnknownOutcome, 'upload was sent but read-back found no matching file', requestID);
   }
 
   async retryBeforeSend(fence: Fence, reason: Failure, delay: number): Promise<MutationAttempt<UploadFileOutput>> {
@@ -269,6 +303,19 @@ function multipartUpload(input: UploadFileInput, content: Buffer, key: string): 
     content, Buffer.from(`\r\n--${boundary}--\r\n`),
   ]);
   return { body, contentType: `multipart/related; boundary=${boundary}` };
+}
+// Only these statuses prove Drive refused an upload; every other status is an unknown outcome.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Report a response body that names a created file, which proves Drive accepted the upload. */
+function hasFileID(body: Uint8Array): boolean {
+  try {
+    const value = JSON.parse(Buffer.from(body).toString('utf8')) as unknown;
+    return typeof value === 'object' && value !== null && !Array.isArray(value) && typeof (value as Record<string, unknown>).id === 'string' && (value as Record<string, unknown>).id !== '';
+  } catch { return false; }
+}
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
 }
 function isProvablyUndispatched(error: unknown): boolean {
   return error instanceof Error && 'isProvablyNotSent' in error && error.isProvablyNotSent === true;

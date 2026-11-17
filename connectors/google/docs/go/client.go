@@ -415,6 +415,17 @@ func mutationAttemptFromReadOutcome[T any](outcome *readOutcome) sdkgo.MutationA
 
 func isDriveID(value string) bool { return driveIDPattern.MatchString(value) }
 
+// isDefiniteRefusalStatus reports a status that proves Google refused a write; others are unknown outcomes.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
 func isRetryableStatus(status int, tokens []string) bool {
 	return status >= 500 || status == http.StatusRequestTimeout || isRateLimitStatus(status, tokens)
 }

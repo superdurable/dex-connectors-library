@@ -6,16 +6,16 @@ metadata:
   description: Read and create contacts through the Google People API.
   company: Google
   categories: [productivity]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: google-contacts
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listContacts, getContact, createContact]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listContacts, getContact, createContact]
       triggers: []
   codegen:
@@ -135,13 +135,13 @@ spec:
       inputType: CreateContactInput
       outputType: Contact
       kind: mutation
-      description: Create one contact. If Google does not confirm the outcome, inspect Contacts before creating another.
+      description: Create one contact. An unconfirmed create is resent up to the send cap; if Google still does not confirm it, inspect Contacts before creating another.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: Google created the contact and returned its resource name.}
         - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the contact., optional: true}
-        - {id: uncertain, goName: Uncertain, description: Google may have created the contact but its resource name was not confirmed; do not resend automatically., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Google may have created the contact, and its resource name was still not confirmed when the send cap was reached.", optional: true}
         - {id: defect, goName: Defect, description: "Local contact input, connection credentials, or dispatch checkpoint is invalid.", optional: true}
       # The People API has no create-contact idempotency key; sync preserves the dispatch heartbeat for retries.
       execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true}

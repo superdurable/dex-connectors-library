@@ -35,7 +35,7 @@ it('classifies a wrong-typed video statistic as invalidResponse', async () => {
   expect(attempt.failure?.kind).toBe('PROTOCOL');
 });
 
-it('keeps the insert claim after an ambiguous resend that follows a credential refresh', async () => {
+it('counts an ambiguous resend that follows a credential refresh toward the send cap', async () => {
   const inserts: string[] = [];
   let forcedRefreshes = 0;
   const credentialFor = (token: string) => ({ ...credentials, authMethodId: 'google-oauth-manage', accessToken: new SecretString(token) });
@@ -59,8 +59,9 @@ it('keeps the insert claim after an ambiguous resend that follows a credential r
     const attemptCall = scenarioCall(scenario, connection, 'google-youtube', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
     kinds.push((await client.addPlaylistItem().invoke(attemptCall, { playlistId: 'PLexample123', videoId: 'dQw4w9WgXcQ' })).kind);
   }
-  expect(kinds).toEqual(['retry', 'uncertain', 'uncertain']);
-  expect(inserts).toEqual(['rejected-token', 'replacement-token']);
+  expect(kinds).toEqual(['retry', 'retry', 'uncertain']);
+  // The refreshed resend shares one fence claim with the rejected insert.
+  expect(inserts).toEqual(['rejected-token', 'replacement-token', 'rejected-token', 'rejected-token']);
   expect(forcedRefreshes).toBe(1);
-  expect(context.marker).toEqual({ callId: scenario.callId, attempt: 1, state: 'claimed' });
+  expect(context.marker).toEqual({ callId: scenario.callId, attempt: 3, state: 'claimed', sendCount: 3 });
 });

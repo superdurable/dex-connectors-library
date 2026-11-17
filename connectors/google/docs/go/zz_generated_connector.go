@@ -424,7 +424,7 @@ var CreateDocumentDefinition = sdkgo.MutationDefinition{
 		{ID: CreateDocumentBranchCreated, Description: "Google created the document or returned the one an earlier attempt of the same Step execution created."},
 		{ID: CreateDocumentBranchProviderRejected, Description: "Google conclusively rejected the creation or the duplicate lookup, such as a missing parent folder; no document was created.", Optional: true},
 		{ID: CreateDocumentBranchInvalidResponse, Description: "Google returned an invalid or oversized duplicate-lookup response before the creation was sent.", Optional: true},
-		{ID: CreateDocumentBranchUncertain, Description: "A creation may have been sent but its outcome cannot be confirmed, so the document may exist; the connector sends nothing after selecting this branch.", Optional: true},
+		{ID: CreateDocumentBranchUncertain, Description: "A creation may have been sent, and the duplicate lookup still could not confirm it when the send cap was reached, so the document may exist; the connector sends nothing after selecting this branch.", Optional: true},
 		{ID: CreateDocumentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -432,6 +432,8 @@ var CreateDocumentDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateDocumentResult = sdkgo.MutationResult[CreateDocumentOutput]
@@ -453,6 +455,8 @@ type CreateDocumentStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateDocumentResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateDocumentOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateDocumentStep[IN any](config CreateDocumentStepConfig[IN]) sdkgo.MutationStep[IN, CreateDocumentInput, CreateDocumentOutput] {
@@ -488,6 +492,7 @@ func NewCreateDocumentStep[IN any](config CreateDocumentStepConfig[IN]) sdkgo.Mu
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -515,6 +520,7 @@ var ReplaceDocumentTextDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type ReplaceDocumentTextResult = sdkgo.MutationResult[ReplaceDocumentTextOutput]
@@ -604,6 +610,7 @@ var AppendTextDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type AppendTextResult = sdkgo.MutationResult[AppendTextOutput]
