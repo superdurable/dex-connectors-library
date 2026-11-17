@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: dropbox-sign
   displayName: Dropbox Sign
-  description: Inspect and manage signature requests, send documents or templates for signing, and remind signers.
+  description: Inspect and manage signature requests, send documents or templates for signing, remind signers, and manage templates.
   company: Dropbox
   categories: [files-documents]
   version: v0.2.0
@@ -181,3 +181,51 @@ spec:
           default: true
           description: One example signer name is updated.
           output: {signatureRequestId: fa5c8a0b0f492d768749333ad6fcc214c111e967, updated: true}
+    - name: listTemplates
+      goName: ListTemplates
+      inputType: ListTemplatesInput
+      outputType: TemplatesPage
+      kind: query
+      description: List one bounded page of accessible template IDs, titles, and signer roles.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Dropbox Sign returned a template page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign rejected template listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox Sign returned invalid template data., optional: true}
+        - {id: defect, goName: Defect, description: Template page options or credentials are invalid., optional: true}
+      mocks:
+        - {name: templatePage, branch: listed, description: One template with a Client signer role is listed., default: true, output: {templates: [{id: template-1, title: Example agreement, signerRoles: [Client]}], page: 1, totalPages: 1}}
+    - name: getTemplate
+      goName: GetTemplate
+      inputType: TemplateIdentityInput
+      outputType: TemplateMetadata
+      kind: query
+      description: Read one template's ID, title, and signer roles.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Dropbox Sign returned the selected template.}
+        - {id: notFound, goName: NotFound, description: The template is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign rejected template retrieval., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox Sign returned invalid template data., optional: true}
+        - {id: defect, goName: Defect, description: Template ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: sampleTemplate, branch: found, description: One template with a Client signer role is returned., default: true, output: {id: template-1, title: Example agreement, signerRoles: [Client]}}
+    - name: deleteTemplate
+      goName: DeleteTemplate
+      inputType: TemplateIdentityInput
+      outputType: DeletedTemplate
+      kind: mutation
+      description: Permanently delete a template by ID; a missing template is already absent.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The template is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign rejected template deletion., optional: true}
+        - {id: defect, goName: Defect, description: Template ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: sampleDeleted, branch: deleted, description: One template was deleted., default: true, output: {templateId: template-1, deleted: true}}

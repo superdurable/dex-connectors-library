@@ -44,6 +44,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[dropboxsign.UpdatedSignerName](`{"signatureRequestId":"fa5c8a0b0f492d768749333ad6fcc214c111e967","updated":true}`)
 			return err
 		}},
+		{name: "listTemplates/templatePage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropboxsign.TemplatesPage](`{"templates":[{"id":"template-1","title":"Example agreement","signerRoles":["Client"]}],"page":1,"totalPages":1}`)
+			return err
+		}},
+		{name: "getTemplate/sampleTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropboxsign.TemplateMetadata](`{"id":"template-1","title":"Example agreement","signerRoles":["Client"]}`)
+			return err
+		}},
+		{name: "deleteTemplate/sampleDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropboxsign.DeletedTemplate](`{"templateId":"template-1","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -74,5 +86,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpdateSignerName().Definition().Operation.OperationID != "updateSignerName" {
 		t.Errorf("updateSignerName mock has another definition")
+	}
+	if mock.ListTemplates().Definition().Operation.OperationID != "listTemplates" {
+		t.Errorf("listTemplates mock has another definition")
+	}
+	if mock.GetTemplate().Definition().Operation.OperationID != "getTemplate" {
+		t.Errorf("getTemplate mock has another definition")
+	}
+	if mock.DeleteTemplate().Definition().Operation.OperationID != "deleteTemplate" {
+		t.Errorf("deleteTemplate mock has another definition")
 	}
 }

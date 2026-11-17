@@ -25,6 +25,9 @@ type Mock struct {
 	cancelIncompleteSignatureRequest *connectormock.Mutation[dropboxsign.GetSignatureRequestInput, dropboxsign.CancellationQueued]
 	remindSignatureRequest           *connectormock.Mutation[dropboxsign.RemindSignatureRequestInput, dropboxsign.SignatureRequestStatus]
 	updateSignerName                 *connectormock.Mutation[dropboxsign.UpdateSignerNameInput, dropboxsign.UpdatedSignerName]
+	listTemplates                    *connectormock.Query[dropboxsign.ListTemplatesInput, dropboxsign.TemplatesPage]
+	getTemplate                      *connectormock.Query[dropboxsign.TemplateIdentityInput, dropboxsign.TemplateMetadata]
+	deleteTemplate                   *connectormock.Mutation[dropboxsign.TemplateIdentityInput, dropboxsign.DeletedTemplate]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -39,6 +42,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		cancelIncompleteSignatureRequest: connectormock.NewMutation[dropboxsign.GetSignatureRequestInput, dropboxsign.CancellationQueued](t, dropboxsign.CancelIncompleteSignatureRequestDefinition),
 		remindSignatureRequest:           connectormock.NewMutation[dropboxsign.RemindSignatureRequestInput, dropboxsign.SignatureRequestStatus](t, dropboxsign.RemindSignatureRequestDefinition),
 		updateSignerName:                 connectormock.NewMutation[dropboxsign.UpdateSignerNameInput, dropboxsign.UpdatedSignerName](t, dropboxsign.UpdateSignerNameDefinition),
+		listTemplates:                    connectormock.NewQuery[dropboxsign.ListTemplatesInput, dropboxsign.TemplatesPage](t, dropboxsign.ListTemplatesDefinition),
+		getTemplate:                      connectormock.NewQuery[dropboxsign.TemplateIdentityInput, dropboxsign.TemplateMetadata](t, dropboxsign.GetTemplateDefinition),
+		deleteTemplate:                   connectormock.NewMutation[dropboxsign.TemplateIdentityInput, dropboxsign.DeletedTemplate](t, dropboxsign.DeleteTemplateDefinition),
 	}
 	mock.getSignatureRequest.Default(GetSignatureRequestDefault())
 	mock.listSignatureRequests.Default(ListSignatureRequestsDefault())
@@ -47,6 +53,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.cancelIncompleteSignatureRequest.Default(CancelIncompleteSignatureRequestDefault())
 	mock.remindSignatureRequest.Default(RemindSignatureRequestDefault())
 	mock.updateSignerName.Default(UpdateSignerNameDefault())
+	mock.listTemplates.Default(ListTemplatesDefault())
+	mock.getTemplate.Default(GetTemplateDefault())
+	mock.deleteTemplate.Default(DeleteTemplateDefault())
 	connection, err := dropboxsign.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "dropbox-sign", Name: connectionName})
 	if err != nil {
 		t.Fatalf("dropbox-sign mock connection: %v", err)
@@ -93,6 +102,21 @@ func (mock *Mock) UpdateSignerName() *connectormock.Mutation[dropboxsign.UpdateS
 	return mock.updateSignerName
 }
 
+// ListTemplates returns the listTemplates script.
+func (mock *Mock) ListTemplates() *connectormock.Query[dropboxsign.ListTemplatesInput, dropboxsign.TemplatesPage] {
+	return mock.listTemplates
+}
+
+// GetTemplate returns the getTemplate script.
+func (mock *Mock) GetTemplate() *connectormock.Query[dropboxsign.TemplateIdentityInput, dropboxsign.TemplateMetadata] {
+	return mock.getTemplate
+}
+
+// DeleteTemplate returns the deleteTemplate script.
+func (mock *Mock) DeleteTemplate() *connectormock.Mutation[dropboxsign.TemplateIdentityInput, dropboxsign.DeletedTemplate] {
+	return mock.deleteTemplate
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetSignatureRequest() sdkgo.Query[dropboxsign.GetSignatureRequestInput, dropboxsign.SignatureRequestStatus] {
@@ -115,6 +139,15 @@ func (operations mockOperations) RemindSignatureRequest() sdkgo.Mutation[dropbox
 }
 func (operations mockOperations) UpdateSignerName() sdkgo.Mutation[dropboxsign.UpdateSignerNameInput, dropboxsign.UpdatedSignerName] {
 	return operations.mock.updateSignerName
+}
+func (operations mockOperations) ListTemplates() sdkgo.Query[dropboxsign.ListTemplatesInput, dropboxsign.TemplatesPage] {
+	return operations.mock.listTemplates
+}
+func (operations mockOperations) GetTemplate() sdkgo.Query[dropboxsign.TemplateIdentityInput, dropboxsign.TemplateMetadata] {
+	return operations.mock.getTemplate
+}
+func (operations mockOperations) DeleteTemplate() sdkgo.Mutation[dropboxsign.TemplateIdentityInput, dropboxsign.DeletedTemplate] {
+	return operations.mock.deleteTemplate
 }
 
 // GetSignatureRequestFound selects the found branch: Dropbox Sign returned the signature request.
@@ -377,4 +410,112 @@ func UpdateSignerNameUpdatedDefault() connectormock.Case[dropboxsign.UpdatedSign
 // UpdateSignerNameDefault is the manifest default, updatedDefault, which New installs.
 func UpdateSignerNameDefault() connectormock.Case[dropboxsign.UpdatedSignerName] {
 	return UpdateSignerNameUpdatedDefault()
+}
+
+// ListTemplatesListed selects the listed branch: Dropbox Sign returned a template page.
+func ListTemplatesListed(value dropboxsign.TemplatesPage, failure *sdkgo.Failure) connectormock.Case[dropboxsign.TemplatesPage] {
+	return connectormock.Branch(dropboxsign.ListTemplatesBranchListed, value, failure)
+}
+
+// ListTemplatesProviderRejected selects the providerRejected branch: Dropbox Sign rejected template listing.
+func ListTemplatesProviderRejected(value dropboxsign.TemplatesPage, failure *sdkgo.Failure) connectormock.Case[dropboxsign.TemplatesPage] {
+	return connectormock.Branch(dropboxsign.ListTemplatesBranchProviderRejected, value, failure)
+}
+
+// ListTemplatesInvalidResponse selects the invalidResponse branch: Dropbox Sign returned invalid template data.
+func ListTemplatesInvalidResponse(value dropboxsign.TemplatesPage, failure *sdkgo.Failure) connectormock.Case[dropboxsign.TemplatesPage] {
+	return connectormock.Branch(dropboxsign.ListTemplatesBranchInvalidResponse, value, failure)
+}
+
+// ListTemplatesDefect selects the defect branch: Template page options or credentials are invalid.
+func ListTemplatesDefect(value dropboxsign.TemplatesPage, failure *sdkgo.Failure) connectormock.Case[dropboxsign.TemplatesPage] {
+	return connectormock.Branch(dropboxsign.ListTemplatesBranchDefect, value, failure)
+}
+
+// ListTemplatesRetry asks Dex to retry the listTemplates Step, after the delay when it is positive.
+func ListTemplatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropboxsign.TemplatesPage] {
+	return connectormock.Retry[dropboxsign.TemplatesPage](failure, after)
+}
+
+// ListTemplatesTemplatePage is the manifest mock templatePage: One template with a Client signer role is listed.
+func ListTemplatesTemplatePage() connectormock.Case[dropboxsign.TemplatesPage] {
+	value := connectormock.MustDecodeOutput[dropboxsign.TemplatesPage](`{"templates":[{"id":"template-1","title":"Example agreement","signerRoles":["Client"]}],"page":1,"totalPages":1}`)
+	return connectormock.Branch(dropboxsign.ListTemplatesBranchListed, value, nil)
+}
+
+// ListTemplatesDefault is the manifest default, templatePage, which New installs.
+func ListTemplatesDefault() connectormock.Case[dropboxsign.TemplatesPage] {
+	return ListTemplatesTemplatePage()
+}
+
+// GetTemplateFound selects the found branch: Dropbox Sign returned the selected template.
+func GetTemplateFound(value dropboxsign.TemplateMetadata, failure *sdkgo.Failure) connectormock.Case[dropboxsign.TemplateMetadata] {
+	return connectormock.Branch(dropboxsign.GetTemplateBranchFound, value, failure)
+}
+
+// GetTemplateNotFound selects the notFound branch: The template is unavailable.
+func GetTemplateNotFound(value dropboxsign.TemplateMetadata, failure *sdkgo.Failure) connectormock.Case[dropboxsign.TemplateMetadata] {
+	return connectormock.Branch(dropboxsign.GetTemplateBranchNotFound, value, failure)
+}
+
+// GetTemplateProviderRejected selects the providerRejected branch: Dropbox Sign rejected template retrieval.
+func GetTemplateProviderRejected(value dropboxsign.TemplateMetadata, failure *sdkgo.Failure) connectormock.Case[dropboxsign.TemplateMetadata] {
+	return connectormock.Branch(dropboxsign.GetTemplateBranchProviderRejected, value, failure)
+}
+
+// GetTemplateInvalidResponse selects the invalidResponse branch: Dropbox Sign returned invalid template data.
+func GetTemplateInvalidResponse(value dropboxsign.TemplateMetadata, failure *sdkgo.Failure) connectormock.Case[dropboxsign.TemplateMetadata] {
+	return connectormock.Branch(dropboxsign.GetTemplateBranchInvalidResponse, value, failure)
+}
+
+// GetTemplateDefect selects the defect branch: Template ID or credentials are invalid.
+func GetTemplateDefect(value dropboxsign.TemplateMetadata, failure *sdkgo.Failure) connectormock.Case[dropboxsign.TemplateMetadata] {
+	return connectormock.Branch(dropboxsign.GetTemplateBranchDefect, value, failure)
+}
+
+// GetTemplateRetry asks Dex to retry the getTemplate Step, after the delay when it is positive.
+func GetTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropboxsign.TemplateMetadata] {
+	return connectormock.Retry[dropboxsign.TemplateMetadata](failure, after)
+}
+
+// GetTemplateSampleTemplate is the manifest mock sampleTemplate: One template with a Client signer role is returned.
+func GetTemplateSampleTemplate() connectormock.Case[dropboxsign.TemplateMetadata] {
+	value := connectormock.MustDecodeOutput[dropboxsign.TemplateMetadata](`{"id":"template-1","title":"Example agreement","signerRoles":["Client"]}`)
+	return connectormock.Branch(dropboxsign.GetTemplateBranchFound, value, nil)
+}
+
+// GetTemplateDefault is the manifest default, sampleTemplate, which New installs.
+func GetTemplateDefault() connectormock.Case[dropboxsign.TemplateMetadata] {
+	return GetTemplateSampleTemplate()
+}
+
+// DeleteTemplateDeleted selects the deleted branch: The template is absent.
+func DeleteTemplateDeleted(value dropboxsign.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[dropboxsign.DeletedTemplate] {
+	return connectormock.Branch(dropboxsign.DeleteTemplateBranchDeleted, value, failure)
+}
+
+// DeleteTemplateProviderRejected selects the providerRejected branch: Dropbox Sign rejected template deletion.
+func DeleteTemplateProviderRejected(value dropboxsign.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[dropboxsign.DeletedTemplate] {
+	return connectormock.Branch(dropboxsign.DeleteTemplateBranchProviderRejected, value, failure)
+}
+
+// DeleteTemplateDefect selects the defect branch: Template ID or credentials are invalid.
+func DeleteTemplateDefect(value dropboxsign.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[dropboxsign.DeletedTemplate] {
+	return connectormock.Branch(dropboxsign.DeleteTemplateBranchDefect, value, failure)
+}
+
+// DeleteTemplateRetry asks Dex to retry the deleteTemplate Step, after the delay when it is positive.
+func DeleteTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropboxsign.DeletedTemplate] {
+	return connectormock.Retry[dropboxsign.DeletedTemplate](failure, after)
+}
+
+// DeleteTemplateSampleDeleted is the manifest mock sampleDeleted: One template was deleted.
+func DeleteTemplateSampleDeleted() connectormock.Case[dropboxsign.DeletedTemplate] {
+	value := connectormock.MustDecodeOutput[dropboxsign.DeletedTemplate](`{"templateId":"template-1","deleted":true}`)
+	return connectormock.Branch(dropboxsign.DeleteTemplateBranchDeleted, value, nil)
+}
+
+// DeleteTemplateDefault is the manifest default, sampleDeleted, which New installs.
+func DeleteTemplateDefault() connectormock.Case[dropboxsign.DeletedTemplate] {
+	return DeleteTemplateSampleDeleted()
 }

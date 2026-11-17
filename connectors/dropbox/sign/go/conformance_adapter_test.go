@@ -48,6 +48,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			currentAttempt++
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"listTemplates":                    newConformanceQueryInvocation(t, scenario.Input, context, client.ListTemplates(), reference),
+		"getTemplate":                      newConformanceQueryInvocation(t, scenario.Input, context, client.GetTemplate(), reference),
+		"deleteTemplate":                   newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteTemplate(), reference, scenario.CallID),
 		"sendSignatureRequest":             newConformanceMutationInvocation(t, scenario.Input, context, client.SendSignatureRequest(), reference, scenario.CallID),
 		"sendSignatureRequestWithTemplate": newConformanceMutationInvocation(t, scenario.Input, context, client.SendSignatureRequestWithTemplate(), reference, scenario.CallID),
 		"cancelIncompleteSignatureRequest": newConformanceMutationInvocation(t, scenario.Input, context, client.CancelIncompleteSignatureRequest(), reference, scenario.CallID),

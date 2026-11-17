@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{signaturerequestinspection.NewFlow(connection), signaturerequestinspection.NewListFlow(connection), signaturerequestinspection.NewTemplateSendFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{signaturerequestinspection.NewFlow(connection), signaturerequestinspection.NewListFlow(connection), signaturerequestinspection.NewTemplateSendFlow(connection), signaturerequestinspection.NewTemplateListFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Dropbox Sign signature request inspection Flow: %w", err)
 	}
