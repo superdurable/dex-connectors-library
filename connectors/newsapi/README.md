@@ -26,6 +26,10 @@ for setup, provider behavior, and the Worker snippet.
 | Factory | Input | Required branch | Optional branches |
 | --- | --- | --- | --- |
 | `NewSearchArticlesStep` | `SearchArticlesInput` | `searched` | `providerRejected`, `invalidResponse`, `defect` |
+| `NewGetTopHeadlinesStep` | `GetTopHeadlinesInput` | `found` | `providerRejected`, `invalidResponse`, `defect` |
+| `NewListSourcesStep` | `ListSourcesInput` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+
+`GetTopHeadlinesInput` accepts a lowercase two-letter `Country`, one of NewsAPI's seven headline `Category` values, source IDs, or a `Query`. `Sources` cannot accompany `Country` or `Category`. `PageSize` is 1–100 and defaults to 20; `Page` starts at 1. `ListSourcesInput` filters publishers by `Category`, two-letter `Language`, and two-letter `Country`; blank fields include all values. Both queries use `X-Api-Key` and retry rate limits, temporary provider errors, and transport failures.
 
 `SearchArticlesInput` sends only the fields an application sets, so NewsAPI
 applies its own defaults to the rest:
@@ -135,4 +139,4 @@ mock := newsapimock.New(t, ConnectionName)
 flow, harness := newCompanyNewsIntegrationHarnessWithConnection(t, mock.Connection())
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/newsapi/go@v0.23.1`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/newsapi/go@v0.24.0`.

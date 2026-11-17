@@ -5,6 +5,7 @@ package onespansign
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,7 +18,11 @@ import (
 
 var testConnection = sdkgo.ConnectionRef{Provider: "onespan-sign", Name: "onespan-sign"}
 
-type queryContext struct{ dex.Context }
+type queryContext struct {
+	dex.Context
+	attempt        int32
+	priorHeartbeat json.RawMessage
+}
 
 func (queryContext) FlowID() string              { return "onespansign-provider-test" }
 func (queryContext) StepExecutionID() string     { return "get-package" }
@@ -25,6 +30,19 @@ func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }
 func (queryContext) Done() <-chan struct{}       { return nil }
 func (queryContext) Err() error                  { return nil }
 func (queryContext) Value(key any) any           { return context.Background().Value(key) }
+func (ctx queryContext) Attempt() int32 {
+	if ctx.attempt == 0 {
+		return 1
+	}
+	return ctx.attempt
+}
+func (ctx queryContext) GetLastHeartbeatValue(value any) (bool, error) {
+	if len(ctx.priorHeartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(ctx.priorHeartbeat, value)
+}
+func (queryContext) RecordHeartbeat(any) error { return nil }
 
 func newTestClient(t *testing.T, endpoint string, maxResponseBytes int64) *Client {
 	t.Helper()

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: odoo
   displayName: Odoo
-  description: Search company partners through Odoo's JSON-2 API.
+  description: Search and manage Odoo CRM records through the JSON-2 API.
   company: Odoo
   categories: [crm-sales, finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: odoo
   languages:
@@ -57,7 +57,7 @@ spec:
     guide:
       startURL: https://www.odoo.com/documentation/19.0/developer/reference/external_api.html
       steps:
-        - Confirm your Odoo 19 or newer deployment supports the JSON-2 API and that your plan permits external API access. Use a dedicated user with read access to company partners.
+        - Confirm your Odoo 19 or newer deployment supports the JSON-2 API and that your plan permits external API access. Use a dedicated user with the contact, CRM, activity, or custom model permissions needed by the selected operations.
         - At the Odoo site open your user avatar > My Profile or Preferences > Account Security > New API Key. Set a description and expiration, generate the key, copy it once into secret apiKey, and rotate it before expiration. Blank prevents requests.
         - Enter the site origin as baseUrl without /json/2. Ask your administrator for the database name, or use the subdomain before .odoo.com on Odoo Online, as database. Blank values prevent requests. Leave timeout and maxResponseBytes blank for the displayed defaults.
   operations:
@@ -81,3 +81,252 @@ spec:
           default: true
           description: One sample company matches the name pattern.
           output: {partners: [{id: 42, name: Acme Company}]}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: List a bounded page of Odoo contacts.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Odoo returned a contact page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the contact list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid contact data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid page or credentials., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example contact page., output: {contacts: [{id: 42, name: Acme Company, email: contact@example.com, phone: '4155550100'}]}}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: Contact
+      kind: query
+      description: Read one Odoo contact by numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Odoo returned the contact.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid contact data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid ID or credentials., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example contact., output: {id: 42, name: Acme Company, email: contact@example.com, phone: '4155550100'}}
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: CreatedContact
+      kind: mutation
+      description: Create one Odoo contact.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Odoo created the contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the create., optional: true}
+        - {id: defect, goName: Defect, description: Invalid contact or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Contact creation may have succeeded but could not be confirmed., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example created contact., output: {id: 42}}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: UpdatedContact
+      kind: mutation
+      description: Set a contact's name, email, and phone.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Odoo updated the contact.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid update data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example updated contact., output: {id: 42}}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: DeleteContactInput
+      outputType: DeletedContact
+      kind: mutation
+      description: Delete one Odoo contact.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Odoo deleted the contact.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid delete data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid ID or credentials., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example deleted contact., output: {id: 42}}
+    - name: listOpportunities
+      goName: ListOpportunities
+      inputType: ListOpportunitiesInput
+      outputType: OpportunitiesPage
+      kind: query
+      description: List a bounded page of CRM opportunities.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Odoo returned the opportunity outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid opportunity data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example opportunity outcome., output: {opportunities: [{id: 73, name: Example opportunity, emailFrom: lead@example.com, phone: '4155550100'}]}}
+    - name: getOpportunity
+      goName: GetOpportunity
+      inputType: GetOpportunityInput
+      outputType: Opportunity
+      kind: query
+      description: Read one CRM opportunity.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Odoo returned the opportunity outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid opportunity data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example opportunity outcome., output: {id: 73, name: Example opportunity, emailFrom: lead@example.com, phone: '4155550100'}}
+    - name: createOpportunity
+      goName: CreateOpportunity
+      inputType: CreateOpportunityInput
+      outputType: CreatedOpportunity
+      kind: mutation
+      description: Create one CRM opportunity.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Odoo returned the opportunity outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Odoo may have created the opportunity but it could not be confirmed., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example opportunity outcome., output: {id: 73}}
+    - name: updateOpportunity
+      goName: UpdateOpportunity
+      inputType: UpdateOpportunityInput
+      outputType: UpdatedOpportunity
+      kind: mutation
+      description: Set an opportunity's title, email, and phone.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Odoo returned the opportunity outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid opportunity data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example opportunity outcome., output: {id: 73}}
+    - name: deleteOpportunity
+      goName: DeleteOpportunity
+      inputType: DeleteOpportunityInput
+      outputType: DeletedOpportunity
+      kind: mutation
+      description: Delete one CRM opportunity.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Odoo returned the opportunity outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid opportunity data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example opportunity outcome., output: {id: 73}}
+    - name: listRecords
+      goName: ListRecords
+      inputType: ListRecordsInput
+      outputType: RecordsPage
+      kind: query
+      description: ListRecords in a selected Odoo JSON-2 model.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Odoo returned the selected record outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid record data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example Odoo activity page., output: {records: [{id: 42, fields: {summary: Call customer}}]}}
+    - name: getRecord
+      goName: GetRecord
+      inputType: GetRecordInput
+      outputType: Record
+      kind: query
+      description: GetRecord in a selected Odoo JSON-2 model.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Odoo returned the selected record outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the record., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid record data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example Odoo model record outcome., output: {id: 42, fields: {name: Acme Company}}}
+    - name: createRecord
+      goName: CreateRecord
+      inputType: CreateRecordInput
+      outputType: CreatedRecord
+      kind: mutation
+      description: CreateRecord in a selected Odoo JSON-2 model.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Odoo returned the selected record outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Record creation may have succeeded but could not be confirmed., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example Odoo model record outcome., output: {id: 42}}
+    - name: updateRecord
+      goName: UpdateRecord
+      inputType: UpdateRecordInput
+      outputType: UpdatedRecord
+      kind: mutation
+      description: UpdateRecord in a selected Odoo JSON-2 model.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Odoo returned the selected record outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the record., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid record data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example Odoo model record outcome., output: {id: 42}}
+    - name: deleteRecord
+      goName: DeleteRecord
+      inputType: DeleteRecordInput
+      outputType: DeletedRecord
+      kind: mutation
+      description: DeleteRecord in a selected Odoo JSON-2 model.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Odoo returned the selected record outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the record., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid record data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid model fields or credentials., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example Odoo model record outcome., output: {id: 42}}

@@ -23,7 +23,7 @@ func TestFlowUsesStaticConnectionAndStepIdentities(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "NetlifyLookup", dex.GetFinalFlowType(flow))
 	require.Equal(t, "StartNetlifyLookup", dex.GetFinalStepType[LookupRequest](startLookup{}))
-	require.Equal(t, "CompleteNetlifyLookup", dex.GetFinalStepType[netlify.ListSitesResult](completeLookup{}))
+	require.Equal(t, "CompleteNetlifyLookup", dex.GetFinalStepType[netlify.GetSiteResult](completeLookup{}))
 	wait, err := startLookup{}.WaitFor(nil, netlify.ListSitesInput{})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

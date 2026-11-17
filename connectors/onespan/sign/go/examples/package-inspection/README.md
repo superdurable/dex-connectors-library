@@ -1,6 +1,6 @@
 # OneSpan Sign package inspection Flow
 
-This runnable Flow calls `getPackage` through the static `onespan-sign` connection. It persists the selected package status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Flow calls `getPackage`, `listPackages` for the first five drafts, and `listSignerRoles` through the static `onespan-sign` connection. It persists the selected package status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 

@@ -21,5 +21,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"searchArticles": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchArticles(), testConnection),
+		"getTopHeadlines": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTopHeadlines(), testConnection),
+		"listSources": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSources(), testConnection),
 	}}
 }

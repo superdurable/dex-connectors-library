@@ -42,12 +42,72 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	SearchPartners() sdkgo.Query[SearchPartnersInput, PartnerSearchPage]
+	ListContacts() sdkgo.Query[ListContactsInput, ContactsPage]
+	GetContact() sdkgo.Query[GetContactInput, Contact]
+	CreateContact() sdkgo.Mutation[CreateContactInput, CreatedContact]
+	UpdateContact() sdkgo.Mutation[UpdateContactInput, UpdatedContact]
+	DeleteContact() sdkgo.Mutation[DeleteContactInput, DeletedContact]
+	ListOpportunities() sdkgo.Query[ListOpportunitiesInput, OpportunitiesPage]
+	GetOpportunity() sdkgo.Query[GetOpportunityInput, Opportunity]
+	CreateOpportunity() sdkgo.Mutation[CreateOpportunityInput, CreatedOpportunity]
+	UpdateOpportunity() sdkgo.Mutation[UpdateOpportunityInput, UpdatedOpportunity]
+	DeleteOpportunity() sdkgo.Mutation[DeleteOpportunityInput, DeletedOpportunity]
+	ListRecords() sdkgo.Query[ListRecordsInput, RecordsPage]
+	GetRecord() sdkgo.Query[GetRecordInput, Record]
+	CreateRecord() sdkgo.Mutation[CreateRecordInput, CreatedRecord]
+	UpdateRecord() sdkgo.Mutation[UpdateRecordInput, UpdatedRecord]
+	DeleteRecord() sdkgo.Mutation[DeleteRecordInput, DeletedRecord]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) SearchPartners() sdkgo.Query[SearchPartnersInput, PartnerSearchPage] {
 	return operations.client.SearchPartners()
+}
+func (operations clientOperations) ListContacts() sdkgo.Query[ListContactsInput, ContactsPage] {
+	return operations.client.ListContacts()
+}
+func (operations clientOperations) GetContact() sdkgo.Query[GetContactInput, Contact] {
+	return operations.client.GetContact()
+}
+func (operations clientOperations) CreateContact() sdkgo.Mutation[CreateContactInput, CreatedContact] {
+	return operations.client.CreateContact()
+}
+func (operations clientOperations) UpdateContact() sdkgo.Mutation[UpdateContactInput, UpdatedContact] {
+	return operations.client.UpdateContact()
+}
+func (operations clientOperations) DeleteContact() sdkgo.Mutation[DeleteContactInput, DeletedContact] {
+	return operations.client.DeleteContact()
+}
+func (operations clientOperations) ListOpportunities() sdkgo.Query[ListOpportunitiesInput, OpportunitiesPage] {
+	return operations.client.ListOpportunities()
+}
+func (operations clientOperations) GetOpportunity() sdkgo.Query[GetOpportunityInput, Opportunity] {
+	return operations.client.GetOpportunity()
+}
+func (operations clientOperations) CreateOpportunity() sdkgo.Mutation[CreateOpportunityInput, CreatedOpportunity] {
+	return operations.client.CreateOpportunity()
+}
+func (operations clientOperations) UpdateOpportunity() sdkgo.Mutation[UpdateOpportunityInput, UpdatedOpportunity] {
+	return operations.client.UpdateOpportunity()
+}
+func (operations clientOperations) DeleteOpportunity() sdkgo.Mutation[DeleteOpportunityInput, DeletedOpportunity] {
+	return operations.client.DeleteOpportunity()
+}
+func (operations clientOperations) ListRecords() sdkgo.Query[ListRecordsInput, RecordsPage] {
+	return operations.client.ListRecords()
+}
+func (operations clientOperations) GetRecord() sdkgo.Query[GetRecordInput, Record] {
+	return operations.client.GetRecord()
+}
+func (operations clientOperations) CreateRecord() sdkgo.Mutation[CreateRecordInput, CreatedRecord] {
+	return operations.client.CreateRecord()
+}
+func (operations clientOperations) UpdateRecord() sdkgo.Mutation[UpdateRecordInput, UpdatedRecord] {
+	return operations.client.UpdateRecord()
+}
+func (operations clientOperations) DeleteRecord() sdkgo.Mutation[DeleteRecordInput, DeletedRecord] {
+	return operations.client.DeleteRecord()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -252,6 +312,1146 @@ func NewSearchPartnersStep[IN any](config SearchPartnersStepConfig[IN]) sdkgo.Qu
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SearchPartnersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContactsBranchListed sdkgo.BranchID = "listed"
+const ListContactsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContacts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactsBranchListed, Description: "Odoo returned a contact page."},
+		{ID: ListContactsBranchProviderRejected, Description: "Odoo rejected the contact list.", Optional: true},
+		{ID: ListContactsBranchInvalidResponse, Description: "Odoo returned invalid contact data.", Optional: true},
+		{ID: ListContactsBranchDefect, Description: "Invalid page or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactsResult = sdkgo.QueryResult[ContactsPage]
+
+type ListContactsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=odoo"`
+	operationID                    struct{}                                        `connector:"operationId=listContacts"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContactsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContactsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListContactsStep[IN any](config ListContactsStepConfig[IN]) sdkgo.QueryStep[IN, ListContactsInput, ContactsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactsInput, ContactsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContacts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetContactBranchFound sdkgo.BranchID = "found"
+const GetContactBranchNotFound sdkgo.BranchID = "notFound"
+const GetContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetContactDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetContactBranchFound, Description: "Odoo returned the contact."},
+		{ID: GetContactBranchNotFound, Description: "Odoo did not find the contact.", Optional: true},
+		{ID: GetContactBranchProviderRejected, Description: "Odoo rejected the read.", Optional: true},
+		{ID: GetContactBranchInvalidResponse, Description: "Odoo returned invalid contact data.", Optional: true},
+		{ID: GetContactBranchDefect, Description: "Invalid ID or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetContactResult = sdkgo.QueryResult[Contact]
+
+type GetContactStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=odoo"`
+	operationID                    struct{}                                   `connector:"operationId=getContact"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetContactInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetContactResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetContactResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetContactResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetContactResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetContactResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Contact]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetContactStep[IN any](config GetContactStepConfig[IN]) sdkgo.QueryStep[IN, GetContactInput, Contact] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetContactInput, Contact]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetContactResult] {
+			branches := make([]sdkgo.BranchTarget[GetContactResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetContactBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateContactBranchCreated sdkgo.BranchID = "created"
+const CreateContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateContactBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateContactBranchCreated, Description: "Odoo created the contact."},
+		{ID: CreateContactBranchProviderRejected, Description: "Odoo rejected the create.", Optional: true},
+		{ID: CreateContactBranchDefect, Description: "Invalid contact or credentials.", Optional: true},
+		{ID: CreateContactBranchUncertain, Description: "Contact creation may have succeeded but could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateContactResult = sdkgo.MutationResult[CreatedContact]
+
+type CreateContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=odoo"`
+	operationID                       struct{}                                             `connector:"operationId=createContact"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateContactInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateContactResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateContactResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateContactResult]                    `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateContactResult]                    `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedContact]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateContactStep[IN any](config CreateContactStepConfig[IN]) sdkgo.MutationStep[IN, CreateContactInput, CreatedContact] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateContactInput, CreatedContact]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateContactResult] {
+			branches := make([]sdkgo.BranchTarget[CreateContactResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateContactBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateContactBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateContactBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateContactBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateContactBranchUpdated sdkgo.BranchID = "updated"
+const UpdateContactBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateContactBranchUpdated, Description: "Odoo updated the contact."},
+		{ID: UpdateContactBranchNotFound, Description: "Odoo did not find the contact.", Optional: true},
+		{ID: UpdateContactBranchProviderRejected, Description: "Odoo rejected the update.", Optional: true},
+		{ID: UpdateContactBranchInvalidResponse, Description: "Odoo returned invalid update data.", Optional: true},
+		{ID: UpdateContactBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateContactResult = sdkgo.MutationResult[UpdatedContact]
+
+type UpdateContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=odoo"`
+	operationID                       struct{}                                             `connector:"operationId=updateContact"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateContactInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateContactResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateContactResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateContactResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateContactResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateContactResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedContact]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateContactStep[IN any](config UpdateContactStepConfig[IN]) sdkgo.MutationStep[IN, UpdateContactInput, UpdatedContact] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateContactInput, UpdatedContact]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateContactResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateContactResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateContactBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteContactBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteContactBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteContactBranchDeleted, Description: "Odoo deleted the contact."},
+		{ID: DeleteContactBranchNotFound, Description: "Odoo did not find the contact.", Optional: true},
+		{ID: DeleteContactBranchProviderRejected, Description: "Odoo rejected the delete.", Optional: true},
+		{ID: DeleteContactBranchInvalidResponse, Description: "Odoo returned invalid delete data.", Optional: true},
+		{ID: DeleteContactBranchDefect, Description: "Invalid ID or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteContactResult = sdkgo.MutationResult[DeletedContact]
+
+type DeleteContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=odoo"`
+	operationID                       struct{}                                             `connector:"operationId=deleteContact"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteContactInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteContactResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteContactResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteContactResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteContactResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteContactResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedContact]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteContactStep[IN any](config DeleteContactStepConfig[IN]) sdkgo.MutationStep[IN, DeleteContactInput, DeletedContact] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteContactInput, DeletedContact]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteContactResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteContactResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteContactBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListOpportunitiesBranchListed sdkgo.BranchID = "listed"
+const ListOpportunitiesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListOpportunitiesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListOpportunitiesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListOpportunitiesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listOpportunities"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListOpportunitiesBranchListed, Description: "Odoo returned the opportunity outcome."},
+		{ID: ListOpportunitiesBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: ListOpportunitiesBranchInvalidResponse, Description: "Odoo returned invalid opportunity data.", Optional: true},
+		{ID: ListOpportunitiesBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListOpportunitiesResult = sdkgo.QueryResult[OpportunitiesPage]
+
+type ListOpportunitiesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=odoo"`
+	operationID                    struct{}                                             `connector:"operationId=listOpportunities"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListOpportunitiesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListOpportunitiesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListOpportunitiesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListOpportunitiesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListOpportunitiesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[OpportunitiesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListOpportunitiesStep[IN any](config ListOpportunitiesStepConfig[IN]) sdkgo.QueryStep[IN, ListOpportunitiesInput, OpportunitiesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListOpportunitiesInput, OpportunitiesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListOpportunities(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListOpportunitiesResult] {
+			branches := make([]sdkgo.BranchTarget[ListOpportunitiesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListOpportunitiesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListOpportunitiesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListOpportunitiesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListOpportunitiesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetOpportunityBranchFound sdkgo.BranchID = "found"
+const GetOpportunityBranchNotFound sdkgo.BranchID = "notFound"
+const GetOpportunityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetOpportunityBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetOpportunityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetOpportunityDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getOpportunity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetOpportunityBranchFound, Description: "Odoo returned the opportunity outcome."},
+		{ID: GetOpportunityBranchNotFound, Description: "Odoo did not find the opportunity.", Optional: true},
+		{ID: GetOpportunityBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: GetOpportunityBranchInvalidResponse, Description: "Odoo returned invalid opportunity data.", Optional: true},
+		{ID: GetOpportunityBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetOpportunityResult = sdkgo.QueryResult[Opportunity]
+
+type GetOpportunityStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=odoo"`
+	operationID                    struct{}                                       `connector:"operationId=getOpportunity"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetOpportunityInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetOpportunityResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetOpportunityResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetOpportunityResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetOpportunityResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetOpportunityResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Opportunity]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetOpportunityStep[IN any](config GetOpportunityStepConfig[IN]) sdkgo.QueryStep[IN, GetOpportunityInput, Opportunity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetOpportunityInput, Opportunity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetOpportunity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetOpportunityResult] {
+			branches := make([]sdkgo.BranchTarget[GetOpportunityResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetOpportunityBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetOpportunityBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetOpportunityBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetOpportunityBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetOpportunityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateOpportunityBranchCreated sdkgo.BranchID = "created"
+const CreateOpportunityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateOpportunityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateOpportunityBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateOpportunityDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createOpportunity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateOpportunityBranchCreated, Description: "Odoo returned the opportunity outcome."},
+		{ID: CreateOpportunityBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: CreateOpportunityBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+		{ID: CreateOpportunityBranchUncertain, Description: "Odoo may have created the opportunity but it could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateOpportunityResult = sdkgo.MutationResult[CreatedOpportunity]
+
+type CreateOpportunityStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=odoo"`
+	operationID                       struct{}                                                 `connector:"operationId=createOpportunity"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateOpportunityInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateOpportunityResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateOpportunityResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateOpportunityResult]                    `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateOpportunityResult]                    `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedOpportunity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateOpportunityStep[IN any](config CreateOpportunityStepConfig[IN]) sdkgo.MutationStep[IN, CreateOpportunityInput, CreatedOpportunity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateOpportunityInput, CreatedOpportunity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateOpportunity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateOpportunityResult] {
+			branches := make([]sdkgo.BranchTarget[CreateOpportunityResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateOpportunityBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateOpportunityBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateOpportunityBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateOpportunityBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateOpportunityBranchUpdated sdkgo.BranchID = "updated"
+const UpdateOpportunityBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateOpportunityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateOpportunityBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateOpportunityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateOpportunityDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateOpportunity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateOpportunityBranchUpdated, Description: "Odoo returned the opportunity outcome."},
+		{ID: UpdateOpportunityBranchNotFound, Description: "Odoo did not find the opportunity.", Optional: true},
+		{ID: UpdateOpportunityBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: UpdateOpportunityBranchInvalidResponse, Description: "Odoo returned invalid opportunity data.", Optional: true},
+		{ID: UpdateOpportunityBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateOpportunityResult = sdkgo.MutationResult[UpdatedOpportunity]
+
+type UpdateOpportunityStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=odoo"`
+	operationID                       struct{}                                                 `connector:"operationId=updateOpportunity"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateOpportunityInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateOpportunityResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateOpportunityResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateOpportunityResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateOpportunityResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateOpportunityResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedOpportunity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateOpportunityStep[IN any](config UpdateOpportunityStepConfig[IN]) sdkgo.MutationStep[IN, UpdateOpportunityInput, UpdatedOpportunity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateOpportunityInput, UpdatedOpportunity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateOpportunity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateOpportunityResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateOpportunityResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateOpportunityBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateOpportunityBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateOpportunityBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateOpportunityBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateOpportunityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteOpportunityBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteOpportunityBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteOpportunityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteOpportunityBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteOpportunityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteOpportunityDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteOpportunity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteOpportunityBranchDeleted, Description: "Odoo returned the opportunity outcome."},
+		{ID: DeleteOpportunityBranchNotFound, Description: "Odoo did not find the opportunity.", Optional: true},
+		{ID: DeleteOpportunityBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: DeleteOpportunityBranchInvalidResponse, Description: "Odoo returned invalid opportunity data.", Optional: true},
+		{ID: DeleteOpportunityBranchDefect, Description: "Invalid input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteOpportunityResult = sdkgo.MutationResult[DeletedOpportunity]
+
+type DeleteOpportunityStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=odoo"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteOpportunity"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteOpportunityInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteOpportunityResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteOpportunityResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteOpportunityResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteOpportunityResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteOpportunityResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedOpportunity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteOpportunityStep[IN any](config DeleteOpportunityStepConfig[IN]) sdkgo.MutationStep[IN, DeleteOpportunityInput, DeletedOpportunity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteOpportunityInput, DeletedOpportunity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteOpportunity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteOpportunityResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteOpportunityResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteOpportunityBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteOpportunityBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteOpportunityBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteOpportunityBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteOpportunityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListRecordsBranchListed sdkgo.BranchID = "listed"
+const ListRecordsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListRecordsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListRecordsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListRecordsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listRecords"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListRecordsBranchListed, Description: "Odoo returned the selected record outcome."},
+		{ID: ListRecordsBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: ListRecordsBranchInvalidResponse, Description: "Odoo returned invalid record data.", Optional: true},
+		{ID: ListRecordsBranchDefect, Description: "Invalid model fields or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListRecordsResult = sdkgo.QueryResult[RecordsPage]
+
+type ListRecordsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=odoo"`
+	operationID                    struct{}                                       `connector:"operationId=listRecords"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListRecordsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListRecordsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListRecordsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListRecordsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListRecordsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RecordsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListRecordsStep[IN any](config ListRecordsStepConfig[IN]) sdkgo.QueryStep[IN, ListRecordsInput, RecordsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListRecordsInput, RecordsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListRecords(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListRecordsResult] {
+			branches := make([]sdkgo.BranchTarget[ListRecordsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListRecordsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListRecordsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListRecordsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListRecordsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetRecordBranchFound sdkgo.BranchID = "found"
+const GetRecordBranchNotFound sdkgo.BranchID = "notFound"
+const GetRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetRecordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetRecordDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetRecordBranchFound, Description: "Odoo returned the selected record outcome."},
+		{ID: GetRecordBranchNotFound, Description: "Odoo did not find the record.", Optional: true},
+		{ID: GetRecordBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: GetRecordBranchInvalidResponse, Description: "Odoo returned invalid record data.", Optional: true},
+		{ID: GetRecordBranchDefect, Description: "Invalid model fields or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetRecordResult = sdkgo.QueryResult[Record]
+
+type GetRecordStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=odoo"`
+	operationID                    struct{}                                  `connector:"operationId=getRecord"`
+	StepType                       string                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetRecordInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetRecordResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetRecordResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetRecordResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetRecordResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetRecordResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Record]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetRecordStep[IN any](config GetRecordStepConfig[IN]) sdkgo.QueryStep[IN, GetRecordInput, Record] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetRecordInput, Record]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetRecordResult] {
+			branches := make([]sdkgo.BranchTarget[GetRecordResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetRecordBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetRecordBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetRecordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetRecordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateRecordBranchCreated sdkgo.BranchID = "created"
+const CreateRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateRecordBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateRecordBranchCreated, Description: "Odoo returned the selected record outcome."},
+		{ID: CreateRecordBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: CreateRecordBranchDefect, Description: "Invalid model fields or credentials.", Optional: true},
+		{ID: CreateRecordBranchUncertain, Description: "Record creation may have succeeded but could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateRecordResult = sdkgo.MutationResult[CreatedRecord]
+
+type CreateRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=odoo"`
+	operationID                       struct{}                                            `connector:"operationId=createRecord"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateRecordInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateRecordResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateRecordResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateRecordResult]                    `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateRecordResult]                    `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateRecordStep[IN any](config CreateRecordStepConfig[IN]) sdkgo.MutationStep[IN, CreateRecordInput, CreatedRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateRecordInput, CreatedRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateRecordResult] {
+			branches := make([]sdkgo.BranchTarget[CreateRecordResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateRecordBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateRecordBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateRecordBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateRecordBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateRecordBranchUpdated sdkgo.BranchID = "updated"
+const UpdateRecordBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateRecordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateRecordBranchUpdated, Description: "Odoo returned the selected record outcome."},
+		{ID: UpdateRecordBranchNotFound, Description: "Odoo did not find the record.", Optional: true},
+		{ID: UpdateRecordBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: UpdateRecordBranchInvalidResponse, Description: "Odoo returned invalid record data.", Optional: true},
+		{ID: UpdateRecordBranchDefect, Description: "Invalid model fields or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateRecordResult = sdkgo.MutationResult[UpdatedRecord]
+
+type UpdateRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=odoo"`
+	operationID                       struct{}                                            `connector:"operationId=updateRecord"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateRecordInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateRecordResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateRecordResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateRecordResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateRecordResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateRecordResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateRecordStep[IN any](config UpdateRecordStepConfig[IN]) sdkgo.MutationStep[IN, UpdateRecordInput, UpdatedRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateRecordInput, UpdatedRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateRecordResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateRecordResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateRecordBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateRecordBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateRecordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateRecordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteRecordBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteRecordBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteRecordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteRecordBranchDeleted, Description: "Odoo returned the selected record outcome."},
+		{ID: DeleteRecordBranchNotFound, Description: "Odoo did not find the record.", Optional: true},
+		{ID: DeleteRecordBranchProviderRejected, Description: "Odoo rejected the request.", Optional: true},
+		{ID: DeleteRecordBranchInvalidResponse, Description: "Odoo returned invalid record data.", Optional: true},
+		{ID: DeleteRecordBranchDefect, Description: "Invalid model fields or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteRecordResult = sdkgo.MutationResult[DeletedRecord]
+
+type DeleteRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=odoo"`
+	operationID                       struct{}                                            `connector:"operationId=deleteRecord"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteRecordInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteRecordResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteRecordResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteRecordResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteRecordResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteRecordResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteRecordStep[IN any](config DeleteRecordStepConfig[IN]) sdkgo.MutationStep[IN, DeleteRecordInput, DeletedRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("odoo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteRecordInput, DeletedRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteRecordResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteRecordResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteRecordBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteRecordBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteRecordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteRecordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteRecordBranchDefect))
 			}
 			return branches
 		}(),

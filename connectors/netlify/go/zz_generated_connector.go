@@ -42,6 +42,10 @@ type Connection struct {
 type Operations interface {
 	ListSites() sdkgo.Query[ListSitesInput, SitesPage]
 	ListDeploys() sdkgo.Query[ListDeploysInput, DeploysPage]
+	GetSite() sdkgo.Query[GetSiteInput, Site]
+	GetDeploy() sdkgo.Query[GetDeployInput, Deploy]
+	DeleteSite() sdkgo.Mutation[DeleteSiteInput, DeletedSite]
+	CancelDeploy() sdkgo.Mutation[CancelDeployInput, Deploy]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +55,18 @@ func (operations clientOperations) ListSites() sdkgo.Query[ListSitesInput, Sites
 }
 func (operations clientOperations) ListDeploys() sdkgo.Query[ListDeploysInput, DeploysPage] {
 	return operations.client.ListDeploys()
+}
+func (operations clientOperations) GetSite() sdkgo.Query[GetSiteInput, Site] {
+	return operations.client.GetSite()
+}
+func (operations clientOperations) GetDeploy() sdkgo.Query[GetDeployInput, Deploy] {
+	return operations.client.GetDeploy()
+}
+func (operations clientOperations) DeleteSite() sdkgo.Mutation[DeleteSiteInput, DeletedSite] {
+	return operations.client.DeleteSite()
+}
+func (operations clientOperations) CancelDeploy() sdkgo.Mutation[CancelDeployInput, Deploy] {
+	return operations.client.CancelDeploy()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +346,308 @@ func NewListDeploysStep[IN any](config ListDeploysStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListDeploysBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSiteBranchFound sdkgo.BranchID = "found"
+const GetSiteBranchNotFound sdkgo.BranchID = "notFound"
+const GetSiteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSiteBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSiteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSiteDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSite"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSiteBranchFound, Description: "The site was found."},
+		{ID: GetSiteBranchNotFound, Description: "The site was not found.", Optional: true},
+		{ID: GetSiteBranchProviderRejected, Description: "The provider rejected the request.", Optional: true},
+		{ID: GetSiteBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: GetSiteBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSiteResult = sdkgo.QueryResult[Site]
+
+type GetSiteStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=netlify"`
+	operationID                    struct{}                                `connector:"operationId=getSite"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSiteInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSiteResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSiteResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSiteResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSiteResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSiteResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Site]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetSiteStep[IN any](config GetSiteStepConfig[IN]) sdkgo.QueryStep[IN, GetSiteInput, Site] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("netlify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSiteInput, Site]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSite(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSiteResult] {
+			branches := make([]sdkgo.BranchTarget[GetSiteResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSiteBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSiteBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSiteBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSiteBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSiteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetDeployBranchFound sdkgo.BranchID = "found"
+const GetDeployBranchNotFound sdkgo.BranchID = "notFound"
+const GetDeployBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDeployBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDeployBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDeployDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDeploy"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDeployBranchFound, Description: "The deploy was found."},
+		{ID: GetDeployBranchNotFound, Description: "The deploy was not found.", Optional: true},
+		{ID: GetDeployBranchProviderRejected, Description: "The provider rejected the request.", Optional: true},
+		{ID: GetDeployBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: GetDeployBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDeployResult = sdkgo.QueryResult[Deploy]
+
+type GetDeployStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=netlify"`
+	operationID                    struct{}                                  `connector:"operationId=getDeploy"`
+	StepType                       string                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDeployInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDeployResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDeployResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDeployResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDeployResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDeployResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Deploy]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetDeployStep[IN any](config GetDeployStepConfig[IN]) sdkgo.QueryStep[IN, GetDeployInput, Deploy] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("netlify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDeployInput, Deploy]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDeploy(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDeployResult] {
+			branches := make([]sdkgo.BranchTarget[GetDeployResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDeployBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDeployBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDeployBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDeployBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDeployBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSiteBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSiteBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteSiteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSiteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSiteDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSite"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSiteBranchDeleted, Description: "The site was deleted."},
+		{ID: DeleteSiteBranchNotFound, Description: "The site was not found.", Optional: true},
+		{ID: DeleteSiteBranchProviderRejected, Description: "The provider rejected the request.", Optional: true},
+		{ID: DeleteSiteBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteSiteResult = sdkgo.MutationResult[DeletedSite]
+
+type DeleteSiteStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=netlify"`
+	operationID                       struct{}                                          `connector:"operationId=deleteSite"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSiteInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSiteResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteSiteResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteSiteResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteSiteResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedSite]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSiteStep[IN any](config DeleteSiteStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSiteInput, DeletedSite] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("netlify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSiteInput, DeletedSite]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteSite(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSiteResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSiteResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSiteBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteSiteBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSiteBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSiteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelDeployBranchCancelled sdkgo.BranchID = "cancelled"
+const CancelDeployBranchNotFound sdkgo.BranchID = "notFound"
+const CancelDeployBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelDeployBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelDeployBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelDeployDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelDeploy"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelDeployBranchCancelled, Description: "The deploy was cancelled."},
+		{ID: CancelDeployBranchNotFound, Description: "The deploy was not found.", Optional: true},
+		{ID: CancelDeployBranchProviderRejected, Description: "The provider rejected the request.", Optional: true},
+		{ID: CancelDeployBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: CancelDeployBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CancelDeployResult = sdkgo.MutationResult[Deploy]
+
+type CancelDeployStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=netlify"`
+	operationID                       struct{}                                     `connector:"operationId=cancelDeploy"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelDeployInput                   `connector:"mapToOperationInput"`
+	Cancelled                         sdkgo.Target[CancelDeployResult]             `connector:"branch=cancelled"`
+	NotFound                          sdkgo.Target[CancelDeployResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelDeployResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelDeployResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelDeployResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Deploy]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewCancelDeployStep[IN any](config CancelDeployStepConfig[IN]) sdkgo.MutationStep[IN, CancelDeployInput, Deploy] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("netlify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelDeployInput, Deploy]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelDeploy(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelDeployResult] {
+			branches := make([]sdkgo.BranchTarget[CancelDeployResult], 0, 5)
+			if config.Cancelled.HasStep() {
+				branches = append(branches, config.Cancelled.BranchTarget(CancelDeployBranchCancelled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelDeployBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelDeployBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelDeployBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelDeployBranchDefect))
 			}
 			return branches
 		}(),
