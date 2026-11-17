@@ -56,7 +56,7 @@ func (operation GetSignFlowStatusOperation) Invoke(call sdkgo.Call, input GetSig
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	request.Header.Set("X-Tsign-Open-App-Id", credentials.AppID)
 	request.Header.Set("X-Tsign-Open-Auth-Mode", "Signature")
-	request.Header.Set("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
+	request.Header.Set("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(operation.client.clock().UnixMilli(), 10))
 	request.Header.Set("X-Tsign-Open-Ca-Signature", signReadRequest(credentials.AppSecret.Reveal(), path))
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
