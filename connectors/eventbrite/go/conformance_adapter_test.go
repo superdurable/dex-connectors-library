@@ -55,16 +55,21 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		context.attempt = int32(attempt) + priorAttempt
 	}, actions: map[string]conformanceOperationInvocation{
-		"listOrganizations": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrganizations(), reference),
-		"listEvents":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEvents(), reference),
-		"getAttendee":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAttendee(), reference),
-		"getEvent":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEvent(), reference),
-		"publishEvent":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PublishEvent(), reference, scenario.CallID),
-		"createEvent":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateEvent(), reference, scenario.CallID),
-		"copyEvent":         newConformanceMutationInvocation(t, scenario.Input, context, client.CopyEvent(), reference, scenario.CallID),
-		"updateEvent":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateEvent(), reference, scenario.CallID),
-		"unpublishEvent":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UnpublishEvent(), reference, scenario.CallID),
-		"cancelEvent":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelEvent(), reference, scenario.CallID),
-		"deleteEvent":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteEvent(), reference, scenario.CallID),
+		"listOrganizations":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrganizations(), reference),
+		"listEvents":                  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEvents(), reference),
+		"getAttendee":                 newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAttendee(), reference),
+		"getEvent":                    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEvent(), reference),
+		"publishEvent":                newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PublishEvent(), reference, scenario.CallID),
+		"createEvent":                 newConformanceMutationInvocation(t, scenario.Input, context, client.CreateEvent(), reference, scenario.CallID),
+		"copyEvent":                   newConformanceMutationInvocation(t, scenario.Input, context, client.CopyEvent(), reference, scenario.CallID),
+		"updateEvent":                 newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateEvent(), reference, scenario.CallID),
+		"unpublishEvent":              newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UnpublishEvent(), reference, scenario.CallID),
+		"cancelEvent":                 newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelEvent(), reference, scenario.CallID),
+		"deleteEvent":                 newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteEvent(), reference, scenario.CallID),
+		"listAttendeesByEvent":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAttendeesByEvent(), reference),
+		"listAttendeesByOrganization": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAttendeesByOrganization(), reference),
+		"getOrder":                    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOrder(), reference),
+		"listOrdersByEvent":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrdersByEvent(), reference),
+		"listOrdersByOrganization":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrdersByOrganization(), reference),
 	}}
 }

@@ -60,6 +60,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[eventbrite.DeletedEvent](`{"eventId":"67890","deleted":true}`)
 			return err
 		}},
+		{name: "listAttendeesByEvent/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.AttendeesPage](`{"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
+		{name: "listAttendeesByOrganization/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.AttendeesPage](`{"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
+		{name: "getOrder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.OrderMetadata](`{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}`)
+			return err
+		}},
+		{name: "listOrdersByEvent/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.OrdersPage](`{"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
+		{name: "listOrdersByOrganization/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.OrdersPage](`{"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -102,5 +122,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteEvent().Definition().Operation.OperationID != "deleteEvent" {
 		t.Errorf("deleteEvent mock has another definition")
+	}
+	if mock.ListAttendeesByEvent().Definition().Operation.OperationID != "listAttendeesByEvent" {
+		t.Errorf("listAttendeesByEvent mock has another definition")
+	}
+	if mock.ListAttendeesByOrganization().Definition().Operation.OperationID != "listAttendeesByOrganization" {
+		t.Errorf("listAttendeesByOrganization mock has another definition")
+	}
+	if mock.GetOrder().Definition().Operation.OperationID != "getOrder" {
+		t.Errorf("getOrder mock has another definition")
+	}
+	if mock.ListOrdersByEvent().Definition().Operation.OperationID != "listOrdersByEvent" {
+		t.Errorf("listOrdersByEvent mock has another definition")
+	}
+	if mock.ListOrdersByOrganization().Definition().Operation.OperationID != "listOrdersByOrganization" {
+		t.Errorf("listOrdersByOrganization mock has another definition")
 	}
 }

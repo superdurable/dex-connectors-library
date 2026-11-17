@@ -4490,6 +4490,1795 @@
       },
       "name": "deleteEvent-defect",
       "operation": "deleteEvent"
+    },
+    {
+      "callId": "c0000000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"attendees\":[{\"id\":\"13579\",\"event_id\":\"67890\",\"status\":\"attending\",\"created\":\"2026-11-07T10:00:00Z\"}],\"pagination\":{\"page_number\":2,\"page_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "attendees": [
+            {
+              "createdAt": "2026-11-07T10:00:00Z",
+              "eventId": "67890",
+              "id": "13579",
+              "status": "attending"
+            }
+          ],
+          "pageCount": 3,
+          "pageNumber": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listAttendeesByEvent-success",
+      "operation": "listAttendeesByEvent"
+    },
+    {
+      "callId": "c0000001-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "attendees": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listAttendeesByEvent-notFound",
+      "operation": "listAttendeesByEvent"
+    },
+    {
+      "callId": "c0000002-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "attendees": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listAttendeesByEvent-providerRejected",
+      "operation": "listAttendeesByEvent"
+    },
+    {
+      "callId": "c0000003-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attendees": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listAttendeesByEvent-invalidResponse",
+      "operation": "listAttendeesByEvent"
+    },
+    {
+      "callId": "c0000004-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listAttendeesByEvent-rateLimited",
+      "operation": "listAttendeesByEvent"
+    },
+    {
+      "callId": "c0000005-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listAttendeesByEvent-serverUnavailable",
+      "operation": "listAttendeesByEvent"
+    },
+    {
+      "callId": "c0000006-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listAttendeesByEvent-serviceUnavailable",
+      "operation": "listAttendeesByEvent"
+    },
+    {
+      "callId": "c0000007-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listAttendeesByEvent-transportFailure",
+      "operation": "listAttendeesByEvent"
+    },
+    {
+      "callId": "c0000008-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "attendees": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "bad",
+        "page": -1
+      },
+      "name": "listAttendeesByEvent-defect",
+      "operation": "listAttendeesByEvent"
+    },
+    {
+      "callId": "c0000009-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"attendees\":[{\"id\":\"13579\",\"event_id\":\"67890\",\"status\":\"attending\",\"created\":\"2026-11-07T10:00:00Z\"}],\"pagination\":{\"page_number\":2,\"page_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "attendees": [
+            {
+              "createdAt": "2026-11-07T10:00:00Z",
+              "eventId": "67890",
+              "id": "13579",
+              "status": "attending"
+            }
+          ],
+          "pageCount": 3,
+          "pageNumber": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listAttendeesByOrganization-success",
+      "operation": "listAttendeesByOrganization"
+    },
+    {
+      "callId": "c0000010-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "attendees": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listAttendeesByOrganization-notFound",
+      "operation": "listAttendeesByOrganization"
+    },
+    {
+      "callId": "c0000011-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "attendees": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listAttendeesByOrganization-providerRejected",
+      "operation": "listAttendeesByOrganization"
+    },
+    {
+      "callId": "c0000012-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "attendees": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listAttendeesByOrganization-invalidResponse",
+      "operation": "listAttendeesByOrganization"
+    },
+    {
+      "callId": "c0000013-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listAttendeesByOrganization-rateLimited",
+      "operation": "listAttendeesByOrganization"
+    },
+    {
+      "callId": "c0000014-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listAttendeesByOrganization-serverUnavailable",
+      "operation": "listAttendeesByOrganization"
+    },
+    {
+      "callId": "c0000015-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listAttendeesByOrganization-serviceUnavailable",
+      "operation": "listAttendeesByOrganization"
+    },
+    {
+      "callId": "c0000016-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/attendees/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listAttendeesByOrganization-transportFailure",
+      "operation": "listAttendeesByOrganization"
+    },
+    {
+      "callId": "c0000017-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "attendees": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "bad",
+        "page": -1
+      },
+      "name": "listAttendeesByOrganization-defect",
+      "operation": "listAttendeesByOrganization"
+    },
+    {
+      "callId": "c0000018-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"24680\",\"event_id\":\"67890\",\"status\":\"placed\",\"created\":\"2026-11-07T10:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/24680/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-11-07T10:00:00Z",
+          "eventId": "67890",
+          "id": "24680",
+          "status": "placed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "24680"
+      },
+      "name": "getOrder-success",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c0000019-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/24680/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "",
+          "eventId": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "24680"
+      },
+      "name": "getOrder-notFound",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c0000020-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/24680/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "eventId": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "24680"
+      },
+      "name": "getOrder-providerRejected",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c0000021-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/24680/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "eventId": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "24680"
+      },
+      "name": "getOrder-invalidResponse",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c0000022-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/24680/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "24680"
+      },
+      "name": "getOrder-rateLimited",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c0000023-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/24680/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "24680"
+      },
+      "name": "getOrder-serverUnavailable",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c0000024-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/24680/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "24680"
+      },
+      "name": "getOrder-serviceUnavailable",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c0000025-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/24680/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "24680"
+      },
+      "name": "getOrder-transportFailure",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c0000026-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "eventId": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "bad"
+      },
+      "name": "getOrder-defect",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c0000027-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":\"24680\",\"event_id\":\"67890\",\"status\":\"placed\",\"created\":\"2026-11-07T10:00:00Z\"}],\"pagination\":{\"page_number\":2,\"page_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "createdAt": "2026-11-07T10:00:00Z",
+              "eventId": "67890",
+              "id": "24680",
+              "status": "placed"
+            }
+          ],
+          "pageCount": 3,
+          "pageNumber": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listOrdersByEvent-success",
+      "operation": "listOrdersByEvent"
+    },
+    {
+      "callId": "c0000028-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "orders": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listOrdersByEvent-notFound",
+      "operation": "listOrdersByEvent"
+    },
+    {
+      "callId": "c0000029-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "orders": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listOrdersByEvent-providerRejected",
+      "operation": "listOrdersByEvent"
+    },
+    {
+      "callId": "c0000030-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "orders": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listOrdersByEvent-invalidResponse",
+      "operation": "listOrdersByEvent"
+    },
+    {
+      "callId": "c0000031-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listOrdersByEvent-rateLimited",
+      "operation": "listOrdersByEvent"
+    },
+    {
+      "callId": "c0000032-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listOrdersByEvent-serverUnavailable",
+      "operation": "listOrdersByEvent"
+    },
+    {
+      "callId": "c0000033-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listOrdersByEvent-serviceUnavailable",
+      "operation": "listOrdersByEvent"
+    },
+    {
+      "callId": "c0000034-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listOrdersByEvent-transportFailure",
+      "operation": "listOrdersByEvent"
+    },
+    {
+      "callId": "c0000035-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "orders": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "bad",
+        "page": -1
+      },
+      "name": "listOrdersByEvent-defect",
+      "operation": "listOrdersByEvent"
+    },
+    {
+      "callId": "c0000036-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":\"24680\",\"event_id\":\"67890\",\"status\":\"placed\",\"created\":\"2026-11-07T10:00:00Z\"}],\"pagination\":{\"page_number\":2,\"page_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "createdAt": "2026-11-07T10:00:00Z",
+              "eventId": "67890",
+              "id": "24680",
+              "status": "placed"
+            }
+          ],
+          "pageCount": 3,
+          "pageNumber": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listOrdersByOrganization-success",
+      "operation": "listOrdersByOrganization"
+    },
+    {
+      "callId": "c0000037-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "orders": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listOrdersByOrganization-notFound",
+      "operation": "listOrdersByOrganization"
+    },
+    {
+      "callId": "c0000038-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "orders": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listOrdersByOrganization-providerRejected",
+      "operation": "listOrdersByOrganization"
+    },
+    {
+      "callId": "c0000039-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "orders": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listOrdersByOrganization-invalidResponse",
+      "operation": "listOrdersByOrganization"
+    },
+    {
+      "callId": "c0000040-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listOrdersByOrganization-rateLimited",
+      "operation": "listOrdersByOrganization"
+    },
+    {
+      "callId": "c0000041-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listOrdersByOrganization-serverUnavailable",
+      "operation": "listOrdersByOrganization"
+    },
+    {
+      "callId": "c0000042-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listOrdersByOrganization-serviceUnavailable",
+      "operation": "listOrdersByOrganization"
+    },
+    {
+      "callId": "c0000043-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/12345/orders/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "12345",
+        "page": 2
+      },
+      "name": "listOrdersByOrganization-transportFailure",
+      "operation": "listOrdersByOrganization"
+    },
+    {
+      "callId": "c0000044-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "orders": [],
+          "pageCount": 0,
+          "pageNumber": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": "bad",
+        "page": -1
+      },
+      "name": "listOrdersByOrganization-defect",
+      "operation": "listOrdersByOrganization"
     }
   ],
   "schemaVersion": 1

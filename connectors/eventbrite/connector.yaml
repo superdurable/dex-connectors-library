@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: eventbrite
   displayName: Eventbrite
-  description: Read organization, event, and attendee metadata and manage event lifecycles through Eventbrite API v3.
+  description: Read organization, event, attendee, and order metadata and manage event lifecycles through Eventbrite API v3.
   company: Eventbrite
   categories: [marketing]
   version: v0.2.0
@@ -282,3 +282,108 @@ spec:
           default: true
           description: One example event is absent.
           output: {eventId: "67890", deleted: true}
+    - name: listAttendeesByEvent
+      goName: ListAttendeesByEvent
+      inputType: ListAttendeesByEventInput
+      outputType: AttendeesPage
+      kind: query
+      description: List one page of attendee identities and statuses for an event.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Example page without purchaser details.
+          output: {"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}
+    - name: listAttendeesByOrganization
+      goName: ListAttendeesByOrganization
+      inputType: ListAttendeesByOrganizationInput
+      outputType: AttendeesPage
+      kind: query
+      description: List one page of attendee identities and statuses across an organization.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Example page without purchaser details.
+          output: {"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}
+    - name: getOrder
+      goName: GetOrder
+      inputType: GetOrderInput
+      outputType: OrderMetadata
+      kind: query
+      description: Read one order's ID, event ID, status, and creation time without purchaser details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Eventbrite returned the requested order.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Example order without purchaser details.
+          output: {"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}
+    - name: listOrdersByEvent
+      goName: ListOrdersByEvent
+      inputType: ListOrdersByEventInput
+      outputType: OrdersPage
+      kind: query
+      description: List one page of order identities and statuses for an event.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Example page without purchaser details.
+          output: {"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}
+    - name: listOrdersByOrganization
+      goName: ListOrdersByOrganization
+      inputType: ListOrdersByOrganizationInput
+      outputType: OrdersPage
+      kind: query
+      description: List one page of order identities and statuses across an organization.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Example page without purchaser details.
+          output: {"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}

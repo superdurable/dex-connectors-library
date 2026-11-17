@@ -17,18 +17,23 @@ import (
 
 // Mock is a scripted eventbrite connection. Script each operation through its accessor.
 type Mock struct {
-	connection        eventbrite.Connection
-	listOrganizations *connectormock.Query[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage]
-	listEvents        *connectormock.Query[eventbrite.ListEventsInput, eventbrite.EventsPage]
-	getAttendee       *connectormock.Query[eventbrite.GetAttendeeInput, eventbrite.AttendeeMetadata]
-	getEvent          *connectormock.Query[eventbrite.GetEventInput, eventbrite.EventMetadata]
-	publishEvent      *connectormock.Mutation[eventbrite.PublishEventInput, eventbrite.EventMetadata]
-	createEvent       *connectormock.Mutation[eventbrite.CreateEventInput, eventbrite.EventMetadata]
-	copyEvent         *connectormock.Mutation[eventbrite.CopyEventInput, eventbrite.EventMetadata]
-	updateEvent       *connectormock.Mutation[eventbrite.UpdateEventInput, eventbrite.EventMetadata]
-	unpublishEvent    *connectormock.Mutation[eventbrite.UnpublishEventInput, eventbrite.EventMetadata]
-	cancelEvent       *connectormock.Mutation[eventbrite.CancelEventInput, eventbrite.EventMetadata]
-	deleteEvent       *connectormock.Mutation[eventbrite.DeleteEventInput, eventbrite.DeletedEvent]
+	connection                  eventbrite.Connection
+	listOrganizations           *connectormock.Query[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage]
+	listEvents                  *connectormock.Query[eventbrite.ListEventsInput, eventbrite.EventsPage]
+	getAttendee                 *connectormock.Query[eventbrite.GetAttendeeInput, eventbrite.AttendeeMetadata]
+	getEvent                    *connectormock.Query[eventbrite.GetEventInput, eventbrite.EventMetadata]
+	publishEvent                *connectormock.Mutation[eventbrite.PublishEventInput, eventbrite.EventMetadata]
+	createEvent                 *connectormock.Mutation[eventbrite.CreateEventInput, eventbrite.EventMetadata]
+	copyEvent                   *connectormock.Mutation[eventbrite.CopyEventInput, eventbrite.EventMetadata]
+	updateEvent                 *connectormock.Mutation[eventbrite.UpdateEventInput, eventbrite.EventMetadata]
+	unpublishEvent              *connectormock.Mutation[eventbrite.UnpublishEventInput, eventbrite.EventMetadata]
+	cancelEvent                 *connectormock.Mutation[eventbrite.CancelEventInput, eventbrite.EventMetadata]
+	deleteEvent                 *connectormock.Mutation[eventbrite.DeleteEventInput, eventbrite.DeletedEvent]
+	listAttendeesByEvent        *connectormock.Query[eventbrite.ListAttendeesByEventInput, eventbrite.AttendeesPage]
+	listAttendeesByOrganization *connectormock.Query[eventbrite.ListAttendeesByOrganizationInput, eventbrite.AttendeesPage]
+	getOrder                    *connectormock.Query[eventbrite.GetOrderInput, eventbrite.OrderMetadata]
+	listOrdersByEvent           *connectormock.Query[eventbrite.ListOrdersByEventInput, eventbrite.OrdersPage]
+	listOrdersByOrganization    *connectormock.Query[eventbrite.ListOrdersByOrganizationInput, eventbrite.OrdersPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -36,17 +41,22 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listOrganizations: connectormock.NewQuery[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage](t, eventbrite.ListOrganizationsDefinition),
-		listEvents:        connectormock.NewQuery[eventbrite.ListEventsInput, eventbrite.EventsPage](t, eventbrite.ListEventsDefinition),
-		getAttendee:       connectormock.NewQuery[eventbrite.GetAttendeeInput, eventbrite.AttendeeMetadata](t, eventbrite.GetAttendeeDefinition),
-		getEvent:          connectormock.NewQuery[eventbrite.GetEventInput, eventbrite.EventMetadata](t, eventbrite.GetEventDefinition),
-		publishEvent:      connectormock.NewMutation[eventbrite.PublishEventInput, eventbrite.EventMetadata](t, eventbrite.PublishEventDefinition),
-		createEvent:       connectormock.NewMutation[eventbrite.CreateEventInput, eventbrite.EventMetadata](t, eventbrite.CreateEventDefinition),
-		copyEvent:         connectormock.NewMutation[eventbrite.CopyEventInput, eventbrite.EventMetadata](t, eventbrite.CopyEventDefinition),
-		updateEvent:       connectormock.NewMutation[eventbrite.UpdateEventInput, eventbrite.EventMetadata](t, eventbrite.UpdateEventDefinition),
-		unpublishEvent:    connectormock.NewMutation[eventbrite.UnpublishEventInput, eventbrite.EventMetadata](t, eventbrite.UnpublishEventDefinition),
-		cancelEvent:       connectormock.NewMutation[eventbrite.CancelEventInput, eventbrite.EventMetadata](t, eventbrite.CancelEventDefinition),
-		deleteEvent:       connectormock.NewMutation[eventbrite.DeleteEventInput, eventbrite.DeletedEvent](t, eventbrite.DeleteEventDefinition),
+		listOrganizations:           connectormock.NewQuery[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage](t, eventbrite.ListOrganizationsDefinition),
+		listEvents:                  connectormock.NewQuery[eventbrite.ListEventsInput, eventbrite.EventsPage](t, eventbrite.ListEventsDefinition),
+		getAttendee:                 connectormock.NewQuery[eventbrite.GetAttendeeInput, eventbrite.AttendeeMetadata](t, eventbrite.GetAttendeeDefinition),
+		getEvent:                    connectormock.NewQuery[eventbrite.GetEventInput, eventbrite.EventMetadata](t, eventbrite.GetEventDefinition),
+		publishEvent:                connectormock.NewMutation[eventbrite.PublishEventInput, eventbrite.EventMetadata](t, eventbrite.PublishEventDefinition),
+		createEvent:                 connectormock.NewMutation[eventbrite.CreateEventInput, eventbrite.EventMetadata](t, eventbrite.CreateEventDefinition),
+		copyEvent:                   connectormock.NewMutation[eventbrite.CopyEventInput, eventbrite.EventMetadata](t, eventbrite.CopyEventDefinition),
+		updateEvent:                 connectormock.NewMutation[eventbrite.UpdateEventInput, eventbrite.EventMetadata](t, eventbrite.UpdateEventDefinition),
+		unpublishEvent:              connectormock.NewMutation[eventbrite.UnpublishEventInput, eventbrite.EventMetadata](t, eventbrite.UnpublishEventDefinition),
+		cancelEvent:                 connectormock.NewMutation[eventbrite.CancelEventInput, eventbrite.EventMetadata](t, eventbrite.CancelEventDefinition),
+		deleteEvent:                 connectormock.NewMutation[eventbrite.DeleteEventInput, eventbrite.DeletedEvent](t, eventbrite.DeleteEventDefinition),
+		listAttendeesByEvent:        connectormock.NewQuery[eventbrite.ListAttendeesByEventInput, eventbrite.AttendeesPage](t, eventbrite.ListAttendeesByEventDefinition),
+		listAttendeesByOrganization: connectormock.NewQuery[eventbrite.ListAttendeesByOrganizationInput, eventbrite.AttendeesPage](t, eventbrite.ListAttendeesByOrganizationDefinition),
+		getOrder:                    connectormock.NewQuery[eventbrite.GetOrderInput, eventbrite.OrderMetadata](t, eventbrite.GetOrderDefinition),
+		listOrdersByEvent:           connectormock.NewQuery[eventbrite.ListOrdersByEventInput, eventbrite.OrdersPage](t, eventbrite.ListOrdersByEventDefinition),
+		listOrdersByOrganization:    connectormock.NewQuery[eventbrite.ListOrdersByOrganizationInput, eventbrite.OrdersPage](t, eventbrite.ListOrdersByOrganizationDefinition),
 	}
 	mock.listOrganizations.Default(ListOrganizationsDefault())
 	mock.listEvents.Default(ListEventsDefault())
@@ -59,6 +69,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.unpublishEvent.Default(UnpublishEventDefault())
 	mock.cancelEvent.Default(CancelEventDefault())
 	mock.deleteEvent.Default(DeleteEventDefault())
+	mock.listAttendeesByEvent.Default(ListAttendeesByEventDefault())
+	mock.listAttendeesByOrganization.Default(ListAttendeesByOrganizationDefault())
+	mock.getOrder.Default(GetOrderDefault())
+	mock.listOrdersByEvent.Default(ListOrdersByEventDefault())
+	mock.listOrdersByOrganization.Default(ListOrdersByOrganizationDefault())
 	connection, err := eventbrite.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "eventbrite", Name: connectionName})
 	if err != nil {
 		t.Fatalf("eventbrite mock connection: %v", err)
@@ -125,6 +140,31 @@ func (mock *Mock) DeleteEvent() *connectormock.Mutation[eventbrite.DeleteEventIn
 	return mock.deleteEvent
 }
 
+// ListAttendeesByEvent returns the listAttendeesByEvent script.
+func (mock *Mock) ListAttendeesByEvent() *connectormock.Query[eventbrite.ListAttendeesByEventInput, eventbrite.AttendeesPage] {
+	return mock.listAttendeesByEvent
+}
+
+// ListAttendeesByOrganization returns the listAttendeesByOrganization script.
+func (mock *Mock) ListAttendeesByOrganization() *connectormock.Query[eventbrite.ListAttendeesByOrganizationInput, eventbrite.AttendeesPage] {
+	return mock.listAttendeesByOrganization
+}
+
+// GetOrder returns the getOrder script.
+func (mock *Mock) GetOrder() *connectormock.Query[eventbrite.GetOrderInput, eventbrite.OrderMetadata] {
+	return mock.getOrder
+}
+
+// ListOrdersByEvent returns the listOrdersByEvent script.
+func (mock *Mock) ListOrdersByEvent() *connectormock.Query[eventbrite.ListOrdersByEventInput, eventbrite.OrdersPage] {
+	return mock.listOrdersByEvent
+}
+
+// ListOrdersByOrganization returns the listOrdersByOrganization script.
+func (mock *Mock) ListOrdersByOrganization() *connectormock.Query[eventbrite.ListOrdersByOrganizationInput, eventbrite.OrdersPage] {
+	return mock.listOrdersByOrganization
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOrganizations() sdkgo.Query[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage] {
@@ -159,6 +199,21 @@ func (operations mockOperations) CancelEvent() sdkgo.Mutation[eventbrite.CancelE
 }
 func (operations mockOperations) DeleteEvent() sdkgo.Mutation[eventbrite.DeleteEventInput, eventbrite.DeletedEvent] {
 	return operations.mock.deleteEvent
+}
+func (operations mockOperations) ListAttendeesByEvent() sdkgo.Query[eventbrite.ListAttendeesByEventInput, eventbrite.AttendeesPage] {
+	return operations.mock.listAttendeesByEvent
+}
+func (operations mockOperations) ListAttendeesByOrganization() sdkgo.Query[eventbrite.ListAttendeesByOrganizationInput, eventbrite.AttendeesPage] {
+	return operations.mock.listAttendeesByOrganization
+}
+func (operations mockOperations) GetOrder() sdkgo.Query[eventbrite.GetOrderInput, eventbrite.OrderMetadata] {
+	return operations.mock.getOrder
+}
+func (operations mockOperations) ListOrdersByEvent() sdkgo.Query[eventbrite.ListOrdersByEventInput, eventbrite.OrdersPage] {
+	return operations.mock.listOrdersByEvent
+}
+func (operations mockOperations) ListOrdersByOrganization() sdkgo.Query[eventbrite.ListOrdersByOrganizationInput, eventbrite.OrdersPage] {
+	return operations.mock.listOrdersByOrganization
 }
 
 // ListOrganizationsListed selects the listed branch: Eventbrite returned the organization page.
@@ -584,4 +639,207 @@ func DeleteEventDeletedDefault() connectormock.Case[eventbrite.DeletedEvent] {
 // DeleteEventDefault is the manifest default, deletedDefault, which New installs.
 func DeleteEventDefault() connectormock.Case[eventbrite.DeletedEvent] {
 	return DeleteEventDeletedDefault()
+}
+
+// ListAttendeesByEventListed selects the listed branch: Eventbrite returned the requested page.
+func ListAttendeesByEventListed(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByEventBranchListed, value, failure)
+}
+
+// ListAttendeesByEventNotFound selects the notFound branch: The resource does not exist or is inaccessible.
+func ListAttendeesByEventNotFound(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByEventBranchNotFound, value, failure)
+}
+
+// ListAttendeesByEventProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the request.
+func ListAttendeesByEventProviderRejected(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByEventBranchProviderRejected, value, failure)
+}
+
+// ListAttendeesByEventInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func ListAttendeesByEventInvalidResponse(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByEventBranchInvalidResponse, value, failure)
+}
+
+// ListAttendeesByEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListAttendeesByEventDefect(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByEventBranchDefect, value, failure)
+}
+
+// ListAttendeesByEventRetry asks Dex to retry the listAttendeesByEvent Step, after the delay when it is positive.
+func ListAttendeesByEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Retry[eventbrite.AttendeesPage](failure, after)
+}
+
+// ListAttendeesByEventListedDefault is the manifest mock listedDefault: Example page without purchaser details.
+func ListAttendeesByEventListedDefault() connectormock.Case[eventbrite.AttendeesPage] {
+	value := connectormock.MustDecodeOutput[eventbrite.AttendeesPage](`{"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+	return connectormock.Branch(eventbrite.ListAttendeesByEventBranchListed, value, nil)
+}
+
+// ListAttendeesByEventDefault is the manifest default, listedDefault, which New installs.
+func ListAttendeesByEventDefault() connectormock.Case[eventbrite.AttendeesPage] {
+	return ListAttendeesByEventListedDefault()
+}
+
+// ListAttendeesByOrganizationListed selects the listed branch: Eventbrite returned the requested page.
+func ListAttendeesByOrganizationListed(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByOrganizationBranchListed, value, failure)
+}
+
+// ListAttendeesByOrganizationNotFound selects the notFound branch: The resource does not exist or is inaccessible.
+func ListAttendeesByOrganizationNotFound(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByOrganizationBranchNotFound, value, failure)
+}
+
+// ListAttendeesByOrganizationProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the request.
+func ListAttendeesByOrganizationProviderRejected(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByOrganizationBranchProviderRejected, value, failure)
+}
+
+// ListAttendeesByOrganizationInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func ListAttendeesByOrganizationInvalidResponse(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByOrganizationBranchInvalidResponse, value, failure)
+}
+
+// ListAttendeesByOrganizationDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListAttendeesByOrganizationDefect(value eventbrite.AttendeesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Branch(eventbrite.ListAttendeesByOrganizationBranchDefect, value, failure)
+}
+
+// ListAttendeesByOrganizationRetry asks Dex to retry the listAttendeesByOrganization Step, after the delay when it is positive.
+func ListAttendeesByOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.AttendeesPage] {
+	return connectormock.Retry[eventbrite.AttendeesPage](failure, after)
+}
+
+// ListAttendeesByOrganizationListedDefault is the manifest mock listedDefault: Example page without purchaser details.
+func ListAttendeesByOrganizationListedDefault() connectormock.Case[eventbrite.AttendeesPage] {
+	value := connectormock.MustDecodeOutput[eventbrite.AttendeesPage](`{"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+	return connectormock.Branch(eventbrite.ListAttendeesByOrganizationBranchListed, value, nil)
+}
+
+// ListAttendeesByOrganizationDefault is the manifest default, listedDefault, which New installs.
+func ListAttendeesByOrganizationDefault() connectormock.Case[eventbrite.AttendeesPage] {
+	return ListAttendeesByOrganizationListedDefault()
+}
+
+// GetOrderFound selects the found branch: Eventbrite returned the requested order.
+func GetOrderFound(value eventbrite.OrderMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrderMetadata] {
+	return connectormock.Branch(eventbrite.GetOrderBranchFound, value, failure)
+}
+
+// GetOrderNotFound selects the notFound branch: The resource does not exist or is inaccessible.
+func GetOrderNotFound(value eventbrite.OrderMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrderMetadata] {
+	return connectormock.Branch(eventbrite.GetOrderBranchNotFound, value, failure)
+}
+
+// GetOrderProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the request.
+func GetOrderProviderRejected(value eventbrite.OrderMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrderMetadata] {
+	return connectormock.Branch(eventbrite.GetOrderBranchProviderRejected, value, failure)
+}
+
+// GetOrderInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func GetOrderInvalidResponse(value eventbrite.OrderMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrderMetadata] {
+	return connectormock.Branch(eventbrite.GetOrderBranchInvalidResponse, value, failure)
+}
+
+// GetOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetOrderDefect(value eventbrite.OrderMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrderMetadata] {
+	return connectormock.Branch(eventbrite.GetOrderBranchDefect, value, failure)
+}
+
+// GetOrderRetry asks Dex to retry the getOrder Step, after the delay when it is positive.
+func GetOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.OrderMetadata] {
+	return connectormock.Retry[eventbrite.OrderMetadata](failure, after)
+}
+
+// GetOrderFoundDefault is the manifest mock foundDefault: Example order without purchaser details.
+func GetOrderFoundDefault() connectormock.Case[eventbrite.OrderMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.OrderMetadata](`{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}`)
+	return connectormock.Branch(eventbrite.GetOrderBranchFound, value, nil)
+}
+
+// GetOrderDefault is the manifest default, foundDefault, which New installs.
+func GetOrderDefault() connectormock.Case[eventbrite.OrderMetadata] { return GetOrderFoundDefault() }
+
+// ListOrdersByEventListed selects the listed branch: Eventbrite returned the requested page.
+func ListOrdersByEventListed(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByEventBranchListed, value, failure)
+}
+
+// ListOrdersByEventNotFound selects the notFound branch: The resource does not exist or is inaccessible.
+func ListOrdersByEventNotFound(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByEventBranchNotFound, value, failure)
+}
+
+// ListOrdersByEventProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the request.
+func ListOrdersByEventProviderRejected(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByEventBranchProviderRejected, value, failure)
+}
+
+// ListOrdersByEventInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func ListOrdersByEventInvalidResponse(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByEventBranchInvalidResponse, value, failure)
+}
+
+// ListOrdersByEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListOrdersByEventDefect(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByEventBranchDefect, value, failure)
+}
+
+// ListOrdersByEventRetry asks Dex to retry the listOrdersByEvent Step, after the delay when it is positive.
+func ListOrdersByEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Retry[eventbrite.OrdersPage](failure, after)
+}
+
+// ListOrdersByEventListedDefault is the manifest mock listedDefault: Example page without purchaser details.
+func ListOrdersByEventListedDefault() connectormock.Case[eventbrite.OrdersPage] {
+	value := connectormock.MustDecodeOutput[eventbrite.OrdersPage](`{"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+	return connectormock.Branch(eventbrite.ListOrdersByEventBranchListed, value, nil)
+}
+
+// ListOrdersByEventDefault is the manifest default, listedDefault, which New installs.
+func ListOrdersByEventDefault() connectormock.Case[eventbrite.OrdersPage] {
+	return ListOrdersByEventListedDefault()
+}
+
+// ListOrdersByOrganizationListed selects the listed branch: Eventbrite returned the requested page.
+func ListOrdersByOrganizationListed(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByOrganizationBranchListed, value, failure)
+}
+
+// ListOrdersByOrganizationNotFound selects the notFound branch: The resource does not exist or is inaccessible.
+func ListOrdersByOrganizationNotFound(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByOrganizationBranchNotFound, value, failure)
+}
+
+// ListOrdersByOrganizationProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the request.
+func ListOrdersByOrganizationProviderRejected(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByOrganizationBranchProviderRejected, value, failure)
+}
+
+// ListOrdersByOrganizationInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func ListOrdersByOrganizationInvalidResponse(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByOrganizationBranchInvalidResponse, value, failure)
+}
+
+// ListOrdersByOrganizationDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListOrdersByOrganizationDefect(value eventbrite.OrdersPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Branch(eventbrite.ListOrdersByOrganizationBranchDefect, value, failure)
+}
+
+// ListOrdersByOrganizationRetry asks Dex to retry the listOrdersByOrganization Step, after the delay when it is positive.
+func ListOrdersByOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.OrdersPage] {
+	return connectormock.Retry[eventbrite.OrdersPage](failure, after)
+}
+
+// ListOrdersByOrganizationListedDefault is the manifest mock listedDefault: Example page without purchaser details.
+func ListOrdersByOrganizationListedDefault() connectormock.Case[eventbrite.OrdersPage] {
+	value := connectormock.MustDecodeOutput[eventbrite.OrdersPage](`{"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+	return connectormock.Branch(eventbrite.ListOrdersByOrganizationBranchListed, value, nil)
+}
+
+// ListOrdersByOrganizationDefault is the manifest default, listedDefault, which New installs.
+func ListOrdersByOrganizationDefault() connectormock.Case[eventbrite.OrdersPage] {
+	return ListOrdersByOrganizationListedDefault()
 }
