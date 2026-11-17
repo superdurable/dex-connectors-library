@@ -16,7 +16,7 @@ import (
 )
 
 func testUpsertOrderInput() UpsertEcommerceOrderInput {
-	return UpsertEcommerceOrderInput{ConnectionID: "3", StoreOrderID: "store-order-1", StoreCustomerID: "store-customer-1", Email: "person@example.com", CreatedAt: "2026-11-16T10:00:00Z", Currency: "USD", FinalAmount: "91.11", CreationSource: "HISTORICAL", Status: "COMPLETED"}
+	return UpsertEcommerceOrderInput{ConnectionID: "3", StoreOrderID: "store-order-1", StoreCustomerID: "store-customer-1", Email: "person@example.com", CreatedAt: "2026-11-16T10:00:00Z", Currency: "USD", FinalAmount: "91.11", CreationSource: "HISTORICAL", Status: "COMPLETED", LineItems: []EcommerceOrderLineItemInput{{StoreLineItemID: "line-1", ProductStorePrimaryID: "product-1", Name: "Spatula", Quantity: 2, PriceAmount: "45.55"}}}
 }
 
 func TestUpsertEcommerceOrderUsesGraphQLStoreKey(t *testing.T) {
@@ -35,6 +35,7 @@ func TestUpsertEcommerceOrderUsesGraphQLStoreKey(t *testing.T) {
 		require.Contains(t, payload.Query, `storeOrderId: "store-order-1"`)
 		require.Contains(t, payload.Query, `finalAmount: 91.11`)
 		require.Contains(t, payload.Query, `creationSource: HISTORICAL`)
+		require.Contains(t, payload.Query, `lineItems: [{ legacyConnectionId: 3, storeLineItemId: "line-1", productStorePrimaryId: "product-1", name: "Spatula", quantity: 2, priceAmount: 45.55 }]`)
 		if sends.Add(1) == 1 {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -64,6 +65,11 @@ func TestUpsertEcommerceOrderRejectsInvalidInputBeforeSend(t *testing.T) {
 	input := testUpsertOrderInput()
 	input.ConnectionID = "99999999999999999999999"
 	result, err := sdkgo.RunMutation(queryContext{}, client.UpsertEcommerceOrder(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, UpsertEcommerceOrderBranchDefect, result.Branch)
+	input = testUpsertOrderInput()
+	input.LineItems = append(input.LineItems, input.LineItems[0])
+	result, err = sdkgo.RunMutation(queryContext{}, client.UpsertEcommerceOrder(), testConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, UpsertEcommerceOrderBranchDefect, result.Branch)
 }

@@ -17281,7 +17281,7 @@
           "method": "POST",
           "path": "/ecom/graphql",
           "requestBody": {
-            "query": "mutation { upsertOrder(order: { legacyConnectionId: 3, storeOrderId: \"store-order-1\", storeCustomerId: \"store-customer-1\", email: \"person@example.com\", storeCreatedDate: \"2026-11-16T10:00:00Z\", currency: \"USD\", finalAmount: 91.11, creationSource: HISTORICAL, normalizedStatus: COMPLETED }) { connectionId storeOrderId email } }"
+            "query": "mutation { upsertOrder(order: { legacyConnectionId: 3, storeOrderId: \"store-order-1\", storeCustomerId: \"store-customer-1\", email: \"person@example.com\", storeCreatedDate: \"2026-11-16T10:00:00Z\", currency: \"USD\", finalAmount: 91.11, creationSource: HISTORICAL, normalizedStatus: COMPLETED, lineItems: [{ legacyConnectionId: 3, storeLineItemId: \"line-1\", productStorePrimaryId: \"product-1\", name: \"Spatula\", quantity: 2, priceAmount: 45.55 }] }) { connectionId storeOrderId email } }"
           },
           "requestHeaders": {
             "Accept": [
@@ -17318,6 +17318,15 @@
         "currency": "USD",
         "email": "person@example.com",
         "finalAmount": "91.11",
+        "lineItems": [
+          {
+            "name": "Spatula",
+            "priceAmount": "45.55",
+            "productStorePrimaryId": "product-1",
+            "quantity": 2,
+            "storeLineItemId": "line-1"
+          }
+        ],
         "status": "COMPLETED",
         "storeCustomerId": "store-customer-1",
         "storeOrderId": "store-order-1"

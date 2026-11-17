@@ -47,7 +47,7 @@ func TestUpsertEcommerceOrderUsesDefaultMockWithRealDex(t *testing.T) {
 	defer cancel()
 	require.NoError(t, worker.WaitPullRegistered(ctx))
 	flowID := "activecampaign-upsertorder-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	input := activecampaign.UpsertEcommerceOrderInput{ConnectionID: "3", StoreOrderID: "store-order-1", StoreCustomerID: "store-customer-1", Email: "person@example.com", CreatedAt: "2026-11-16T10:00:00Z", Currency: "USD", FinalAmount: "91.11", CreationSource: "HISTORICAL", Status: "COMPLETED"}
+	input := activecampaign.UpsertEcommerceOrderInput{ConnectionID: "3", StoreOrderID: "store-order-1", StoreCustomerID: "store-customer-1", Email: "person@example.com", CreatedAt: "2026-11-16T10:00:00Z", Currency: "USD", FinalAmount: "91.11", CreationSource: "HISTORICAL", Status: "COMPLETED", LineItems: []activecampaign.EcommerceOrderLineItemInput{{StoreLineItemID: "line-1", ProductStorePrimaryID: "product-1", Name: "Spatula", Quantity: 2, PriceAmount: "45.55"}}}
 	_, err = client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
