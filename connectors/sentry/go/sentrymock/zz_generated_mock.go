@@ -18,6 +18,11 @@ import (
 // Mock is a scripted sentry connection. Script each operation through its accessor.
 type Mock struct {
 	connection        sentry.Connection
+	createTeam        *connectormock.Mutation[sentry.CreateTeamInput, sentry.Team]
+	getTeam           *connectormock.Query[sentry.GetTeamInput, sentry.Team]
+	listTeams         *connectormock.Query[sentry.ListTeamsInput, sentry.TeamPage]
+	updateTeam        *connectormock.Mutation[sentry.UpdateTeamInput, sentry.Team]
+	deleteTeam        *connectormock.Mutation[sentry.DeleteTeamInput, sentry.DeletedTeam]
 	createRelease     *connectormock.Mutation[sentry.CreateReleaseInput, sentry.Release]
 	getRelease        *connectormock.Query[sentry.GetReleaseInput, sentry.Release]
 	listReleases      *connectormock.Query[sentry.ListReleasesInput, sentry.ReleasePage]
@@ -43,6 +48,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createTeam:        connectormock.NewMutation[sentry.CreateTeamInput, sentry.Team](t, sentry.CreateTeamDefinition),
+		getTeam:           connectormock.NewQuery[sentry.GetTeamInput, sentry.Team](t, sentry.GetTeamDefinition),
+		listTeams:         connectormock.NewQuery[sentry.ListTeamsInput, sentry.TeamPage](t, sentry.ListTeamsDefinition),
+		updateTeam:        connectormock.NewMutation[sentry.UpdateTeamInput, sentry.Team](t, sentry.UpdateTeamDefinition),
+		deleteTeam:        connectormock.NewMutation[sentry.DeleteTeamInput, sentry.DeletedTeam](t, sentry.DeleteTeamDefinition),
 		createRelease:     connectormock.NewMutation[sentry.CreateReleaseInput, sentry.Release](t, sentry.CreateReleaseDefinition),
 		getRelease:        connectormock.NewQuery[sentry.GetReleaseInput, sentry.Release](t, sentry.GetReleaseDefinition),
 		listReleases:      connectormock.NewQuery[sentry.ListReleasesInput, sentry.ReleasePage](t, sentry.ListReleasesDefinition),
@@ -62,6 +72,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		getProject:        connectormock.NewQuery[sentry.GetProjectInput, sentry.Project](t, sentry.GetProjectDefinition),
 		listOrganizations: connectormock.NewQuery[sentry.ListOrganizationsInput, sentry.OrganizationPage](t, sentry.ListOrganizationsDefinition),
 	}
+	mock.createTeam.Default(CreateTeamDefault())
+	mock.getTeam.Default(GetTeamDefault())
+	mock.listTeams.Default(ListTeamsDefault())
+	mock.updateTeam.Default(UpdateTeamDefault())
+	mock.deleteTeam.Default(DeleteTeamDefault())
 	mock.createRelease.Default(CreateReleaseDefault())
 	mock.getRelease.Default(GetReleaseDefault())
 	mock.listReleases.Default(ListReleasesDefault())
@@ -90,6 +105,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sentry.Connection { return mock.connection }
+
+// CreateTeam returns the createTeam script.
+func (mock *Mock) CreateTeam() *connectormock.Mutation[sentry.CreateTeamInput, sentry.Team] {
+	return mock.createTeam
+}
+
+// GetTeam returns the getTeam script.
+func (mock *Mock) GetTeam() *connectormock.Query[sentry.GetTeamInput, sentry.Team] {
+	return mock.getTeam
+}
+
+// ListTeams returns the listTeams script.
+func (mock *Mock) ListTeams() *connectormock.Query[sentry.ListTeamsInput, sentry.TeamPage] {
+	return mock.listTeams
+}
+
+// UpdateTeam returns the updateTeam script.
+func (mock *Mock) UpdateTeam() *connectormock.Mutation[sentry.UpdateTeamInput, sentry.Team] {
+	return mock.updateTeam
+}
+
+// DeleteTeam returns the deleteTeam script.
+func (mock *Mock) DeleteTeam() *connectormock.Mutation[sentry.DeleteTeamInput, sentry.DeletedTeam] {
+	return mock.deleteTeam
+}
 
 // CreateRelease returns the createRelease script.
 func (mock *Mock) CreateRelease() *connectormock.Mutation[sentry.CreateReleaseInput, sentry.Release] {
@@ -183,6 +223,21 @@ func (mock *Mock) ListOrganizations() *connectormock.Query[sentry.ListOrganizati
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateTeam() sdkgo.Mutation[sentry.CreateTeamInput, sentry.Team] {
+	return operations.mock.createTeam
+}
+func (operations mockOperations) GetTeam() sdkgo.Query[sentry.GetTeamInput, sentry.Team] {
+	return operations.mock.getTeam
+}
+func (operations mockOperations) ListTeams() sdkgo.Query[sentry.ListTeamsInput, sentry.TeamPage] {
+	return operations.mock.listTeams
+}
+func (operations mockOperations) UpdateTeam() sdkgo.Mutation[sentry.UpdateTeamInput, sentry.Team] {
+	return operations.mock.updateTeam
+}
+func (operations mockOperations) DeleteTeam() sdkgo.Mutation[sentry.DeleteTeamInput, sentry.DeletedTeam] {
+	return operations.mock.deleteTeam
+}
 func (operations mockOperations) CreateRelease() sdkgo.Mutation[sentry.CreateReleaseInput, sentry.Release] {
 	return operations.mock.createRelease
 }
@@ -237,6 +292,191 @@ func (operations mockOperations) GetProject() sdkgo.Query[sentry.GetProjectInput
 func (operations mockOperations) ListOrganizations() sdkgo.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage] {
 	return operations.mock.listOrganizations
 }
+
+// CreateTeamCreated selects the created branch: Sentry created or confirmed the team.
+func CreateTeamCreated(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.CreateTeamBranchCreated, value, failure)
+}
+
+// CreateTeamProviderRejected selects the providerRejected branch: Sentry definitively rejected creation.
+func CreateTeamProviderRejected(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.CreateTeamBranchProviderRejected, value, failure)
+}
+
+// CreateTeamDefect selects the defect branch: Local input or credentials are invalid.
+func CreateTeamDefect(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.CreateTeamBranchDefect, value, failure)
+}
+
+// CreateTeamUncertain returns an uncertain createTeam outcome.
+func CreateTeamUncertain(value sentry.Team, failure sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTeamRetry asks Dex to retry the createTeam Step, after the delay when it is positive.
+func CreateTeamRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Team] {
+	return connectormock.Retry[sentry.Team](failure, after)
+}
+
+// CreateTeamCreateTeamDefault is the manifest mock createTeamDefault: One team was created.
+func CreateTeamCreateTeamDefault() connectormock.Case[sentry.Team] {
+	value := connectormock.MustDecodeOutput[sentry.Team](`{"id":"51","slug":"core","name":"Core"}`)
+	return connectormock.Branch(sentry.CreateTeamBranchCreated, value, nil)
+}
+
+// CreateTeamDefault is the manifest default, createTeamDefault, which New installs.
+func CreateTeamDefault() connectormock.Case[sentry.Team] { return CreateTeamCreateTeamDefault() }
+
+// GetTeamFound selects the found branch: Sentry returned the team.
+func GetTeamFound(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchFound, value, failure)
+}
+
+// GetTeamNotFound selects the notFound branch: The team does not exist.
+func GetTeamNotFound(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchNotFound, value, failure)
+}
+
+// GetTeamProviderRejected selects the providerRejected branch: Sentry definitively rejected retrieval.
+func GetTeamProviderRejected(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchProviderRejected, value, failure)
+}
+
+// GetTeamInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetTeamInvalidResponse(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchInvalidResponse, value, failure)
+}
+
+// GetTeamDefect selects the defect branch: Local input or credentials are invalid.
+func GetTeamDefect(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchDefect, value, failure)
+}
+
+// GetTeamRetry asks Dex to retry the getTeam Step, after the delay when it is positive.
+func GetTeamRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Team] {
+	return connectormock.Retry[sentry.Team](failure, after)
+}
+
+// GetTeamGetTeamDefault is the manifest mock getTeamDefault: One team was found.
+func GetTeamGetTeamDefault() connectormock.Case[sentry.Team] {
+	value := connectormock.MustDecodeOutput[sentry.Team](`{"id":"51","slug":"core","name":"Core"}`)
+	return connectormock.Branch(sentry.GetTeamBranchFound, value, nil)
+}
+
+// GetTeamDefault is the manifest default, getTeamDefault, which New installs.
+func GetTeamDefault() connectormock.Case[sentry.Team] { return GetTeamGetTeamDefault() }
+
+// ListTeamsListed selects the listed branch: Sentry returned the team page.
+func ListTeamsListed(value sentry.TeamPage, failure *sdkgo.Failure) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Branch(sentry.ListTeamsBranchListed, value, failure)
+}
+
+// ListTeamsProviderRejected selects the providerRejected branch: Sentry definitively rejected listing.
+func ListTeamsProviderRejected(value sentry.TeamPage, failure *sdkgo.Failure) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Branch(sentry.ListTeamsBranchProviderRejected, value, failure)
+}
+
+// ListTeamsInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func ListTeamsInvalidResponse(value sentry.TeamPage, failure *sdkgo.Failure) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Branch(sentry.ListTeamsBranchInvalidResponse, value, failure)
+}
+
+// ListTeamsDefect selects the defect branch: Local input or credentials are invalid.
+func ListTeamsDefect(value sentry.TeamPage, failure *sdkgo.Failure) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Branch(sentry.ListTeamsBranchDefect, value, failure)
+}
+
+// ListTeamsRetry asks Dex to retry the listTeams Step, after the delay when it is positive.
+func ListTeamsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Retry[sentry.TeamPage](failure, after)
+}
+
+// ListTeamsListTeamsDefault is the manifest mock listTeamsDefault: One team was listed.
+func ListTeamsListTeamsDefault() connectormock.Case[sentry.TeamPage] {
+	value := connectormock.MustDecodeOutput[sentry.TeamPage](`{"teams":[{"id":"51","slug":"core","name":"Core"}]}`)
+	return connectormock.Branch(sentry.ListTeamsBranchListed, value, nil)
+}
+
+// ListTeamsDefault is the manifest default, listTeamsDefault, which New installs.
+func ListTeamsDefault() connectormock.Case[sentry.TeamPage] { return ListTeamsListTeamsDefault() }
+
+// UpdateTeamUpdated selects the updated branch: Sentry updated the team.
+func UpdateTeamUpdated(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchUpdated, value, failure)
+}
+
+// UpdateTeamNotFound selects the notFound branch: The team does not exist.
+func UpdateTeamNotFound(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchNotFound, value, failure)
+}
+
+// UpdateTeamProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateTeamProviderRejected(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchProviderRejected, value, failure)
+}
+
+// UpdateTeamInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateTeamInvalidResponse(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchInvalidResponse, value, failure)
+}
+
+// UpdateTeamDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateTeamDefect(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchDefect, value, failure)
+}
+
+// UpdateTeamRetry asks Dex to retry the updateTeam Step, after the delay when it is positive.
+func UpdateTeamRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Team] {
+	return connectormock.Retry[sentry.Team](failure, after)
+}
+
+// UpdateTeamUpdateTeamDefault is the manifest mock updateTeamDefault: One team was updated.
+func UpdateTeamUpdateTeamDefault() connectormock.Case[sentry.Team] {
+	value := connectormock.MustDecodeOutput[sentry.Team](`{"id":"51","slug":"core-platform","name":"Core Platform"}`)
+	return connectormock.Branch(sentry.UpdateTeamBranchUpdated, value, nil)
+}
+
+// UpdateTeamDefault is the manifest default, updateTeamDefault, which New installs.
+func UpdateTeamDefault() connectormock.Case[sentry.Team] { return UpdateTeamUpdateTeamDefault() }
+
+// DeleteTeamDeleted selects the deleted branch: Sentry accepted team deletion.
+func DeleteTeamDeleted(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchDeleted, value, failure)
+}
+
+// DeleteTeamNotFound selects the notFound branch: The team does not exist.
+func DeleteTeamNotFound(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchNotFound, value, failure)
+}
+
+// DeleteTeamProviderRejected selects the providerRejected branch: Sentry definitively rejected deletion.
+func DeleteTeamProviderRejected(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchProviderRejected, value, failure)
+}
+
+// DeleteTeamInvalidResponse selects the invalidResponse branch: Sentry returned unexpected deletion content.
+func DeleteTeamInvalidResponse(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchInvalidResponse, value, failure)
+}
+
+// DeleteTeamDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteTeamDefect(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchDefect, value, failure)
+}
+
+// DeleteTeamRetry asks Dex to retry the deleteTeam Step, after the delay when it is positive.
+func DeleteTeamRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Retry[sentry.DeletedTeam](failure, after)
+}
+
+// DeleteTeamDeleteTeamDefault is the manifest mock deleteTeamDefault: One team deletion was accepted.
+func DeleteTeamDeleteTeamDefault() connectormock.Case[sentry.DeletedTeam] {
+	value := connectormock.MustDecodeOutput[sentry.DeletedTeam](`{"slug":"core"}`)
+	return connectormock.Branch(sentry.DeleteTeamBranchDeleted, value, nil)
+}
+
+// DeleteTeamDefault is the manifest default, deleteTeamDefault, which New installs.
+func DeleteTeamDefault() connectormock.Case[sentry.DeletedTeam] { return DeleteTeamDeleteTeamDefault() }
 
 // CreateReleaseCreated selects the created branch: Sentry created or confirmed the release.
 func CreateReleaseCreated(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {

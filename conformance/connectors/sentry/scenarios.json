@@ -6824,6 +6824,1928 @@
       },
       "name": "deleteRelease-invalidResponse",
       "operation": "deleteRelease"
+    },
+    {
+      "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"51\",\"slug\":\"core\",\"name\":\"Core\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "51",
+          "name": "Core",
+          "slug": "core"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "input": {
+        "name": "Core",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "createTeam-success",
+      "operation": "createTeam"
+    },
+    {
+      "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "input": {
+        "name": "Core",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "createTeam-providerRejected",
+      "operation": "createTeam"
+    },
+    {
+      "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "input": {
+        "name": "Core",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "createTeam-429",
+      "operation": "createTeam"
+    },
+    {
+      "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "input": {
+        "name": "Core",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "createTeam-5xx",
+      "operation": "createTeam"
+    },
+    {
+      "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "input": {
+        "name": "Core",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "createTeam-transport",
+      "operation": "createTeam"
+    },
+    {
+      "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "input": {
+        "name": "Core",
+        "organization": "",
+        "slug": "core"
+      },
+      "name": "createTeam-defect",
+      "operation": "createTeam"
+    },
+    {
+      "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"team exists\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "input": {
+        "name": "Core",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "createTeam-conflict",
+      "operation": "createTeam"
+    },
+    {
+      "attempts": 2,
+      "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"51\",\"slug\":\"core\",\"name\":\"Core\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "51",
+          "name": "Core",
+          "slug": "core"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "input": {
+        "name": "Core",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTeam-readback",
+      "operation": "createTeam"
+    },
+    {
+      "attempts": 3,
+      "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations/acme/teams/",
+          "requestBody": {
+            "name": "Core",
+            "slug": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
+      "input": {
+        "name": "Core",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "5f32e859-84f0-5b16-8575-de16ad628516",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTeam-uncertain",
+      "operation": "createTeam"
+    },
+    {
+      "callId": "5c1c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"51\",\"slug\":\"core\",\"name\":\"Core\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "51",
+          "name": "Core",
+          "slug": "core"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "getTeam-success",
+      "operation": "getTeam"
+    },
+    {
+      "callId": "5c2c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "getTeam-providerRejected",
+      "operation": "getTeam"
+    },
+    {
+      "callId": "5c3c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "getTeam-429",
+      "operation": "getTeam"
+    },
+    {
+      "callId": "5c4c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "getTeam-5xx",
+      "operation": "getTeam"
+    },
+    {
+      "callId": "5c5c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "getTeam-transport",
+      "operation": "getTeam"
+    },
+    {
+      "callId": "5c6c0000-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "",
+        "slug": "core"
+      },
+      "name": "getTeam-defect",
+      "operation": "getTeam"
+    },
+    {
+      "callId": "5c7c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "getTeam-notFound",
+      "operation": "getTeam"
+    },
+    {
+      "callId": "5c8c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "getTeam-invalidResponse",
+      "operation": "getTeam"
+    },
+    {
+      "callId": "6c1c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "[{\"id\":\"51\",\"slug\":\"core\",\"name\":\"Core\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/teams/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "core"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "teams": [
+            {
+              "id": "51",
+              "name": "Core",
+              "slug": "core"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "core"
+      },
+      "name": "listTeams-success",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "6c2c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/teams/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "core"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "teams": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "core"
+      },
+      "name": "listTeams-providerRejected",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "6c3c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/teams/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "core"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "core"
+      },
+      "name": "listTeams-429",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "6c4c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/teams/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "core"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "core"
+      },
+      "name": "listTeams-5xx",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "6c5c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/teams/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "core"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "core"
+      },
+      "name": "listTeams-transport",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "6c6c0000-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "teams": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "",
+        "query": "core"
+      },
+      "name": "listTeams-defect",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "6c7c0000-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/teams/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "core"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "teams": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "core"
+      },
+      "name": "listTeams-invalidResponse",
+      "operation": "listTeams"
+    },
+    {
+      "callId": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"51\",\"slug\":\"core-platform\",\"name\":\"Core Platform\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/teams/acme/core/",
+          "requestBody": {
+            "name": "Core Platform",
+            "slug": "core-platform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "51",
+          "name": "Core Platform",
+          "slug": "core-platform"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "input": {
+        "name": "Core Platform",
+        "newSlug": "core-platform",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "updateTeam-success",
+      "operation": "updateTeam"
+    },
+    {
+      "callId": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/teams/acme/core/",
+          "requestBody": {
+            "name": "Core Platform",
+            "slug": "core-platform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "input": {
+        "name": "Core Platform",
+        "newSlug": "core-platform",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "updateTeam-providerRejected",
+      "operation": "updateTeam"
+    },
+    {
+      "callId": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/teams/acme/core/",
+          "requestBody": {
+            "name": "Core Platform",
+            "slug": "core-platform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "input": {
+        "name": "Core Platform",
+        "newSlug": "core-platform",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "updateTeam-429",
+      "operation": "updateTeam"
+    },
+    {
+      "callId": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/teams/acme/core/",
+          "requestBody": {
+            "name": "Core Platform",
+            "slug": "core-platform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "input": {
+        "name": "Core Platform",
+        "newSlug": "core-platform",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "updateTeam-5xx",
+      "operation": "updateTeam"
+    },
+    {
+      "callId": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/teams/acme/core/",
+          "requestBody": {
+            "name": "Core Platform",
+            "slug": "core-platform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "input": {
+        "name": "Core Platform",
+        "newSlug": "core-platform",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "updateTeam-transport",
+      "operation": "updateTeam"
+    },
+    {
+      "callId": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "input": {
+        "name": "Core Platform",
+        "newSlug": "core-platform",
+        "organization": "",
+        "slug": "core"
+      },
+      "name": "updateTeam-defect",
+      "operation": "updateTeam"
+    },
+    {
+      "callId": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/teams/acme/core/",
+          "requestBody": {
+            "name": "Core Platform",
+            "slug": "core-platform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "input": {
+        "name": "Core Platform",
+        "newSlug": "core-platform",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "updateTeam-notFound",
+      "operation": "updateTeam"
+    },
+    {
+      "callId": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/teams/acme/core/",
+          "requestBody": {
+            "name": "Core Platform",
+            "slug": "core-platform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "80af1b84-0838-5aac-8f1d-a936b49d96a5",
+      "input": {
+        "name": "Core Platform",
+        "newSlug": "core-platform",
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "updateTeam-invalidResponse",
+      "operation": "updateTeam"
+    },
+    {
+      "callId": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "slug": "core"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "deleteTeam-success",
+      "operation": "deleteTeam"
+    },
+    {
+      "callId": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "deleteTeam-providerRejected",
+      "operation": "deleteTeam"
+    },
+    {
+      "callId": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "deleteTeam-429",
+      "operation": "deleteTeam"
+    },
+    {
+      "callId": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"server error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "deleteTeam-5xx",
+      "operation": "deleteTeam"
+    },
+    {
+      "callId": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "deleteTeam-transport",
+      "operation": "deleteTeam"
+    },
+    {
+      "callId": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "slug": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "input": {
+        "organization": "",
+        "slug": "core"
+      },
+      "name": "deleteTeam-defect",
+      "operation": "deleteTeam"
+    },
+    {
+      "callId": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "deleteTeam-notFound",
+      "operation": "deleteTeam"
+    },
+    {
+      "callId": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "exchanges": [
+        {
+          "body": "unexpected",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/teams/acme/core/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2bb5862-8597-5292-b5d0-2dc5997b22c3",
+      "input": {
+        "organization": "acme",
+        "slug": "core"
+      },
+      "name": "deleteTeam-invalidResponse",
+      "operation": "deleteTeam"
     }
   ],
   "schemaVersion": 1

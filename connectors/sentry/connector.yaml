@@ -67,9 +67,95 @@ spec:
         project reads and writes, org:read for organization reads, and org:write
         when the organization restricts project creation. Copy the opaque
         secret; blank prevents requests.
+      - For Team operations also select team:read for detail, team:write for
+        creation and updates, and team:admin for deletion. For Releases select
+        project:releases or the documented project/CI scopes.
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+  - name: createTeam
+    goName: CreateTeam
+    inputType: CreateTeamInput
+    outputType: Team
+    kind: mutation
+    description: Create a named team with an explicit slug in an organization.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Sentry created or confirmed the team.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected creation., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createTeamDefault, branch: created, default: true, description: One team was created., output: {id: '51', slug: core, name: Core}}
+  - name: getTeam
+    goName: GetTeam
+    inputType: GetTeamInput
+    outputType: Team
+    kind: query
+    description: Retrieve a team by organization and slug.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Sentry returned the team.}
+    - {id: notFound, goName: NotFound, description: The team does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected retrieval., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getTeamDefault, branch: found, default: true, description: One team was found., output: {id: '51', slug: core, name: Core}}
+  - name: listTeams
+    goName: ListTeams
+    inputType: ListTeamsInput
+    outputType: TeamPage
+    kind: query
+    description: List an organization's teams with cursor and search query.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Sentry returned the team page.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected listing., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listTeamsDefault, branch: listed, default: true, description: One team was listed., output: {teams: [{id: '51', slug: core, name: Core}]}}
+  - name: updateTeam
+    goName: UpdateTeam
+    inputType: UpdateTeamInput
+    outputType: Team
+    kind: mutation
+    description: Replace a team's slug and name.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Sentry updated the team.}
+    - {id: notFound, goName: NotFound, description: The team does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateTeamDefault, branch: updated, default: true, description: One team was updated., output: {id: '51', slug: core-platform, name: Core Platform}}
+  - name: deleteTeam
+    goName: DeleteTeam
+    inputType: DeleteTeamInput
+    outputType: DeletedTeam
+    kind: mutation
+    description: Schedule a team for deletion.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Sentry accepted team deletion.}
+    - {id: notFound, goName: NotFound, description: The team does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected deletion., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned unexpected deletion content., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteTeamDefault, branch: deleted, default: true, description: One team deletion was accepted., output: {slug: core}}
   - name: createRelease
     goName: CreateRelease
     inputType: CreateReleaseInput

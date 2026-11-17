@@ -40,6 +40,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateTeam() sdkgo.Mutation[CreateTeamInput, Team]
+	GetTeam() sdkgo.Query[GetTeamInput, Team]
+	ListTeams() sdkgo.Query[ListTeamsInput, TeamPage]
+	UpdateTeam() sdkgo.Mutation[UpdateTeamInput, Team]
+	DeleteTeam() sdkgo.Mutation[DeleteTeamInput, DeletedTeam]
 	CreateRelease() sdkgo.Mutation[CreateReleaseInput, Release]
 	GetRelease() sdkgo.Query[GetReleaseInput, Release]
 	ListReleases() sdkgo.Query[ListReleasesInput, ReleasePage]
@@ -62,6 +67,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateTeam() sdkgo.Mutation[CreateTeamInput, Team] {
+	return operations.client.CreateTeam()
+}
+func (operations clientOperations) GetTeam() sdkgo.Query[GetTeamInput, Team] {
+	return operations.client.GetTeam()
+}
+func (operations clientOperations) ListTeams() sdkgo.Query[ListTeamsInput, TeamPage] {
+	return operations.client.ListTeams()
+}
+func (operations clientOperations) UpdateTeam() sdkgo.Mutation[UpdateTeamInput, Team] {
+	return operations.client.UpdateTeam()
+}
+func (operations clientOperations) DeleteTeam() sdkgo.Mutation[DeleteTeamInput, DeletedTeam] {
+	return operations.client.DeleteTeam()
+}
 func (operations clientOperations) CreateRelease() sdkgo.Mutation[CreateReleaseInput, Release] {
 	return operations.client.CreateRelease()
 }
@@ -252,6 +272,386 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const CreateTeamBranchCreated sdkgo.BranchID = "created"
+const CreateTeamBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTeamBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateTeamBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateTeamDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTeam"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTeamBranchCreated, Description: "Sentry created or confirmed the team."},
+		{ID: CreateTeamBranchProviderRejected, Description: "Sentry definitively rejected creation.", Optional: true},
+		{ID: CreateTeamBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateTeamBranchUncertain, Description: "The send cap was reached without confirming creation.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateTeamResult = sdkgo.MutationResult[Team]
+
+type CreateTeamStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                   `connector:"connectorId=sentry"`
+	operationID                       struct{}                                   `connector:"operationId=createTeam"`
+	StepType                          string                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                        Connection                                 `connector:"connection"`
+	ConnectionName                    string                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTeamInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTeamResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTeamResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateTeamResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateTeamResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Team]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateTeamStep[IN any](config CreateTeamStepConfig[IN]) sdkgo.MutationStep[IN, CreateTeamInput, Team] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTeamInput, Team]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTeam(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTeamResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTeamResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTeamBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTeamBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTeamBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateTeamBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetTeamBranchFound sdkgo.BranchID = "found"
+const GetTeamBranchNotFound sdkgo.BranchID = "notFound"
+const GetTeamBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTeamBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTeamBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTeamDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTeam"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTeamBranchFound, Description: "Sentry returned the team."},
+		{ID: GetTeamBranchNotFound, Description: "The team does not exist.", Optional: true},
+		{ID: GetTeamBranchProviderRejected, Description: "Sentry definitively rejected retrieval.", Optional: true},
+		{ID: GetTeamBranchInvalidResponse, Description: "Sentry returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTeamBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTeamResult = sdkgo.QueryResult[Team]
+
+type GetTeamStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=sentry"`
+	operationID                    struct{}                                `connector:"operationId=getTeam"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTeamInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTeamResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTeamResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTeamResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTeamResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTeamResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Team]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetTeamStep[IN any](config GetTeamStepConfig[IN]) sdkgo.QueryStep[IN, GetTeamInput, Team] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTeamInput, Team]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTeam(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTeamResult] {
+			branches := make([]sdkgo.BranchTarget[GetTeamResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTeamBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTeamBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTeamBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTeamBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTeamBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTeamsBranchListed sdkgo.BranchID = "listed"
+const ListTeamsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTeamsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTeamsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTeamsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTeams"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTeamsBranchListed, Description: "Sentry returned the team page."},
+		{ID: ListTeamsBranchProviderRejected, Description: "Sentry definitively rejected listing.", Optional: true},
+		{ID: ListTeamsBranchInvalidResponse, Description: "Sentry returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTeamsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTeamsResult = sdkgo.QueryResult[TeamPage]
+
+type ListTeamsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=sentry"`
+	operationID                    struct{}                                    `connector:"operationId=listTeams"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTeamsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTeamsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTeamsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTeamsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTeamsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TeamPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListTeamsStep[IN any](config ListTeamsStepConfig[IN]) sdkgo.QueryStep[IN, ListTeamsInput, TeamPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTeamsInput, TeamPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTeams(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTeamsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTeamsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTeamsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTeamsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTeamsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTeamsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateTeamBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTeamBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTeamBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTeamBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTeamBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTeamDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTeam"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTeamBranchUpdated, Description: "Sentry updated the team."},
+		{ID: UpdateTeamBranchNotFound, Description: "The team does not exist.", Optional: true},
+		{ID: UpdateTeamBranchProviderRejected, Description: "Sentry definitively rejected the update.", Optional: true},
+		{ID: UpdateTeamBranchInvalidResponse, Description: "Sentry returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateTeamBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTeamResult = sdkgo.MutationResult[Team]
+
+type UpdateTeamStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                   `connector:"connectorId=sentry"`
+	operationID                       struct{}                                   `connector:"operationId=updateTeam"`
+	StepType                          string                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                        Connection                                 `connector:"connection"`
+	ConnectionName                    string                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTeamInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTeamResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTeamResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTeamResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTeamResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTeamResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Team]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTeamStep[IN any](config UpdateTeamStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTeamInput, Team] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTeamInput, Team]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTeam(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTeamResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTeamResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTeamBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTeamBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTeamBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTeamBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTeamBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTeamBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTeamBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteTeamBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTeamBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteTeamBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTeamDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTeam"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTeamBranchDeleted, Description: "Sentry accepted team deletion."},
+		{ID: DeleteTeamBranchNotFound, Description: "The team does not exist.", Optional: true},
+		{ID: DeleteTeamBranchProviderRejected, Description: "Sentry definitively rejected deletion.", Optional: true},
+		{ID: DeleteTeamBranchInvalidResponse, Description: "Sentry returned unexpected deletion content.", Optional: true},
+		{ID: DeleteTeamBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteTeamResult = sdkgo.MutationResult[DeletedTeam]
+
+type DeleteTeamStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=sentry"`
+	operationID                       struct{}                                          `connector:"operationId=deleteTeam"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteTeamInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTeamResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteTeamResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteTeamResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteTeamResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteTeamResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedTeam]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTeamStep[IN any](config DeleteTeamStepConfig[IN]) sdkgo.MutationStep[IN, DeleteTeamInput, DeletedTeam] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteTeamInput, DeletedTeam]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTeam(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTeamResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTeamResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTeamBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteTeamBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTeamBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteTeamBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTeamBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CreateReleaseBranchCreated sdkgo.BranchID = "created"

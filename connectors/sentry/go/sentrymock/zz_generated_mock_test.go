@@ -16,6 +16,23 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createTeam/createTeamDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Team](`{"id":"51","slug":"core","name":"Core"}`)
+			return err
+		}},
+		{name: "getTeam/getTeamDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Team](`{"id":"51","slug":"core","name":"Core"}`)
+			return err
+		}},
+		{name: "listTeams/listTeamsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.TeamPage](`{"teams":[{"id":"51","slug":"core","name":"Core"}]}`)
+			return err
+		}},
+		{name: "updateTeam/updateTeamDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Team](`{"id":"51","slug":"core-platform","name":"Core Platform"}`)
+			return err
+		}},
+		{name: "deleteTeam/deleteTeamDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[sentry.DeletedTeam](`{"slug":"core"}`); return err }},
 		{name: "createRelease/createReleaseDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"open"}`)
 			return err
@@ -95,6 +112,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateTeam().Definition().Operation.OperationID != "createTeam" {
+		t.Errorf("createTeam mock has another definition")
+	}
+	if mock.GetTeam().Definition().Operation.OperationID != "getTeam" {
+		t.Errorf("getTeam mock has another definition")
+	}
+	if mock.ListTeams().Definition().Operation.OperationID != "listTeams" {
+		t.Errorf("listTeams mock has another definition")
+	}
+	if mock.UpdateTeam().Definition().Operation.OperationID != "updateTeam" {
+		t.Errorf("updateTeam mock has another definition")
+	}
+	if mock.DeleteTeam().Definition().Operation.OperationID != "deleteTeam" {
+		t.Errorf("deleteTeam mock has another definition")
+	}
 	if mock.CreateRelease().Definition().Operation.OperationID != "createRelease" {
 		t.Errorf("createRelease mock has another definition")
 	}

@@ -15,6 +15,8 @@ The [`create-project` example](go/examples/create-project/README.md) exercises
 bounded project creation through a real Dex Worker in its mock test.
 The [`create-release` example](go/examples/create-release/README.md) exercises
 bounded release creation through a real Dex Worker in its mock test.
+The [`create-team` example](go/examples/create-team/README.md) exercises
+bounded team creation through a real Dex Worker in its mock test.
 
 The Python package is [`dex-connector-sentry`](python/README.md), imported as
 `dex_connectors.sentry`. The TypeScript package is
@@ -42,6 +44,11 @@ The Python package is [`dex-connector-sentry`](python/README.md), imported as
 | `listReleases` | query | ReleasePage |
 | `updateRelease` | mutation | Release |
 | `deleteRelease` | mutation | DeletedRelease |
+| `createTeam` | mutation | Team |
+| `getTeam` | query | Team |
+| `listTeams` | query | TeamPage |
+| `updateTeam` | mutation | Team |
+| `deleteTeam` | mutation | DeletedTeam |
 
 The Go queries use the `safe` repeat tier. List operations return one
 provider page; pass a Sentry cursor to request a known later page. Sentry
@@ -68,6 +75,13 @@ reference and URL; `deleteRelease` permanently removes that version and its
 files. Both writes use the `safe` repeat tier. A token needs
 `project:releases` or the endpoint-specific project/CI scopes in
 [Sentry's release API](https://docs.sentry.io/api/releases/).
+
+`createTeam` requires an explicit slug and uses bounded `limited` resend with
+slug and name read-back. `getTeam` and `listTeams` are safe queries.
+`updateTeam` replaces its slug and name; `deleteTeam` schedules deletion.
+Both writes use the `safe` repeat tier. Tokens need `org:read` for listing,
+`team:read` for detail, `team:write` or `org:write` for creation,
+`team:write` for updates, and `team:admin` for deletion.
 
 `listIssues` returns the first provider page (default unresolved query); cursor pagination is not exposed in this initial release. `updateIssueStatus` sends an absolute status in a PUT request. Repeating `resolved`, `unresolved`, or `ignored` sets the same state. Only the submitted status field is changed.
 
@@ -125,6 +139,7 @@ flow := NewFlow(mock.Connection())
 - [https://docs.sentry.io/api/projects/delete-a-project/](https://docs.sentry.io/api/projects/delete-a-project/)
 - [https://docs.sentry.io/api/projects/create-a-new-project/](https://docs.sentry.io/api/projects/create-a-new-project/)
 - [https://docs.sentry.io/api/releases/](https://docs.sentry.io/api/releases/)
+- [https://docs.sentry.io/api/teams/](https://docs.sentry.io/api/teams/)
 
 The HTTP unit tests verify request shapes and local classification against
 an `httptest` server. The TypeScript example runs against a local HTTP fixture
