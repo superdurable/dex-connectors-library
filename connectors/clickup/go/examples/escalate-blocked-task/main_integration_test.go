@@ -138,31 +138,30 @@ func TestLostCreateResponseIsFoundInTheListWithoutResendingWithRealDex(t *testin
 	outcome := harness.runEscalation(t, "lost-create", blockedID)
 	require.Equal(t, escalateblocked.OutcomeEscalated, outcome.Action)
 	require.True(t, outcome.WasCreateAlreadyApplied, "the retried attempt read the List and found its task")
-	require.Equal(t, 1, provider.count("create"), "the create was never resent")
+	require.Equal(t, 1, provider.count("create"), "read-back found the task, so the create was not resent")
 	require.Equal(t, 1, provider.count("listRead"))
 	escalations := provider.tasksInList(fakeEscalationID)
 	require.Len(t, escalations, 1)
 	require.Equal(t, escalations[0].id, outcome.EscalationTaskID)
 }
 
-func TestUnconfirmedCreateWithoutATaskFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestCreateAnswered503IsResentWithoutReadBackWithRealDex(t *testing.T) {
 	provider := newFakeClickUp(t)
 	blockedID := provider.seedTask(blockedTaskName, "blocked", fakeEngineeringID)
 	provider.failsFirstCreateBeforeApplying = true
 	harness := newEscalationHarness(t, provider, defaultRequestTimeout, exampleSettings)
 
-	flowID := harness.startEscalation(t, "unconfirmed-create", blockedID)
-	result := harness.waitForFlow(t, flowID)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.count("create"), "an unconfirmed create is never resent")
-	require.Zero(t, provider.count("tag")+provider.count("update")+provider.count("comment"), "the blocked task is untouched")
+	outcome := harness.runEscalation(t, "unavailable-create", blockedID)
+	require.Equal(t, escalateblocked.OutcomeEscalated, outcome.Action)
+	require.False(t, outcome.WasCreateAlreadyApplied)
+	require.Equal(t, 2, provider.count("create"), "a 503 proves ClickUp did not apply the create")
+	require.Zero(t, provider.count("listRead"), "a create ClickUp did not apply needs no read-back")
+	require.Len(t, provider.tasksInList(fakeEscalationID), 1)
 }
 
-// TestLostWorkerDuringCreateReconcilesWithoutResendingWithRealDex replaces the Worker while ClickUp holds
-// the create; the next attempt finds the dispatch checkpoint, reads the List, and sends nothing.
-func TestLostWorkerDuringCreateReconcilesWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringCreateResendsWithinTheCapWithRealDex replaces the Worker while ClickUp holds the
+// create; the next attempt reads the List, finds nothing yet, and sends the create again within the cap.
+func TestLostWorkerDuringCreateResendsWithinTheCapWithRealDex(t *testing.T) {
 	provider := newFakeClickUp(t)
 	blockedID := provider.seedTask(blockedTaskName, "blocked", fakeEngineeringID)
 	provider.holdsFirstCreate = make(chan struct{})
@@ -174,13 +173,11 @@ func TestLostWorkerDuringCreateReconcilesWithoutResendingWithRealDex(t *testing.
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstCreate)
-	require.Equal(t, dex.FlowFailed, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
 	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("create"), "the attempt on the new Worker did not resend the create")
-	require.GreaterOrEqual(t, provider.count("listRead"), 1, "the new attempt read the List back")
-	require.Len(t, provider.tasksInList(fakeEscalationID), 1, "the held create exists, which is why the outcome is uncertain")
+	require.GreaterOrEqual(t, provider.count("listRead"), 1, "the new attempt read the List back before resending")
+	require.Equal(t, 2, provider.count("create"), "the attempt on the new Worker resent the create once, within the cap of three")
+	require.Len(t, provider.tasksInList(fakeEscalationID), 2, "the held create also applied, the duplicate a limited create accepts")
 }
 
 // TestSlowUpdateIsSafeToRepeatWithRealDex repeats an absolute update after a Worker disconnect.

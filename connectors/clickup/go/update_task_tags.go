@@ -75,19 +75,24 @@ func (operation UpdateTaskTagsOperation) Invoke(call sdkgo.Call, input UpdateTas
 	}
 	for _, change := range changes {
 		result := operation.client.exchange(ctx, credentials, updateTaskTagsOperation, change)
-		switch {
-		case result.outcome == exchangeSucceeded, result.outcome == exchangeInvalid:
+		if result.outcome == exchangeInvalid {
 			// Any 2xx applied the change, even when its body is unusable.
 			output.AppliedChanges++
 			continue
-		case result.isRetryableRead():
-			return sdkgo.NewMutationRetry[UpdateTaskTagsOutput](result.failure, result.retryAfter)
-		case result.outcome == exchangeNotFound:
+		}
+		switch result.classifyWrite() {
+		case writeAccepted:
+			output.AppliedChanges++
+			continue
+		case writeNotFound:
 			return sdkgo.NewMutationBranch(UpdateTaskTagsBranchNotFound, output, &result.failure, receipt)
-		case result.outcome == exchangeDefect:
+		case writeRejected:
+			return sdkgo.NewMutationBranch(UpdateTaskTagsBranchProviderRejected, output, &result.failure, receipt)
+		case writeDefect:
 			return sdkgo.NewMutationBranch(UpdateTaskTagsBranchDefect, output, &result.failure, receipt)
 		default:
-			return sdkgo.NewMutationBranch(UpdateTaskTagsBranchProviderRejected, output, &result.failure, receipt)
+			// A repeated tag change leaves the same tags, so every unknown outcome retries the whole set.
+			return sdkgo.NewMutationRetry[UpdateTaskTagsOutput](result.failure, result.retryAfter)
 		}
 	}
 	result := operation.client.exchange(ctx, credentials, updateTaskTagsOperation, clickupRequest{method: http.MethodGet, path: taskPath(input.TaskID)})

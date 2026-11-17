@@ -1141,8 +1141,11 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          "attempt": 1,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "providerId": "86b2x4k7q",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "listId": "901410000001",
@@ -1253,8 +1256,9 @@
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          "attempt": 1,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "state": "canResend"
         },
         "output": {
           "listId": "901410000001",
@@ -1349,8 +1353,9 @@
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          "attempt": 1,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "state": "canResend"
         },
         "output": {
           "listId": "901410000001",
@@ -1445,7 +1450,9 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -1527,8 +1534,9 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          "attempt": 1,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -1608,12 +1616,14 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          "attempt": 1,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 0,
+        "retryAfterMs": 5000,
         "uncertain": false
       },
       "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
@@ -2557,8 +2567,11 @@
         "branch": "added",
         "failureKind": "",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+          "attempt": 1,
+          "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+          "providerId": "700001",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "commentId": "700001",
@@ -2610,8 +2623,9 @@
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+          "attempt": 1,
+          "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+          "state": "canResend"
         },
         "output": {
           "taskId": "86b2x4k7q"
@@ -2661,8 +2675,9 @@
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+          "attempt": 1,
+          "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+          "state": "canResend"
         },
         "output": {
           "taskId": "86b2x4k7q"
@@ -2712,7 +2727,9 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2759,8 +2776,9 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+          "attempt": 1,
+          "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2805,12 +2823,14 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+          "attempt": 1,
+          "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 0,
+        "retryAfterMs": 5000,
         "uncertain": false
       },
       "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
@@ -3088,48 +3108,8 @@
       "operation": "findMemberByEmail"
     },
     {
-      "attempts": 2,
       "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
       "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/list/901410000001/task",
-          "requestBody": {
-            "assignees": [
-              183
-            ],
-            "custom_fields": [
-              {
-                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
-                "value": "blue"
-              }
-            ],
-            "due_date": 1767484800000,
-            "due_date_time": true,
-            "markdown_content": "Blocked task: **Fix login**",
-            "name": "Escalation: Fix login [86b2x4k00]",
-            "notify_all": true,
-            "parent": "86b2x4k00",
-            "priority": 1,
-            "status": "to do",
-            "tags": [
-              "escalation"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "transportFailure": "after-send"
-        },
         {
           "body": "{\"tasks\":[],\"last_page\":true}",
           "headers": {},
@@ -3137,9 +3117,6 @@
           "method": "GET",
           "path": "/list/901410000001/task",
           "query": {
-            "date_created_gt": [
-              "1767225300000"
-            ],
             "include_closed": [
               "true"
             ],
@@ -3177,7 +3154,7 @@
             "tags": []
           }
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -3205,19 +3182,14 @@
           "escalation"
         ]
       },
-      "intermediate": [
-        {
-          "exchangeCount": 1,
-          "failureKind": "TRANSPORT",
-          "heartbeat": {
-            "clickupDispatchedAt": 1767225600000,
-            "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
-          },
-          "retryAfterMs": 0
-        }
-      ],
       "name": "createTask-uncertain",
-      "operation": "createTask"
+      "operation": "createTask",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+        "sendCount": 3,
+        "state": "claimed"
+      }
     },
     {
       "attempts": 2,
@@ -3263,15 +3235,12 @@
           "transportFailure": "after-send"
         },
         {
-          "body": "{\"tasks\":[{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}]}],\"last_page\":true}",
+          "body": "{\"tasks\":[{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}],\"parent\":\"86b2x4k00\"}],\"last_page\":true}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
           "path": "/list/901410000001/task",
           "query": {
-            "date_created_gt": [
-              "1767225300000"
-            ],
             "include_closed": [
               "true"
             ],
@@ -3294,25 +3263,43 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "created",
+        "failureKind": "",
         "output": {
           "listId": "901410000001",
           "name": "Escalation: Fix login [86b2x4k00]",
           "task": {
-            "assignees": [],
-            "id": "",
-            "name": "",
+            "assignees": [
+              {
+                "id": 183,
+                "username": "Ada Lovelace"
+              }
+            ],
+            "createdAt": "2026-01-01T00:00:01Z",
+            "id": "86b2x4k7q",
+            "listId": "901410000001",
+            "listName": "Tasks",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "parentTaskId": "86b2x4k00",
+            "priority": 1,
+            "priorityName": "urgent",
             "status": {
-              "name": ""
+              "name": "open",
+              "type": "open"
             },
-            "tags": []
-          }
+            "tags": [
+              "escalation"
+            ],
+            "updatedAt": "2026-01-01T00:00:02Z",
+            "url": "https://app.clickup.com/t/86b2x4k7q",
+            "workspaceId": "9014123456"
+          },
+          "wasAlreadyApplied": true
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
       "input": {
@@ -3342,40 +3329,20 @@
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
           "heartbeat": {
-            "clickupDispatchedAt": 1767225600000,
-            "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+            "attempt": 1,
+            "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+            "sendCount": 1,
+            "state": "claimed"
           },
-          "retryAfterMs": 0
+          "retryAfterMs": 5000
         }
       ],
       "name": "createTask-reconciled",
       "operation": "createTask"
     },
     {
-      "attempts": 2,
       "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
       "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/task/86b2x4k7q/comment",
-          "requestBody": {
-            "comment_text": "Escalation task created",
-            "notify_all": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "transportFailure": "after-send"
-        },
         {
           "body": "{\"comments\":[]}",
           "headers": {},
@@ -3399,7 +3366,7 @@
         "output": {
           "taskId": "86b2x4k7q"
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -3410,19 +3377,173 @@
         "taskId": "86b2x4k7q",
         "text": "Escalation task created"
       },
+      "name": "addComment-uncertain",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"comments\":[{\"id\":\"699999\",\"comment_text\":\"Another comment\",\"date\":\"1767225603000\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q/comment",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":700002,\"hist_id\":\"26509\",\"date\":1767225604000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+          "providerId": "700002",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "commentId": "700002",
+          "createdAt": "2026-01-01T00:00:04Z",
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
       "intermediate": [
         {
           "exchangeCount": 1,
-          "failureKind": "TRANSPORT",
+          "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "clickupDispatchedAt": 1767225600000,
-            "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+            "attempt": 1,
+            "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+            "sendCount": 1,
+            "state": "claimed"
           },
-          "retryAfterMs": 0
+          "retryAfterMs": 5000
         }
       ],
-      "name": "addComment-uncertain",
+      "name": "addComment-server-error-resend",
       "operation": "addComment"
+    },
+    {
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "body": "{\"comments\":[{\"id\":\"700001\",\"comment_text\":\"Escalation task created, edited\",\"date\":\"1767225603000\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q/comment",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "700001",
+          "createdAt": "2026-01-01T00:00:03Z",
+          "taskId": "86b2x4k7q",
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "name": "addComment-provider-id-readback",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+        "providerId": "700001",
+        "sendCount": 1,
+        "state": "claimed"
+      }
     },
     {
       "attempts": 2,
@@ -3491,10 +3612,12 @@
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
           "heartbeat": {
-            "clickupDispatchedAt": 1767225600000,
-            "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+            "attempt": 1,
+            "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+            "sendCount": 1,
+            "state": "claimed"
           },
-          "retryAfterMs": 0
+          "retryAfterMs": 5000
         }
       ],
       "name": "addComment-reconciled",
@@ -3869,8 +3992,11 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          "attempt": 2,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "providerId": "86b2x4k7q",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "listId": "901410000001",
@@ -3934,7 +4060,9 @@
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
           "heartbeat": {
-            "cleared": true
+            "attempt": 1,
+            "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }
@@ -3992,9 +4120,6 @@
           "method": "GET",
           "path": "/list/901410000001/task",
           "query": {
-            "date_created_gt": [
-              "1767225300000"
-            ],
             "include_closed": [
               "true"
             ],
@@ -4052,10 +4177,12 @@
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
           "heartbeat": {
-            "clickupDispatchedAt": 1767225600000,
-            "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+            "attempt": 1,
+            "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+            "sendCount": 1,
+            "state": "claimed"
           },
-          "retryAfterMs": 0
+          "retryAfterMs": 5000
         }
       ],
       "name": "createTask-readback-retry",
@@ -4116,8 +4243,11 @@
         "branch": "added",
         "failureKind": "",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+          "attempt": 2,
+          "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+          "providerId": "700001",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "commentId": "700001",
@@ -4140,7 +4270,9 @@
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
           "heartbeat": {
-            "cleared": true
+            "attempt": 1,
+            "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }
@@ -4209,10 +4341,12 @@
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
           "heartbeat": {
-            "clickupDispatchedAt": 1767225600000,
-            "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+            "attempt": 1,
+            "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+            "sendCount": 1,
+            "state": "claimed"
           },
-          "retryAfterMs": 0
+          "retryAfterMs": 5000
         }
       ],
       "name": "addComment-readback-retry",
@@ -4789,9 +4923,6 @@
           "method": "GET",
           "path": "/list/901410000001/task",
           "query": {
-            "date_created_gt": [
-              "1767225300000"
-            ],
             "include_closed": [
               "true"
             ],
@@ -4811,28 +4942,93 @@
             ]
           },
           "status": 200
+        },
+        {
+          "body": "{\"id\":\"86b2x4k7r\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7r\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225605000\",\"date_updated\":\"1767225605000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}],\"parent\":\"86b2x4k00\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "providerId": "86b2x4k7r",
+          "sendCount": 2,
+          "state": "claimed"
+        },
         "output": {
           "listId": "901410000001",
           "name": "Escalation: Fix login [86b2x4k00]",
           "task": {
-            "assignees": [],
-            "id": "",
-            "name": "",
+            "assignees": [
+              {
+                "id": 183,
+                "username": "Ada Lovelace"
+              }
+            ],
+            "createdAt": "2026-01-01T00:00:05Z",
+            "id": "86b2x4k7r",
+            "listId": "901410000001",
+            "listName": "Tasks",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "parentTaskId": "86b2x4k00",
+            "priority": 1,
+            "priorityName": "urgent",
             "status": {
-              "name": ""
+              "name": "open",
+              "type": "open"
             },
-            "tags": []
+            "tags": [
+              "escalation"
+            ],
+            "updatedAt": "2026-01-01T00:00:05Z",
+            "url": "https://app.clickup.com/t/86b2x4k7r",
+            "workspaceId": "9014123456"
           }
         },
-        "requestCount": 2,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
       "input": {
@@ -4862,13 +5058,353 @@
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
           "heartbeat": {
-            "clickupDispatchedAt": 1767225600000,
-            "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+            "attempt": 1,
+            "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+            "sendCount": 1,
+            "state": "claimed"
           },
-          "retryAfterMs": 0
+          "retryAfterMs": 5000
         }
       ],
-      "name": "createTask-whitespace-uncertain",
+      "name": "createTask-whitespace-resend",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 2,
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"tasks\":[],\"last_page\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/list/901410000001/task",
+          "query": {
+            "include_closed": [
+              "true"
+            ],
+            "page": [
+              "0"
+            ],
+            "subtasks": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"86b2x4k7s\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7s\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225606000\",\"date_updated\":\"1767225606000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}],\"parent\":\"86b2x4k00\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "providerId": "86b2x4k7s",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [
+              {
+                "id": 183,
+                "username": "Ada Lovelace"
+              }
+            ],
+            "createdAt": "2026-01-01T00:00:06Z",
+            "id": "86b2x4k7s",
+            "listId": "901410000001",
+            "listName": "Tasks",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "parentTaskId": "86b2x4k00",
+            "priority": 1,
+            "priorityName": "urgent",
+            "status": {
+              "name": "open",
+              "type": "open"
+            },
+            "tags": [
+              "escalation"
+            ],
+            "updatedAt": "2026-01-01T00:00:06Z",
+            "url": "https://app.clickup.com/t/86b2x4k7s",
+            "workspaceId": "9014123456"
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 5000
+        }
+      ],
+      "name": "createTask-server-error-resend",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}],\"parent\":\"86b2x4k00\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [
+              {
+                "id": 183,
+                "username": "Ada Lovelace"
+              }
+            ],
+            "createdAt": "2026-01-01T00:00:01Z",
+            "id": "86b2x4k7q",
+            "listId": "901410000001",
+            "listName": "Tasks",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "parentTaskId": "86b2x4k00",
+            "priority": 1,
+            "priorityName": "urgent",
+            "status": {
+              "name": "open",
+              "type": "open"
+            },
+            "tags": [
+              "escalation"
+            ],
+            "updatedAt": "2026-01-01T00:00:02Z",
+            "url": "https://app.clickup.com/t/86b2x4k7q",
+            "workspaceId": "9014123456"
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "name": "createTask-provider-id-readback",
+      "operation": "createTask",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+        "providerId": "86b2x4k7q",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"ITEM_027\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "name": "Escalation: Fix login [86b2x4k00]"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "listId": "901410000001",
+        "name": "Escalation: Fix login [86b2x4k00]"
+      },
+      "name": "createTask-conflict-unknown",
       "operation": "createTask"
     },
     {
@@ -5006,8 +5542,11 @@
         "branch": "created",
         "failureKind": "",
         "heartbeat": {
-          "clickupDispatchedAt": 1767225600000,
-          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          "attempt": 1,
+          "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+          "providerId": "86b2x4k7q",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "listId": "901410000001",

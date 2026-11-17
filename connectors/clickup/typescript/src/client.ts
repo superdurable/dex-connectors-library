@@ -20,11 +20,10 @@ export interface ClickUpClientOptions {
   /** Override only with a ClickUp compatible test endpoint. */
   apiBaseURL?: string;
 }
-/** Outcome of one ClickUp HTTP exchange. */
+/** Outcome of one ClickUp HTTP exchange; `status` is the HTTP status of a non-2xx response, or 0. */
 export type Exchange =
   | { kind: 'succeeded'; response: ProviderResponse }
-  | { kind: 'notFound' | 'notSent' | 'rateLimited' | 'unconfirmed' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number };
-
+  | { kind: 'notFound' | 'notSent' | 'rateLimited' | 'unconfirmed' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status: number };
 /** Authenticated ClickUp API client; credentials are resolved for each request. */
 export class ClickUpClient {
   private readonly endpoint: string;
@@ -95,15 +94,15 @@ export class ClickUpClient {
     const status = response.status;
     const code = readErrorCode(response.body);
     const withCode = (message: string) => message + (code ? ` [${code}]` : '');
-    if (status === 429) return this.outcome('rateLimited', operation, 'RATE_LIMIT', withCode('ClickUp rate limited the token (HTTP 429)'), this.rateLimitDelay(response));
-    if (status === 408 || status >= 500) return this.outcome('unconfirmed', operation, 'AVAILABILITY', withCode(`ClickUp could not complete the request (HTTP ${status})`));
-    if (status === 404 || status === 410) return this.outcome('notFound', operation, 'NOT_FOUND', withCode(`ClickUp found no such resource (HTTP ${status})`));
+    if (status === 429) return this.outcome('rateLimited', operation, 'RATE_LIMIT', withCode('ClickUp rate limited the token (HTTP 429)'), this.rateLimitDelay(response), status);
+    if (status === 408 || status >= 500) return this.outcome('unconfirmed', operation, 'AVAILABILITY', withCode(`ClickUp could not complete the request (HTTP ${status})`), 0, status);
+    if (status === 404 || status === 410) return this.outcome('notFound', operation, 'NOT_FOUND', withCode(`ClickUp found no such resource (HTTP ${status})`), 0, status);
     if (status === 401 && ['OAUTH_023', 'OAUTH_026', 'OAUTH_027', ...Array.from({ length: 17 }, (_, index) => `OAUTH_${String(index + 29).padStart(3, '0')}`)].includes(code))
-      return this.outcome('notFound', operation, 'AUTHORIZATION', withCode("ClickUp reports that the resource's Workspace is not authorized for the token (HTTP 401)"));
-    if (status >= 300 && status < 400) return this.outcome('rejected', operation, 'PROTOCOL', `ClickUp redirected the request (HTTP ${status})`);
-    if (status === 401) return this.outcome('rejected', operation, 'AUTHENTICATION', withCode('ClickUp rejected the personal API token (HTTP 401)'));
+      return this.outcome('notFound', operation, 'AUTHORIZATION', withCode("ClickUp reports that the resource's Workspace is not authorized for the token (HTTP 401)"), 0, status);
+    if (status >= 300 && status < 400) return this.outcome('rejected', operation, 'PROTOCOL', `ClickUp redirected the request (HTTP ${status})`, 0, status);
+    if (status === 401) return this.outcome('rejected', operation, 'AUTHENTICATION', withCode('ClickUp rejected the personal API token (HTTP 401)'), 0, status);
     const kind: Failure['kind'] = status === 403 ? 'AUTHORIZATION' : status === 409 ? 'CONFLICT' : [400, 422].includes(status) ? 'VALIDATION' : 'PROVIDER_REJECTION';
-    return this.outcome('rejected', operation, kind, withCode(`ClickUp rejected the request (HTTP ${status})`));
+    return this.outcome('rejected', operation, kind, withCode(`ClickUp rejected the request (HTTP ${status})`), 0, status);
   }
 
   private rateLimitDelay(response: ProviderResponse): number {
@@ -114,8 +113,8 @@ export class ClickUpClient {
     return Number.isSafeInteger(reset) && reset > 0 ? Math.min(60_000, Math.max(1_000, reset * 1_000 - this.now().getTime())) : 0;
   }
 
-  private outcome(kind: Exclude<Exchange['kind'], 'succeeded'>, operation: string, failureKind: Failure['kind'], message: string, retryAfterMs = 0): Exchange {
-    return { kind, failure: { kind: failureKind, provider: 'clickup', operation, message }, retryAfterMs };
+  private outcome(kind: Exclude<Exchange['kind'], 'succeeded'>, operation: string, failureKind: Failure['kind'], message: string, retryAfterMs = 0, status = 0): Exchange {
+    return { kind, failure: { kind: failureKind, provider: 'clickup', operation, message }, retryAfterMs, status };
   }
 }
 
