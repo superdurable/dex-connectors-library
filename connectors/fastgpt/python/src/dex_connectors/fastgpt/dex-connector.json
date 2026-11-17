@@ -1,0 +1,60 @@
+{
+  "connectorId": "fastgpt",
+  "releaseTag": "connectors/fastgpt/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-fastgpt",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_dataset_details_step",
+      "kind": "query",
+      "operationId": "getDatasetDetails",
+      "inputType": "GetDatasetDetailsInput",
+      "description": "Read metadata of one accessible knowledge base.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetDatasetDetailsInput identifies one knowledge base visible to the personal API Key.",
+        "properties": {
+          "id": {
+            "description": "ID is the knowledge base identifier copied from its FastGPT URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
