@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: coda
   displayName: Coda
-  description: Coda REST connector with two bounded operations.
+  description: Read Coda docs, tables, columns, and rows through bounded typed operations.
   company: Coda
   categories: [productivity]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: coda
   languages:
@@ -89,6 +89,7 @@ spec:
     execution:
       executeMethodTimeout: 30s
       durability: async
+      repeatOnUnknown: safe
     mocks:
     - name: defaultListRows
       branch: listed
@@ -133,6 +134,7 @@ spec:
     execution:
       executeMethodTimeout: 30s
       durability: async
+      repeatOnUnknown: safe
     mocks:
     - name: defaultGetRow
       branch: found
@@ -144,3 +146,87 @@ spec:
           name: Meridian
           values:
             c-Name: Meridian
+  - name: listDocs
+    goName: ListDocs
+    inputType: ListDocsInput
+    outputType: DocsPage
+    kind: query
+    description: List a bounded page of accessible docs.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+      - {id: listed, goName: Listed, description: Coda returned the doc page.}
+      - {id: providerRejected, goName: ProviderRejected, description: Coda conclusively rejected the read., optional: true}
+      - {id: invalidResponse, goName: InvalidResponse, description: Coda returned malformed or oversized JSON., optional: true}
+      - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    mocks:
+      - {name: listedDefault, branch: listed, default: true, description: One Meridian doc is returned., output: {items: [{id: AbCDeFGH, name: Meridian}], nextPageToken: ''}}
+  - name: getDoc
+    goName: GetDoc
+    inputType: GetDocInput
+    outputType: Doc
+    kind: query
+    description: Fetch one accessible doc.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+      - {id: found, goName: Found, description: Coda returned the doc.}
+      - {id: notFound, goName: NotFound, description: The doc does not exist or is inaccessible., optional: true}
+      - {id: providerRejected, goName: ProviderRejected, description: Coda conclusively rejected the read., optional: true}
+      - {id: invalidResponse, goName: InvalidResponse, description: Coda returned malformed or oversized JSON., optional: true}
+      - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    mocks:
+      - {name: foundDefault, branch: found, default: true, description: Meridian doc is returned., output: {id: AbCDeFGH, name: Meridian}}
+  - name: listTables
+    goName: ListTables
+    inputType: ListTablesInput
+    outputType: TablesPage
+    kind: query
+    description: List a bounded page of tables and views in one doc.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+      - {id: listed, goName: Listed, description: Coda returned the table page.}
+      - {id: notFound, goName: NotFound, description: The doc does not exist or is inaccessible., optional: true}
+      - {id: providerRejected, goName: ProviderRejected, description: Coda conclusively rejected the read., optional: true}
+      - {id: invalidResponse, goName: InvalidResponse, description: Coda returned malformed or oversized JSON., optional: true}
+      - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    mocks:
+      - {name: listedDefault, branch: listed, default: true, description: Meridian has one table., output: {items: [{id: grid-pqRst-U, name: Accounts}], nextPageToken: ''}}
+  - name: getTable
+    goName: GetTable
+    inputType: GetTableInput
+    outputType: Table
+    kind: query
+    description: Fetch one table or view in a doc.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+      - {id: found, goName: Found, description: Coda returned the table.}
+      - {id: notFound, goName: NotFound, description: The table does not exist or is inaccessible., optional: true}
+      - {id: providerRejected, goName: ProviderRejected, description: Coda conclusively rejected the read., optional: true}
+      - {id: invalidResponse, goName: InvalidResponse, description: Coda returned malformed or oversized JSON., optional: true}
+      - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    mocks:
+      - {name: foundDefault, branch: found, default: true, description: Meridian Accounts table is returned., output: {id: grid-pqRst-U, name: Accounts}}
+  - name: listColumns
+    goName: ListColumns
+    inputType: ListColumnsInput
+    outputType: ColumnsPage
+    kind: query
+    description: List a bounded page of columns in one table.
+    idempotency: none
+    authorization: required
+    execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+    branches:
+      - {id: listed, goName: Listed, description: Coda returned the column page.}
+      - {id: notFound, goName: NotFound, description: The table does not exist or is inaccessible., optional: true}
+      - {id: providerRejected, goName: ProviderRejected, description: Coda conclusively rejected the read., optional: true}
+      - {id: invalidResponse, goName: InvalidResponse, description: Coda returned malformed or oversized JSON., optional: true}
+      - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    mocks:
+      - {name: listedDefault, branch: listed, default: true, description: Accounts has one Name column., output: {items: [{id: c-Name, name: Name}], nextPageToken: ''}}
