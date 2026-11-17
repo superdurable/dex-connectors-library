@@ -39,20 +39,34 @@ type testDexContext struct {
 	heartbeat       json.RawMessage
 	heartbeatWrites int
 	recordErr       error
+	// attempt is the one-based Dex Execute attempt; zero means 1.
+	attempt int32
+	// firstAttemptAt is when the Step's first attempt began; zero means Unix second 1.
+	firstAttemptAt time.Time
 }
 
 func newTestDexContext(step string) *testDexContext {
 	return &testDexContext{Context: context.Background(), step: step}
 }
 
-func (*testDexContext) FlowID() string                          { return "intercom-flow" }
-func (*testDexContext) RunID() string                           { return "run" }
-func (*testDexContext) FlowStartedAt() time.Time                { return time.Unix(1, 0) }
-func (dexContext *testDexContext) StepExecutionID() string      { return dexContext.step }
-func (*testDexContext) FromStepExecutionID() string             { return "" }
-func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo   { return nil }
-func (*testDexContext) FirstAttemptAt() time.Time               { return time.Unix(1, 0) }
-func (*testDexContext) Attempt() int32                          { return 1 }
+// startNextAttempt makes the next call behave as Dex's next Execute attempt of the same Step.
+func (dexContext *testDexContext) startNextAttempt() {
+	dexContext.attempt = dexContext.Attempt() + 1
+}
+
+func (*testDexContext) FlowID() string                        { return "intercom-flow" }
+func (*testDexContext) RunID() string                         { return "run" }
+func (*testDexContext) FlowStartedAt() time.Time              { return time.Unix(1, 0) }
+func (dexContext *testDexContext) StepExecutionID() string    { return dexContext.step }
+func (*testDexContext) FromStepExecutionID() string           { return "" }
+func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (dexContext *testDexContext) FirstAttemptAt() time.Time {
+	if dexContext.firstAttemptAt.IsZero() {
+		return time.Unix(1, 0)
+	}
+	return dexContext.firstAttemptAt
+}
+func (dexContext *testDexContext) Attempt() int32               { return max(dexContext.attempt, 1) }
 func (*testDexContext) HasTimerFired() bool                     { return false }
 func (*testDexContext) HasTimerFiredByIndex(int) bool           { return false }
 func (*testDexContext) WaitForMethodFailed() bool               { return false }

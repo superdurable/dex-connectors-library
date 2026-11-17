@@ -60,6 +60,8 @@ class Exchange:
     failure: Failure | None = None
     retry_after: timedelta = timedelta()
     request_id: str = ""
+    # status is the HTTP status, or 0 when no response arrived.
+    status: int = 0
 
 
 class Client:
@@ -255,6 +257,7 @@ class Client:
                         FailureKind.RESPONSE_TOO_LARGE,
                         "Intercom response exceeds the configured maxResponseBytes limit",
                     ),
+                    status=status,
                 )
             if credentials.access_token.reveal().encode() in body:
                 return Exchange(
@@ -264,8 +267,9 @@ class Client:
                         FailureKind.PROTOCOL,
                         "Intercom response reflected the connection credential",
                     ),
+                    status=status,
                 )
-            return Exchange("succeeded", body=body)
+            return Exchange("succeeded", body=body, status=status)
         body = body[: self.max_response_bytes]
         summary, request_id = _error_summary(body)
 
@@ -295,6 +299,7 @@ class Client:
                 ),
                 retry_after=min(retry_after, timedelta(minutes=1)),
                 request_id=request_id,
+                status=status,
             )
         if status == 408 or status >= 500:
             return Exchange(
@@ -305,6 +310,7 @@ class Client:
                     with_summary(f"Intercom could not complete the request (HTTP {status})"),
                 ),
                 request_id=request_id,
+                status=status,
             )
         if status in (404, 410):
             return Exchange(
@@ -315,6 +321,7 @@ class Client:
                     with_summary(f"Intercom found no such resource (HTTP {status})"),
                 ),
                 request_id=request_id,
+                status=status,
             )
         if 300 <= status < 400:
             kind = FailureKind.PROTOCOL
@@ -333,7 +340,9 @@ class Client:
                 422: FailureKind.VALIDATION,
             }.get(status, FailureKind.PROVIDER_REJECTION)
             message = with_summary(f"Intercom rejected the request (HTTP {status})")
-        return Exchange("rejected", failure=self.failure(operation, kind, message), request_id=request_id)
+        return Exchange(
+            "rejected", failure=self.failure(operation, kind, message), request_id=request_id, status=status
+        )
 
     async def read_conversation(
         self, call: Call, credentials: Credentials, operation: str, conversation_id: str

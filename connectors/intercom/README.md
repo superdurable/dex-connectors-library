@@ -1,6 +1,6 @@
 # Intercom Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intercom/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intercom/go@v0.23.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/intercom`.
 
@@ -178,26 +178,40 @@ customer-visible message is never a default. The plain-text body is escaped
 into HTML paragraphs, so markup is shown literally and line breaks are kept.
 
 Intercom documents no idempotency key for replies, and a repeated `comment` is
-a second message to the customer, so the operation never sends twice in one
-Step execution:
+a second message to the customer. The operation is a `limited` Mutation: it
+reads back before every resend and sends at most `maxSends` times, 3 by
+default, per Step execution. An application lowers or raises the cap, from 1 to
+10, with the Step factory's `MaxSends`:
 
-1. It runs with sync durability, so Dex persists the result before advancing
-   the Flow. Both durability modes use the same attempt and retry rules.
-2. Before sending, it records a Dex heartbeat checkpoint with the Worker's
-   time. If Dex does not record it, nothing is sent and the attempt retries.
-3. A 429 or a connection that never opened clears the checkpoint and retries,
-   because Intercom did not apply the request.
-4. A lost connection, an unreadable response, a 408, or a 5xx keeps the
-   checkpoint and retries. Every later attempt, including one on a new Worker
-   after the first was lost, finds the checkpoint and never sends. It reads
-   the conversation and selects `replied` with `wasAlreadyApplied: true` when a
-   part by the same admin, of the same type, with the same words, was created
-   at most five minutes before the checkpoint or later. Otherwise it selects
+1. It runs with sync durability and the shared single-dispatch fence, whose
+   Dex heartbeat checkpoint counts every possible send. If Dex does not record
+   the claim, nothing is sent and the attempt retries. A checkpoint that
+   cannot be read or trusted sends nothing and retries.
+2. A 429, a 503, or a connection that never opened records that the reply can
+   be resent and retries, because Intercom did not apply the request.
+3. A lost connection, an unreadable response, a 3xx, 408, 409, 410, another
+   5xx, or an unlisted status may follow an applied reply, so the attempt
+   retries. The next attempt, including one on a new Worker after the first
+   was lost, reads the conversation first and selects `replied` with
+   `wasAlreadyApplied: true` when a part by the same admin, of the same type,
+   with the same words, was created at most five minutes before the Step's
+   first attempt or later. When none is found it resends while fewer than
+   `maxSends` sends may have taken effect, and at the cap it selects
    `uncertain`: the reply may exist, and the Flow must decide, for example by
    asking a teammate.
-5. A conclusive 4xx selects `notFound` or `providerRejected`; a 2xx whose
-   conversation cannot be decoded selects `invalidResponse`, and the reply
-   exists.
+4. An oversized, credential-reflecting, or undecodable 2xx is read back in
+   the same attempt, then resent on the next attempt below the cap.
+5. A definite refusal of a first send, 400, 401, 403, 404, 411, 413, 414, 415,
+   or 422, selects `notFound` or `providerRejected`. After a possible earlier
+   send the same answer selects `uncertain`, because that send may have
+   applied the reply.
+6. A reply that Intercom shows, in its answer or in a read-back, with an
+   invalid part such as one without an ID selects `invalidResponse`; the reply
+   exists and is never resent.
+
+Version v0.23.0 recorded its own checkpoint, which this release cannot trust.
+A Step execution that began on v0.23.0 and retries on this release sends
+nothing and retries until its retry budget runs out.
 
 `Part` is the new part as Intercom's response shows it.
 
@@ -210,15 +224,19 @@ first and writes only when its state differs; a snooze also compares
 `snoozedUntil` in whole seconds. A conversation already in the requested state
 selects `updated` with `wasAlreadyApplied: true` and nothing is written.
 
-The operation is safe to repeat, so it keeps async durability and has no
-`uncertain` branch: every unconfirmed write retries, and the retry reads
-first. Two attempts after a Worker loss can both write the same state if the
-first result is unknown. A close without a message sends the customer
-nothing, so the only trace is a second close event in the conversation. When
-Intercom rejects a write with a 4xx other than 401, 403, 404, or 429, the
-operation reads again and selects `updated` with `wasAlreadyApplied: true` if
-the conversation reached the requested state anyway. A missing conversation is
-`notFound`.
+The write sets one final state, so the manifest declares `repeatOnUnknown:
+safe`; it keeps async durability and has no `uncertain` branch. Every unknown
+write outcome retries, including a lost answer, a 3xx, 408, 409, 410, 5xx, or
+unlisted status, and an invalid or oversized answer after the write, and the
+retry reads first. `invalidResponse` covers only the read before the change,
+so the attempt changed nothing. Two attempts after a Worker loss can both
+write the same state if the first result is unknown. A close without a message
+sends the customer nothing, so the only trace is a second close event in the
+conversation. When Intercom definitely refuses a write with 400, 401, 403,
+411, 413, 414, 415, or 422, the operation reads again and selects `updated`
+with `wasAlreadyApplied: true` if the conversation reached the requested state
+anyway, or `providerRejected`; a failed reread retries. A missing conversation
+is `notFound`.
 
 ### findContactByEmail
 
@@ -303,18 +321,22 @@ repeats only up to three error `code` tokens and their `field` names, such as
 `Intercom rejected the request (HTTP 422) [parameter_invalid; fields: admin_id]`,
 and the Receipt carries the error body's `request_id`.
 
+The table shows read outcomes. The two writes select a refusal branch only
+for 400, 401, 403, 404, 411, 413, 414, 415, or 422, and retry every other
+non-2xx answer, as their sections describe.
+
 | Response | Result |
 | --- | --- |
 | 400, 422 | `providerRejected`, `VALIDATION` |
 | 401 | `providerRejected`, `AUTHENTICATION`, with a hint to check the region |
 | 403 | `providerRejected`, `AUTHORIZATION` |
-| 402 (`api_plan_restricted`), other 4xx | `providerRejected`, `PROVIDER_REJECTION` |
-| 409 | `providerRejected`, `CONFLICT` |
-| 404, 410 | `notFound` where declared, otherwise `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |
+| 402 (`api_plan_restricted`), other 4xx | `providerRejected`, `PROVIDER_REJECTION`; writes retry |
+| 409 | `providerRejected`, `CONFLICT`; writes retry |
+| 404, 410 | `notFound` where declared, otherwise `providerRejected`; writes retry a 410 |
+| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed; writes retry |
 | 429 | Retry after `X-RateLimit-Reset`, at most one minute |
-| 408, 5xx, transport failure | Retry; `replyToConversation` reconciles first |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` |
+| 408, 5xx, transport failure | Retry; `replyToConversation` reads back before resending |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; writes read back or retry |
 | invalid input or connection credentials | `defect`, with no request |
 
 ## Not in this release
@@ -372,9 +394,11 @@ duplicates the customer's earlier open conversation.
 
 ## TypeScript package
 
-`@superdurable/connector-intercom@0.2.0` implements the five conversation
+`@superdurable/connector-intercom@0.2.1` implements the five conversation
 and contact operations with operation-specific TypeScript Step factories and,
-from 0.2.0, the `conversationEvent` webhook Trigger at parity with Go. The
+from 0.2.0, the `conversationEvent` webhook Trigger at parity with Go. From
+0.2.1, `replyToConversation` reads back and resends under the send cap as in
+Go v0.23.1. The
 [`read-conversation` example](typescript/examples/read-conversation) is a
 runnable Dex application using a static `intercom` connection, and the
 [`inbound-conversation` example](typescript/examples/inbound-conversation)
@@ -390,12 +414,15 @@ is unverified for the TypeScript package.
 | --- | --- | --- | --- |
 | Five conversation and contact operations | v0.23.0 | 0.1.0 | 0.1.0 |
 | `conversationEvent` Trigger | v0.23.0 | 0.2.0 | 0.2.0 |
+| Reply read-back and resend under the send cap | v0.23.1 | 0.2.1 | 0.2.1 |
 
 ## Python package
 
-`dex-connector-intercom==0.2.0` implements the same five conversation and
+`dex-connector-intercom==0.2.1` implements the same five conversation and
 contact operations with operation-specific Python Step factories and, from
-0.2.0, the `conversationEvent` webhook Trigger at parity with Go. The
+0.2.0, the `conversationEvent` webhook Trigger at parity with Go. From 0.2.1,
+`replyToConversation` reads back and resends under the send cap as in Go
+v0.23.1. The
 [`read_conversation` example](python/examples/read_conversation) runs a Dex
 Worker with the static `intercom-support-inbox` connection and includes a real
 Dex integration test that checks rate-limit retry and completion. The
@@ -431,8 +458,8 @@ go run ./cmd/connectorctl generate --check connectors/intercom/connector.yaml
 
 The provider fakes cover the bearer token and version header, regional hosts,
 query building and filter limits, cursor pagination, newest-first parts and
-truncation, earlier API version payload shapes, the reply checkpoint and its
-reconciliation, state comparison and rejected-write reconciliation, contact
+truncation, earlier API version payload shapes, the reply fence, its read-back,
+resend below the send cap, and `uncertain` at the cap, state comparison and rejected-write reconciliation, contact
 search, webhook signatures, topics, HEAD validation, Intercom error codes
 without message text, `X-RateLimit-Reset`, redirects, and oversized,
 malformed, and credential-reflecting responses.

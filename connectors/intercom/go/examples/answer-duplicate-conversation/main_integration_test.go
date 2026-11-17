@@ -155,28 +155,25 @@ func TestLostReplyResponseIsFoundInTheConversationWithoutResendingWithRealDex(t 
 	replies := provider.conversation(scenario.inboundID).partsOfType("comment")
 	require.Len(t, replies, 1)
 	require.Equal(t, replies[0].id, outcome.ReplyPartID)
-	require.Equal(t, 1, provider.count("reply"), "the reply was never resent")
+	require.Equal(t, 1, provider.count("reply"), "the read-back found the reply, so it was not resent")
 }
 
-func TestUnconfirmedReplyWithoutAMatchingPartFailsWithRealDex(t *testing.T) {
+func TestReplyAnswered503IsResentWithRealDex(t *testing.T) {
 	provider := newFakeIntercom(t)
 	scenario := seedDuplicateScenario(provider)
 	provider.failsFirstReplyBeforeApplying = true
 	harness := newDuplicateHarness(t, provider, defaultRequestTimeout, fakeAdminID)
 
-	flowID := harness.startDuplicate(t, "unconfirmed-reply", scenario.inboundID)
-	result := harness.waitForFlow(t, flowID)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.count("reply"), "an unconfirmed reply is never resent")
-	require.Zero(t, provider.count("manage"), "an unanswered duplicate is not closed")
-	require.Equal(t, "open", provider.conversation(scenario.inboundID).state)
+	outcome := harness.runDuplicate(t, "unapplied-reply", scenario.inboundID)
+	require.Equal(t, answerduplicate.OutcomeAnsweredAndClosed, outcome.Action)
+	require.False(t, outcome.WasReplyAlreadyApplied)
+	require.Equal(t, 2, provider.count("reply"), "Intercom answers 503 before applying, so the next attempt resends")
+	require.Len(t, provider.conversation(scenario.inboundID).partsOfType("comment"), 1)
 }
 
-// TestLostWorkerDuringReplyReconcilesWithoutResendingWithRealDex replaces the Worker while Intercom holds
-// the reply; the next attempt finds the dispatch checkpoint, reads the conversation, and sends nothing.
-func TestLostWorkerDuringReplyReconcilesWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringReplyReadsBackThenResendsWithRealDex replaces the Worker while Intercom holds the
+// reply; the next attempt reads the conversation, finds no reply yet, and resends below the send cap.
+func TestLostWorkerDuringReplyReadsBackThenResendsWithRealDex(t *testing.T) {
 	provider := newFakeIntercom(t)
 	scenario := seedDuplicateScenario(provider)
 	provider.holdsFirstReply = make(chan struct{})
@@ -188,13 +185,12 @@ func TestLostWorkerDuringReplyReconcilesWithoutResendingWithRealDex(t *testing.T
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstReply)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("reply"), "the attempt on the new Worker did not resend the reply")
-	require.GreaterOrEqual(t, provider.count("read"), 2, "the new attempt read the conversation back")
-	require.Len(t, provider.conversation(scenario.inboundID).partsOfType("comment"), 1, "the held reply exists, which is why the outcome is uncertain")
+	require.Equal(t, 2, provider.count("reply"), "the attempt on the new Worker resent the reply below the send cap")
+	require.GreaterOrEqual(t, provider.count("read"), 2, "the new attempt read the conversation back before resending")
+	// The limited tier accepts this duplicate: the held first send lands after the read-back found nothing.
+	require.Len(t, provider.conversation(scenario.inboundID).partsOfType("comment"), 2)
 }
 
 // TestLostWorkerDuringCloseConvergesOnClosedWithRealDex checks read-back after the first Worker applies a close.

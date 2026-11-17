@@ -4,6 +4,7 @@
 package intercom_test
 
 import (
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -26,10 +27,25 @@ const replyHTML = "<p>Hello &lt;b&gt;Jane&lt;/b&gt; &amp; team,<br>thanks for wa
 // replyPlainText is replyText as Intercom's display_as=plaintext renders it.
 const replyPlainText = "Hello <b>Jane</b> & team,\nthanks for waiting.\n\nWe refunded order 88213."
 
+// sendCapOfOne makes a fenced reply read back on every later attempt instead of resending.
+var sendCapOfOne = sdkgo.WithMaxSends(1)
+
 func validReplyInput() intercom.ReplyToConversationInput {
 	return intercom.ReplyToConversationInput{
 		ConversationID: testConversation, AdminID: testAdminID, MessageType: intercom.ReplyMessageTypeComment, Body: replyText,
 	}
+}
+
+// fenceState returns the state of the single-dispatch checkpoint the last attempt recorded.
+func fenceState(t *testing.T, dexContext *testDexContext) string {
+	t.Helper()
+	var marker struct {
+		State string `json:"state"`
+	}
+	isFound, err := dexContext.GetLastHeartbeatValue(&marker)
+	require.NoError(t, err)
+	require.True(t, isFound, "the fence records a checkpoint")
+	return marker.State
 }
 
 func TestReplySendsEscapedHTMLAsTheAdminAfterRecordingACheckpoint(t *testing.T) {
@@ -48,7 +64,7 @@ func TestReplySendsEscapedHTMLAsTheAdminAfterRecordingACheckpoint(t *testing.T) 
 	require.Equal(t, intercom.ConversationStateOpen, result.Value.ConversationState)
 	require.False(t, result.Value.WasAlreadyApplied)
 	require.Equal(t, "901", result.Receipt.Metadata["partId"])
-	require.True(t, dexContext.hasHeartbeat(), "the dispatch checkpoint stays recorded")
+	require.Equal(t, "claimed", fenceState(t, dexContext), "the dispatch claim stays recorded")
 
 	request := provider.request(0)
 	require.Equal(t, http.MethodPost, request.method)
@@ -71,7 +87,7 @@ func TestReplyNoteIdentifiesItsPartWhenIntercomChangesTheText(t *testing.T) {
 	require.Contains(t, provider.request(0).body, `"message_type":"note"`)
 }
 
-func TestUnconfirmedReplyIsReconciledFromTheConversationAndNeverResent(t *testing.T) {
+func TestUnconfirmedReplyIsReadBackBeforeAnyResend(t *testing.T) {
 	for _, test := range []struct {
 		name           string
 		part           testPart
@@ -81,13 +97,15 @@ func TestUnconfirmedReplyIsReconciledFromTheConversationAndNeverResent(t *testin
 			expectedBranch: intercom.ReplyToConversationBranchReplied},
 		{name: "whitespace rendering differs", part: testPart{id: "903", partType: "comment", body: "Hello <b>Jane</b> &amp; team, thanks for waiting. We refunded order 88213.", authorType: "admin", authorID: testAdminID},
 			expectedBranch: intercom.ReplyToConversationBranchReplied},
+		{name: "matching part without an ID", part: testPart{partType: "comment", body: replyPlainText, authorType: "admin", authorID: testAdminID},
+			expectedBranch: intercom.ReplyToConversationBranchInvalidResponse},
 		{name: "other text", part: testPart{id: "903", partType: "comment", body: "Another reply", authorType: "admin", authorID: testAdminID},
 			expectedBranch: sdkgo.UncertainBranchID},
 		{name: "other admin", part: testPart{id: "903", partType: "comment", body: replyPlainText, authorType: "admin", authorID: "991267"},
 			expectedBranch: sdkgo.UncertainBranchID},
 		{name: "note instead of comment", part: testPart{id: "903", partType: "note", body: replyPlainText, authorType: "admin", authorID: testAdminID},
 			expectedBranch: sdkgo.UncertainBranchID},
-		{name: "older than the dispatch", part: testPart{id: "903", partType: "comment", body: replyPlainText, authorType: "admin", authorID: testAdminID, createdAt: time.Now().Add(-time.Hour).Unix()},
+		{name: "older than the first attempt", part: testPart{id: "903", partType: "comment", body: replyPlainText, authorType: "admin", authorID: testAdminID, createdAt: time.Now().Add(-time.Hour).Unix()},
 			expectedBranch: sdkgo.UncertainBranchID},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -99,30 +117,108 @@ func TestUnconfirmedReplyIsReconciledFromTheConversationAndNeverResent(t *testin
 					writeJSON(t, response, http.StatusBadGateway, `{"type":"error.list","errors":[{"code":"server_error"}]}`)
 					return
 				}
-				require.Equal(t, http.MethodGet, request.Method, "a later attempt only reads")
+				require.Equal(t, http.MethodGet, request.Method, "at the cap a later attempt only reads")
 				writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil, test.part))
 			})
 			client := newIntercomClient(t, provider.URL)
 			dexContext := newTestDexContext("reply-reconcile")
-			_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+			dexContext.firstAttemptAt = time.Now()
+			_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput(), sendCapOfOne)
 			var retry *sdkgo.RetryError
-			require.ErrorAs(t, err, &retry, "a 502 may have applied the reply, so the attempt retries with the checkpoint kept")
-			require.True(t, dexContext.hasHeartbeat())
+			require.ErrorAs(t, err, &retry, "a 502 may have applied the reply, so the attempt retries with the claim kept")
+			require.Equal(t, "claimed", fenceState(t, dexContext))
 
-			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+			dexContext.startNextAttempt()
+			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput(), sendCapOfOne)
 			require.NoError(t, err)
 			require.Equal(t, test.expectedBranch, result.Branch)
 			require.Equal(t, 2, provider.requestCount())
 			require.Equal(t, "/conversations/"+testConversation+"?display_as=plaintext", provider.request(1).path)
-			if test.expectedBranch == intercom.ReplyToConversationBranchReplied {
+			switch test.expectedBranch {
+			case intercom.ReplyToConversationBranchReplied:
 				require.True(t, result.Value.WasAlreadyApplied)
 				require.Equal(t, "903", result.Value.Part.ID)
-				return
+			case sdkgo.UncertainBranchID:
+				require.Equal(t, "an earlier attempt of this Step may have sent the reply without a confirmed outcome, and the conversation shows no matching part",
+					result.Failure.Message)
 			}
-			require.Equal(t, "an earlier attempt of this Step sent the reply without a confirmed outcome, and the conversation shows no matching part, so it is not sent again",
-				result.Failure.Message)
 		})
 	}
+}
+
+func TestUnconfirmedReplyIsResentBelowTheCapAfterAnAbsentReadBack(t *testing.T) {
+	provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch index {
+		case 0:
+			writeJSON(t, response, http.StatusBadGateway, `{"type":"error.list","errors":[{"code":"server_error"}]}`)
+		case 1:
+			require.Equal(t, http.MethodGet, request.Method, "the read-back comes before the resend")
+			writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil))
+		default:
+			require.Equal(t, http.MethodPost, request.Method)
+			writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil,
+				testPart{id: "905", partType: "comment", body: replyHTML, authorType: "admin", authorID: testAdminID, createdAt: time.Now().Unix()}))
+		}
+	})
+	client := newIntercomClient(t, provider.URL)
+	dexContext := newTestDexContext("reply-resend")
+	_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+
+	dexContext.startNextAttempt()
+	result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+	require.NoError(t, err)
+	require.Equal(t, intercom.ReplyToConversationBranchReplied, result.Branch)
+	require.Equal(t, "905", result.Value.Part.ID)
+	require.False(t, result.Value.WasAlreadyApplied)
+	require.Equal(t, 3, provider.requestCount())
+}
+
+func TestUnconfirmedReplySelectsUncertainAtTheSendCap(t *testing.T) {
+	provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil))
+			return
+		}
+		writeJSON(t, response, http.StatusBadGateway, `{"type":"error.list","errors":[{"code":"server_error"}]}`)
+	})
+	client := newIntercomClient(t, provider.URL)
+	dexContext := newTestDexContext("reply-cap")
+	for attempt := 1; attempt <= 3; attempt++ {
+		_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d sends below the cap of three", attempt)
+		dexContext.startNextAttempt()
+	}
+	result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	posts := 0
+	for index := range provider.requestCount() {
+		if provider.request(index).method == http.MethodPost {
+			posts++
+		}
+	}
+	require.Equal(t, 3, posts, "the reply is sent at most three times")
+	require.Equal(t, 6, provider.requestCount(), "every attempt after the first reads back first")
+}
+
+func TestAcceptedReplyWithAnUnusableAnswerIsReadBackInTheSameAttempt(t *testing.T) {
+	provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusOK, `{"type":"conversation","id":"another"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil,
+			testPart{id: "906", partType: "comment", body: replyPlainText, authorType: "admin", authorID: testAdminID, createdAt: time.Now().Unix()}))
+	})
+	result, err := sdkgo.RunMutation(newTestDexContext("reply-unusable"), newIntercomClient(t, provider.URL).ReplyToConversation(), intercomConnection, validReplyInput())
+	require.NoError(t, err)
+	require.Equal(t, intercom.ReplyToConversationBranchReplied, result.Branch)
+	require.Equal(t, "906", result.Value.Part.ID)
+	require.True(t, result.Value.WasAlreadyApplied)
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestReplyReconciliationReadFailuresAreRetriedOrUncertain(t *testing.T) {
@@ -132,18 +228,25 @@ func TestReplyReconciliationReadFailuresAreRetriedOrUncertain(t *testing.T) {
 		expectedBranch sdkgo.BranchID
 	}{
 		{name: "rate limited read", status: http.StatusTooManyRequests},
-		{name: "missing conversation", status: http.StatusNotFound, expectedBranch: intercom.ReplyToConversationBranchNotFound},
+		{name: "missing conversation", status: http.StatusNotFound, expectedBranch: sdkgo.UncertainBranchID},
 		{name: "rejected read", status: http.StatusUnauthorized, expectedBranch: sdkgo.UncertainBranchID},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+			provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+				if index == 0 {
+					writeJSON(t, response, http.StatusBadGateway, `{"type":"error.list","errors":[{"code":"server_error"}]}`)
+					return
+				}
 				writeJSON(t, response, test.status, `{"type":"error.list","errors":[{"code":"some_code","message":"SENTINEL"}]}`)
 			})
+			client := newIntercomClient(t, provider.URL)
 			dexContext := newTestDexContext("reply-read-" + test.name)
-			require.NoError(t, dexContext.RecordHeartbeat(map[string]any{"intercomReplyDispatchedAt": time.Now().Unix()}))
-			result, err := sdkgo.RunMutation(dexContext, newIntercomClient(t, provider.URL).ReplyToConversation(), intercomConnection, validReplyInput())
-			require.Equal(t, http.MethodGet, provider.request(0).method)
-			require.Equal(t, 1, provider.requestCount(), "an attempt that finds the checkpoint never sends")
+			_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput(), sendCapOfOne)
+			require.Error(t, err)
+			dexContext.startNextAttempt()
+			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput(), sendCapOfOne)
+			require.Equal(t, http.MethodGet, provider.request(1).method)
+			require.Equal(t, 2, provider.requestCount(), "an attempt at the cap never sends")
 			if test.expectedBranch == "" {
 				var retry *sdkgo.RetryError
 				require.ErrorAs(t, err, &retry)
@@ -156,7 +259,7 @@ func TestReplyReconciliationReadFailuresAreRetriedOrUncertain(t *testing.T) {
 	}
 }
 
-func TestRateLimitedOrUnsentReplyClearsTheCheckpointForAResend(t *testing.T) {
+func TestRateLimitedOrUnsentReplyRecordsThatItCanBeResent(t *testing.T) {
 	t.Run("rate limited", func(t *testing.T) {
 		provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 			if index == 0 {
@@ -173,12 +276,13 @@ func TestRateLimitedOrUnsentReplyClearsTheCheckpointForAResend(t *testing.T) {
 		var retryAfter *dex.RetryAfterError
 		require.ErrorAs(t, err, &retryAfter)
 		require.InDelta(t, 5*time.Second, retryAfter.After, float64(2*time.Second))
-		require.False(t, dexContext.hasHeartbeat(), "Intercom rejected the reply before applying it")
+		require.Equal(t, "canResend", fenceState(t, dexContext), "Intercom rejected the reply before applying it")
 
+		dexContext.startNextAttempt()
 		result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
 		require.NoError(t, err)
 		require.Equal(t, intercom.ReplyToConversationBranchReplied, result.Branch)
-		require.Equal(t, http.MethodPost, provider.request(1).method, "the retry sends the reply")
+		require.Equal(t, http.MethodPost, provider.request(1).method, "the retry sends the reply without a read-back")
 	})
 	t.Run("connection refused", func(t *testing.T) {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -190,11 +294,11 @@ func TestRateLimitedOrUnsentReplyClearsTheCheckpointForAResend(t *testing.T) {
 		var retry *sdkgo.RetryError
 		require.ErrorAs(t, err, &retry)
 		require.Equal(t, "Intercom could not be reached; no request was sent", retry.Failure.Message)
-		require.False(t, dexContext.hasHeartbeat())
+		require.Equal(t, "canResend", fenceState(t, dexContext))
 	})
 }
 
-func TestLostReplyResponseKeepsTheCheckpoint(t *testing.T) {
+func TestLostReplyResponseKeepsTheClaim(t *testing.T) {
 	provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		hijacker, isHijacker := response.(http.Hijacker)
 		require.True(t, isHijacker)
@@ -206,7 +310,7 @@ func TestLostReplyResponseKeepsTheCheckpoint(t *testing.T) {
 	_, err := sdkgo.RunMutation(dexContext, newIntercomClient(t, provider.URL).ReplyToConversation(), intercomConnection, validReplyInput())
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
-	require.True(t, dexContext.hasHeartbeat(), "the request may have been applied")
+	require.Equal(t, "claimed", fenceState(t, dexContext), "the request may have been applied")
 }
 
 func TestReplyIsNotSentWhenDexDoesNotRecordTheCheckpoint(t *testing.T) {
@@ -216,11 +320,31 @@ func TestReplyIsNotSentWhenDexDoesNotRecordTheCheckpoint(t *testing.T) {
 	_, err := sdkgo.RunMutation(dexContext, newIntercomClient(t, provider.URL).ReplyToConversation(), intercomConnection, validReplyInput())
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
-	require.Equal(t, "Dex did not record the dispatch checkpoint; nothing was sent", retry.Failure.Message)
+	require.Equal(t, "the reply was not sent before the attempt deadline or checkpoint", retry.Failure.Message)
 	require.Zero(t, provider.requestCount())
 }
 
-func TestReplyRejectionsAndInvalidResponsesSelectTheirBranches(t *testing.T) {
+func TestUntrustedReplyCheckpointRetriesWithoutSending(t *testing.T) {
+	for name, marker := range map[string]any{
+		"foreign call":       map[string]any{"callId": "another-call", "attempt": 1, "state": "claimed"},
+		"v0.23.0 checkpoint": map[string]any{"intercomReplyDispatchedCallId": "call", "intercomReplyDispatchedAt": time.Now().Unix()},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingIntercom(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request may be sent") })
+			dexContext := newTestDexContext("reply-untrusted")
+			encoded, err := json.Marshal(marker)
+			require.NoError(t, err)
+			dexContext.heartbeat = encoded
+			dexContext.startNextAttempt()
+			_, err = sdkgo.RunMutation(dexContext, newIntercomClient(t, provider.URL).ReplyToConversation(), intercomConnection, validReplyInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "FailClosed never selects a terminal branch")
+			require.Zero(t, provider.requestCount())
+		})
+	}
+}
+
+func TestReplyDefiniteRefusalsSelectTheirBranchesOnlyOnAFirstSend(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		status int
@@ -229,18 +353,69 @@ func TestReplyRejectionsAndInvalidResponsesSelectTheirBranches(t *testing.T) {
 	}{
 		{name: "missing conversation", status: http.StatusNotFound, body: `{"type":"error.list","errors":[{"code":"not_found"}]}`, branch: intercom.ReplyToConversationBranchNotFound},
 		{name: "unknown admin", status: http.StatusUnprocessableEntity, body: `{"type":"error.list","errors":[{"code":"parameter_invalid","field":"admin_id"}]}`, branch: intercom.ReplyToConversationBranchProviderRejected},
-		{name: "invalid accepted response", status: http.StatusOK, body: `{"type":"conversation","id":"another"}`, branch: intercom.ReplyToConversationBranchInvalidResponse},
+		{name: "rejected token", status: http.StatusUnauthorized, body: `{"type":"error.list","errors":[{"code":"unauthorized"}]}`, branch: intercom.ReplyToConversationBranchProviderRejected},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 				writeJSON(t, response, test.status, test.body)
 			})
-			result, err := sdkgo.RunMutation(newTestDexContext("reply-"+test.name), newIntercomClient(t, provider.URL).ReplyToConversation(), intercomConnection, validReplyInput())
+			dexContext := newTestDexContext("reply-" + test.name)
+			result, err := sdkgo.RunMutation(dexContext, newIntercomClient(t, provider.URL).ReplyToConversation(), intercomConnection, validReplyInput())
 			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
-			require.Equal(t, 1, provider.requestCount(), "a conclusive outcome is not retried")
+			require.Equal(t, 1, provider.requestCount(), "a definite refusal is not resent")
+			require.Equal(t, "canResend", fenceState(t, dexContext), "the refusal proves nothing was applied")
+		})
+		t.Run(test.name+" after a possible earlier send", func(t *testing.T) {
+			provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, index int) {
+				switch {
+				case index == 0:
+					writeJSON(t, response, http.StatusBadGateway, `{"type":"error.list","errors":[{"code":"server_error"}]}`)
+				case request.Method == http.MethodGet:
+					writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil))
+				default:
+					writeJSON(t, response, test.status, test.body)
+				}
+			})
+			client := newIntercomClient(t, provider.URL)
+			dexContext := newTestDexContext("reply-after-unknown-" + test.name)
+			_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+			require.Error(t, err)
+			dexContext.startNextAttempt()
+			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+			require.NoError(t, err)
+			require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "the earlier send may have applied the reply")
 		})
 	}
+}
+
+func TestReplyUnknownStatusesRetry(t *testing.T) {
+	for name, status := range map[string]int{
+		"conflict": http.StatusConflict, "gone": http.StatusGone, "redirect": http.StatusFound,
+		"unlisted": http.StatusTeapot, "timeout": http.StatusRequestTimeout, "server error": http.StatusInternalServerError,
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, status, `{"type":"error.list","errors":[{"code":"some_code"}]}`)
+			})
+			dexContext := newTestDexContext("reply-unknown-" + name)
+			_, err := sdkgo.RunMutation(dexContext, newIntercomClient(t, provider.URL).ReplyToConversation(), intercomConnection, validReplyInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, "claimed", fenceState(t, dexContext), "the reply may have been applied")
+		})
+	}
+}
+
+func TestAcceptedReplyWithAnInvalidPartSelectsInvalidResponse(t *testing.T) {
+	provider := newRecordingIntercom(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil,
+			testPart{partType: "comment", body: replyHTML, authorType: "admin", authorID: testAdminID, createdAt: time.Now().Unix()}))
+	})
+	result, err := sdkgo.RunMutation(newTestDexContext("reply-invalid-part"), newIntercomClient(t, provider.URL).ReplyToConversation(), intercomConnection, validReplyInput())
+	require.NoError(t, err)
+	require.Equal(t, intercom.ReplyToConversationBranchInvalidResponse, result.Branch)
+	require.Equal(t, 1, provider.requestCount(), "the reply exists, so it is not read back or resent")
 }
 
 func TestReplyValidatesInputBeforeAnyRequest(t *testing.T) {

@@ -86,9 +86,9 @@ export const ReplyToConversationBranchReplied = ReplyToConversationBranch.Replie
 export const ReplyToConversationBranchNotFound = ReplyToConversationBranch.NotFound;
 /** Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added. */
 export const ReplyToConversationBranchProviderRejected = ReplyToConversationBranch.ProviderRejected;
-/** An earlier attempt sent the reply but its outcome cannot be confirmed and the conversation shows no matching part, so the reply may exist; the connector never resends it. */
+/** The send cap is reached, and the conversation shows no part by the admin with the reply's type and text after sends whose outcome could not be confirmed, so the reply may still appear. Below the cap, an unconfirmed send is read back and then resent. */
 export const ReplyToConversationBranchUncertain = ReplyToConversationBranch.Uncertain;
-/** Intercom accepted the reply but returned an invalid or oversized conversation, so the reply exists. */
+/** Intercom shows the reply in the conversation, but its part is invalid, such as a part without an ID; the reply exists, so do not send it again. */
 export const ReplyToConversationBranchInvalidResponse = ReplyToConversationBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const ReplyToConversationBranchDefect = ReplyToConversationBranch.Defect;
@@ -99,8 +99,8 @@ export const ReplyToConversationDefinition: MutationDefinition = {
     { id: "replied", description: "The reply or note is in the conversation; a retried attempt that found its own earlier reply reports it instead of sending again." },
     { id: "notFound", description: "The conversation does not exist or is not visible to the connection's token; nothing was added.", optional: true },
     { id: "providerRejected", description: "Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added.", optional: true },
-    { id: "uncertain", description: "An earlier attempt sent the reply but its outcome cannot be confirmed and the conversation shows no matching part, so the reply may exist; the connector never resends it.", optional: true },
-    { id: "invalidResponse", description: "Intercom accepted the reply but returned an invalid or oversized conversation, so the reply exists.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, and the conversation shows no part by the admin with the reply's type and text after sends whose outcome could not be confirmed, so the reply may still appear. Below the cap, an unconfirmed send is read back and then resent.", optional: true },
+    { id: "invalidResponse", description: "Intercom shows the reply in the conversation, but its part is invalid, such as a part without an ID; the reply exists, so do not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
@@ -124,7 +124,7 @@ export const UpdateConversationStateBranchUpdated = UpdateConversationStateBranc
 export const UpdateConversationStateBranchNotFound = UpdateConversationStateBranch.NotFound;
 /** Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state. */
 export const UpdateConversationStateBranchProviderRejected = UpdateConversationStateBranch.ProviderRejected;
-/** Intercom returned an invalid or oversized conversation, so the change may have been applied. */
+/** Intercom returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing. */
 export const UpdateConversationStateBranchInvalidResponse = UpdateConversationStateBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateConversationStateBranchDefect = UpdateConversationStateBranch.Defect;
@@ -135,12 +135,11 @@ export const UpdateConversationStateDefinition: MutationDefinition = {
     { id: "updated", description: "The conversation is in the requested state; a repeated attempt that finds it there writes nothing." },
     { id: "notFound", description: "The conversation does not exist or is not visible to the connection's token.", optional: true },
     { id: "providerRejected", description: "Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state.", optional: true },
-    { id: "invalidResponse", description: "Intercom returned an invalid or oversized conversation, so the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "Intercom returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateConversationState. */
 export const UpdateConversationStateMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
