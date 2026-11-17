@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: spotify
   displayName: Spotify
-  description: Read Spotify albums and playlists, including their bounded track pages, for the authenticated user.
+  description: Read Spotify artists, albums, and playlists with bounded catalog and track pages for the authenticated user.
   company: Spotify
   categories: [data-search]
   version: v0.25.0
@@ -94,6 +94,83 @@ spec:
         exactScopes: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, access_denied]
   operations:
+    - name: getArtist
+      goName: GetArtist
+      inputType: GetArtistInput
+      outputType: ArtistSummary
+      kind: query
+      description: Read one Spotify artist's name, genres, and attribution link.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: The artist was loaded.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
+        - {id: accessDenied, goName: AccessDenied, description: Spotify denied access to this artist., optional: true}
+        - {id: notFound, goName: NotFound, description: Spotify could not find this artist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the artist query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned invalid or oversized artist metadata., optional: true}
+        - {id: defect, goName: Defect, description: The artist ID or local connection is invalid., optional: true}
+      mocks:
+        - name: sampleArtist
+          branch: found
+          default: true
+          description: A sample Spotify artist with a genre.
+          output: {id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist, spotifyUrl: https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF, genres: [pop]}
+    - name: listArtistAlbums
+      goName: ListArtistAlbums
+      inputType: ListArtistAlbumsInput
+      outputType: AlbumSummaryPage
+      kind: query
+      description: List one bounded page of albums associated with a Spotify artist.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: The artist album page was loaded.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
+        - {id: accessDenied, goName: AccessDenied, description: Spotify denied access to this artist's albums., optional: true}
+        - {id: notFound, goName: NotFound, description: Spotify could not find this artist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the artist album query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned invalid or oversized artist albums., optional: true}
+        - {id: defect, goName: Defect, description: "The artist ID, market, page settings, or local connection is invalid.", optional: true}
+      pagination: {inputField: offset, nextField: nextOffset}
+      mocks:
+        - name: sampleArtistAlbums
+          branch: listed
+          default: true
+          description: Three sample artist albums across three pages.
+          pages:
+            - {albums: [{id: 1ATL5GLyefJaxhQzSPVrLX, name: An Album, spotifyUrl: https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX, releaseDate: '2026-08-14', totalTracks: 10, artists: [{id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist}]}], limit: 1, offset: 0, total: 3, nextOffset: 1}
+            - {albums: [{id: 2up3OPMp9Tb4dAKM2erWXQ, name: Second Album, spotifyUrl: https://open.spotify.com/album/2up3OPMp9Tb4dAKM2erWXQ, releaseDate: '2025-01-01', totalTracks: 8, artists: [{id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist}]}], limit: 1, offset: 1, total: 3, nextOffset: 2}
+            - {albums: [{id: 4aawyAB9vmqN3uQ7FjRGTy, name: Third Album, spotifyUrl: https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy, releaseDate: '2024-01-01', totalTracks: 6, artists: [{id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist}]}], limit: 1, offset: 2, total: 3}
+    - name: searchArtists
+      goName: SearchArtists
+      inputType: SearchArtistsInput
+      outputType: ArtistSummaryPage
+      kind: query
+      description: Search Spotify's artist catalog and return one bounded result page.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: The artist search page was loaded.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
+        - {id: accessDenied, goName: AccessDenied, description: Spotify denied the artist search., optional: true}
+        - {id: notFound, goName: NotFound, description: Spotify could not resolve the artist search., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the artist search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned invalid or oversized artist results., optional: true}
+        - {id: defect, goName: Defect, description: "The query, market, page settings, or local connection is invalid.", optional: true}
+      pagination: {inputField: offset, nextField: nextOffset}
+      mocks:
+        - name: sampleArtistSearch
+          branch: listed
+          default: true
+          description: Three sample artists across three search pages.
+          pages:
+            - {artists: [{id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist, spotifyUrl: https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF, genres: [pop]}], limit: 1, offset: 0, total: 3, nextOffset: 1}
+            - {artists: [{id: 3TVXtAsR1Inumwj472S9r4, name: Another Artist, spotifyUrl: https://open.spotify.com/artist/3TVXtAsR1Inumwj472S9r4, genres: [rock]}], limit: 1, offset: 1, total: 3, nextOffset: 2}
+            - {artists: [{id: 1Xyo4u8uXC1ZmMpatF05PJ, name: Third Artist, spotifyUrl: https://open.spotify.com/artist/1Xyo4u8uXC1ZmMpatF05PJ, genres: [soul]}], limit: 1, offset: 2, total: 3}
     - name: getAlbum
       goName: GetAlbum
       inputType: GetAlbumInput

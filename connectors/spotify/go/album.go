@@ -336,13 +336,17 @@ func decodeAlbumSearchPage(body []byte) (AlbumSummaryPage, error) {
 	if err := decodeJSON(body, &wrapper); err != nil || len(wrapper.Albums) == 0 {
 		return AlbumSummaryPage{}, errors.New("missing album search page")
 	}
+	return decodeAlbumPage(wrapper.Albums, 10)
+}
+
+func decodeAlbumPage(body []byte, maximumLimit int) (AlbumSummaryPage, error) {
 	var providerPage struct {
 		Limit  int            `json:"limit"`
 		Offset int            `json:"offset"`
 		Total  int            `json:"total"`
 		Items  []spotifyAlbum `json:"items"`
 	}
-	if err := decodeJSON(wrapper.Albums, &providerPage); err != nil || providerPage.Limit < 1 || providerPage.Limit > 10 || providerPage.Offset < 0 || providerPage.Total < 0 || len(providerPage.Items) > providerPage.Limit {
+	if err := decodeJSON(body, &providerPage); err != nil || providerPage.Limit < 1 || providerPage.Limit > maximumLimit || providerPage.Offset < 0 || providerPage.Total < 0 || len(providerPage.Items) > providerPage.Limit {
 		return AlbumSummaryPage{}, errors.New("invalid album search page")
 	}
 	page := AlbumSummaryPage{Albums: make([]AlbumSummary, 0, len(providerPage.Items)), Limit: providerPage.Limit, Offset: providerPage.Offset, Total: providerPage.Total}

@@ -18,6 +18,9 @@ import (
 // Mock is a scripted spotify connection. Script each operation through its accessor.
 type Mock struct {
 	connection         spotify.Connection
+	getArtist          *connectormock.Query[spotify.GetArtistInput, spotify.ArtistSummary]
+	listArtistAlbums   *connectormock.Query[spotify.ListArtistAlbumsInput, spotify.AlbumSummaryPage]
+	searchArtists      *connectormock.Query[spotify.SearchArtistsInput, spotify.ArtistSummaryPage]
 	getAlbum           *connectormock.Query[spotify.GetAlbumInput, spotify.AlbumSummary]
 	listAlbumTracks    *connectormock.Query[spotify.ListAlbumTracksInput, spotify.AlbumTrackPage]
 	searchAlbums       *connectormock.Query[spotify.SearchAlbumsInput, spotify.AlbumSummaryPage]
@@ -32,6 +35,9 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getArtist:          connectormock.NewQuery[spotify.GetArtistInput, spotify.ArtistSummary](t, spotify.GetArtistDefinition),
+		listArtistAlbums:   connectormock.NewQuery[spotify.ListArtistAlbumsInput, spotify.AlbumSummaryPage](t, spotify.ListArtistAlbumsDefinition),
+		searchArtists:      connectormock.NewQuery[spotify.SearchArtistsInput, spotify.ArtistSummaryPage](t, spotify.SearchArtistsDefinition),
 		getAlbum:           connectormock.NewQuery[spotify.GetAlbumInput, spotify.AlbumSummary](t, spotify.GetAlbumDefinition),
 		listAlbumTracks:    connectormock.NewQuery[spotify.ListAlbumTracksInput, spotify.AlbumTrackPage](t, spotify.ListAlbumTracksDefinition),
 		searchAlbums:       connectormock.NewQuery[spotify.SearchAlbumsInput, spotify.AlbumSummaryPage](t, spotify.SearchAlbumsDefinition),
@@ -40,6 +46,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		getPlaylist:        connectormock.NewQuery[spotify.GetPlaylistInput, spotify.PlaylistSummary](t, spotify.GetPlaylistDefinition),
 		listPlaylistTracks: connectormock.NewQuery[spotify.ListPlaylistTracksInput, spotify.PlaylistTrackPage](t, spotify.ListPlaylistTracksDefinition),
 	}
+	mock.getArtist.Default(GetArtistDefault())
+	mock.listArtistAlbums.Default(ListArtistAlbumsDefault())
+	mock.searchArtists.Default(SearchArtistsDefault())
 	mock.getAlbum.Default(GetAlbumDefault())
 	mock.listAlbumTracks.Default(ListAlbumTracksDefault())
 	mock.searchAlbums.Default(SearchAlbumsDefault())
@@ -57,6 +66,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() spotify.Connection { return mock.connection }
+
+// GetArtist returns the getArtist script.
+func (mock *Mock) GetArtist() *connectormock.Query[spotify.GetArtistInput, spotify.ArtistSummary] {
+	return mock.getArtist
+}
+
+// ListArtistAlbums returns the listArtistAlbums script.
+func (mock *Mock) ListArtistAlbums() *connectormock.Query[spotify.ListArtistAlbumsInput, spotify.AlbumSummaryPage] {
+	return mock.listArtistAlbums
+}
+
+// SearchArtists returns the searchArtists script.
+func (mock *Mock) SearchArtists() *connectormock.Query[spotify.SearchArtistsInput, spotify.ArtistSummaryPage] {
+	return mock.searchArtists
+}
 
 // GetAlbum returns the getAlbum script.
 func (mock *Mock) GetAlbum() *connectormock.Query[spotify.GetAlbumInput, spotify.AlbumSummary] {
@@ -95,6 +119,15 @@ func (mock *Mock) ListPlaylistTracks() *connectormock.Query[spotify.ListPlaylist
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetArtist() sdkgo.Query[spotify.GetArtistInput, spotify.ArtistSummary] {
+	return operations.mock.getArtist
+}
+func (operations mockOperations) ListArtistAlbums() sdkgo.Query[spotify.ListArtistAlbumsInput, spotify.AlbumSummaryPage] {
+	return operations.mock.listArtistAlbums
+}
+func (operations mockOperations) SearchArtists() sdkgo.Query[spotify.SearchArtistsInput, spotify.ArtistSummaryPage] {
+	return operations.mock.searchArtists
+}
 func (operations mockOperations) GetAlbum() sdkgo.Query[spotify.GetAlbumInput, spotify.AlbumSummary] {
 	return operations.mock.getAlbum
 }
@@ -115,6 +148,167 @@ func (operations mockOperations) GetPlaylist() sdkgo.Query[spotify.GetPlaylistIn
 }
 func (operations mockOperations) ListPlaylistTracks() sdkgo.Query[spotify.ListPlaylistTracksInput, spotify.PlaylistTrackPage] {
 	return operations.mock.listPlaylistTracks
+}
+
+// GetArtistFound selects the found branch: The artist was loaded.
+func GetArtistFound(value spotify.ArtistSummary, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummary] {
+	return connectormock.Branch(spotify.GetArtistBranchFound, value, failure)
+}
+
+// GetArtistAuthorizationRevoked selects the authorizationRevoked branch: The Spotify OAuth grant is invalid or revoked.
+func GetArtistAuthorizationRevoked(value spotify.ArtistSummary, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummary] {
+	return connectormock.Branch(spotify.GetArtistBranchAuthorizationRevoked, value, failure)
+}
+
+// GetArtistAccessDenied selects the accessDenied branch: Spotify denied access to this artist.
+func GetArtistAccessDenied(value spotify.ArtistSummary, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummary] {
+	return connectormock.Branch(spotify.GetArtistBranchAccessDenied, value, failure)
+}
+
+// GetArtistNotFound selects the notFound branch: Spotify could not find this artist.
+func GetArtistNotFound(value spotify.ArtistSummary, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummary] {
+	return connectormock.Branch(spotify.GetArtistBranchNotFound, value, failure)
+}
+
+// GetArtistProviderRejected selects the providerRejected branch: Spotify conclusively rejected the artist query.
+func GetArtistProviderRejected(value spotify.ArtistSummary, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummary] {
+	return connectormock.Branch(spotify.GetArtistBranchProviderRejected, value, failure)
+}
+
+// GetArtistInvalidResponse selects the invalidResponse branch: Spotify returned invalid or oversized artist metadata.
+func GetArtistInvalidResponse(value spotify.ArtistSummary, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummary] {
+	return connectormock.Branch(spotify.GetArtistBranchInvalidResponse, value, failure)
+}
+
+// GetArtistDefect selects the defect branch: The artist ID or local connection is invalid.
+func GetArtistDefect(value spotify.ArtistSummary, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummary] {
+	return connectormock.Branch(spotify.GetArtistBranchDefect, value, failure)
+}
+
+// GetArtistRetry asks Dex to retry the getArtist Step, after the delay when it is positive.
+func GetArtistRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spotify.ArtistSummary] {
+	return connectormock.Retry[spotify.ArtistSummary](failure, after)
+}
+
+// GetArtistSampleArtist is the manifest mock sampleArtist: A sample Spotify artist with a genre.
+func GetArtistSampleArtist() connectormock.Case[spotify.ArtistSummary] {
+	value := connectormock.MustDecodeOutput[spotify.ArtistSummary](`{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist","spotifyUrl":"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF","genres":["pop"]}`)
+	return connectormock.Branch(spotify.GetArtistBranchFound, value, nil)
+}
+
+// GetArtistDefault is the manifest default, sampleArtist, which New installs.
+func GetArtistDefault() connectormock.Case[spotify.ArtistSummary] { return GetArtistSampleArtist() }
+
+// ListArtistAlbumsListed selects the listed branch: The artist album page was loaded.
+func ListArtistAlbumsListed(value spotify.AlbumSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.AlbumSummaryPage] {
+	return connectormock.Branch(spotify.ListArtistAlbumsBranchListed, value, failure)
+}
+
+// ListArtistAlbumsAuthorizationRevoked selects the authorizationRevoked branch: The Spotify OAuth grant is invalid or revoked.
+func ListArtistAlbumsAuthorizationRevoked(value spotify.AlbumSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.AlbumSummaryPage] {
+	return connectormock.Branch(spotify.ListArtistAlbumsBranchAuthorizationRevoked, value, failure)
+}
+
+// ListArtistAlbumsAccessDenied selects the accessDenied branch: Spotify denied access to this artist's albums.
+func ListArtistAlbumsAccessDenied(value spotify.AlbumSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.AlbumSummaryPage] {
+	return connectormock.Branch(spotify.ListArtistAlbumsBranchAccessDenied, value, failure)
+}
+
+// ListArtistAlbumsNotFound selects the notFound branch: Spotify could not find this artist.
+func ListArtistAlbumsNotFound(value spotify.AlbumSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.AlbumSummaryPage] {
+	return connectormock.Branch(spotify.ListArtistAlbumsBranchNotFound, value, failure)
+}
+
+// ListArtistAlbumsProviderRejected selects the providerRejected branch: Spotify conclusively rejected the artist album query.
+func ListArtistAlbumsProviderRejected(value spotify.AlbumSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.AlbumSummaryPage] {
+	return connectormock.Branch(spotify.ListArtistAlbumsBranchProviderRejected, value, failure)
+}
+
+// ListArtistAlbumsInvalidResponse selects the invalidResponse branch: Spotify returned invalid or oversized artist albums.
+func ListArtistAlbumsInvalidResponse(value spotify.AlbumSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.AlbumSummaryPage] {
+	return connectormock.Branch(spotify.ListArtistAlbumsBranchInvalidResponse, value, failure)
+}
+
+// ListArtistAlbumsDefect selects the defect branch: The artist ID, market, page settings, or local connection is invalid.
+func ListArtistAlbumsDefect(value spotify.AlbumSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.AlbumSummaryPage] {
+	return connectormock.Branch(spotify.ListArtistAlbumsBranchDefect, value, failure)
+}
+
+// ListArtistAlbumsRetry asks Dex to retry the listArtistAlbums Step, after the delay when it is positive.
+func ListArtistAlbumsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spotify.AlbumSummaryPage] {
+	return connectormock.Retry[spotify.AlbumSummaryPage](failure, after)
+}
+
+// ListArtistAlbumsSampleArtistAlbums is the manifest mock sampleArtistAlbums: Three sample artist albums across three pages.
+func ListArtistAlbumsSampleArtistAlbums() connectormock.Case[spotify.AlbumSummaryPage] {
+	pages := []spotify.AlbumSummaryPage{
+		connectormock.MustDecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","spotifyUrl":"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX","releaseDate":"2026-08-14","totalTracks":10,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`),
+		connectormock.MustDecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"2up3OPMp9Tb4dAKM2erWXQ","name":"Second Album","spotifyUrl":"https://open.spotify.com/album/2up3OPMp9Tb4dAKM2erWXQ","releaseDate":"2025-01-01","totalTracks":8,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`),
+		connectormock.MustDecodeOutput[spotify.AlbumSummaryPage](`{"albums":[{"id":"4aawyAB9vmqN3uQ7FjRGTy","name":"Third Album","spotifyUrl":"https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy","releaseDate":"2024-01-01","totalTracks":6,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":2,"total":3}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[spotify.ListArtistAlbumsInput]("offset", "nextOffset", pages)
+	return connectormock.Paged(spotify.ListArtistAlbumsBranchListed, pageNumber, pages...)
+}
+
+// ListArtistAlbumsDefault is the manifest default, sampleArtistAlbums, which New installs.
+func ListArtistAlbumsDefault() connectormock.Case[spotify.AlbumSummaryPage] {
+	return ListArtistAlbumsSampleArtistAlbums()
+}
+
+// SearchArtistsListed selects the listed branch: The artist search page was loaded.
+func SearchArtistsListed(value spotify.ArtistSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummaryPage] {
+	return connectormock.Branch(spotify.SearchArtistsBranchListed, value, failure)
+}
+
+// SearchArtistsAuthorizationRevoked selects the authorizationRevoked branch: The Spotify OAuth grant is invalid or revoked.
+func SearchArtistsAuthorizationRevoked(value spotify.ArtistSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummaryPage] {
+	return connectormock.Branch(spotify.SearchArtistsBranchAuthorizationRevoked, value, failure)
+}
+
+// SearchArtistsAccessDenied selects the accessDenied branch: Spotify denied the artist search.
+func SearchArtistsAccessDenied(value spotify.ArtistSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummaryPage] {
+	return connectormock.Branch(spotify.SearchArtistsBranchAccessDenied, value, failure)
+}
+
+// SearchArtistsNotFound selects the notFound branch: Spotify could not resolve the artist search.
+func SearchArtistsNotFound(value spotify.ArtistSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummaryPage] {
+	return connectormock.Branch(spotify.SearchArtistsBranchNotFound, value, failure)
+}
+
+// SearchArtistsProviderRejected selects the providerRejected branch: Spotify conclusively rejected the artist search.
+func SearchArtistsProviderRejected(value spotify.ArtistSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummaryPage] {
+	return connectormock.Branch(spotify.SearchArtistsBranchProviderRejected, value, failure)
+}
+
+// SearchArtistsInvalidResponse selects the invalidResponse branch: Spotify returned invalid or oversized artist results.
+func SearchArtistsInvalidResponse(value spotify.ArtistSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummaryPage] {
+	return connectormock.Branch(spotify.SearchArtistsBranchInvalidResponse, value, failure)
+}
+
+// SearchArtistsDefect selects the defect branch: The query, market, page settings, or local connection is invalid.
+func SearchArtistsDefect(value spotify.ArtistSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.ArtistSummaryPage] {
+	return connectormock.Branch(spotify.SearchArtistsBranchDefect, value, failure)
+}
+
+// SearchArtistsRetry asks Dex to retry the searchArtists Step, after the delay when it is positive.
+func SearchArtistsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spotify.ArtistSummaryPage] {
+	return connectormock.Retry[spotify.ArtistSummaryPage](failure, after)
+}
+
+// SearchArtistsSampleArtistSearch is the manifest mock sampleArtistSearch: Three sample artists across three search pages.
+func SearchArtistsSampleArtistSearch() connectormock.Case[spotify.ArtistSummaryPage] {
+	pages := []spotify.ArtistSummaryPage{
+		connectormock.MustDecodeOutput[spotify.ArtistSummaryPage](`{"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist","spotifyUrl":"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF","genres":["pop"]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`),
+		connectormock.MustDecodeOutput[spotify.ArtistSummaryPage](`{"artists":[{"id":"3TVXtAsR1Inumwj472S9r4","name":"Another Artist","spotifyUrl":"https://open.spotify.com/artist/3TVXtAsR1Inumwj472S9r4","genres":["rock"]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`),
+		connectormock.MustDecodeOutput[spotify.ArtistSummaryPage](`{"artists":[{"id":"1Xyo4u8uXC1ZmMpatF05PJ","name":"Third Artist","spotifyUrl":"https://open.spotify.com/artist/1Xyo4u8uXC1ZmMpatF05PJ","genres":["soul"]}],"limit":1,"offset":2,"total":3}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[spotify.SearchArtistsInput]("offset", "nextOffset", pages)
+	return connectormock.Paged(spotify.SearchArtistsBranchListed, pageNumber, pages...)
+}
+
+// SearchArtistsDefault is the manifest default, sampleArtistSearch, which New installs.
+func SearchArtistsDefault() connectormock.Case[spotify.ArtistSummaryPage] {
+	return SearchArtistsSampleArtistSearch()
 }
 
 // GetAlbumFound selects the found branch: The album was loaded.

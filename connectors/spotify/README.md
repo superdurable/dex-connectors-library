@@ -17,6 +17,8 @@ The Go connector reads playlist metadata with `getPlaylist`, lists the authentic
 
 Album Queries are `getAlbum`, `listAlbumTracks`, and `searchAlbums`. They return album identity, artists, release date, track count, and attribution links; track pages contain bounded title, artist, and duration metadata. `listAlbumTracks` accepts an album ID, market, limit up to 50, and offset. `searchAlbums` accepts query text, market, limit up to 10, and offset. All three use the existing OAuth grant and repeat safely after unknown read outcomes. Spotify removed the n8n node's `getNewReleases` endpoint for development-mode apps in February 2026, so the connector does not expose it.
 
+Artist Queries are `getArtist`, `listArtistAlbums`, and `searchArtists`. They return artist identity, genres, attribution link, and bounded album pages. `listArtistAlbums` accepts an artist ID, optional `includeGroups` from `album`, `single`, `appears_on`, and `compilation`, market, limit up to 50, and offset. `searchArtists` accepts query text, market, limit up to 10, and offset. Spotify removed the n8n node's artist top tracks endpoint in February 2026; related artists is unavailable to new and development-mode apps since November 2024.
+
 The Spotify connector lists one bounded page of tracks from a playlist through
 Spotify's official [Get Playlist Items](https://developer.spotify.com/documentation/web-api/reference/get-playlists-items)
 endpoint. Spotify currently permits that endpoint only for playlists the

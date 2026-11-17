@@ -194,6 +194,7 @@ type spotifyArtist struct {
 	URI          string              `json:"uri"`
 	ExternalURLs spotifyExternalURLs `json:"external_urls"`
 	Name         string              `json:"name"`
+	Genres       []string            `json:"genres"`
 }
 
 type spotifyAlbum struct {

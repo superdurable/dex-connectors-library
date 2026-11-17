@@ -24,6 +24,8 @@ const (
 	continueAfterGetPlaylistType   = "ContinueAfterGetPlaylist"
 	getAlbumStepType               = "GetAlbum"
 	completeAlbumMetadataStepType  = "CompleteAlbumMetadata"
+	getArtistStepType              = "GetArtist"
+	completeArtistMetadataStepType = "CompleteArtistMetadata"
 	recordPlaylistRequestStepType  = "RecordPlaylistRequest"
 	completePlaylistTracksStepType = "CompletePlaylistTracks"
 )
@@ -33,6 +35,7 @@ var (
 	playlistPageAttribute    = dex.DefineAttribute[spotify.PlaylistTrackPage]("spotify-playlist-tracks-page")
 	playlistSummaryAttribute = dex.DefineAttribute[spotify.PlaylistSummary]("spotify-playlist-summary")
 	albumSummaryAttribute    = dex.DefineAttribute[spotify.AlbumSummary]("spotify-playlist-track-album")
+	artistSummaryAttribute   = dex.DefineAttribute[spotify.ArtistSummary]("spotify-playlist-track-artist")
 )
 
 // Input is the typed playlist page request entered in Dex Web Start Flow.
@@ -95,6 +98,16 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(completeAlbumMetadata{}),
 		})),
 		dex.DefineStep(completeAlbumMetadata{}),
+		dex.DefineStep(spotify.NewGetArtistStep(spotify.GetArtistStepConfig[string]{
+			StepType: getArtistStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{
+				GroupID: "spotify", GroupLabel: "Spotify",
+				Explanation: "Read the first album artist's metadata.",
+			},
+			Connection: flow.connection, MapToOperationInput: flow.MapToGetArtistInput,
+			Found: sdkgo.GoTo(completeArtistMetadata{}),
+		})),
+		dex.DefineStep(completeArtistMetadata{}),
 	}
 }
 
@@ -108,7 +121,7 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 
 // GetPersistenceSchema registers the playlist request and result page Attributes.
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{playlistRequestAttribute, playlistSummaryAttribute, playlistPageAttribute, albumSummaryAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{playlistRequestAttribute, playlistSummaryAttribute, playlistPageAttribute, albumSummaryAttribute, artistSummaryAttribute}}
 }
 
 // GetDexSummary returns the playlist request and loaded page for the Dex Web run list.
@@ -117,8 +130,9 @@ func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
 // dex:field attribute-key:spotify-playlist-tracks-page value-type:json editable:false description:"Loaded Spotify playlist track page"
 // dex:field attribute-key:spotify-playlist-summary value-type:json editable:false description:"Spotify playlist identity and snapshot"
 // dex:field attribute-key:spotify-playlist-track-album value-type:json editable:false description:"First playlist track's album metadata"
+// dex:field attribute-key:spotify-playlist-track-artist value-type:json editable:false description:"First album artist's metadata"
 func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	request, summary, page, album, err := playlistInspection(ctx)
+	request, summary, page, album, artist, err := playlistInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -127,6 +141,7 @@ func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 		"spotify-playlist-tracks-page":    page,
 		"spotify-playlist-summary":        summary,
 		"spotify-playlist-track-album":    album,
+		"spotify-playlist-track-artist":   artist,
 	}}, nil
 }
 
@@ -136,8 +151,9 @@ func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 // dex:field attribute-key:spotify-playlist-tracks-page value-type:json editable:false description:"Tracks, pagination, and Spotify attribution links"
 // dex:field attribute-key:spotify-playlist-summary value-type:json editable:false description:"Spotify playlist identity and snapshot"
 // dex:field attribute-key:spotify-playlist-track-album value-type:json editable:false description:"First playlist track's album metadata"
+// dex:field attribute-key:spotify-playlist-track-artist value-type:json editable:false description:"First album artist's metadata"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	request, summary, page, album, err := playlistInspection(ctx)
+	request, summary, page, album, artist, err := playlistInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +162,7 @@ func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 		"spotify-playlist-tracks-page":    page,
 		"spotify-playlist-summary":        summary,
 		"spotify-playlist-track-album":    album,
+		"spotify-playlist-track-artist":   artist,
 	}}, nil
 }
 
@@ -166,24 +183,33 @@ func (*Flow) MapToGetAlbumInput(albumID string) spotify.GetAlbumInput {
 	return spotify.GetAlbumInput{AlbumID: albumID}
 }
 
-func playlistInspection(ctx dex.Context) (Input, spotify.PlaylistSummary, spotify.PlaylistTrackPage, spotify.AlbumSummary, error) {
+// MapToGetArtistInput maps an artist ID from the album to the artist Query.
+func (*Flow) MapToGetArtistInput(artistID string) spotify.GetArtistInput {
+	return spotify.GetArtistInput{ArtistID: artistID}
+}
+
+func playlistInspection(ctx dex.Context) (Input, spotify.PlaylistSummary, spotify.PlaylistTrackPage, spotify.AlbumSummary, spotify.ArtistSummary, error) {
 	request, err := optionalAttribute(ctx, playlistRequestAttribute)
 	if err != nil {
-		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, spotify.AlbumSummary{}, err
+		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, spotify.AlbumSummary{}, spotify.ArtistSummary{}, err
 	}
 	summary, err := optionalAttribute(ctx, playlistSummaryAttribute)
 	if err != nil {
-		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, spotify.AlbumSummary{}, err
+		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, spotify.AlbumSummary{}, spotify.ArtistSummary{}, err
 	}
 	page, err := optionalAttribute(ctx, playlistPageAttribute)
 	if err != nil {
-		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, spotify.AlbumSummary{}, err
+		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, spotify.AlbumSummary{}, spotify.ArtistSummary{}, err
 	}
 	album, err := optionalAttribute(ctx, albumSummaryAttribute)
 	if err != nil {
-		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, spotify.AlbumSummary{}, err
+		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, spotify.AlbumSummary{}, spotify.ArtistSummary{}, err
 	}
-	return request, summary, page, album, nil
+	artist, err := optionalAttribute(ctx, artistSummaryAttribute)
+	if err != nil {
+		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, spotify.AlbumSummary{}, spotify.ArtistSummary{}, err
+	}
+	return request, summary, page, album, artist, nil
 }
 
 func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, error) {
@@ -254,7 +280,7 @@ func (completePlaylistTracks) Execute(ctx dex.Context, result spotify.ListPlayli
 }
 
 // dex:group group-id:spotify group-label:"Spotify"
-// dex:explanation text:"Persist the first track's album metadata and complete the playlist page Flow."
+// dex:explanation text:"Persist the first track's album metadata and read its first artist."
 type completeAlbumMetadata struct {
 	dex.StepDefaultsNoWaitFor[spotify.GetAlbumResult]
 }
@@ -263,6 +289,28 @@ func (completeAlbumMetadata) GetStepType() string { return completeAlbumMetadata
 
 func (completeAlbumMetadata) Execute(ctx dex.Context, result spotify.GetAlbumResult) (*dex.StepDecision, error) {
 	if err := albumSummaryAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
+	if len(result.Value.Artists) > 0 && result.Value.Artists[0].ID != "" {
+		return dex.GoTo(sdkgo.StepRef[string](getArtistStepType), result.Value.Artists[0].ID), nil
+	}
+	page, err := playlistPageAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(page), nil
+}
+
+// dex:group group-id:spotify group-label:"Spotify"
+// dex:explanation text:"Persist the first album artist's metadata and complete the playlist page Flow."
+type completeArtistMetadata struct {
+	dex.StepDefaultsNoWaitFor[spotify.GetArtistResult]
+}
+
+func (completeArtistMetadata) GetStepType() string { return completeArtistMetadataStepType }
+
+func (completeArtistMetadata) Execute(ctx dex.Context, result spotify.GetArtistResult) (*dex.StepDecision, error) {
+	if err := artistSummaryAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
 	page, err := playlistPageAttribute.Get(ctx)

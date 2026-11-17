@@ -2,6 +2,1562 @@
   "connector": "spotify",
   "scenarios": [
     {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000202",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"name\":\"An Artist\",\"type\":\"artist\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"},\"genres\":[\"pop\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "genres": [
+            "pop"
+          ],
+          "id": "0OdUWJ0sBjDrqHygGUXeCF",
+          "name": "An Artist",
+          "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
+          "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF"
+      },
+      "name": "getArtistSuccess",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000203",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "genres": [],
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF"
+      },
+      "name": "getArtistAuthorizationRevoked",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000204",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "accessDenied",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "genres": [],
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF"
+      },
+      "name": "getArtistAccessDenied",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000205",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "genres": [],
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF"
+      },
+      "name": "getArtistNotFound",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "genres": [],
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF"
+      },
+      "name": "getArtistProviderRejected",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000207",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "genres": [],
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF"
+      },
+      "name": "getArtistInvalidResponse",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000208",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF"
+      },
+      "name": "getArtistRateLimit",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000209",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF"
+      },
+      "name": "getArtistAvailability",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000210",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF"
+      },
+      "name": "getArtistTransport",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000211",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "genres": [],
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "bad"
+      },
+      "name": "getArtistDefect",
+      "operation": "getArtist"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000212",
+      "exchanges": [
+        {
+          "body": "{\"limit\":1,\"offset\":1,\"total\":3,\"items\":[{\"id\":\"1ATL5GLyefJaxhQzSPVrLX\",\"name\":\"An Album\",\"type\":\"album\",\"uri\":\"spotify:album:1ATL5GLyefJaxhQzSPVrLX\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX\"},\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"name\":\"An Artist\",\"type\":\"artist\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"},\"genres\":[\"pop\"]}],\"release_date\":\"2026-08-14\",\"release_date_precision\":\"day\",\"total_tracks\":10}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF/albums",
+          "query": {
+            "include_groups": [
+              "album"
+            ],
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "albums": [
+            {
+              "artists": [
+                {
+                  "id": "0OdUWJ0sBjDrqHygGUXeCF",
+                  "name": "An Artist",
+                  "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
+                  "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+                }
+              ],
+              "id": "1ATL5GLyefJaxhQzSPVrLX",
+              "name": "An Album",
+              "releaseDate": "2026-08-14",
+              "spotifyUrl": "https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX",
+              "totalTracks": 10,
+              "uri": "spotify:album:1ATL5GLyefJaxhQzSPVrLX"
+            }
+          ],
+          "limit": 1,
+          "nextOffset": 2,
+          "offset": 1,
+          "total": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF",
+        "includeGroups": [
+          "album"
+        ],
+        "limit": 1,
+        "market": "US",
+        "offset": 1
+      },
+      "name": "listArtistAlbumsSuccess",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000213",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF/albums",
+          "query": {
+            "include_groups": [
+              "album"
+            ],
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "albums": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF",
+        "includeGroups": [
+          "album"
+        ],
+        "limit": 1,
+        "market": "US",
+        "offset": 1
+      },
+      "name": "listArtistAlbumsAuthorizationRevoked",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000214",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF/albums",
+          "query": {
+            "include_groups": [
+              "album"
+            ],
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "accessDenied",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "albums": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF",
+        "includeGroups": [
+          "album"
+        ],
+        "limit": 1,
+        "market": "US",
+        "offset": 1
+      },
+      "name": "listArtistAlbumsAccessDenied",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000215",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF/albums",
+          "query": {
+            "include_groups": [
+              "album"
+            ],
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "albums": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF",
+        "includeGroups": [
+          "album"
+        ],
+        "limit": 1,
+        "market": "US",
+        "offset": 1
+      },
+      "name": "listArtistAlbumsNotFound",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000216",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF/albums",
+          "query": {
+            "include_groups": [
+              "album"
+            ],
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "albums": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF",
+        "includeGroups": [
+          "album"
+        ],
+        "limit": 1,
+        "market": "US",
+        "offset": 1
+      },
+      "name": "listArtistAlbumsProviderRejected",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000217",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF/albums",
+          "query": {
+            "include_groups": [
+              "album"
+            ],
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "albums": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF",
+        "includeGroups": [
+          "album"
+        ],
+        "limit": 1,
+        "market": "US",
+        "offset": 1
+      },
+      "name": "listArtistAlbumsInvalidResponse",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000218",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF/albums",
+          "query": {
+            "include_groups": [
+              "album"
+            ],
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF",
+        "includeGroups": [
+          "album"
+        ],
+        "limit": 1,
+        "market": "US",
+        "offset": 1
+      },
+      "name": "listArtistAlbumsRateLimit",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000219",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF/albums",
+          "query": {
+            "include_groups": [
+              "album"
+            ],
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF",
+        "includeGroups": [
+          "album"
+        ],
+        "limit": 1,
+        "market": "US",
+        "offset": 1
+      },
+      "name": "listArtistAlbumsAvailability",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000220",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/artists/0OdUWJ0sBjDrqHygGUXeCF/albums",
+          "query": {
+            "include_groups": [
+              "album"
+            ],
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "0OdUWJ0sBjDrqHygGUXeCF",
+        "includeGroups": [
+          "album"
+        ],
+        "limit": 1,
+        "market": "US",
+        "offset": 1
+      },
+      "name": "listArtistAlbumsTransport",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000221",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "albums": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "artistId": "bad"
+      },
+      "name": "listArtistAlbumsDefect",
+      "operation": "listArtistAlbums"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000222",
+      "exchanges": [
+        {
+          "body": "{\"artists\":{\"limit\":1,\"offset\":1,\"total\":3,\"items\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"name\":\"An Artist\",\"type\":\"artist\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"},\"genres\":[\"pop\"]}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "An Artist"
+            ],
+            "type": [
+              "artist"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "artists": [
+            {
+              "genres": [
+                "pop"
+              ],
+              "id": "0OdUWJ0sBjDrqHygGUXeCF",
+              "name": "An Artist",
+              "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
+              "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+            }
+          ],
+          "limit": 1,
+          "nextOffset": 2,
+          "offset": 1,
+          "total": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "An Artist"
+      },
+      "name": "searchArtistsSuccess",
+      "operation": "searchArtists"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000223",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "An Artist"
+            ],
+            "type": [
+              "artist"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "artists": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "An Artist"
+      },
+      "name": "searchArtistsAuthorizationRevoked",
+      "operation": "searchArtists"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000224",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "An Artist"
+            ],
+            "type": [
+              "artist"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "accessDenied",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "artists": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "An Artist"
+      },
+      "name": "searchArtistsAccessDenied",
+      "operation": "searchArtists"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000225",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "An Artist"
+            ],
+            "type": [
+              "artist"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "artists": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "An Artist"
+      },
+      "name": "searchArtistsNotFound",
+      "operation": "searchArtists"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000226",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "An Artist"
+            ],
+            "type": [
+              "artist"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "artists": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "An Artist"
+      },
+      "name": "searchArtistsProviderRejected",
+      "operation": "searchArtists"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000227",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "An Artist"
+            ],
+            "type": [
+              "artist"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "artists": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "An Artist"
+      },
+      "name": "searchArtistsInvalidResponse",
+      "operation": "searchArtists"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000228",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "An Artist"
+            ],
+            "type": [
+              "artist"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "An Artist"
+      },
+      "name": "searchArtistsRateLimit",
+      "operation": "searchArtists"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000229",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "An Artist"
+            ],
+            "type": [
+              "artist"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "An Artist"
+      },
+      "name": "searchArtistsAvailability",
+      "operation": "searchArtists"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000230",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "An Artist"
+            ],
+            "type": [
+              "artist"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "An Artist"
+      },
+      "name": "searchArtistsTransport",
+      "operation": "searchArtists"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000231",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "artists": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": ""
+      },
+      "name": "searchArtistsDefect",
+      "operation": "searchArtists"
+    },
+    {
       "callId": "0a014bb1-3e4f-4c87-923a-000000000102",
       "exchanges": [
         {
