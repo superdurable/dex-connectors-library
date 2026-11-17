@@ -58,7 +58,7 @@ spec:
       startURL: https://resend.com/api-keys
       steps:
       - Open https://resend.com/api-keys and sign in or create an account.
-      - Follow API Keys > Create API Key. Create a full access API key for email, contact, and domain reads; a sending-only key still supports sendEmail but cannot use every operation.
+      - Follow API Keys > Create API Key. Create a full access API key for email, contact, domain, and topic operations; a sending-only key still supports sendEmail but cannot use every operation.
         then copy its secret value. It is an opaque secret string; blank prevents
         requests.
       - Paste the token into the secret api_key field and save the connection; leave
@@ -410,6 +410,121 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: deleteTopicDefault, branch: deleted, default: true, description: Resend deleted the topic., output: {"id":"topic-1","deleted":true}}
+  - name: listEmailAttachments
+    goName: ListEmailAttachments
+    inputType: ListEmailAttachmentsInput
+    outputType: EmailAttachmentPage
+    kind: query
+    description: Retrieve safe metadata for an email's attachments.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned the requested email information.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listEmailAttachmentsDefault, branch: listed, default: true, description: Resend returned email information., output: {"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}}
+  - name: getEmailAttachment
+    goName: GetEmailAttachment
+    inputType: GetEmailAttachmentInput
+    outputType: EmailAttachment
+    kind: query
+    description: Retrieve safe metadata for one email attachment.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the requested email information.}
+    - {id: notFound, goName: NotFound, description: The resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getEmailAttachmentDefault, branch: found, default: true, description: Resend returned email information., output: {"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}}
+  - name: listReceivedEmails
+    goName: ListReceivedEmails
+    inputType: ListReceivedEmailsInput
+    outputType: ReceivedEmailPage
+    kind: query
+    description: Retrieve received email summaries.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned the requested email information.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listReceivedEmailsDefault, branch: listed, default: true, description: Resend returned email information., output: {"data":[{"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}],"has_more":false}}
+  - name: getReceivedEmail
+    goName: GetReceivedEmail
+    inputType: GetReceivedEmailInput
+    outputType: ReceivedEmail
+    kind: query
+    description: Retrieve one received email.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the requested email information.}
+    - {id: notFound, goName: NotFound, description: The resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getReceivedEmailDefault, branch: found, default: true, description: Resend returned email information., output: {"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}}
+  - name: listReceivedEmailAttachments
+    goName: ListReceivedEmailAttachments
+    inputType: ListReceivedEmailAttachmentsInput
+    outputType: EmailAttachmentPage
+    kind: query
+    description: Retrieve safe metadata for an email's attachments.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned the requested email information.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listReceivedEmailAttachmentsDefault, branch: listed, default: true, description: Resend returned email information., output: {"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}}
+  - name: getReceivedEmailAttachment
+    goName: GetReceivedEmailAttachment
+    inputType: GetReceivedEmailAttachmentInput
+    outputType: EmailAttachment
+    kind: query
+    description: Retrieve safe metadata for one email attachment.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the requested email information.}
+    - {id: notFound, goName: NotFound, description: The resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getReceivedEmailAttachmentDefault, branch: found, default: true, description: Resend returned email information., output: {"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}}
+  - name: getEmailMetrics
+    goName: GetEmailMetrics
+    inputType: GetEmailMetricsInput
+    outputType: EmailMetrics
+    kind: query
+    description: Retrieve aggregate email delivery and engagement metrics.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned the requested email information.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getEmailMetricsDefault, branch: found, default: true, description: Resend returned email information., output: {"start_date":"2026-11-01T00:00:00Z","end_date":"2026-11-02T00:00:00Z","metrics":["sent"],"dimensions":[],"granularity":"daily","totals":{"sent":1}}}
   - name: getContact
     goName: GetContact
     inputType: GetContactInput

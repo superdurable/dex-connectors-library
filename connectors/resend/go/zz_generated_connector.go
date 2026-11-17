@@ -58,6 +58,13 @@ type Operations interface {
 	ListTopics() sdkgo.Query[ListTopicsInput, TopicPage]
 	UpdateTopic() sdkgo.Mutation[UpdateTopicInput, TopicReference]
 	DeleteTopic() sdkgo.Mutation[DeleteTopicInput, DeletedTopic]
+	ListEmailAttachments() sdkgo.Query[ListEmailAttachmentsInput, EmailAttachmentPage]
+	GetEmailAttachment() sdkgo.Query[GetEmailAttachmentInput, EmailAttachment]
+	ListReceivedEmails() sdkgo.Query[ListReceivedEmailsInput, ReceivedEmailPage]
+	GetReceivedEmail() sdkgo.Query[GetReceivedEmailInput, ReceivedEmail]
+	ListReceivedEmailAttachments() sdkgo.Query[ListReceivedEmailAttachmentsInput, EmailAttachmentPage]
+	GetReceivedEmailAttachment() sdkgo.Query[GetReceivedEmailAttachmentInput, EmailAttachment]
+	GetEmailMetrics() sdkgo.Query[GetEmailMetricsInput, EmailMetrics]
 	GetContact() sdkgo.Query[GetContactInput, Contact]
 	ListContacts() sdkgo.Query[ListContactsInput, ContactPage]
 	GetDomain() sdkgo.Query[GetDomainInput, Domain]
@@ -119,6 +126,27 @@ func (operations clientOperations) UpdateTopic() sdkgo.Mutation[UpdateTopicInput
 }
 func (operations clientOperations) DeleteTopic() sdkgo.Mutation[DeleteTopicInput, DeletedTopic] {
 	return operations.client.DeleteTopic()
+}
+func (operations clientOperations) ListEmailAttachments() sdkgo.Query[ListEmailAttachmentsInput, EmailAttachmentPage] {
+	return operations.client.ListEmailAttachments()
+}
+func (operations clientOperations) GetEmailAttachment() sdkgo.Query[GetEmailAttachmentInput, EmailAttachment] {
+	return operations.client.GetEmailAttachment()
+}
+func (operations clientOperations) ListReceivedEmails() sdkgo.Query[ListReceivedEmailsInput, ReceivedEmailPage] {
+	return operations.client.ListReceivedEmails()
+}
+func (operations clientOperations) GetReceivedEmail() sdkgo.Query[GetReceivedEmailInput, ReceivedEmail] {
+	return operations.client.GetReceivedEmail()
+}
+func (operations clientOperations) ListReceivedEmailAttachments() sdkgo.Query[ListReceivedEmailAttachmentsInput, EmailAttachmentPage] {
+	return operations.client.ListReceivedEmailAttachments()
+}
+func (operations clientOperations) GetReceivedEmailAttachment() sdkgo.Query[GetReceivedEmailAttachmentInput, EmailAttachment] {
+	return operations.client.GetReceivedEmailAttachment()
+}
+func (operations clientOperations) GetEmailMetrics() sdkgo.Query[GetEmailMetricsInput, EmailMetrics] {
+	return operations.client.GetEmailMetrics()
 }
 func (operations clientOperations) GetContact() sdkgo.Query[GetContactInput, Contact] {
 	return operations.client.GetContact()
@@ -1630,6 +1658,521 @@ func NewDeleteTopicStep[IN any](config DeleteTopicStepConfig[IN]) sdkgo.Mutation
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListEmailAttachmentsBranchListed sdkgo.BranchID = "listed"
+const ListEmailAttachmentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEmailAttachmentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEmailAttachmentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEmailAttachmentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEmailAttachments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEmailAttachmentsBranchListed, Description: "Resend returned the requested email information."},
+		{ID: ListEmailAttachmentsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListEmailAttachmentsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListEmailAttachmentsBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEmailAttachmentsResult = sdkgo.QueryResult[EmailAttachmentPage]
+
+type ListEmailAttachmentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=resend"`
+	operationID                    struct{}                                               `connector:"operationId=listEmailAttachments"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListEmailAttachmentsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListEmailAttachmentsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListEmailAttachmentsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEmailAttachmentsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEmailAttachmentsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EmailAttachmentPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListEmailAttachmentsStep[IN any](config ListEmailAttachmentsStepConfig[IN]) sdkgo.QueryStep[IN, ListEmailAttachmentsInput, EmailAttachmentPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEmailAttachmentsInput, EmailAttachmentPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEmailAttachments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEmailAttachmentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListEmailAttachmentsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListEmailAttachmentsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEmailAttachmentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEmailAttachmentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEmailAttachmentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetEmailAttachmentBranchFound sdkgo.BranchID = "found"
+const GetEmailAttachmentBranchNotFound sdkgo.BranchID = "notFound"
+const GetEmailAttachmentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEmailAttachmentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEmailAttachmentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEmailAttachmentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEmailAttachment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEmailAttachmentBranchFound, Description: "Resend returned the requested email information."},
+		{ID: GetEmailAttachmentBranchNotFound, Description: "The resource does not exist.", Optional: true},
+		{ID: GetEmailAttachmentBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetEmailAttachmentBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetEmailAttachmentBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEmailAttachmentResult = sdkgo.QueryResult[EmailAttachment]
+
+type GetEmailAttachmentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=resend"`
+	operationID                    struct{}                                           `connector:"operationId=getEmailAttachment"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetEmailAttachmentInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEmailAttachmentResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetEmailAttachmentResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetEmailAttachmentResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEmailAttachmentResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEmailAttachmentResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EmailAttachment]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetEmailAttachmentStep[IN any](config GetEmailAttachmentStepConfig[IN]) sdkgo.QueryStep[IN, GetEmailAttachmentInput, EmailAttachment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEmailAttachmentInput, EmailAttachment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEmailAttachment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEmailAttachmentResult] {
+			branches := make([]sdkgo.BranchTarget[GetEmailAttachmentResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEmailAttachmentBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetEmailAttachmentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEmailAttachmentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEmailAttachmentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEmailAttachmentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListReceivedEmailsBranchListed sdkgo.BranchID = "listed"
+const ListReceivedEmailsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListReceivedEmailsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListReceivedEmailsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListReceivedEmailsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listReceivedEmails"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListReceivedEmailsBranchListed, Description: "Resend returned the requested email information."},
+		{ID: ListReceivedEmailsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListReceivedEmailsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListReceivedEmailsBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListReceivedEmailsResult = sdkgo.QueryResult[ReceivedEmailPage]
+
+type ListReceivedEmailsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=resend"`
+	operationID                    struct{}                                             `connector:"operationId=listReceivedEmails"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListReceivedEmailsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListReceivedEmailsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListReceivedEmailsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListReceivedEmailsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListReceivedEmailsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ReceivedEmailPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListReceivedEmailsStep[IN any](config ListReceivedEmailsStepConfig[IN]) sdkgo.QueryStep[IN, ListReceivedEmailsInput, ReceivedEmailPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListReceivedEmailsInput, ReceivedEmailPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListReceivedEmails(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListReceivedEmailsResult] {
+			branches := make([]sdkgo.BranchTarget[ListReceivedEmailsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListReceivedEmailsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListReceivedEmailsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListReceivedEmailsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListReceivedEmailsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetReceivedEmailBranchFound sdkgo.BranchID = "found"
+const GetReceivedEmailBranchNotFound sdkgo.BranchID = "notFound"
+const GetReceivedEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetReceivedEmailBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetReceivedEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetReceivedEmailDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getReceivedEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetReceivedEmailBranchFound, Description: "Resend returned the requested email information."},
+		{ID: GetReceivedEmailBranchNotFound, Description: "The resource does not exist.", Optional: true},
+		{ID: GetReceivedEmailBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetReceivedEmailBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetReceivedEmailBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetReceivedEmailResult = sdkgo.QueryResult[ReceivedEmail]
+
+type GetReceivedEmailStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=resend"`
+	operationID                    struct{}                                         `connector:"operationId=getReceivedEmail"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetReceivedEmailInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetReceivedEmailResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetReceivedEmailResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetReceivedEmailResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetReceivedEmailResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetReceivedEmailResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ReceivedEmail]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetReceivedEmailStep[IN any](config GetReceivedEmailStepConfig[IN]) sdkgo.QueryStep[IN, GetReceivedEmailInput, ReceivedEmail] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetReceivedEmailInput, ReceivedEmail]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetReceivedEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetReceivedEmailResult] {
+			branches := make([]sdkgo.BranchTarget[GetReceivedEmailResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetReceivedEmailBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetReceivedEmailBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetReceivedEmailBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetReceivedEmailBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetReceivedEmailBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListReceivedEmailAttachmentsBranchListed sdkgo.BranchID = "listed"
+const ListReceivedEmailAttachmentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListReceivedEmailAttachmentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListReceivedEmailAttachmentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListReceivedEmailAttachmentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listReceivedEmailAttachments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListReceivedEmailAttachmentsBranchListed, Description: "Resend returned the requested email information."},
+		{ID: ListReceivedEmailAttachmentsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListReceivedEmailAttachmentsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListReceivedEmailAttachmentsBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListReceivedEmailAttachmentsResult = sdkgo.QueryResult[EmailAttachmentPage]
+
+type ListReceivedEmailAttachmentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=resend"`
+	operationID                    struct{}                                               `connector:"operationId=listReceivedEmailAttachments"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListReceivedEmailAttachmentsInput             `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListReceivedEmailAttachmentsResult]       `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListReceivedEmailAttachmentsResult]       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListReceivedEmailAttachmentsResult]       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListReceivedEmailAttachmentsResult]       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EmailAttachmentPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListReceivedEmailAttachmentsStep[IN any](config ListReceivedEmailAttachmentsStepConfig[IN]) sdkgo.QueryStep[IN, ListReceivedEmailAttachmentsInput, EmailAttachmentPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListReceivedEmailAttachmentsInput, EmailAttachmentPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListReceivedEmailAttachments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListReceivedEmailAttachmentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListReceivedEmailAttachmentsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListReceivedEmailAttachmentsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListReceivedEmailAttachmentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListReceivedEmailAttachmentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListReceivedEmailAttachmentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetReceivedEmailAttachmentBranchFound sdkgo.BranchID = "found"
+const GetReceivedEmailAttachmentBranchNotFound sdkgo.BranchID = "notFound"
+const GetReceivedEmailAttachmentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetReceivedEmailAttachmentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetReceivedEmailAttachmentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetReceivedEmailAttachmentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getReceivedEmailAttachment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetReceivedEmailAttachmentBranchFound, Description: "Resend returned the requested email information."},
+		{ID: GetReceivedEmailAttachmentBranchNotFound, Description: "The resource does not exist.", Optional: true},
+		{ID: GetReceivedEmailAttachmentBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetReceivedEmailAttachmentBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetReceivedEmailAttachmentBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetReceivedEmailAttachmentResult = sdkgo.QueryResult[EmailAttachment]
+
+type GetReceivedEmailAttachmentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=resend"`
+	operationID                    struct{}                                           `connector:"operationId=getReceivedEmailAttachment"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetReceivedEmailAttachmentInput           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetReceivedEmailAttachmentResult]     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetReceivedEmailAttachmentResult]     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetReceivedEmailAttachmentResult]     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetReceivedEmailAttachmentResult]     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetReceivedEmailAttachmentResult]     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EmailAttachment]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetReceivedEmailAttachmentStep[IN any](config GetReceivedEmailAttachmentStepConfig[IN]) sdkgo.QueryStep[IN, GetReceivedEmailAttachmentInput, EmailAttachment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetReceivedEmailAttachmentInput, EmailAttachment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetReceivedEmailAttachment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetReceivedEmailAttachmentResult] {
+			branches := make([]sdkgo.BranchTarget[GetReceivedEmailAttachmentResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetReceivedEmailAttachmentBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetReceivedEmailAttachmentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetReceivedEmailAttachmentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetReceivedEmailAttachmentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetReceivedEmailAttachmentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetEmailMetricsBranchFound sdkgo.BranchID = "found"
+const GetEmailMetricsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEmailMetricsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEmailMetricsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEmailMetricsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEmailMetrics"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEmailMetricsBranchFound, Description: "Resend returned the requested email information."},
+		{ID: GetEmailMetricsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetEmailMetricsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetEmailMetricsBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEmailMetricsResult = sdkgo.QueryResult[EmailMetrics]
+
+type GetEmailMetricsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=resend"`
+	operationID                    struct{}                                        `connector:"operationId=getEmailMetrics"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetEmailMetricsInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEmailMetricsResult]             `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetEmailMetricsResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEmailMetricsResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEmailMetricsResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EmailMetrics]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetEmailMetricsStep[IN any](config GetEmailMetricsStepConfig[IN]) sdkgo.QueryStep[IN, GetEmailMetricsInput, EmailMetrics] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEmailMetricsInput, EmailMetrics]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEmailMetrics(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEmailMetricsResult] {
+			branches := make([]sdkgo.BranchTarget[GetEmailMetricsResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEmailMetricsBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEmailMetricsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEmailMetricsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEmailMetricsBranchDefect))
 			}
 			return branches
 		}(),

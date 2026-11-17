@@ -88,6 +88,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.DeletedTopic](`{"id":"topic-1","deleted":true}`)
 			return err
 		}},
+		{name: "listEmailAttachments/listEmailAttachmentsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailAttachmentPage](`{"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}`)
+			return err
+		}},
+		{name: "getEmailAttachment/getEmailAttachmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailAttachment](`{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}`)
+			return err
+		}},
+		{name: "listReceivedEmails/listReceivedEmailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ReceivedEmailPage](`{"data":[{"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getReceivedEmail/getReceivedEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ReceivedEmail](`{"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}`)
+			return err
+		}},
+		{name: "listReceivedEmailAttachments/listReceivedEmailAttachmentsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailAttachmentPage](`{"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}`)
+			return err
+		}},
+		{name: "getReceivedEmailAttachment/getReceivedEmailAttachmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailAttachment](`{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}`)
+			return err
+		}},
+		{name: "getEmailMetrics/getEmailMetricsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.EmailMetrics](`{"start_date":"2026-11-01T00:00:00Z","end_date":"2026-11-02T00:00:00Z","metrics":["sent"],"dimensions":[],"granularity":"daily","totals":{"sent":1}}`)
+			return err
+		}},
 		{name: "getContact/getContactDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.Contact](`{"id":"contact-1","email":"reader@example.test","unsubscribed":false}`)
 			return err
@@ -167,6 +195,27 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteTopic().Definition().Operation.OperationID != "deleteTopic" {
 		t.Errorf("deleteTopic mock has another definition")
+	}
+	if mock.ListEmailAttachments().Definition().Operation.OperationID != "listEmailAttachments" {
+		t.Errorf("listEmailAttachments mock has another definition")
+	}
+	if mock.GetEmailAttachment().Definition().Operation.OperationID != "getEmailAttachment" {
+		t.Errorf("getEmailAttachment mock has another definition")
+	}
+	if mock.ListReceivedEmails().Definition().Operation.OperationID != "listReceivedEmails" {
+		t.Errorf("listReceivedEmails mock has another definition")
+	}
+	if mock.GetReceivedEmail().Definition().Operation.OperationID != "getReceivedEmail" {
+		t.Errorf("getReceivedEmail mock has another definition")
+	}
+	if mock.ListReceivedEmailAttachments().Definition().Operation.OperationID != "listReceivedEmailAttachments" {
+		t.Errorf("listReceivedEmailAttachments mock has another definition")
+	}
+	if mock.GetReceivedEmailAttachment().Definition().Operation.OperationID != "getReceivedEmailAttachment" {
+		t.Errorf("getReceivedEmailAttachment mock has another definition")
+	}
+	if mock.GetEmailMetrics().Definition().Operation.OperationID != "getEmailMetrics" {
+		t.Errorf("getEmailMetrics mock has another definition")
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")

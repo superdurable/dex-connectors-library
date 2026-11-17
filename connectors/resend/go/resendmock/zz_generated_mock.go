@@ -17,29 +17,36 @@ import (
 
 // Mock is a scripted resend connection. Script each operation through its accessor.
 type Mock struct {
-	connection           resend.Connection
-	createContact        *connectormock.Mutation[resend.CreateContactInput, resend.ContactReference]
-	createDomain         *connectormock.Mutation[resend.CreateDomainInput, resend.DomainReference]
-	updateContact        *connectormock.Mutation[resend.UpdateContactInput, resend.ContactReference]
-	deleteContact        *connectormock.Mutation[resend.DeleteContactInput, resend.DeletedContact]
-	deleteDomain         *connectormock.Mutation[resend.DeleteDomainInput, resend.DeletedDomain]
-	updateDomain         *connectormock.Mutation[resend.UpdateDomainInput, resend.DomainReference]
-	verifyDomain         *connectormock.Mutation[resend.VerifyDomainInput, resend.DomainReference]
-	updateScheduledEmail *connectormock.Mutation[resend.UpdateScheduledEmailInput, resend.EmailReference]
-	cancelScheduledEmail *connectormock.Mutation[resend.CancelScheduledEmailInput, resend.EmailReference]
-	sendEmail            *connectormock.Mutation[resend.SendEmailInput, resend.SentEmail]
-	sendBatchEmails      *connectormock.Mutation[resend.SendBatchEmailsInput, resend.SentEmailPage]
-	getEmail             *connectormock.Query[resend.GetEmailInput, resend.Email]
-	listEmails           *connectormock.Query[resend.ListEmailsInput, resend.EmailPage]
-	createTopic          *connectormock.Mutation[resend.CreateTopicInput, resend.TopicReference]
-	getTopic             *connectormock.Query[resend.GetTopicInput, resend.Topic]
-	listTopics           *connectormock.Query[resend.ListTopicsInput, resend.TopicPage]
-	updateTopic          *connectormock.Mutation[resend.UpdateTopicInput, resend.TopicReference]
-	deleteTopic          *connectormock.Mutation[resend.DeleteTopicInput, resend.DeletedTopic]
-	getContact           *connectormock.Query[resend.GetContactInput, resend.Contact]
-	listContacts         *connectormock.Query[resend.ListContactsInput, resend.ContactPage]
-	getDomain            *connectormock.Query[resend.GetDomainInput, resend.Domain]
-	listDomains          *connectormock.Query[resend.ListDomainsInput, resend.DomainPage]
+	connection                   resend.Connection
+	createContact                *connectormock.Mutation[resend.CreateContactInput, resend.ContactReference]
+	createDomain                 *connectormock.Mutation[resend.CreateDomainInput, resend.DomainReference]
+	updateContact                *connectormock.Mutation[resend.UpdateContactInput, resend.ContactReference]
+	deleteContact                *connectormock.Mutation[resend.DeleteContactInput, resend.DeletedContact]
+	deleteDomain                 *connectormock.Mutation[resend.DeleteDomainInput, resend.DeletedDomain]
+	updateDomain                 *connectormock.Mutation[resend.UpdateDomainInput, resend.DomainReference]
+	verifyDomain                 *connectormock.Mutation[resend.VerifyDomainInput, resend.DomainReference]
+	updateScheduledEmail         *connectormock.Mutation[resend.UpdateScheduledEmailInput, resend.EmailReference]
+	cancelScheduledEmail         *connectormock.Mutation[resend.CancelScheduledEmailInput, resend.EmailReference]
+	sendEmail                    *connectormock.Mutation[resend.SendEmailInput, resend.SentEmail]
+	sendBatchEmails              *connectormock.Mutation[resend.SendBatchEmailsInput, resend.SentEmailPage]
+	getEmail                     *connectormock.Query[resend.GetEmailInput, resend.Email]
+	listEmails                   *connectormock.Query[resend.ListEmailsInput, resend.EmailPage]
+	createTopic                  *connectormock.Mutation[resend.CreateTopicInput, resend.TopicReference]
+	getTopic                     *connectormock.Query[resend.GetTopicInput, resend.Topic]
+	listTopics                   *connectormock.Query[resend.ListTopicsInput, resend.TopicPage]
+	updateTopic                  *connectormock.Mutation[resend.UpdateTopicInput, resend.TopicReference]
+	deleteTopic                  *connectormock.Mutation[resend.DeleteTopicInput, resend.DeletedTopic]
+	listEmailAttachments         *connectormock.Query[resend.ListEmailAttachmentsInput, resend.EmailAttachmentPage]
+	getEmailAttachment           *connectormock.Query[resend.GetEmailAttachmentInput, resend.EmailAttachment]
+	listReceivedEmails           *connectormock.Query[resend.ListReceivedEmailsInput, resend.ReceivedEmailPage]
+	getReceivedEmail             *connectormock.Query[resend.GetReceivedEmailInput, resend.ReceivedEmail]
+	listReceivedEmailAttachments *connectormock.Query[resend.ListReceivedEmailAttachmentsInput, resend.EmailAttachmentPage]
+	getReceivedEmailAttachment   *connectormock.Query[resend.GetReceivedEmailAttachmentInput, resend.EmailAttachment]
+	getEmailMetrics              *connectormock.Query[resend.GetEmailMetricsInput, resend.EmailMetrics]
+	getContact                   *connectormock.Query[resend.GetContactInput, resend.Contact]
+	listContacts                 *connectormock.Query[resend.ListContactsInput, resend.ContactPage]
+	getDomain                    *connectormock.Query[resend.GetDomainInput, resend.Domain]
+	listDomains                  *connectormock.Query[resend.ListDomainsInput, resend.DomainPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -47,28 +54,35 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createContact:        connectormock.NewMutation[resend.CreateContactInput, resend.ContactReference](t, resend.CreateContactDefinition),
-		createDomain:         connectormock.NewMutation[resend.CreateDomainInput, resend.DomainReference](t, resend.CreateDomainDefinition),
-		updateContact:        connectormock.NewMutation[resend.UpdateContactInput, resend.ContactReference](t, resend.UpdateContactDefinition),
-		deleteContact:        connectormock.NewMutation[resend.DeleteContactInput, resend.DeletedContact](t, resend.DeleteContactDefinition),
-		deleteDomain:         connectormock.NewMutation[resend.DeleteDomainInput, resend.DeletedDomain](t, resend.DeleteDomainDefinition),
-		updateDomain:         connectormock.NewMutation[resend.UpdateDomainInput, resend.DomainReference](t, resend.UpdateDomainDefinition),
-		verifyDomain:         connectormock.NewMutation[resend.VerifyDomainInput, resend.DomainReference](t, resend.VerifyDomainDefinition),
-		updateScheduledEmail: connectormock.NewMutation[resend.UpdateScheduledEmailInput, resend.EmailReference](t, resend.UpdateScheduledEmailDefinition),
-		cancelScheduledEmail: connectormock.NewMutation[resend.CancelScheduledEmailInput, resend.EmailReference](t, resend.CancelScheduledEmailDefinition),
-		sendEmail:            connectormock.NewMutation[resend.SendEmailInput, resend.SentEmail](t, resend.SendEmailDefinition),
-		sendBatchEmails:      connectormock.NewMutation[resend.SendBatchEmailsInput, resend.SentEmailPage](t, resend.SendBatchEmailsDefinition),
-		getEmail:             connectormock.NewQuery[resend.GetEmailInput, resend.Email](t, resend.GetEmailDefinition),
-		listEmails:           connectormock.NewQuery[resend.ListEmailsInput, resend.EmailPage](t, resend.ListEmailsDefinition),
-		createTopic:          connectormock.NewMutation[resend.CreateTopicInput, resend.TopicReference](t, resend.CreateTopicDefinition),
-		getTopic:             connectormock.NewQuery[resend.GetTopicInput, resend.Topic](t, resend.GetTopicDefinition),
-		listTopics:           connectormock.NewQuery[resend.ListTopicsInput, resend.TopicPage](t, resend.ListTopicsDefinition),
-		updateTopic:          connectormock.NewMutation[resend.UpdateTopicInput, resend.TopicReference](t, resend.UpdateTopicDefinition),
-		deleteTopic:          connectormock.NewMutation[resend.DeleteTopicInput, resend.DeletedTopic](t, resend.DeleteTopicDefinition),
-		getContact:           connectormock.NewQuery[resend.GetContactInput, resend.Contact](t, resend.GetContactDefinition),
-		listContacts:         connectormock.NewQuery[resend.ListContactsInput, resend.ContactPage](t, resend.ListContactsDefinition),
-		getDomain:            connectormock.NewQuery[resend.GetDomainInput, resend.Domain](t, resend.GetDomainDefinition),
-		listDomains:          connectormock.NewQuery[resend.ListDomainsInput, resend.DomainPage](t, resend.ListDomainsDefinition),
+		createContact:                connectormock.NewMutation[resend.CreateContactInput, resend.ContactReference](t, resend.CreateContactDefinition),
+		createDomain:                 connectormock.NewMutation[resend.CreateDomainInput, resend.DomainReference](t, resend.CreateDomainDefinition),
+		updateContact:                connectormock.NewMutation[resend.UpdateContactInput, resend.ContactReference](t, resend.UpdateContactDefinition),
+		deleteContact:                connectormock.NewMutation[resend.DeleteContactInput, resend.DeletedContact](t, resend.DeleteContactDefinition),
+		deleteDomain:                 connectormock.NewMutation[resend.DeleteDomainInput, resend.DeletedDomain](t, resend.DeleteDomainDefinition),
+		updateDomain:                 connectormock.NewMutation[resend.UpdateDomainInput, resend.DomainReference](t, resend.UpdateDomainDefinition),
+		verifyDomain:                 connectormock.NewMutation[resend.VerifyDomainInput, resend.DomainReference](t, resend.VerifyDomainDefinition),
+		updateScheduledEmail:         connectormock.NewMutation[resend.UpdateScheduledEmailInput, resend.EmailReference](t, resend.UpdateScheduledEmailDefinition),
+		cancelScheduledEmail:         connectormock.NewMutation[resend.CancelScheduledEmailInput, resend.EmailReference](t, resend.CancelScheduledEmailDefinition),
+		sendEmail:                    connectormock.NewMutation[resend.SendEmailInput, resend.SentEmail](t, resend.SendEmailDefinition),
+		sendBatchEmails:              connectormock.NewMutation[resend.SendBatchEmailsInput, resend.SentEmailPage](t, resend.SendBatchEmailsDefinition),
+		getEmail:                     connectormock.NewQuery[resend.GetEmailInput, resend.Email](t, resend.GetEmailDefinition),
+		listEmails:                   connectormock.NewQuery[resend.ListEmailsInput, resend.EmailPage](t, resend.ListEmailsDefinition),
+		createTopic:                  connectormock.NewMutation[resend.CreateTopicInput, resend.TopicReference](t, resend.CreateTopicDefinition),
+		getTopic:                     connectormock.NewQuery[resend.GetTopicInput, resend.Topic](t, resend.GetTopicDefinition),
+		listTopics:                   connectormock.NewQuery[resend.ListTopicsInput, resend.TopicPage](t, resend.ListTopicsDefinition),
+		updateTopic:                  connectormock.NewMutation[resend.UpdateTopicInput, resend.TopicReference](t, resend.UpdateTopicDefinition),
+		deleteTopic:                  connectormock.NewMutation[resend.DeleteTopicInput, resend.DeletedTopic](t, resend.DeleteTopicDefinition),
+		listEmailAttachments:         connectormock.NewQuery[resend.ListEmailAttachmentsInput, resend.EmailAttachmentPage](t, resend.ListEmailAttachmentsDefinition),
+		getEmailAttachment:           connectormock.NewQuery[resend.GetEmailAttachmentInput, resend.EmailAttachment](t, resend.GetEmailAttachmentDefinition),
+		listReceivedEmails:           connectormock.NewQuery[resend.ListReceivedEmailsInput, resend.ReceivedEmailPage](t, resend.ListReceivedEmailsDefinition),
+		getReceivedEmail:             connectormock.NewQuery[resend.GetReceivedEmailInput, resend.ReceivedEmail](t, resend.GetReceivedEmailDefinition),
+		listReceivedEmailAttachments: connectormock.NewQuery[resend.ListReceivedEmailAttachmentsInput, resend.EmailAttachmentPage](t, resend.ListReceivedEmailAttachmentsDefinition),
+		getReceivedEmailAttachment:   connectormock.NewQuery[resend.GetReceivedEmailAttachmentInput, resend.EmailAttachment](t, resend.GetReceivedEmailAttachmentDefinition),
+		getEmailMetrics:              connectormock.NewQuery[resend.GetEmailMetricsInput, resend.EmailMetrics](t, resend.GetEmailMetricsDefinition),
+		getContact:                   connectormock.NewQuery[resend.GetContactInput, resend.Contact](t, resend.GetContactDefinition),
+		listContacts:                 connectormock.NewQuery[resend.ListContactsInput, resend.ContactPage](t, resend.ListContactsDefinition),
+		getDomain:                    connectormock.NewQuery[resend.GetDomainInput, resend.Domain](t, resend.GetDomainDefinition),
+		listDomains:                  connectormock.NewQuery[resend.ListDomainsInput, resend.DomainPage](t, resend.ListDomainsDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -88,6 +102,13 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listTopics.Default(ListTopicsDefault())
 	mock.updateTopic.Default(UpdateTopicDefault())
 	mock.deleteTopic.Default(DeleteTopicDefault())
+	mock.listEmailAttachments.Default(ListEmailAttachmentsDefault())
+	mock.getEmailAttachment.Default(GetEmailAttachmentDefault())
+	mock.listReceivedEmails.Default(ListReceivedEmailsDefault())
+	mock.getReceivedEmail.Default(GetReceivedEmailDefault())
+	mock.listReceivedEmailAttachments.Default(ListReceivedEmailAttachmentsDefault())
+	mock.getReceivedEmailAttachment.Default(GetReceivedEmailAttachmentDefault())
+	mock.getEmailMetrics.Default(GetEmailMetricsDefault())
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.getDomain.Default(GetDomainDefault())
@@ -193,6 +214,41 @@ func (mock *Mock) DeleteTopic() *connectormock.Mutation[resend.DeleteTopicInput,
 	return mock.deleteTopic
 }
 
+// ListEmailAttachments returns the listEmailAttachments script.
+func (mock *Mock) ListEmailAttachments() *connectormock.Query[resend.ListEmailAttachmentsInput, resend.EmailAttachmentPage] {
+	return mock.listEmailAttachments
+}
+
+// GetEmailAttachment returns the getEmailAttachment script.
+func (mock *Mock) GetEmailAttachment() *connectormock.Query[resend.GetEmailAttachmentInput, resend.EmailAttachment] {
+	return mock.getEmailAttachment
+}
+
+// ListReceivedEmails returns the listReceivedEmails script.
+func (mock *Mock) ListReceivedEmails() *connectormock.Query[resend.ListReceivedEmailsInput, resend.ReceivedEmailPage] {
+	return mock.listReceivedEmails
+}
+
+// GetReceivedEmail returns the getReceivedEmail script.
+func (mock *Mock) GetReceivedEmail() *connectormock.Query[resend.GetReceivedEmailInput, resend.ReceivedEmail] {
+	return mock.getReceivedEmail
+}
+
+// ListReceivedEmailAttachments returns the listReceivedEmailAttachments script.
+func (mock *Mock) ListReceivedEmailAttachments() *connectormock.Query[resend.ListReceivedEmailAttachmentsInput, resend.EmailAttachmentPage] {
+	return mock.listReceivedEmailAttachments
+}
+
+// GetReceivedEmailAttachment returns the getReceivedEmailAttachment script.
+func (mock *Mock) GetReceivedEmailAttachment() *connectormock.Query[resend.GetReceivedEmailAttachmentInput, resend.EmailAttachment] {
+	return mock.getReceivedEmailAttachment
+}
+
+// GetEmailMetrics returns the getEmailMetrics script.
+func (mock *Mock) GetEmailMetrics() *connectormock.Query[resend.GetEmailMetricsInput, resend.EmailMetrics] {
+	return mock.getEmailMetrics
+}
+
 // GetContact returns the getContact script.
 func (mock *Mock) GetContact() *connectormock.Query[resend.GetContactInput, resend.Contact] {
 	return mock.getContact
@@ -268,6 +324,27 @@ func (operations mockOperations) UpdateTopic() sdkgo.Mutation[resend.UpdateTopic
 }
 func (operations mockOperations) DeleteTopic() sdkgo.Mutation[resend.DeleteTopicInput, resend.DeletedTopic] {
 	return operations.mock.deleteTopic
+}
+func (operations mockOperations) ListEmailAttachments() sdkgo.Query[resend.ListEmailAttachmentsInput, resend.EmailAttachmentPage] {
+	return operations.mock.listEmailAttachments
+}
+func (operations mockOperations) GetEmailAttachment() sdkgo.Query[resend.GetEmailAttachmentInput, resend.EmailAttachment] {
+	return operations.mock.getEmailAttachment
+}
+func (operations mockOperations) ListReceivedEmails() sdkgo.Query[resend.ListReceivedEmailsInput, resend.ReceivedEmailPage] {
+	return operations.mock.listReceivedEmails
+}
+func (operations mockOperations) GetReceivedEmail() sdkgo.Query[resend.GetReceivedEmailInput, resend.ReceivedEmail] {
+	return operations.mock.getReceivedEmail
+}
+func (operations mockOperations) ListReceivedEmailAttachments() sdkgo.Query[resend.ListReceivedEmailAttachmentsInput, resend.EmailAttachmentPage] {
+	return operations.mock.listReceivedEmailAttachments
+}
+func (operations mockOperations) GetReceivedEmailAttachment() sdkgo.Query[resend.GetReceivedEmailAttachmentInput, resend.EmailAttachment] {
+	return operations.mock.getReceivedEmailAttachment
+}
+func (operations mockOperations) GetEmailMetrics() sdkgo.Query[resend.GetEmailMetricsInput, resend.EmailMetrics] {
+	return operations.mock.getEmailMetrics
 }
 func (operations mockOperations) GetContact() sdkgo.Query[resend.GetContactInput, resend.Contact] {
 	return operations.mock.getContact
@@ -968,6 +1045,273 @@ func DeleteTopicDeleteTopicDefault() connectormock.Case[resend.DeletedTopic] {
 // DeleteTopicDefault is the manifest default, deleteTopicDefault, which New installs.
 func DeleteTopicDefault() connectormock.Case[resend.DeletedTopic] {
 	return DeleteTopicDeleteTopicDefault()
+}
+
+// ListEmailAttachmentsListed selects the listed branch: Resend returned the requested email information.
+func ListEmailAttachmentsListed(value resend.EmailAttachmentPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Branch(resend.ListEmailAttachmentsBranchListed, value, failure)
+}
+
+// ListEmailAttachmentsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListEmailAttachmentsProviderRejected(value resend.EmailAttachmentPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Branch(resend.ListEmailAttachmentsBranchProviderRejected, value, failure)
+}
+
+// ListEmailAttachmentsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListEmailAttachmentsInvalidResponse(value resend.EmailAttachmentPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Branch(resend.ListEmailAttachmentsBranchInvalidResponse, value, failure)
+}
+
+// ListEmailAttachmentsDefect selects the defect branch: Local input or connection is invalid.
+func ListEmailAttachmentsDefect(value resend.EmailAttachmentPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Branch(resend.ListEmailAttachmentsBranchDefect, value, failure)
+}
+
+// ListEmailAttachmentsRetry asks Dex to retry the listEmailAttachments Step, after the delay when it is positive.
+func ListEmailAttachmentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Retry[resend.EmailAttachmentPage](failure, after)
+}
+
+// ListEmailAttachmentsListEmailAttachmentsDefault is the manifest mock listEmailAttachmentsDefault: Resend returned email information.
+func ListEmailAttachmentsListEmailAttachmentsDefault() connectormock.Case[resend.EmailAttachmentPage] {
+	value := connectormock.MustDecodeOutput[resend.EmailAttachmentPage](`{"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}`)
+	return connectormock.Branch(resend.ListEmailAttachmentsBranchListed, value, nil)
+}
+
+// ListEmailAttachmentsDefault is the manifest default, listEmailAttachmentsDefault, which New installs.
+func ListEmailAttachmentsDefault() connectormock.Case[resend.EmailAttachmentPage] {
+	return ListEmailAttachmentsListEmailAttachmentsDefault()
+}
+
+// GetEmailAttachmentFound selects the found branch: Resend returned the requested email information.
+func GetEmailAttachmentFound(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetEmailAttachmentBranchFound, value, failure)
+}
+
+// GetEmailAttachmentNotFound selects the notFound branch: The resource does not exist.
+func GetEmailAttachmentNotFound(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetEmailAttachmentBranchNotFound, value, failure)
+}
+
+// GetEmailAttachmentProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetEmailAttachmentProviderRejected(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetEmailAttachmentBranchProviderRejected, value, failure)
+}
+
+// GetEmailAttachmentInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetEmailAttachmentInvalidResponse(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetEmailAttachmentBranchInvalidResponse, value, failure)
+}
+
+// GetEmailAttachmentDefect selects the defect branch: Local input or connection is invalid.
+func GetEmailAttachmentDefect(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetEmailAttachmentBranchDefect, value, failure)
+}
+
+// GetEmailAttachmentRetry asks Dex to retry the getEmailAttachment Step, after the delay when it is positive.
+func GetEmailAttachmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Retry[resend.EmailAttachment](failure, after)
+}
+
+// GetEmailAttachmentGetEmailAttachmentDefault is the manifest mock getEmailAttachmentDefault: Resend returned email information.
+func GetEmailAttachmentGetEmailAttachmentDefault() connectormock.Case[resend.EmailAttachment] {
+	value := connectormock.MustDecodeOutput[resend.EmailAttachment](`{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}`)
+	return connectormock.Branch(resend.GetEmailAttachmentBranchFound, value, nil)
+}
+
+// GetEmailAttachmentDefault is the manifest default, getEmailAttachmentDefault, which New installs.
+func GetEmailAttachmentDefault() connectormock.Case[resend.EmailAttachment] {
+	return GetEmailAttachmentGetEmailAttachmentDefault()
+}
+
+// ListReceivedEmailsListed selects the listed branch: Resend returned the requested email information.
+func ListReceivedEmailsListed(value resend.ReceivedEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.ReceivedEmailPage] {
+	return connectormock.Branch(resend.ListReceivedEmailsBranchListed, value, failure)
+}
+
+// ListReceivedEmailsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListReceivedEmailsProviderRejected(value resend.ReceivedEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.ReceivedEmailPage] {
+	return connectormock.Branch(resend.ListReceivedEmailsBranchProviderRejected, value, failure)
+}
+
+// ListReceivedEmailsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListReceivedEmailsInvalidResponse(value resend.ReceivedEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.ReceivedEmailPage] {
+	return connectormock.Branch(resend.ListReceivedEmailsBranchInvalidResponse, value, failure)
+}
+
+// ListReceivedEmailsDefect selects the defect branch: Local input or connection is invalid.
+func ListReceivedEmailsDefect(value resend.ReceivedEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.ReceivedEmailPage] {
+	return connectormock.Branch(resend.ListReceivedEmailsBranchDefect, value, failure)
+}
+
+// ListReceivedEmailsRetry asks Dex to retry the listReceivedEmails Step, after the delay when it is positive.
+func ListReceivedEmailsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.ReceivedEmailPage] {
+	return connectormock.Retry[resend.ReceivedEmailPage](failure, after)
+}
+
+// ListReceivedEmailsListReceivedEmailsDefault is the manifest mock listReceivedEmailsDefault: Resend returned email information.
+func ListReceivedEmailsListReceivedEmailsDefault() connectormock.Case[resend.ReceivedEmailPage] {
+	value := connectormock.MustDecodeOutput[resend.ReceivedEmailPage](`{"data":[{"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListReceivedEmailsBranchListed, value, nil)
+}
+
+// ListReceivedEmailsDefault is the manifest default, listReceivedEmailsDefault, which New installs.
+func ListReceivedEmailsDefault() connectormock.Case[resend.ReceivedEmailPage] {
+	return ListReceivedEmailsListReceivedEmailsDefault()
+}
+
+// GetReceivedEmailFound selects the found branch: Resend returned the requested email information.
+func GetReceivedEmailFound(value resend.ReceivedEmail, failure *sdkgo.Failure) connectormock.Case[resend.ReceivedEmail] {
+	return connectormock.Branch(resend.GetReceivedEmailBranchFound, value, failure)
+}
+
+// GetReceivedEmailNotFound selects the notFound branch: The resource does not exist.
+func GetReceivedEmailNotFound(value resend.ReceivedEmail, failure *sdkgo.Failure) connectormock.Case[resend.ReceivedEmail] {
+	return connectormock.Branch(resend.GetReceivedEmailBranchNotFound, value, failure)
+}
+
+// GetReceivedEmailProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetReceivedEmailProviderRejected(value resend.ReceivedEmail, failure *sdkgo.Failure) connectormock.Case[resend.ReceivedEmail] {
+	return connectormock.Branch(resend.GetReceivedEmailBranchProviderRejected, value, failure)
+}
+
+// GetReceivedEmailInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetReceivedEmailInvalidResponse(value resend.ReceivedEmail, failure *sdkgo.Failure) connectormock.Case[resend.ReceivedEmail] {
+	return connectormock.Branch(resend.GetReceivedEmailBranchInvalidResponse, value, failure)
+}
+
+// GetReceivedEmailDefect selects the defect branch: Local input or connection is invalid.
+func GetReceivedEmailDefect(value resend.ReceivedEmail, failure *sdkgo.Failure) connectormock.Case[resend.ReceivedEmail] {
+	return connectormock.Branch(resend.GetReceivedEmailBranchDefect, value, failure)
+}
+
+// GetReceivedEmailRetry asks Dex to retry the getReceivedEmail Step, after the delay when it is positive.
+func GetReceivedEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.ReceivedEmail] {
+	return connectormock.Retry[resend.ReceivedEmail](failure, after)
+}
+
+// GetReceivedEmailGetReceivedEmailDefault is the manifest mock getReceivedEmailDefault: Resend returned email information.
+func GetReceivedEmailGetReceivedEmailDefault() connectormock.Case[resend.ReceivedEmail] {
+	value := connectormock.MustDecodeOutput[resend.ReceivedEmail](`{"id":"received-1","from":"sender@example.test","to":["inbox@example.test"],"subject":"Hello"}`)
+	return connectormock.Branch(resend.GetReceivedEmailBranchFound, value, nil)
+}
+
+// GetReceivedEmailDefault is the manifest default, getReceivedEmailDefault, which New installs.
+func GetReceivedEmailDefault() connectormock.Case[resend.ReceivedEmail] {
+	return GetReceivedEmailGetReceivedEmailDefault()
+}
+
+// ListReceivedEmailAttachmentsListed selects the listed branch: Resend returned the requested email information.
+func ListReceivedEmailAttachmentsListed(value resend.EmailAttachmentPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Branch(resend.ListReceivedEmailAttachmentsBranchListed, value, failure)
+}
+
+// ListReceivedEmailAttachmentsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListReceivedEmailAttachmentsProviderRejected(value resend.EmailAttachmentPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Branch(resend.ListReceivedEmailAttachmentsBranchProviderRejected, value, failure)
+}
+
+// ListReceivedEmailAttachmentsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListReceivedEmailAttachmentsInvalidResponse(value resend.EmailAttachmentPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Branch(resend.ListReceivedEmailAttachmentsBranchInvalidResponse, value, failure)
+}
+
+// ListReceivedEmailAttachmentsDefect selects the defect branch: Local input or connection is invalid.
+func ListReceivedEmailAttachmentsDefect(value resend.EmailAttachmentPage, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Branch(resend.ListReceivedEmailAttachmentsBranchDefect, value, failure)
+}
+
+// ListReceivedEmailAttachmentsRetry asks Dex to retry the listReceivedEmailAttachments Step, after the delay when it is positive.
+func ListReceivedEmailAttachmentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EmailAttachmentPage] {
+	return connectormock.Retry[resend.EmailAttachmentPage](failure, after)
+}
+
+// ListReceivedEmailAttachmentsListReceivedEmailAttachmentsDefault is the manifest mock listReceivedEmailAttachmentsDefault: Resend returned email information.
+func ListReceivedEmailAttachmentsListReceivedEmailAttachmentsDefault() connectormock.Case[resend.EmailAttachmentPage] {
+	value := connectormock.MustDecodeOutput[resend.EmailAttachmentPage](`{"data":[{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}],"has_more":false}`)
+	return connectormock.Branch(resend.ListReceivedEmailAttachmentsBranchListed, value, nil)
+}
+
+// ListReceivedEmailAttachmentsDefault is the manifest default, listReceivedEmailAttachmentsDefault, which New installs.
+func ListReceivedEmailAttachmentsDefault() connectormock.Case[resend.EmailAttachmentPage] {
+	return ListReceivedEmailAttachmentsListReceivedEmailAttachmentsDefault()
+}
+
+// GetReceivedEmailAttachmentFound selects the found branch: Resend returned the requested email information.
+func GetReceivedEmailAttachmentFound(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetReceivedEmailAttachmentBranchFound, value, failure)
+}
+
+// GetReceivedEmailAttachmentNotFound selects the notFound branch: The resource does not exist.
+func GetReceivedEmailAttachmentNotFound(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetReceivedEmailAttachmentBranchNotFound, value, failure)
+}
+
+// GetReceivedEmailAttachmentProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetReceivedEmailAttachmentProviderRejected(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetReceivedEmailAttachmentBranchProviderRejected, value, failure)
+}
+
+// GetReceivedEmailAttachmentInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetReceivedEmailAttachmentInvalidResponse(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetReceivedEmailAttachmentBranchInvalidResponse, value, failure)
+}
+
+// GetReceivedEmailAttachmentDefect selects the defect branch: Local input or connection is invalid.
+func GetReceivedEmailAttachmentDefect(value resend.EmailAttachment, failure *sdkgo.Failure) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Branch(resend.GetReceivedEmailAttachmentBranchDefect, value, failure)
+}
+
+// GetReceivedEmailAttachmentRetry asks Dex to retry the getReceivedEmailAttachment Step, after the delay when it is positive.
+func GetReceivedEmailAttachmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EmailAttachment] {
+	return connectormock.Retry[resend.EmailAttachment](failure, after)
+}
+
+// GetReceivedEmailAttachmentGetReceivedEmailAttachmentDefault is the manifest mock getReceivedEmailAttachmentDefault: Resend returned email information.
+func GetReceivedEmailAttachmentGetReceivedEmailAttachmentDefault() connectormock.Case[resend.EmailAttachment] {
+	value := connectormock.MustDecodeOutput[resend.EmailAttachment](`{"id":"attachment-1","filename":"invoice.pdf","content_type":"application/pdf","size":1024}`)
+	return connectormock.Branch(resend.GetReceivedEmailAttachmentBranchFound, value, nil)
+}
+
+// GetReceivedEmailAttachmentDefault is the manifest default, getReceivedEmailAttachmentDefault, which New installs.
+func GetReceivedEmailAttachmentDefault() connectormock.Case[resend.EmailAttachment] {
+	return GetReceivedEmailAttachmentGetReceivedEmailAttachmentDefault()
+}
+
+// GetEmailMetricsFound selects the found branch: Resend returned the requested email information.
+func GetEmailMetricsFound(value resend.EmailMetrics, failure *sdkgo.Failure) connectormock.Case[resend.EmailMetrics] {
+	return connectormock.Branch(resend.GetEmailMetricsBranchFound, value, failure)
+}
+
+// GetEmailMetricsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetEmailMetricsProviderRejected(value resend.EmailMetrics, failure *sdkgo.Failure) connectormock.Case[resend.EmailMetrics] {
+	return connectormock.Branch(resend.GetEmailMetricsBranchProviderRejected, value, failure)
+}
+
+// GetEmailMetricsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetEmailMetricsInvalidResponse(value resend.EmailMetrics, failure *sdkgo.Failure) connectormock.Case[resend.EmailMetrics] {
+	return connectormock.Branch(resend.GetEmailMetricsBranchInvalidResponse, value, failure)
+}
+
+// GetEmailMetricsDefect selects the defect branch: Local input or connection is invalid.
+func GetEmailMetricsDefect(value resend.EmailMetrics, failure *sdkgo.Failure) connectormock.Case[resend.EmailMetrics] {
+	return connectormock.Branch(resend.GetEmailMetricsBranchDefect, value, failure)
+}
+
+// GetEmailMetricsRetry asks Dex to retry the getEmailMetrics Step, after the delay when it is positive.
+func GetEmailMetricsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EmailMetrics] {
+	return connectormock.Retry[resend.EmailMetrics](failure, after)
+}
+
+// GetEmailMetricsGetEmailMetricsDefault is the manifest mock getEmailMetricsDefault: Resend returned email information.
+func GetEmailMetricsGetEmailMetricsDefault() connectormock.Case[resend.EmailMetrics] {
+	value := connectormock.MustDecodeOutput[resend.EmailMetrics](`{"start_date":"2026-11-01T00:00:00Z","end_date":"2026-11-02T00:00:00Z","metrics":["sent"],"dimensions":[],"granularity":"daily","totals":{"sent":1}}`)
+	return connectormock.Branch(resend.GetEmailMetricsBranchFound, value, nil)
+}
+
+// GetEmailMetricsDefault is the manifest default, getEmailMetricsDefault, which New installs.
+func GetEmailMetricsDefault() connectormock.Case[resend.EmailMetrics] {
+	return GetEmailMetricsGetEmailMetricsDefault()
 }
 
 // GetContactFound selects the found branch: Resend returned the contact.

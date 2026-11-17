@@ -48,6 +48,13 @@ unverified.
 | `listTopics` | query | TopicPage |
 | `updateTopic` | mutation | TopicReference |
 | `deleteTopic` | mutation | DeletedTopic |
+| `listEmailAttachments` | query | EmailAttachmentPage |
+| `getEmailAttachment` | query | EmailAttachment |
+| `listReceivedEmails` | query | ReceivedEmailPage |
+| `getReceivedEmail` | query | ReceivedEmail |
+| `listReceivedEmailAttachments` | query | EmailAttachmentPage |
+| `getReceivedEmailAttachment` | query | EmailAttachment |
+| `getEmailMetrics` | query | EmailMetrics |
 
 Topic CRUD follows [Resend's Topics API](https://resend.com/docs/api-reference/topics/create-topic).
 `createTopic` is `limited` with three possible sends and read-back by topic
@@ -60,6 +67,19 @@ Names are at most 50 characters, descriptions at most 200, and visibility is
 `public` or `private`; blank visibility on creation uses private. See the
 checked-in [create-topic Flow](go/examples/create-topic/README.md) for a
 mock-backed Dex Worker and Client run.
+
+Sent and received attachment queries return metadata but omit Resend's
+short-lived signed `download_url`, because that URL grants access to content.
+Received-email queries return identifying metadata and attachment summaries;
+message bodies and headers are omitted from durable Flow Results. Attachment
+pages accept a 1–100 `limit` and an exclusive `after` cursor. Find email
+IDs under [Resend Emails](https://resend.com/emails); blank IDs are invalid.
+`getEmailMetrics` accepts ISO 8601 dates, an IANA timezone, hourly/daily/
+weekly/monthly granularity, named measures and dimensions, and up to 100 IDs
+per domain/email/broadcast filter. Email and broadcast filters are mutually
+exclusive. Blank filters use the provider's defaults. The checked-in
+[email-metrics Flow](go/examples/email-metrics/README.md) exercises the
+generated query factory through real Dex with a provider mock.
 
 The five new Go queries use the `safe` repeat tier and bounded HTTP responses.
 List inputs accept a 1–100 item `limit`; zero uses Resend's default for emails

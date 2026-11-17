@@ -8542,6 +8542,2678 @@
       },
       "name": "updateTopic-transport",
       "operation": "updateTopic"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"attachment-1\",\"filename\":\"invoice.pdf\",\"content_type\":\"application/pdf\",\"size\":1024,\"download_url\":\"https://downloads.example.test/file?Signature=redacted\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "content_disposition": "",
+              "content_id": "",
+              "content_type": "application/pdf",
+              "filename": "invoice.pdf",
+              "id": "attachment-1",
+              "size": 1024
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "email-1",
+        "limit": 10
+      },
+      "name": "listEmailAttachments-success",
+      "operation": "listEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "email-1",
+        "limit": 10
+      },
+      "name": "listEmailAttachments-rejected",
+      "operation": "listEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"attachment-1\",\"filename\":\"invoice.pdf\",\"content_type\":\"application/pdf\",\"size\":1024,\"download_url\":\"https://downloads.example.test/file?Signature=redacted\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "content_disposition": "",
+              "content_id": "",
+              "content_type": "application/pdf",
+              "filename": "invoice.pdf",
+              "id": "attachment-1",
+              "size": 1024
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "email-1",
+        "limit": 10
+      },
+      "name": "listEmailAttachments-invalid",
+      "operation": "listEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "email-1",
+        "limit": 101
+      },
+      "name": "listEmailAttachments-defect",
+      "operation": "listEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "email-1",
+        "limit": 10
+      },
+      "name": "listEmailAttachments-rate",
+      "operation": "listEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "email-1",
+        "limit": 10
+      },
+      "name": "listEmailAttachments-server",
+      "operation": "listEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "email-1",
+        "limit": 10
+      },
+      "name": "listEmailAttachments-transport",
+      "operation": "listEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"attachment-1\",\"filename\":\"invoice.pdf\",\"content_type\":\"application/pdf\",\"size\":1024,\"download_url\":\"https://downloads.example.test/file?Signature=redacted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "application/pdf",
+          "filename": "invoice.pdf",
+          "id": "attachment-1",
+          "size": 1024
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "email-1"
+      },
+      "name": "getEmailAttachment-success",
+      "operation": "getEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "",
+          "filename": "",
+          "id": "",
+          "size": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "email-1"
+      },
+      "name": "getEmailAttachment-missing",
+      "operation": "getEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "",
+          "filename": "",
+          "id": "",
+          "size": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "email-1"
+      },
+      "name": "getEmailAttachment-rejected",
+      "operation": "getEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"attachment-1\",\"filename\":\"invoice.pdf\",\"content_type\":\"application/pdf\",\"size\":1024,\"download_url\":\"https://downloads.example.test/file?Signature=redacted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "application/pdf",
+          "filename": "invoice.pdf",
+          "id": "attachment-1",
+          "size": 1024
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "email-1"
+      },
+      "name": "getEmailAttachment-invalid",
+      "operation": "getEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "",
+          "filename": "",
+          "id": "",
+          "size": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": ""
+      },
+      "name": "getEmailAttachment-defect",
+      "operation": "getEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "email-1"
+      },
+      "name": "getEmailAttachment-rate",
+      "operation": "getEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "email-1"
+      },
+      "name": "getEmailAttachment-server",
+      "operation": "getEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "email-1"
+      },
+      "name": "getEmailAttachment-transport",
+      "operation": "getEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"received-1\",\"from\":\"sender@example.test\",\"to\":[\"inbox@example.test\"],\"subject\":\"Hello\",\"message_id\":\"\u003cmessage@example.test\u003e\",\"created_at\":\"2026-11-01T00:00:00Z\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving",
+          "query": {
+            "after": [
+              "received-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "attachments": [],
+              "created_at": "2026-11-01T00:00:00Z",
+              "from": "sender@example.test",
+              "id": "received-1",
+              "message_id": "\u003cmessage@example.test\u003e",
+              "subject": "Hello",
+              "to": [
+                "inbox@example.test"
+              ]
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "received-0",
+        "limit": 10
+      },
+      "name": "listReceivedEmails-success",
+      "operation": "listReceivedEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving",
+          "query": {
+            "after": [
+              "received-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "received-0",
+        "limit": 10
+      },
+      "name": "listReceivedEmails-rejected",
+      "operation": "listReceivedEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"received-1\",\"from\":\"sender@example.test\",\"to\":[\"inbox@example.test\"],\"subject\":\"Hello\",\"message_id\":\"\u003cmessage@example.test\u003e\",\"created_at\":\"2026-11-01T00:00:00Z\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving",
+          "query": {
+            "after": [
+              "received-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "attachments": [],
+              "created_at": "2026-11-01T00:00:00Z",
+              "from": "sender@example.test",
+              "id": "received-1",
+              "message_id": "\u003cmessage@example.test\u003e",
+              "subject": "Hello",
+              "to": [
+                "inbox@example.test"
+              ]
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "received-0",
+        "limit": 10
+      },
+      "name": "listReceivedEmails-invalid",
+      "operation": "listReceivedEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "received-0",
+        "limit": 101
+      },
+      "name": "listReceivedEmails-defect",
+      "operation": "listReceivedEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving",
+          "query": {
+            "after": [
+              "received-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "received-0",
+        "limit": 10
+      },
+      "name": "listReceivedEmails-rate",
+      "operation": "listReceivedEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving",
+          "query": {
+            "after": [
+              "received-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "received-0",
+        "limit": 10
+      },
+      "name": "listReceivedEmails-server",
+      "operation": "listReceivedEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving",
+          "query": {
+            "after": [
+              "received-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "received-0",
+        "limit": 10
+      },
+      "name": "listReceivedEmails-transport",
+      "operation": "listReceivedEmails"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"received-1\",\"from\":\"sender@example.test\",\"to\":[\"inbox@example.test\"],\"subject\":\"Hello\",\"message_id\":\"\u003cmessage@example.test\u003e\",\"created_at\":\"2026-11-01T00:00:00Z\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attachments": [],
+          "created_at": "2026-11-01T00:00:00Z",
+          "from": "sender@example.test",
+          "id": "received-1",
+          "message_id": "\u003cmessage@example.test\u003e",
+          "subject": "Hello",
+          "to": [
+            "inbox@example.test"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "received-1"
+      },
+      "name": "getReceivedEmail-success",
+      "operation": "getReceivedEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "attachments": [],
+          "created_at": "",
+          "from": "",
+          "id": "",
+          "message_id": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "received-1"
+      },
+      "name": "getReceivedEmail-missing",
+      "operation": "getReceivedEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "attachments": [],
+          "created_at": "",
+          "from": "",
+          "id": "",
+          "message_id": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "received-1"
+      },
+      "name": "getReceivedEmail-rejected",
+      "operation": "getReceivedEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"received-1\",\"from\":\"sender@example.test\",\"to\":[\"inbox@example.test\"],\"subject\":\"Hello\",\"message_id\":\"\u003cmessage@example.test\u003e\",\"created_at\":\"2026-11-01T00:00:00Z\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "attachments": [],
+          "created_at": "2026-11-01T00:00:00Z",
+          "from": "sender@example.test",
+          "id": "received-1",
+          "message_id": "\u003cmessage@example.test\u003e",
+          "subject": "Hello",
+          "to": [
+            "inbox@example.test"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "received-1"
+      },
+      "name": "getReceivedEmail-invalid",
+      "operation": "getReceivedEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "attachments": [],
+          "created_at": "",
+          "from": "",
+          "id": "",
+          "message_id": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getReceivedEmail-defect",
+      "operation": "getReceivedEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "received-1"
+      },
+      "name": "getReceivedEmail-rate",
+      "operation": "getReceivedEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "received-1"
+      },
+      "name": "getReceivedEmail-server",
+      "operation": "getReceivedEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "received-1"
+      },
+      "name": "getReceivedEmail-transport",
+      "operation": "getReceivedEmail"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"attachment-1\",\"filename\":\"invoice.pdf\",\"content_type\":\"application/pdf\",\"size\":1024,\"download_url\":\"https://downloads.example.test/file?Signature=redacted\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "content_disposition": "",
+              "content_id": "",
+              "content_type": "application/pdf",
+              "filename": "invoice.pdf",
+              "id": "attachment-1",
+              "size": 1024
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "received-1",
+        "limit": 10
+      },
+      "name": "listReceivedEmailAttachments-success",
+      "operation": "listReceivedEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "received-1",
+        "limit": 10
+      },
+      "name": "listReceivedEmailAttachments-rejected",
+      "operation": "listReceivedEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"attachment-1\",\"filename\":\"invoice.pdf\",\"content_type\":\"application/pdf\",\"size\":1024,\"download_url\":\"https://downloads.example.test/file?Signature=redacted\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "content_disposition": "",
+              "content_id": "",
+              "content_type": "application/pdf",
+              "filename": "invoice.pdf",
+              "id": "attachment-1",
+              "size": 1024
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "received-1",
+        "limit": 10
+      },
+      "name": "listReceivedEmailAttachments-invalid",
+      "operation": "listReceivedEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "received-1",
+        "limit": 101
+      },
+      "name": "listReceivedEmailAttachments-defect",
+      "operation": "listReceivedEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "received-1",
+        "limit": 10
+      },
+      "name": "listReceivedEmailAttachments-rate",
+      "operation": "listReceivedEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "received-1",
+        "limit": 10
+      },
+      "name": "listReceivedEmailAttachments-server",
+      "operation": "listReceivedEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments",
+          "query": {
+            "after": [
+              "attachment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "attachment-0",
+        "emailId": "received-1",
+        "limit": 10
+      },
+      "name": "listReceivedEmailAttachments-transport",
+      "operation": "listReceivedEmailAttachments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"attachment-1\",\"filename\":\"invoice.pdf\",\"content_type\":\"application/pdf\",\"size\":1024,\"download_url\":\"https://downloads.example.test/file?Signature=redacted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "application/pdf",
+          "filename": "invoice.pdf",
+          "id": "attachment-1",
+          "size": 1024
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "received-1"
+      },
+      "name": "getReceivedEmailAttachment-success",
+      "operation": "getReceivedEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "",
+          "filename": "",
+          "id": "",
+          "size": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "received-1"
+      },
+      "name": "getReceivedEmailAttachment-missing",
+      "operation": "getReceivedEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "",
+          "filename": "",
+          "id": "",
+          "size": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "received-1"
+      },
+      "name": "getReceivedEmailAttachment-rejected",
+      "operation": "getReceivedEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"attachment-1\",\"filename\":\"invoice.pdf\",\"content_type\":\"application/pdf\",\"size\":1024,\"download_url\":\"https://downloads.example.test/file?Signature=redacted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "application/pdf",
+          "filename": "invoice.pdf",
+          "id": "attachment-1",
+          "size": 1024
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "received-1"
+      },
+      "name": "getReceivedEmailAttachment-invalid",
+      "operation": "getReceivedEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content_disposition": "",
+          "content_id": "",
+          "content_type": "",
+          "filename": "",
+          "id": "",
+          "size": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": ""
+      },
+      "name": "getReceivedEmailAttachment-defect",
+      "operation": "getReceivedEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "received-1"
+      },
+      "name": "getReceivedEmailAttachment-rate",
+      "operation": "getReceivedEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "received-1"
+      },
+      "name": "getReceivedEmailAttachment-server",
+      "operation": "getReceivedEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/receiving/received-1/attachments/attachment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attachmentId": "attachment-1",
+        "emailId": "received-1"
+      },
+      "name": "getReceivedEmailAttachment-transport",
+      "operation": "getReceivedEmailAttachment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"start_date\":\"2026-11-01T00:00:00Z\",\"end_date\":\"2026-11-02T00:00:00Z\",\"metrics\":[\"sent\",\"delivered\"],\"dimensions\":[\"period\",\"domain\"],\"granularity\":\"daily\",\"totals\":{\"sent\":1,\"delivered\":1},\"data\":[{\"period\":\"2026-11-01\",\"domain_id\":\"domain-1\",\"sent\":1,\"delivered\":1}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/metrics",
+          "query": {
+            "dimensions": [
+              "period,domain"
+            ],
+            "domain_id": [
+              "domain-1"
+            ],
+            "end_date": [
+              "2026-11-02"
+            ],
+            "granularity": [
+              "daily"
+            ],
+            "metrics": [
+              "sent,delivered"
+            ],
+            "start_date": [
+              "2026-11-01"
+            ],
+            "timezone": [
+              "UTC"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "delivered": 1,
+              "domain_id": "domain-1",
+              "period": "2026-11-01",
+              "sent": 1
+            }
+          ],
+          "dimensions": [
+            "period",
+            "domain"
+          ],
+          "end_date": "2026-11-02T00:00:00Z",
+          "granularity": "daily",
+          "metrics": [
+            "sent",
+            "delivered"
+          ],
+          "start_date": "2026-11-01T00:00:00Z",
+          "totals": {
+            "delivered": 1,
+            "sent": 1
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "period",
+          "domain"
+        ],
+        "domainIds": [
+          "domain-1"
+        ],
+        "endDate": "2026-11-02",
+        "granularity": "daily",
+        "metrics": [
+          "sent",
+          "delivered"
+        ],
+        "startDate": "2026-11-01",
+        "timezone": "UTC"
+      },
+      "name": "getEmailMetrics-success",
+      "operation": "getEmailMetrics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/metrics",
+          "query": {
+            "dimensions": [
+              "period,domain"
+            ],
+            "domain_id": [
+              "domain-1"
+            ],
+            "end_date": [
+              "2026-11-02"
+            ],
+            "granularity": [
+              "daily"
+            ],
+            "metrics": [
+              "sent,delivered"
+            ],
+            "start_date": [
+              "2026-11-01"
+            ],
+            "timezone": [
+              "UTC"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "dimensions": [],
+          "end_date": "",
+          "granularity": "",
+          "metrics": [],
+          "start_date": "",
+          "totals": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "period",
+          "domain"
+        ],
+        "domainIds": [
+          "domain-1"
+        ],
+        "endDate": "2026-11-02",
+        "granularity": "daily",
+        "metrics": [
+          "sent",
+          "delivered"
+        ],
+        "startDate": "2026-11-01",
+        "timezone": "UTC"
+      },
+      "name": "getEmailMetrics-rejected",
+      "operation": "getEmailMetrics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"start_date\":\"2026-11-01T00:00:00Z\",\"end_date\":\"2026-11-02T00:00:00Z\",\"metrics\":[\"sent\",\"delivered\"],\"dimensions\":[\"period\",\"domain\"],\"granularity\":\"daily\",\"totals\":{\"sent\":1,\"delivered\":1},\"data\":[{\"period\":\"2026-11-01\",\"domain_id\":\"domain-1\",\"sent\":1,\"delivered\":1}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/metrics",
+          "query": {
+            "dimensions": [
+              "period,domain"
+            ],
+            "domain_id": [
+              "domain-1"
+            ],
+            "end_date": [
+              "2026-11-02"
+            ],
+            "granularity": [
+              "daily"
+            ],
+            "metrics": [
+              "sent,delivered"
+            ],
+            "start_date": [
+              "2026-11-01"
+            ],
+            "timezone": [
+              "UTC"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "delivered": 1,
+              "domain_id": "domain-1",
+              "period": "2026-11-01",
+              "sent": 1
+            }
+          ],
+          "dimensions": [
+            "period",
+            "domain"
+          ],
+          "end_date": "2026-11-02T00:00:00Z",
+          "granularity": "daily",
+          "metrics": [
+            "sent",
+            "delivered"
+          ],
+          "start_date": "2026-11-01T00:00:00Z",
+          "totals": {
+            "delivered": 1,
+            "sent": 1
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "period",
+          "domain"
+        ],
+        "domainIds": [
+          "domain-1"
+        ],
+        "endDate": "2026-11-02",
+        "granularity": "daily",
+        "metrics": [
+          "sent",
+          "delivered"
+        ],
+        "startDate": "2026-11-01",
+        "timezone": "UTC"
+      },
+      "name": "getEmailMetrics-invalid",
+      "operation": "getEmailMetrics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dimensions": [],
+          "end_date": "",
+          "granularity": "",
+          "metrics": [],
+          "start_date": "",
+          "totals": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "period",
+          "domain"
+        ],
+        "domainIds": [
+          "domain-1"
+        ],
+        "endDate": "2026-11-02",
+        "granularity": "invalid",
+        "metrics": [
+          "sent",
+          "delivered"
+        ],
+        "startDate": "2026-11-01",
+        "timezone": "UTC"
+      },
+      "name": "getEmailMetrics-defect",
+      "operation": "getEmailMetrics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/metrics",
+          "query": {
+            "dimensions": [
+              "period,domain"
+            ],
+            "domain_id": [
+              "domain-1"
+            ],
+            "end_date": [
+              "2026-11-02"
+            ],
+            "granularity": [
+              "daily"
+            ],
+            "metrics": [
+              "sent,delivered"
+            ],
+            "start_date": [
+              "2026-11-01"
+            ],
+            "timezone": [
+              "UTC"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "period",
+          "domain"
+        ],
+        "domainIds": [
+          "domain-1"
+        ],
+        "endDate": "2026-11-02",
+        "granularity": "daily",
+        "metrics": [
+          "sent",
+          "delivered"
+        ],
+        "startDate": "2026-11-01",
+        "timezone": "UTC"
+      },
+      "name": "getEmailMetrics-rate",
+      "operation": "getEmailMetrics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/metrics",
+          "query": {
+            "dimensions": [
+              "period,domain"
+            ],
+            "domain_id": [
+              "domain-1"
+            ],
+            "end_date": [
+              "2026-11-02"
+            ],
+            "granularity": [
+              "daily"
+            ],
+            "metrics": [
+              "sent,delivered"
+            ],
+            "start_date": [
+              "2026-11-01"
+            ],
+            "timezone": [
+              "UTC"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "period",
+          "domain"
+        ],
+        "domainIds": [
+          "domain-1"
+        ],
+        "endDate": "2026-11-02",
+        "granularity": "daily",
+        "metrics": [
+          "sent",
+          "delivered"
+        ],
+        "startDate": "2026-11-01",
+        "timezone": "UTC"
+      },
+      "name": "getEmailMetrics-server",
+      "operation": "getEmailMetrics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/metrics",
+          "query": {
+            "dimensions": [
+              "period,domain"
+            ],
+            "domain_id": [
+              "domain-1"
+            ],
+            "end_date": [
+              "2026-11-02"
+            ],
+            "granularity": [
+              "daily"
+            ],
+            "metrics": [
+              "sent,delivered"
+            ],
+            "start_date": [
+              "2026-11-01"
+            ],
+            "timezone": [
+              "UTC"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "period",
+          "domain"
+        ],
+        "domainIds": [
+          "domain-1"
+        ],
+        "endDate": "2026-11-02",
+        "granularity": "daily",
+        "metrics": [
+          "sent",
+          "delivered"
+        ],
+        "startDate": "2026-11-01",
+        "timezone": "UTC"
+      },
+      "name": "getEmailMetrics-transport",
+      "operation": "getEmailMetrics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"start_date\":\"2026-11-01T00:00:00Z\",\"end_date\":\"2026-11-02T00:00:00Z\",\"metrics\":[\"sent\"],\"dimensions\":[\"email\"],\"granularity\":\"daily\",\"totals\":{\"sent\":1},\"data\":[{\"email_id\":\"email-1\",\"sent\":1}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/metrics",
+          "query": {
+            "dimensions": [
+              "email"
+            ],
+            "email_id": [
+              "email-1"
+            ],
+            "end_date": [
+              "2026-11-02"
+            ],
+            "metrics": [
+              "sent"
+            ],
+            "start_date": [
+              "2026-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "email_id": "email-1",
+              "sent": 1
+            }
+          ],
+          "dimensions": [
+            "email"
+          ],
+          "end_date": "2026-11-02T00:00:00Z",
+          "granularity": "daily",
+          "metrics": [
+            "sent"
+          ],
+          "start_date": "2026-11-01T00:00:00Z",
+          "totals": {
+            "sent": 1
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "email"
+        ],
+        "emailIds": [
+          "email-1"
+        ],
+        "endDate": "2026-11-02",
+        "metrics": [
+          "sent"
+        ],
+        "startDate": "2026-11-01"
+      },
+      "name": "getEmailMetrics-email-filter",
+      "operation": "getEmailMetrics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"start_date\":\"2026-11-01T00:00:00Z\",\"end_date\":\"2026-11-02T00:00:00Z\",\"metrics\":[\"sent\"],\"dimensions\":[\"broadcast\"],\"granularity\":\"daily\",\"totals\":{\"sent\":1},\"data\":[{\"broadcast_id\":\"broadcast-1\",\"sent\":1}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/metrics",
+          "query": {
+            "broadcast_id": [
+              "broadcast-1"
+            ],
+            "dimensions": [
+              "broadcast"
+            ],
+            "end_date": [
+              "2026-11-02"
+            ],
+            "metrics": [
+              "sent"
+            ],
+            "start_date": [
+              "2026-11-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "broadcast_id": "broadcast-1",
+              "sent": 1
+            }
+          ],
+          "dimensions": [
+            "broadcast"
+          ],
+          "end_date": "2026-11-02T00:00:00Z",
+          "granularity": "daily",
+          "metrics": [
+            "sent"
+          ],
+          "start_date": "2026-11-01T00:00:00Z",
+          "totals": {
+            "sent": 1
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "broadcastIds": [
+          "broadcast-1"
+        ],
+        "dimensions": [
+          "broadcast"
+        ],
+        "endDate": "2026-11-02",
+        "metrics": [
+          "sent"
+        ],
+        "startDate": "2026-11-01"
+      },
+      "name": "getEmailMetrics-broadcast-filter",
+      "operation": "getEmailMetrics"
     }
   ],
   "schemaVersion": 1
