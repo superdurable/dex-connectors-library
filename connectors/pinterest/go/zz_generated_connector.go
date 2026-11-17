@@ -43,12 +43,20 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetBoard() sdkgo.Query[GetBoardInput, Board]
+	GetPin() sdkgo.Query[GetPinInput, Pin]
 	ListBoards() sdkgo.Query[ListBoardsInput, BoardsPage]
 	ListPins() sdkgo.Query[ListPinsInput, PinsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetBoard() sdkgo.Query[GetBoardInput, Board] {
+	return operations.client.GetBoard()
+}
+func (operations clientOperations) GetPin() sdkgo.Query[GetPinInput, Pin] {
+	return operations.client.GetPin()
+}
 func (operations clientOperations) ListBoards() sdkgo.Query[ListBoardsInput, BoardsPage] {
 	return operations.client.ListBoards()
 }
@@ -254,6 +262,160 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetBoardBranchFound sdkgo.BranchID = "found"
+const GetBoardBranchNotFound sdkgo.BranchID = "notFound"
+const GetBoardBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetBoardBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetBoardBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetBoardDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getBoard"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetBoardBranchFound, Description: "Pinterest returned the board."},
+		{ID: GetBoardBranchNotFound, Description: "Pinterest did not find the board.", Optional: true},
+		{ID: GetBoardBranchProviderRejected, Description: "Pinterest conclusively rejected the read.", Optional: true},
+		{ID: GetBoardBranchInvalidResponse, Description: "Pinterest returned malformed or oversized board JSON.", Optional: true},
+		{ID: GetBoardBranchDefect, Description: "Local board ID or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetBoardResult = sdkgo.QueryResult[Board]
+
+type GetBoardStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=pinterest"`
+	operationID                    struct{}                                 `connector:"operationId=getBoard"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetBoardInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetBoardResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetBoardResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetBoardResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetBoardResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetBoardResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Board]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetBoardStep[IN any](config GetBoardStepConfig[IN]) sdkgo.QueryStep[IN, GetBoardInput, Board] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinterest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetBoardInput, Board]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetBoard(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetBoardResult] {
+			branches := make([]sdkgo.BranchTarget[GetBoardResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetBoardBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetBoardBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetBoardBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetBoardBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetBoardBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPinBranchFound sdkgo.BranchID = "found"
+const GetPinBranchNotFound sdkgo.BranchID = "notFound"
+const GetPinBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPinBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPinBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPinDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPin"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPinBranchFound, Description: "Pinterest returned the Pin."},
+		{ID: GetPinBranchNotFound, Description: "Pinterest did not find the Pin.", Optional: true},
+		{ID: GetPinBranchProviderRejected, Description: "Pinterest conclusively rejected the read.", Optional: true},
+		{ID: GetPinBranchInvalidResponse, Description: "Pinterest returned malformed or oversized Pin JSON.", Optional: true},
+		{ID: GetPinBranchDefect, Description: "Local Pin ID or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPinResult = sdkgo.QueryResult[Pin]
+
+type GetPinStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                               `connector:"connectorId=pinterest"`
+	operationID                    struct{}                               `connector:"operationId=getPin"`
+	StepType                       string                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                  `connector:"annotations"`
+	Connection                     Connection                             `connector:"connection"`
+	ConnectionName                 string                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPinInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPinResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPinResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPinResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPinResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPinResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Pin]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                       `connector:"stepOptionsOverride"`
+}
+
+func NewGetPinStep[IN any](config GetPinStepConfig[IN]) sdkgo.QueryStep[IN, GetPinInput, Pin] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinterest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPinInput, Pin]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPin(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPinResult] {
+			branches := make([]sdkgo.BranchTarget[GetPinResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPinBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPinBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPinBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPinBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPinBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListBoardsBranchListed sdkgo.BranchID = "listed"

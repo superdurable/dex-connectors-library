@@ -88,6 +88,48 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getBoard
+      goName: GetBoard
+      inputType: GetBoardInput
+      outputType: Board
+      kind: query
+      description: Read the identity and name of one board available to the authorized user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Pinterest returned the board.}
+        - {id: notFound, goName: NotFound, description: Pinterest did not find the board., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pinterest conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pinterest returned malformed or oversized board JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local board ID or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example board is found.
+          output: {id: '987654321', name: Example Board}
+    - name: getPin
+      goName: GetPin
+      inputType: GetPinInput
+      outputType: Pin
+      kind: query
+      description: Read the identity, board ID, and title of one Pin available to the authorized user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Pinterest returned the Pin.}
+        - {id: notFound, goName: NotFound, description: Pinterest did not find the Pin., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pinterest conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pinterest returned malformed or oversized Pin JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local Pin ID or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example Pin is found.
+          output: {id: '123456789', boardId: '987654321', title: Example Pin}
     - name: listBoards
       goName: ListBoards
       inputType: ListBoardsInput

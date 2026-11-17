@@ -18,6 +18,8 @@ import (
 // Mock is a scripted pinterest connection. Script each operation through its accessor.
 type Mock struct {
 	connection pinterest.Connection
+	getBoard   *connectormock.Query[pinterest.GetBoardInput, pinterest.Board]
+	getPin     *connectormock.Query[pinterest.GetPinInput, pinterest.Pin]
 	listBoards *connectormock.Query[pinterest.ListBoardsInput, pinterest.BoardsPage]
 	listPins   *connectormock.Query[pinterest.ListPinsInput, pinterest.PinsPage]
 }
@@ -27,9 +29,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getBoard:   connectormock.NewQuery[pinterest.GetBoardInput, pinterest.Board](t, pinterest.GetBoardDefinition),
+		getPin:     connectormock.NewQuery[pinterest.GetPinInput, pinterest.Pin](t, pinterest.GetPinDefinition),
 		listBoards: connectormock.NewQuery[pinterest.ListBoardsInput, pinterest.BoardsPage](t, pinterest.ListBoardsDefinition),
 		listPins:   connectormock.NewQuery[pinterest.ListPinsInput, pinterest.PinsPage](t, pinterest.ListPinsDefinition),
 	}
+	mock.getBoard.Default(GetBoardDefault())
+	mock.getPin.Default(GetPinDefault())
 	mock.listBoards.Default(ListBoardsDefault())
 	mock.listPins.Default(ListPinsDefault())
 	connection, err := pinterest.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "pinterest", Name: connectionName})
@@ -43,6 +49,16 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() pinterest.Connection { return mock.connection }
 
+// GetBoard returns the getBoard script.
+func (mock *Mock) GetBoard() *connectormock.Query[pinterest.GetBoardInput, pinterest.Board] {
+	return mock.getBoard
+}
+
+// GetPin returns the getPin script.
+func (mock *Mock) GetPin() *connectormock.Query[pinterest.GetPinInput, pinterest.Pin] {
+	return mock.getPin
+}
+
 // ListBoards returns the listBoards script.
 func (mock *Mock) ListBoards() *connectormock.Query[pinterest.ListBoardsInput, pinterest.BoardsPage] {
 	return mock.listBoards
@@ -55,12 +71,96 @@ func (mock *Mock) ListPins() *connectormock.Query[pinterest.ListPinsInput, pinte
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetBoard() sdkgo.Query[pinterest.GetBoardInput, pinterest.Board] {
+	return operations.mock.getBoard
+}
+func (operations mockOperations) GetPin() sdkgo.Query[pinterest.GetPinInput, pinterest.Pin] {
+	return operations.mock.getPin
+}
 func (operations mockOperations) ListBoards() sdkgo.Query[pinterest.ListBoardsInput, pinterest.BoardsPage] {
 	return operations.mock.listBoards
 }
 func (operations mockOperations) ListPins() sdkgo.Query[pinterest.ListPinsInput, pinterest.PinsPage] {
 	return operations.mock.listPins
 }
+
+// GetBoardFound selects the found branch: Pinterest returned the board.
+func GetBoardFound(value pinterest.Board, failure *sdkgo.Failure) connectormock.Case[pinterest.Board] {
+	return connectormock.Branch(pinterest.GetBoardBranchFound, value, failure)
+}
+
+// GetBoardNotFound selects the notFound branch: Pinterest did not find the board.
+func GetBoardNotFound(value pinterest.Board, failure *sdkgo.Failure) connectormock.Case[pinterest.Board] {
+	return connectormock.Branch(pinterest.GetBoardBranchNotFound, value, failure)
+}
+
+// GetBoardProviderRejected selects the providerRejected branch: Pinterest conclusively rejected the read.
+func GetBoardProviderRejected(value pinterest.Board, failure *sdkgo.Failure) connectormock.Case[pinterest.Board] {
+	return connectormock.Branch(pinterest.GetBoardBranchProviderRejected, value, failure)
+}
+
+// GetBoardInvalidResponse selects the invalidResponse branch: Pinterest returned malformed or oversized board JSON.
+func GetBoardInvalidResponse(value pinterest.Board, failure *sdkgo.Failure) connectormock.Case[pinterest.Board] {
+	return connectormock.Branch(pinterest.GetBoardBranchInvalidResponse, value, failure)
+}
+
+// GetBoardDefect selects the defect branch: Local board ID or connection credentials are invalid.
+func GetBoardDefect(value pinterest.Board, failure *sdkgo.Failure) connectormock.Case[pinterest.Board] {
+	return connectormock.Branch(pinterest.GetBoardBranchDefect, value, failure)
+}
+
+// GetBoardRetry asks Dex to retry the getBoard Step, after the delay when it is positive.
+func GetBoardRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinterest.Board] {
+	return connectormock.Retry[pinterest.Board](failure, after)
+}
+
+// GetBoardFoundDefault is the manifest mock foundDefault: One example board is found.
+func GetBoardFoundDefault() connectormock.Case[pinterest.Board] {
+	value := connectormock.MustDecodeOutput[pinterest.Board](`{"id":"987654321","name":"Example Board"}`)
+	return connectormock.Branch(pinterest.GetBoardBranchFound, value, nil)
+}
+
+// GetBoardDefault is the manifest default, foundDefault, which New installs.
+func GetBoardDefault() connectormock.Case[pinterest.Board] { return GetBoardFoundDefault() }
+
+// GetPinFound selects the found branch: Pinterest returned the Pin.
+func GetPinFound(value pinterest.Pin, failure *sdkgo.Failure) connectormock.Case[pinterest.Pin] {
+	return connectormock.Branch(pinterest.GetPinBranchFound, value, failure)
+}
+
+// GetPinNotFound selects the notFound branch: Pinterest did not find the Pin.
+func GetPinNotFound(value pinterest.Pin, failure *sdkgo.Failure) connectormock.Case[pinterest.Pin] {
+	return connectormock.Branch(pinterest.GetPinBranchNotFound, value, failure)
+}
+
+// GetPinProviderRejected selects the providerRejected branch: Pinterest conclusively rejected the read.
+func GetPinProviderRejected(value pinterest.Pin, failure *sdkgo.Failure) connectormock.Case[pinterest.Pin] {
+	return connectormock.Branch(pinterest.GetPinBranchProviderRejected, value, failure)
+}
+
+// GetPinInvalidResponse selects the invalidResponse branch: Pinterest returned malformed or oversized Pin JSON.
+func GetPinInvalidResponse(value pinterest.Pin, failure *sdkgo.Failure) connectormock.Case[pinterest.Pin] {
+	return connectormock.Branch(pinterest.GetPinBranchInvalidResponse, value, failure)
+}
+
+// GetPinDefect selects the defect branch: Local Pin ID or connection credentials are invalid.
+func GetPinDefect(value pinterest.Pin, failure *sdkgo.Failure) connectormock.Case[pinterest.Pin] {
+	return connectormock.Branch(pinterest.GetPinBranchDefect, value, failure)
+}
+
+// GetPinRetry asks Dex to retry the getPin Step, after the delay when it is positive.
+func GetPinRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinterest.Pin] {
+	return connectormock.Retry[pinterest.Pin](failure, after)
+}
+
+// GetPinFoundDefault is the manifest mock foundDefault: One example Pin is found.
+func GetPinFoundDefault() connectormock.Case[pinterest.Pin] {
+	value := connectormock.MustDecodeOutput[pinterest.Pin](`{"id":"123456789","boardId":"987654321","title":"Example Pin"}`)
+	return connectormock.Branch(pinterest.GetPinBranchFound, value, nil)
+}
+
+// GetPinDefault is the manifest default, foundDefault, which New installs.
+func GetPinDefault() connectormock.Case[pinterest.Pin] { return GetPinFoundDefault() }
 
 // ListBoardsListed selects the listed branch: Pinterest returned the selected board page.
 func ListBoardsListed(value pinterest.BoardsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.BoardsPage] {
