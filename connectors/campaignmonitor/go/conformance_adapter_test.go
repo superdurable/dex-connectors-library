@@ -83,5 +83,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"upsertSubscriber":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertSubscriber(), reference, scenario.CallID),
 		"updateSubscriber":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateSubscriber(), reference, scenario.CallID),
 		"deleteSubscriber":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteSubscriber(), reference, scenario.CallID),
+		"unsubscribeSubscriber": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UnsubscribeSubscriber(), reference, scenario.CallID),
 	}}
 }

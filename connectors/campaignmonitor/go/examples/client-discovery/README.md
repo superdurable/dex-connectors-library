@@ -8,6 +8,8 @@ The Worker also registers `CampaignMonitorSegmentCreate`. Start it with a list I
 
 The Worker also registers `CampaignMonitorDraftCampaignCreate`. Start it with a client ID, unique campaign name, subject, sender and reply addresses, hosted HTML URL, and recipient lists or segments. For example, `{"clientId":"client-1","name":"Autumn issue","subject":"New issue","fromName":"Newsletter Team","fromEmail":"sender@example.com","replyTo":"reply@example.com","htmlUrl":"https://example.com/campaign.html","listIds":["list-1"]}` creates a draft without sending it. Its mock-backed integration test runs through a real Dex Worker and Client.
 
+The Worker also registers `CampaignMonitorSubscriberUnsubscribe`. Start it with a list ID and subscribed email, for example `{"listId":"list-1","email":"member@example.com"}`. It unsubscribes that address and returns its email identity; the list's suppression policy applies. Its mock-backed integration test runs through a real Dex Worker and Client.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/campaignmonitor/go`, run:

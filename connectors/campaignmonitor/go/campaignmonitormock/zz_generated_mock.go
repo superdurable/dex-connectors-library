@@ -17,30 +17,31 @@ import (
 
 // Mock is a scripted campaignmonitor connection. Script each operation through its accessor.
 type Mock struct {
-	connection          campaignmonitor.Connection
-	listCampaigns       *connectormock.Query[campaignmonitor.ListCampaignsInput, campaignmonitor.CampaignsPage]
-	getCampaignSummary  *connectormock.Query[campaignmonitor.GetCampaignSummaryInput, campaignmonitor.CampaignSummary]
-	createDraftCampaign *connectormock.Mutation[campaignmonitor.CreateDraftCampaignInput, campaignmonitor.CampaignIdentity]
-	sendCampaign        *connectormock.Mutation[campaignmonitor.SendCampaignInput, campaignmonitor.CampaignIdentity]
-	sendCampaignPreview *connectormock.Mutation[campaignmonitor.SendCampaignPreviewInput, campaignmonitor.CampaignIdentity]
-	unscheduleCampaign  *connectormock.Mutation[campaignmonitor.UnscheduleCampaignInput, campaignmonitor.CampaignIdentity]
-	deleteCampaign      *connectormock.Mutation[campaignmonitor.DeleteCampaignInput, campaignmonitor.CampaignIdentity]
-	listSegments        *connectormock.Query[campaignmonitor.ListSegmentsInput, campaignmonitor.SegmentsList]
-	getSegment          *connectormock.Query[campaignmonitor.GetSegmentInput, campaignmonitor.SegmentProfile]
-	createSegment       *connectormock.Mutation[campaignmonitor.CreateSegmentInput, campaignmonitor.SegmentIdentity]
-	updateSegment       *connectormock.Mutation[campaignmonitor.UpdateSegmentInput, campaignmonitor.SegmentIdentity]
-	deleteSegment       *connectormock.Mutation[campaignmonitor.DeleteSegmentInput, campaignmonitor.SegmentIdentity]
-	getList             *connectormock.Query[campaignmonitor.GetListInput, campaignmonitor.ListProfile]
-	createList          *connectormock.Mutation[campaignmonitor.CreateListInput, campaignmonitor.ListIdentity]
-	updateList          *connectormock.Mutation[campaignmonitor.UpdateListInput, campaignmonitor.ListIdentity]
-	deleteList          *connectormock.Mutation[campaignmonitor.DeleteListInput, campaignmonitor.ListIdentity]
-	listSubscribers     *connectormock.Query[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage]
-	listSubscriberLists *connectormock.Query[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists]
-	getSubscriber       *connectormock.Query[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile]
-	upsertSubscriber    *connectormock.Mutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity]
-	updateSubscriber    *connectormock.Mutation[campaignmonitor.UpdateSubscriberInput, campaignmonitor.SubscriberIdentity]
-	deleteSubscriber    *connectormock.Mutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity]
-	listClients         *connectormock.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList]
+	connection            campaignmonitor.Connection
+	listCampaigns         *connectormock.Query[campaignmonitor.ListCampaignsInput, campaignmonitor.CampaignsPage]
+	getCampaignSummary    *connectormock.Query[campaignmonitor.GetCampaignSummaryInput, campaignmonitor.CampaignSummary]
+	createDraftCampaign   *connectormock.Mutation[campaignmonitor.CreateDraftCampaignInput, campaignmonitor.CampaignIdentity]
+	sendCampaign          *connectormock.Mutation[campaignmonitor.SendCampaignInput, campaignmonitor.CampaignIdentity]
+	sendCampaignPreview   *connectormock.Mutation[campaignmonitor.SendCampaignPreviewInput, campaignmonitor.CampaignIdentity]
+	unscheduleCampaign    *connectormock.Mutation[campaignmonitor.UnscheduleCampaignInput, campaignmonitor.CampaignIdentity]
+	deleteCampaign        *connectormock.Mutation[campaignmonitor.DeleteCampaignInput, campaignmonitor.CampaignIdentity]
+	listSegments          *connectormock.Query[campaignmonitor.ListSegmentsInput, campaignmonitor.SegmentsList]
+	getSegment            *connectormock.Query[campaignmonitor.GetSegmentInput, campaignmonitor.SegmentProfile]
+	createSegment         *connectormock.Mutation[campaignmonitor.CreateSegmentInput, campaignmonitor.SegmentIdentity]
+	updateSegment         *connectormock.Mutation[campaignmonitor.UpdateSegmentInput, campaignmonitor.SegmentIdentity]
+	deleteSegment         *connectormock.Mutation[campaignmonitor.DeleteSegmentInput, campaignmonitor.SegmentIdentity]
+	getList               *connectormock.Query[campaignmonitor.GetListInput, campaignmonitor.ListProfile]
+	createList            *connectormock.Mutation[campaignmonitor.CreateListInput, campaignmonitor.ListIdentity]
+	updateList            *connectormock.Mutation[campaignmonitor.UpdateListInput, campaignmonitor.ListIdentity]
+	deleteList            *connectormock.Mutation[campaignmonitor.DeleteListInput, campaignmonitor.ListIdentity]
+	listSubscribers       *connectormock.Query[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage]
+	listSubscriberLists   *connectormock.Query[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists]
+	getSubscriber         *connectormock.Query[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile]
+	upsertSubscriber      *connectormock.Mutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity]
+	updateSubscriber      *connectormock.Mutation[campaignmonitor.UpdateSubscriberInput, campaignmonitor.SubscriberIdentity]
+	deleteSubscriber      *connectormock.Mutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity]
+	unsubscribeSubscriber *connectormock.Mutation[campaignmonitor.UnsubscribeSubscriberInput, campaignmonitor.SubscriberIdentity]
+	listClients           *connectormock.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -48,29 +49,30 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listCampaigns:       connectormock.NewQuery[campaignmonitor.ListCampaignsInput, campaignmonitor.CampaignsPage](t, campaignmonitor.ListCampaignsDefinition),
-		getCampaignSummary:  connectormock.NewQuery[campaignmonitor.GetCampaignSummaryInput, campaignmonitor.CampaignSummary](t, campaignmonitor.GetCampaignSummaryDefinition),
-		createDraftCampaign: connectormock.NewMutation[campaignmonitor.CreateDraftCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.CreateDraftCampaignDefinition),
-		sendCampaign:        connectormock.NewMutation[campaignmonitor.SendCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.SendCampaignDefinition),
-		sendCampaignPreview: connectormock.NewMutation[campaignmonitor.SendCampaignPreviewInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.SendCampaignPreviewDefinition),
-		unscheduleCampaign:  connectormock.NewMutation[campaignmonitor.UnscheduleCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.UnscheduleCampaignDefinition),
-		deleteCampaign:      connectormock.NewMutation[campaignmonitor.DeleteCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.DeleteCampaignDefinition),
-		listSegments:        connectormock.NewQuery[campaignmonitor.ListSegmentsInput, campaignmonitor.SegmentsList](t, campaignmonitor.ListSegmentsDefinition),
-		getSegment:          connectormock.NewQuery[campaignmonitor.GetSegmentInput, campaignmonitor.SegmentProfile](t, campaignmonitor.GetSegmentDefinition),
-		createSegment:       connectormock.NewMutation[campaignmonitor.CreateSegmentInput, campaignmonitor.SegmentIdentity](t, campaignmonitor.CreateSegmentDefinition),
-		updateSegment:       connectormock.NewMutation[campaignmonitor.UpdateSegmentInput, campaignmonitor.SegmentIdentity](t, campaignmonitor.UpdateSegmentDefinition),
-		deleteSegment:       connectormock.NewMutation[campaignmonitor.DeleteSegmentInput, campaignmonitor.SegmentIdentity](t, campaignmonitor.DeleteSegmentDefinition),
-		getList:             connectormock.NewQuery[campaignmonitor.GetListInput, campaignmonitor.ListProfile](t, campaignmonitor.GetListDefinition),
-		createList:          connectormock.NewMutation[campaignmonitor.CreateListInput, campaignmonitor.ListIdentity](t, campaignmonitor.CreateListDefinition),
-		updateList:          connectormock.NewMutation[campaignmonitor.UpdateListInput, campaignmonitor.ListIdentity](t, campaignmonitor.UpdateListDefinition),
-		deleteList:          connectormock.NewMutation[campaignmonitor.DeleteListInput, campaignmonitor.ListIdentity](t, campaignmonitor.DeleteListDefinition),
-		listSubscribers:     connectormock.NewQuery[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage](t, campaignmonitor.ListSubscribersDefinition),
-		listSubscriberLists: connectormock.NewQuery[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists](t, campaignmonitor.ListSubscriberListsDefinition),
-		getSubscriber:       connectormock.NewQuery[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile](t, campaignmonitor.GetSubscriberDefinition),
-		upsertSubscriber:    connectormock.NewMutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.UpsertSubscriberDefinition),
-		updateSubscriber:    connectormock.NewMutation[campaignmonitor.UpdateSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.UpdateSubscriberDefinition),
-		deleteSubscriber:    connectormock.NewMutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.DeleteSubscriberDefinition),
-		listClients:         connectormock.NewQuery[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList](t, campaignmonitor.ListClientsDefinition),
+		listCampaigns:         connectormock.NewQuery[campaignmonitor.ListCampaignsInput, campaignmonitor.CampaignsPage](t, campaignmonitor.ListCampaignsDefinition),
+		getCampaignSummary:    connectormock.NewQuery[campaignmonitor.GetCampaignSummaryInput, campaignmonitor.CampaignSummary](t, campaignmonitor.GetCampaignSummaryDefinition),
+		createDraftCampaign:   connectormock.NewMutation[campaignmonitor.CreateDraftCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.CreateDraftCampaignDefinition),
+		sendCampaign:          connectormock.NewMutation[campaignmonitor.SendCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.SendCampaignDefinition),
+		sendCampaignPreview:   connectormock.NewMutation[campaignmonitor.SendCampaignPreviewInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.SendCampaignPreviewDefinition),
+		unscheduleCampaign:    connectormock.NewMutation[campaignmonitor.UnscheduleCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.UnscheduleCampaignDefinition),
+		deleteCampaign:        connectormock.NewMutation[campaignmonitor.DeleteCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.DeleteCampaignDefinition),
+		listSegments:          connectormock.NewQuery[campaignmonitor.ListSegmentsInput, campaignmonitor.SegmentsList](t, campaignmonitor.ListSegmentsDefinition),
+		getSegment:            connectormock.NewQuery[campaignmonitor.GetSegmentInput, campaignmonitor.SegmentProfile](t, campaignmonitor.GetSegmentDefinition),
+		createSegment:         connectormock.NewMutation[campaignmonitor.CreateSegmentInput, campaignmonitor.SegmentIdentity](t, campaignmonitor.CreateSegmentDefinition),
+		updateSegment:         connectormock.NewMutation[campaignmonitor.UpdateSegmentInput, campaignmonitor.SegmentIdentity](t, campaignmonitor.UpdateSegmentDefinition),
+		deleteSegment:         connectormock.NewMutation[campaignmonitor.DeleteSegmentInput, campaignmonitor.SegmentIdentity](t, campaignmonitor.DeleteSegmentDefinition),
+		getList:               connectormock.NewQuery[campaignmonitor.GetListInput, campaignmonitor.ListProfile](t, campaignmonitor.GetListDefinition),
+		createList:            connectormock.NewMutation[campaignmonitor.CreateListInput, campaignmonitor.ListIdentity](t, campaignmonitor.CreateListDefinition),
+		updateList:            connectormock.NewMutation[campaignmonitor.UpdateListInput, campaignmonitor.ListIdentity](t, campaignmonitor.UpdateListDefinition),
+		deleteList:            connectormock.NewMutation[campaignmonitor.DeleteListInput, campaignmonitor.ListIdentity](t, campaignmonitor.DeleteListDefinition),
+		listSubscribers:       connectormock.NewQuery[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage](t, campaignmonitor.ListSubscribersDefinition),
+		listSubscriberLists:   connectormock.NewQuery[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists](t, campaignmonitor.ListSubscriberListsDefinition),
+		getSubscriber:         connectormock.NewQuery[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile](t, campaignmonitor.GetSubscriberDefinition),
+		upsertSubscriber:      connectormock.NewMutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.UpsertSubscriberDefinition),
+		updateSubscriber:      connectormock.NewMutation[campaignmonitor.UpdateSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.UpdateSubscriberDefinition),
+		deleteSubscriber:      connectormock.NewMutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.DeleteSubscriberDefinition),
+		unsubscribeSubscriber: connectormock.NewMutation[campaignmonitor.UnsubscribeSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.UnsubscribeSubscriberDefinition),
+		listClients:           connectormock.NewQuery[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList](t, campaignmonitor.ListClientsDefinition),
 	}
 	mock.listCampaigns.Default(ListCampaignsDefault())
 	mock.getCampaignSummary.Default(GetCampaignSummaryDefault())
@@ -94,6 +96,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.upsertSubscriber.Default(UpsertSubscriberDefault())
 	mock.updateSubscriber.Default(UpdateSubscriberDefault())
 	mock.deleteSubscriber.Default(DeleteSubscriberDefault())
+	mock.unsubscribeSubscriber.Default(UnsubscribeSubscriberDefault())
 	mock.listClients.Default(ListClientsDefault())
 	connection, err := campaignmonitor.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "campaignmonitor", Name: connectionName})
 	if err != nil {
@@ -216,6 +219,11 @@ func (mock *Mock) DeleteSubscriber() *connectormock.Mutation[campaignmonitor.Del
 	return mock.deleteSubscriber
 }
 
+// UnsubscribeSubscriber returns the unsubscribeSubscriber script.
+func (mock *Mock) UnsubscribeSubscriber() *connectormock.Mutation[campaignmonitor.UnsubscribeSubscriberInput, campaignmonitor.SubscriberIdentity] {
+	return mock.unsubscribeSubscriber
+}
+
 // ListClients returns the listClients script.
 func (mock *Mock) ListClients() *connectormock.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList] {
 	return mock.listClients
@@ -288,6 +296,9 @@ func (operations mockOperations) UpdateSubscriber() sdkgo.Mutation[campaignmonit
 }
 func (operations mockOperations) DeleteSubscriber() sdkgo.Mutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity] {
 	return operations.mock.deleteSubscriber
+}
+func (operations mockOperations) UnsubscribeSubscriber() sdkgo.Mutation[campaignmonitor.UnsubscribeSubscriberInput, campaignmonitor.SubscriberIdentity] {
+	return operations.mock.unsubscribeSubscriber
 }
 func (operations mockOperations) ListClients() sdkgo.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList] {
 	return operations.mock.listClients
@@ -1116,6 +1127,42 @@ func DeleteSubscriberDeletedDefault() connectormock.Case[campaignmonitor.Subscri
 // DeleteSubscriberDefault is the manifest default, deletedDefault, which New installs.
 func DeleteSubscriberDefault() connectormock.Case[campaignmonitor.SubscriberIdentity] {
 	return DeleteSubscriberDeletedDefault()
+}
+
+// UnsubscribeSubscriberUnsubscribed selects the unsubscribed branch: Campaign Monitor accepted the unsubscribe.
+func UnsubscribeSubscriberUnsubscribed(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UnsubscribeSubscriberBranchUnsubscribed, value, failure)
+}
+
+// UnsubscribeSubscriberProviderRejected selects the providerRejected branch: Campaign Monitor rejected the unsubscribe.
+func UnsubscribeSubscriberProviderRejected(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UnsubscribeSubscriberBranchProviderRejected, value, failure)
+}
+
+// UnsubscribeSubscriberInvalidResponse selects the invalidResponse branch: Campaign Monitor returned an unexpected or oversized response.
+func UnsubscribeSubscriberInvalidResponse(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UnsubscribeSubscriberBranchInvalidResponse, value, failure)
+}
+
+// UnsubscribeSubscriberDefect selects the defect branch: Local input or credentials are invalid.
+func UnsubscribeSubscriberDefect(value campaignmonitor.SubscriberIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Branch(campaignmonitor.UnsubscribeSubscriberBranchDefect, value, failure)
+}
+
+// UnsubscribeSubscriberRetry asks Dex to retry the unsubscribeSubscriber Step, after the delay when it is positive.
+func UnsubscribeSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return connectormock.Retry[campaignmonitor.SubscriberIdentity](failure, after)
+}
+
+// UnsubscribeSubscriberUnsubscribedDefault is the manifest mock unsubscribedDefault: Sample unsubscribed subscriber.
+func UnsubscribeSubscriberUnsubscribedDefault() connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.SubscriberIdentity](`{"email":"member@example.com"}`)
+	return connectormock.Branch(campaignmonitor.UnsubscribeSubscriberBranchUnsubscribed, value, nil)
+}
+
+// UnsubscribeSubscriberDefault is the manifest default, unsubscribedDefault, which New installs.
+func UnsubscribeSubscriberDefault() connectormock.Case[campaignmonitor.SubscriberIdentity] {
+	return UnsubscribeSubscriberUnsubscribedDefault()
 }
 
 // ListClientsListed selects the listed branch: Campaign Monitor returned the account's clients.

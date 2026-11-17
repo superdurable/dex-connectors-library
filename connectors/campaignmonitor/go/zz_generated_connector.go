@@ -62,6 +62,7 @@ type Operations interface {
 	UpsertSubscriber() sdkgo.Mutation[UpsertSubscriberInput, SubscriberIdentity]
 	UpdateSubscriber() sdkgo.Mutation[UpdateSubscriberInput, SubscriberIdentity]
 	DeleteSubscriber() sdkgo.Mutation[DeleteSubscriberInput, SubscriberIdentity]
+	UnsubscribeSubscriber() sdkgo.Mutation[UnsubscribeSubscriberInput, SubscriberIdentity]
 	ListClients() sdkgo.Query[ListClientsInput, ClientsList]
 }
 
@@ -132,6 +133,9 @@ func (operations clientOperations) UpdateSubscriber() sdkgo.Mutation[UpdateSubsc
 }
 func (operations clientOperations) DeleteSubscriber() sdkgo.Mutation[DeleteSubscriberInput, SubscriberIdentity] {
 	return operations.client.DeleteSubscriber()
+}
+func (operations clientOperations) UnsubscribeSubscriber() sdkgo.Mutation[UnsubscribeSubscriberInput, SubscriberIdentity] {
+	return operations.client.UnsubscribeSubscriber()
 }
 func (operations clientOperations) ListClients() sdkgo.Query[ListClientsInput, ClientsList] {
 	return operations.client.ListClients()
@@ -1904,6 +1908,78 @@ func NewDeleteSubscriberStep[IN any](config DeleteSubscriberStepConfig[IN]) sdkg
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteSubscriberBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UnsubscribeSubscriberBranchUnsubscribed sdkgo.BranchID = "unsubscribed"
+const UnsubscribeSubscriberBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UnsubscribeSubscriberBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UnsubscribeSubscriberBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UnsubscribeSubscriberDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "unsubscribeSubscriber"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UnsubscribeSubscriberBranchUnsubscribed, Description: "Campaign Monitor accepted the unsubscribe."},
+		{ID: UnsubscribeSubscriberBranchProviderRejected, Description: "Campaign Monitor rejected the unsubscribe.", Optional: true},
+		{ID: UnsubscribeSubscriberBranchInvalidResponse, Description: "Campaign Monitor returned an unexpected or oversized response.", Optional: true},
+		{ID: UnsubscribeSubscriberBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UnsubscribeSubscriberResult = sdkgo.MutationResult[SubscriberIdentity]
+
+type UnsubscribeSubscriberStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=campaignmonitor"`
+	operationID                       struct{}                                                 `connector:"operationId=unsubscribeSubscriber"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) UnsubscribeSubscriberInput                      `connector:"mapToOperationInput"`
+	Unsubscribed                      sdkgo.Target[UnsubscribeSubscriberResult]                `connector:"branch=unsubscribed"`
+	ProviderRejected                  sdkgo.Target[UnsubscribeSubscriberResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UnsubscribeSubscriberResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UnsubscribeSubscriberResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriberIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUnsubscribeSubscriberStep[IN any](config UnsubscribeSubscriberStepConfig[IN]) sdkgo.MutationStep[IN, UnsubscribeSubscriberInput, SubscriberIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("campaignmonitor connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UnsubscribeSubscriberInput, SubscriberIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UnsubscribeSubscriber(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UnsubscribeSubscriberResult] {
+			branches := make([]sdkgo.BranchTarget[UnsubscribeSubscriberResult], 0, 4)
+			if config.Unsubscribed.HasStep() {
+				branches = append(branches, config.Unsubscribed.BranchTarget(UnsubscribeSubscriberBranchUnsubscribed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UnsubscribeSubscriberBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UnsubscribeSubscriberBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UnsubscribeSubscriberBranchDefect))
 			}
 			return branches
 		}(),

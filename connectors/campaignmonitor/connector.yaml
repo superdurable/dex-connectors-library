@@ -502,6 +502,26 @@ spec:
           default: true
           description: Sample deleted subscriber.
           output: {email: member@example.com}
+    - name: unsubscribeSubscriber
+      goName: UnsubscribeSubscriber
+      inputType: UnsubscribeSubscriberInput
+      outputType: SubscriberIdentity
+      kind: mutation
+      description: Unsubscribe one active subscriber and apply the list's suppression policy.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unsubscribed, goName: Unsubscribed, description: Campaign Monitor accepted the unsubscribe.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the unsubscribe., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned an unexpected or oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: unsubscribedDefault
+          branch: unsubscribed
+          default: true
+          description: Sample unsubscribed subscriber.
+          output: {email: member@example.com}
     - name: listClients
       goName: ListClients
       inputType: ListClientsInput
