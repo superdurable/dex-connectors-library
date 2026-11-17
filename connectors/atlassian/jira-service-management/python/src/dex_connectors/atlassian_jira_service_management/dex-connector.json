@@ -1,10 +1,10 @@
 {
   "connectorId": "jira-service-management",
-  "releaseTag": "connectors/atlassian/jira-service-management/go/v0.24.0",
+  "releaseTag": "connectors/atlassian/jira-service-management/go/v0.24.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-atlassian-jira-service-management",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -236,7 +236,7 @@
       "kind": "mutation",
       "operationId": "createTicket",
       "inputType": "CreateTicketInput",
-      "description": "Raise one customer request of a request type, optionally on a customer's behalf. The sync Step retries definite 429 and 503 responses but never repeats a possibly accepted request.",
+      "description": "Raise one customer request of a request type, optionally on a customer's behalf. The sync Step retries definite 429 and 503 responses and resends a request with an unknown outcome only within the send cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -455,7 +455,7 @@
       "kind": "mutation",
       "operationId": "addComment",
       "inputType": "AddCommentInput",
-      "description": "Add one public reply, which Jira Service Management shares with the customer, or one internal note that only agents see. The sync Step retries definite 429 and 503 responses but never repeats a possibly accepted comment.",
+      "description": "Add one public reply, which Jira Service Management shares with the customer, or one internal note that only agents see. The sync Step retries definite 429 and 503 responses and resends a comment with an unknown outcome only within the send cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

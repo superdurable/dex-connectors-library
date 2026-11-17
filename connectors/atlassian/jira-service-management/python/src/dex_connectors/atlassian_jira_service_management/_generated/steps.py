@@ -191,6 +191,7 @@ def new_create_ticket_step(
     defect: dex.StepTarget[MutationResult[CreateTicketOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CreateTicketOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateTicketInput, CreateTicketOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Jira Service Management Step connection name must match its connection reference")
@@ -222,6 +223,7 @@ def new_create_ticket_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 
@@ -351,6 +353,7 @@ def new_add_comment_step(
     defect: dex.StepTarget[MutationResult[AddCommentOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[AddCommentOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, AddCommentInput, AddCommentOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Jira Service Management Step connection name must match its connection reference")
@@ -384,6 +387,7 @@ def new_add_comment_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

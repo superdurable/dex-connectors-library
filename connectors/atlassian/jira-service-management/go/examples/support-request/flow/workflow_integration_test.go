@@ -145,7 +145,7 @@ func TestCreateTimeoutIsReconciledWithoutRaisingAgainWithRealDex(t *testing.T) {
 	require.NotNil(t, uncertain.UncertainCreate)
 	require.Equal(t, sdkgo.FailureTransport, uncertain.UncertainCreate.FailureKind)
 	require.NotEmpty(t, uncertain.UncertainCreate.CallID)
-	require.Equal(t, 1, provider.createCount(summary), "a timeout after dispatch is never retried")
+	require.Equal(t, int(jiraservicemanagement.CreateTicketDefinition.MaxSends), provider.createCount(summary), "a timeout after dispatch is resent up to the send cap")
 
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.ConfirmCreatedTicket, ConfirmCreatedTicketInput{IssueKey: "ITH-99"}, nil))
 	waitForReconciliationNote(t, ctx, harness, flow, flowID, NoteReportedTicketMissing)
@@ -159,7 +159,7 @@ func TestCreateTimeoutIsReconciledWithoutRaisingAgainWithRealDex(t *testing.T) {
 	require.Equal(t, createdKey, record.Ticket.Key)
 	require.Nil(t, record.UncertainCreate)
 	require.Equal(t, 1, record.CreateAttempts)
-	require.Equal(t, 1, provider.createCount(summary), "reconciliation adopted the existing request")
+	require.Equal(t, int(jiraservicemanagement.CreateTicketDefinition.MaxSends), provider.createCount(summary), "reconciliation adopted an existing request without another create")
 }
 
 func TestServerErrorIsRaisedAgainOnlyAfterOperatorApprovalWithRealDex(t *testing.T) {
@@ -170,13 +170,13 @@ func TestServerErrorIsRaisedAgainOnlyAfterOperatorApprovalWithRealDex(t *testing
 
 	uncertain := waitForPhase(t, ctx, harness, flow, flowID, PhaseNeedsReconciliation)
 	require.Equal(t, sdkgo.FailureAvailability, uncertain.UncertainCreate.FailureKind)
-	require.Equal(t, 1, provider.createCount(summary))
+	require.Equal(t, sendCap, provider.createCount(summary), "each 5xx is resent up to the send cap")
 
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.ApproveTicketCreateRetry, nil, nil))
 	record := waitForFlowOutput(t, ctx, harness, flowID)
 	require.Equal(t, PhaseHandled, record.Phase)
 	require.Equal(t, 2, record.CreateAttempts)
-	require.Equal(t, 2, provider.createCount(summary), "only the approved retry sent a second create")
+	require.Equal(t, sendCap+1, provider.createCount(summary), "only the approved retry sent another create")
 }
 
 // TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex guards sync durability: async would resend a
@@ -248,7 +248,7 @@ func TestUnavailableTransitionFailsWithoutMovingRequestWithRealDex(t *testing.T)
 	require.Zero(t, provider.transitionPostCount(provider.keyForSummary(input.Summary)))
 }
 
-func TestInternalNoteTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestInternalNoteTimeoutResendsUpToTheSendCapThenFailsWithRealDex(t *testing.T) {
 	provider, flow, harness := newSupportIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
@@ -259,8 +259,8 @@ func TestInternalNoteTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, []bool{false}, provider.request(provider.keyForSummary(summary)).commentVisibilities(),
-		"the uncertain internal note is never re-sent, and the public reply does not follow")
+	require.Equal(t, []bool{false, false, false}, provider.request(provider.keyForSummary(summary)).commentVisibilities(),
+		"the internal note is resent up to the send cap, and the public reply does not follow")
 }
 
 func TestBlankCloudIDUsesTheOnlyGrantedSiteWithRealDex(t *testing.T) {

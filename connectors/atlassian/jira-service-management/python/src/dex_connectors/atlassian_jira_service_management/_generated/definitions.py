@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -88,7 +89,7 @@ CREATE_TICKET_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Jira Service Management created the request and returned its key.", False),
         BranchDefinition(PROVIDER_REJECTED, "Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The request was sent but its outcome cannot be confirmed, so the customer request may exist; the connector never resends it.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -96,6 +97,8 @@ CREATE_TICKET_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_TICKET_DEFINITION = MutationDefinition(
@@ -112,6 +115,7 @@ UPDATE_TICKET_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 TRANSITION_TICKET_DEFINITION = MutationDefinition(
@@ -129,6 +133,7 @@ TRANSITION_TICKET_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 ADD_COMMENT_DEFINITION = MutationDefinition(
@@ -137,7 +142,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Jira Service Management added the comment and returned its ID.", False),
         BranchDefinition(NOT_FOUND, "The request does not exist or the connection cannot view it; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The comment was sent but its outcome cannot be confirmed, so it may exist; the connector never resends it.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -145,4 +150,6 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )

@@ -1,6 +1,6 @@
 # Jira Service Management TypeScript connector
 
-Install `@superdurable/connector-atlassian-jira-service-management@0.1.0` with `@superdurable/connectors-sdk@0.5.0`. This package implements `findCustomerByEmail`, `searchTickets`, `getTicket`, `createTicket`, `updateTicket`, `transitionTicket`, and `addComment`; it has no Triggers. Operation-specific Step factories, connection types, models, and mock cases are generated from `connector.yaml`.
+Install `@superdurable/connector-atlassian-jira-service-management@0.1.1` with `@superdurable/connectors-sdk@0.12.0` and `@superdurable/dex` 1.45.4 or newer. This package implements `findCustomerByEmail`, `searchTickets`, `getTicket`, `createTicket`, `updateTicket`, `transitionTicket`, and `addComment`; it has no Triggers. Operation-specific Step factories, connection types, models, and mock cases are generated from `connector.yaml`.
 
 The runnable [find-customer example](examples/find-customer/README.md) supplies a Worker entrypoint and a Flow using the static `jira-service-management-support` connection. Its integration test uses a real Dex Worker and Client against a local Atlassian stand-in. The conformance suite replays Go-recorded provider scenarios, including retries, failures, and uncertain writes.
 

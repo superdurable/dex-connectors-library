@@ -4,8 +4,8 @@
 // Package supportrequest demonstrates every Jira Service Management operation in one Flow started from Dex
 // Web Start Flow: find the customer by email, look for their open request with the same summary, raise one
 // on their behalf only when none exists, read it back with its SLAs, label it, add an internal note and a
-// public reply, and move it to a destination status. An uncertain create is parked for an operator instead
-// of being raised again.
+// public reply, and move it to a destination status. A create still uncertain after the connector's bounded
+// resends is parked for an operator instead of being raised again.
 package supportrequest
 
 import (
@@ -336,7 +336,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(evaluateDuplicateTickets{}),
 		dex.DefineStep(jiraservicemanagement.NewCreateTicketStep(jiraservicemanagement.CreateTicketStepConfig[SupportRequest]{
 			StepType: createSupportTicketStepType, ConnectionName: ConnectionName,
-			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Raise the request once for the customer; an unknown outcome is reconciled, never raised again automatically."},
+			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Raise the request for the customer; an unknown outcome is resent up to the send cap, then reconciled by an operator."},
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
 				ID: "supportRequestType", UnitID: jiraservicemanagement.UIUnitRequestTypePicker, Label: "Support request type",
 				Description: "Choose the service desk and then the request type that new support requests use, such as Get IT help; the unit saves the desk ID, the request type ID, and its name, and the desk must match the Support service desk when both are saved. Leave it unsaved to use each Start Flow input's requestTypeId. Restart the Worker after saving.",
@@ -373,14 +373,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(recordTicketLabels{}),
 		dex.DefineStep(jiraservicemanagement.NewAddCommentStep(jiraservicemanagement.AddCommentStepConfig[CommentRequest]{
 			StepType: addInternalNoteStepType, ConnectionName: ConnectionName,
-			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Add the internal note once; an unknown outcome fails the Flow without resending."},
+			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Add the internal note; an unknown outcome is resent up to the send cap, then fails the Flow."},
 			Connection:  flow.connection, MapToOperationInput: MapToInternalNoteInput,
 			Added: sdkgo.GoTo(recordInternalNote{}),
 		})),
 		dex.DefineStep(recordInternalNote{}),
 		dex.DefineStep(jiraservicemanagement.NewAddCommentStep(jiraservicemanagement.AddCommentStepConfig[CommentRequest]{
 			StepType: sendPublicReplyStepType, ConnectionName: ConnectionName,
-			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Send the public reply to the customer once; an unknown outcome fails the Flow without resending."},
+			Annotations: sdkgo.StepAnnotations{GroupID: "jsm", GroupLabel: "Jira Service Management", Explanation: "Send the public reply to the customer; an unknown outcome is resent up to the send cap, then fails the Flow."},
 			Connection:  flow.connection, MapToOperationInput: MapToPublicReplyInput,
 			Added: sdkgo.GoTo(recordPublicReply{}),
 		})),

@@ -908,7 +908,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "providerId": "10042",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-09-30T16:15:00Z",
@@ -984,7 +987,8 @@
         "failureKind": "VALIDATION",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "state": "canResend"
         },
         "output": {
           "providerErrorKey": "sd.request.create.field.required",
@@ -1053,19 +1057,48 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "sendCount": 1,
+          "state": "claimed"
         },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "input": {
+        "additionalFieldValues": {
+          "customfield_10050": {
+            "value": "hardware"
+          }
+        },
+        "description": "My laptop will not boot.",
+        "raiseOnBehalfOfAccountId": "qm:a713c8ea-1075-4e30-9d96-891a7d181739:5ad6d69abfa3980ce712caae",
+        "requestTypeId": "25",
+        "serviceDeskId": "10",
+        "summary": "Laptop will not boot"
+      },
+      "name": "createTicket-unknown-resends",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
           "raiseOnBehalfOfAccountId": "qm:a713c8ea-1075-4e30-9d96-891a7d181739:5ad6d69abfa3980ce712caae",
           "requestTypeId": "25",
           "serviceDeskId": "10",
           "summary": "Laptop will not boot"
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -1083,8 +1116,14 @@
         "serviceDeskId": "10",
         "summary": "Laptop will not boot"
       },
-      "name": "createTicket-uncertain",
-      "operation": "createTicket"
+      "name": "createTicket-uncertain-at-send-cap",
+      "operation": "createTicket",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+        "sendCount": 3,
+        "state": "claimed"
+      }
     },
     {
       "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
@@ -1890,7 +1929,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "providerId": "1001",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "commentId": "1001",
@@ -1944,7 +1986,8 @@
         "failureKind": "NOT_FOUND",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "state": "canResend"
         },
         "output": {
           "isPublic": true,
@@ -1996,7 +2039,8 @@
         "failureKind": "AUTHORIZATION",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "state": "canResend"
         },
         "output": {
           "isPublic": true,
@@ -2044,17 +2088,39 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "sendCount": 1,
+          "state": "claimed"
         },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {
+        "body": "Check the warranty first.",
+        "isPublic": true,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "addComment-unknown-resends",
+      "operation": "addComment"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
           "isPublic": true,
           "issueIdOrKey": "ITH-42"
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -2065,8 +2131,14 @@
         "isPublic": true,
         "issueIdOrKey": "ITH-42"
       },
-      "name": "addComment-uncertain",
-      "operation": "addComment"
+      "name": "addComment-uncertain-at-send-cap",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+        "sendCount": 3,
+        "state": "claimed"
+      }
     },
     {
       "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
@@ -2602,8 +2674,8 @@
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
           "attempt": 1,
-          "canResend": true,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2666,8 +2738,8 @@
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
-          "canResend": true,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2728,8 +2800,8 @@
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
-          "canResend": true,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "state": "canResend"
         },
         "requestCount": 0,
         "retry": true,
@@ -3062,8 +3134,8 @@
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
           "attempt": 1,
-          "canResend": true,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -3111,8 +3183,8 @@
         "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
-          "canResend": true,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -3158,8 +3230,8 @@
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
-          "canResend": true,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "state": "canResend"
         },
         "requestCount": 0,
         "retry": true,
@@ -3554,7 +3626,10 @@
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "providerId": "10042",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "raiseOnBehalfOfAccountId": "qm:a713c8ea-1075-4e30-9d96-891a7d181739:5ad6d69abfa3980ce712caae",
@@ -3627,20 +3702,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "CONFLICT",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
-        },
-        "output": {
-          "isPublic": true,
-          "issueIdOrKey": "ITH-42"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
       "input": {
@@ -4054,7 +4127,10 @@
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "providerId": "10042",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "raiseOnBehalfOfAccountId": "qm:a713c8ea-1075-4e30-9d96-891a7d181739:5ad6d69abfa3980ce712caae",
@@ -4127,20 +4203,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "CONFLICT",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
-        },
-        "output": {
-          "isPublic": true,
-          "issueIdOrKey": "ITH-42"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
       "input": {
@@ -4520,7 +4594,10 @@
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "providerId": "10042",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "raiseOnBehalfOfAccountId": "qm:a713c8ea-1075-4e30-9d96-891a7d181739:5ad6d69abfa3980ce712caae",
@@ -4591,20 +4668,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "CONFLICT",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
-        },
-        "output": {
-          "isPublic": true,
-          "issueIdOrKey": "ITH-42"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
       "input": {
@@ -4671,7 +4746,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "providerId": "10042",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-09-30T16:15:00Z",
@@ -4763,7 +4841,9 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-09-30T16:15:00Z",
@@ -4847,7 +4927,9 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "commentId": "1001",
@@ -5062,7 +5144,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 2,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "providerId": "10042",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-09-30T16:15:00Z",
@@ -5101,8 +5186,8 @@
           "failureKind": "RATE_LIMIT",
           "heartbeat": {
             "attempt": 1,
-            "canResend": true,
-            "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
+            "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }
@@ -5166,7 +5251,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 2,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "providerId": "1001",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "commentId": "1001",
@@ -5191,8 +5279,8 @@
           "failureKind": "RATE_LIMIT",
           "heartbeat": {
             "attempt": 1,
-            "canResend": true,
-            "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
+            "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }
@@ -5234,22 +5322,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "ab66bfde-d934-5d47-9e00-bdf172b83392"
-        },
-        "output": {
-          "raiseOnBehalfOfAccountId": "qm:a713c8ea-1075-4e30-9d96-891a7d181739:5ad6d69abfa3980ce712caae",
-          "requestTypeId": "25",
-          "serviceDeskId": "10",
-          "summary": "Laptop will not boot"
+          "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
       "input": {
@@ -5293,20 +5377,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
-          "jiraServiceManagementDispatchedCallId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa"
-        },
-        "output": {
-          "isPublic": true,
-          "issueIdOrKey": "ITH-42"
+          "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
       "input": {

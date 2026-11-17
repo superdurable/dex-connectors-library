@@ -17,6 +17,8 @@ export interface JiraRequest { method: string; api: API; path: string; query?: R
 export interface JiraResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; isTooLarge: boolean; reflectedSecret: boolean; }
 export interface JiraResult { response?: JiraResponse; error?: unknown; isProvablyNotSent?: boolean; }
 export type Classification = { kind: 'success' | 'retry' | 'notFound' | 'rejected' | 'invalidResponse' | 'defect' | 'uncertain'; failure?: Failure; retryAfterMs: number; receipt: ReceiptDraft; };
+/** Statuses proving the provider refused a write; any other status leaves its outcome unknown. */
+export const definiteWriteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 export interface JiraClientOptions { send?: (request: ProviderRequest) => Promise<ProviderResponse>; now?: () => Date; }
 
 /** OAuth-backed Atlassian client shared by all seven ticket operations. */
@@ -141,8 +143,18 @@ export class JiraServiceManagementClient {
     if (response.status === 429 || response.status === 503) return this.classification('retry', operation, response.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', `Jira Service Management did not write the ${subject}`, receipt, this.retryAfter(response));
     if (response.status === 409) return this.classification('uncertain', operation, 'CONFLICT', `Jira Service Management ${subject} outcome requires read-back after HTTP 409`, receipt);
     if (response.status === 404) return this.classification('notFound', operation, 'NOT_FOUND', `Jira Service Management ${subject} was not found`, receipt);
-    if (response.status >= 400 && response.status < 500 && response.status !== 408) return this.classification('rejected', operation, statusFailureKind(response.status), `Jira Service Management rejected the ${subject} with HTTP ${response.status}`, receipt);
+    if (definiteWriteRefusalStatuses.has(response.status)) return this.classification('rejected', operation, statusFailureKind(response.status), `Jira Service Management rejected the ${subject} with HTTP ${response.status}`, receipt);
     return this.classification('uncertain', operation, 'AVAILABILITY', `Jira Service Management ${subject} outcome is unknown after HTTP ${response.status}`, receipt);
+  }
+
+  /** Classify an edit the next attempt rereads before repeating: only a definite refusal is terminal. */
+  repeatableWrite(call: Call, operation: string, subject: string, result: JiraResult, objectID = ''): Classification {
+    const classification = this.read(call, operation, subject, result, objectID);
+    const status = result.response?.status ?? 0;
+    if (classification.kind === 'invalidResponse' || (classification.kind === 'rejected' && !definiteWriteRefusalStatuses.has(status))) {
+      return this.classification('retry', operation, 'AVAILABILITY', `Jira Service Management ${subject} outcome is unknown after HTTP ${status}; the next attempt rereads the request first`, classification.receipt, result.response ? this.retryAfter(result.response) : 0);
+    }
+    return classification;
   }
 
   /** Construct one secret-safe result receipt. */
