@@ -215,7 +215,7 @@ func ReplyToConversationUncertain(value intercom.ReplyToConversationOutput, fail
 	return connectormock.Uncertain(value, failure)
 }
 
-// ReplyToConversationInvalidResponse selects the invalidResponse branch: Intercom accepted the reply but returned an invalid or oversized conversation, so the reply exists.
+// ReplyToConversationInvalidResponse selects the invalidResponse branch: Intercom shows the reply in the conversation, but its part is invalid, such as a part without an ID; the reply exists, so do not send it again.
 func ReplyToConversationInvalidResponse(value intercom.ReplyToConversationOutput, failure *sdkgo.Failure) connectormock.Case[intercom.ReplyToConversationOutput] {
 	return connectormock.Branch(intercom.ReplyToConversationBranchInvalidResponse, value, failure)
 }
@@ -268,7 +268,7 @@ func UpdateConversationStateProviderRejected(value intercom.UpdateConversationSt
 	return connectormock.Branch(intercom.UpdateConversationStateBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationStateInvalidResponse selects the invalidResponse branch: Intercom returned an invalid or oversized conversation, so the change may have been applied.
+// UpdateConversationStateInvalidResponse selects the invalidResponse branch: Intercom returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.
 func UpdateConversationStateInvalidResponse(value intercom.UpdateConversationStateOutput, failure *sdkgo.Failure) connectormock.Case[intercom.UpdateConversationStateOutput] {
 	return connectormock.Branch(intercom.UpdateConversationStateBranchInvalidResponse, value, failure)
 }

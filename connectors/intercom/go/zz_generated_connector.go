@@ -429,8 +429,8 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToConversationBranchReplied, Description: "The reply or note is in the conversation; a retried attempt that found its own earlier reply reports it instead of sending again."},
 		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist or is not visible to the connection's token; nothing was added.", Optional: true},
 		{ID: ReplyToConversationBranchProviderRejected, Description: "Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added.", Optional: true},
-		{ID: ReplyToConversationBranchUncertain, Description: "An earlier attempt sent the reply but its outcome cannot be confirmed and the conversation shows no matching part, so the reply may exist; the connector never resends it.", Optional: true},
-		{ID: ReplyToConversationBranchInvalidResponse, Description: "Intercom accepted the reply but returned an invalid or oversized conversation, so the reply exists.", Optional: true},
+		{ID: ReplyToConversationBranchUncertain, Description: "The send cap is reached, and the conversation shows no part by the admin with the reply's type and text after sends whose outcome could not be confirmed, so the reply may still appear. Below the cap, an unconfirmed send is read back and then resent.", Optional: true},
+		{ID: ReplyToConversationBranchInvalidResponse, Description: "Intercom shows the reply in the conversation, but its part is invalid, such as a part without an ID; the reply exists, so do not send it again.", Optional: true},
 		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -438,6 +438,8 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ReplyToConversationResult = sdkgo.MutationResult[ReplyToConversationOutput]
@@ -460,6 +462,8 @@ type ReplyToConversationStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplyToConversationResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ReplyToConversationOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]) sdkgo.MutationStep[IN, ReplyToConversationInput, ReplyToConversationOutput] {
@@ -498,6 +502,7 @@ func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -513,7 +518,7 @@ var UpdateConversationStateDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationStateBranchUpdated, Description: "The conversation is in the requested state; a repeated attempt that finds it there writes nothing."},
 		{ID: UpdateConversationStateBranchNotFound, Description: "The conversation does not exist or is not visible to the connection's token.", Optional: true},
 		{ID: UpdateConversationStateBranchProviderRejected, Description: "Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state.", Optional: true},
-		{ID: UpdateConversationStateBranchInvalidResponse, Description: "Intercom returned an invalid or oversized conversation, so the change may have been applied.", Optional: true},
+		{ID: UpdateConversationStateBranchInvalidResponse, Description: "Intercom returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.", Optional: true},
 		{ID: UpdateConversationStateBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -521,6 +526,7 @@ var UpdateConversationStateDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateConversationStateResult = sdkgo.MutationResult[UpdateConversationStateOutput]

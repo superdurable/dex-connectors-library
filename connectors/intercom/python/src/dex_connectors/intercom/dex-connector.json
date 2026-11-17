@@ -1,10 +1,10 @@
 {
   "connectorId": "intercom",
-  "releaseTag": "connectors/intercom/go/v0.23.0",
+  "releaseTag": "connectors/intercom/go/v0.23.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-intercom",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -154,7 +154,7 @@
       "kind": "mutation",
       "operationId": "replyToConversation",
       "inputType": "ReplyToConversationInput",
-      "description": "Add one admin reply or internal note to a conversation. Intercom has no idempotency key, so the Step runs with sync durability, sends the reply at most once per Step execution, and reconciles an unconfirmed attempt by reading the conversation back.",
+      "description": "Add one admin reply or internal note to a conversation. Intercom has no idempotency key, so the Step runs with sync durability and reconciles an unconfirmed attempt by reading the conversation back for a part by the same admin with the same type and text; when none is found it resends while the send cap allows and selects uncertain at the cap. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

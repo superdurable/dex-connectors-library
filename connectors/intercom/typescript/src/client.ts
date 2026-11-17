@@ -54,22 +54,39 @@ export interface IntercomClientOptions {
   logger?: TriggerLogger;
 }
 
+/** One classified provider exchange that did not succeed. */
+export interface IntercomFailedExchange {
+  /** Provider-neutral meaning of the failed request. */
+  outcome:
+    | "notFound"
+    | "notSent"
+    | "rateLimited"
+    | "unconfirmed"
+    | "rejected"
+    | "invalid"
+    | "defect";
+  /** Secret-safe failure description. */
+  failure: Failure;
+  /** Provider-requested delay before a retry, in milliseconds. */
+  retryAfterMs: number;
+  /** Receipt fields known for the request. */
+  receipt: ReceiptDraft;
+  /** HTTP status when a response arrived; absent otherwise. */
+  status?: number;
+}
+
 /** One classified provider exchange. */
 export type IntercomExchange =
   | { outcome: "succeeded"; response: ProviderResponse; receipt: ReceiptDraft }
-  | {
-      outcome:
-        | "notFound"
-        | "notSent"
-        | "rateLimited"
-        | "unconfirmed"
-        | "rejected"
-        | "invalid"
-        | "defect";
-      failure: Failure;
-      retryAfterMs: number;
-      receipt: ReceiptDraft;
-    };
+  | IntercomFailedExchange;
+
+/** Options for a fenced write: a pre-resolved access token and the write-window signal. */
+export interface IntercomDispatchOptions {
+  /** Access token resolved before the fence claimed the send. */
+  accessToken: string;
+  /** Ends the request at the fence's write window. */
+  signal: AbortSignal;
+}
 
 /** Intercom API client with live token resolution and regional routing. */
 export class IntercomClient {
@@ -158,7 +175,31 @@ export class IntercomClient {
     };
   }
 
-  /** Send and classify one authenticated API request. */
+  /** Resolve a header-safe access token, or undefined when the connection credentials are unavailable. */
+  async resolveAccessToken(call: Call): Promise<string | undefined> {
+    try {
+      const credentials = await this.credentialProvider.resolve(
+        call,
+        call.context.cancellationSignal,
+      );
+      if (!(credentials.accessToken instanceof SecretString)) return;
+      const token = credentials.accessToken.reveal();
+      return isHeaderSafeCredential(token) ? token : undefined;
+    } catch {
+      return;
+    }
+  }
+
+  /** The defect Failure for unavailable connection credentials. */
+  credentialsUnavailable(operation: string): Failure {
+    return this.failure(
+      operation,
+      "AUTHENTICATION",
+      "connection credentials are unavailable",
+    );
+  }
+
+  /** Send and classify one authenticated API request; a fenced write passes its token and signal. */
   async exchange(
     call: Call,
     operation: string,
@@ -167,30 +208,16 @@ export class IntercomClient {
     query?: URLSearchParams,
     payload?: unknown,
     objectId = "",
+    dispatch?: IntercomDispatchOptions,
   ): Promise<IntercomExchange> {
-    let token: string;
-    try {
-      const credentials = await this.credentialProvider.resolve(
-        call,
-        call.context.cancellationSignal,
-      );
-      if (!(credentials.accessToken instanceof SecretString))
-        throw new TypeError("Intercom access token is missing");
-      token = credentials.accessToken.reveal();
-      if (!isHeaderSafeCredential(token))
-        throw new TypeError("Intercom access token is invalid");
-    } catch {
+    const token = dispatch?.accessToken ?? (await this.resolveAccessToken(call));
+    if (token === undefined)
       return {
         outcome: "defect",
-        failure: this.failure(
-          operation,
-          "AUTHENTICATION",
-          "connection credentials are unavailable",
-        ),
+        failure: this.credentialsUnavailable(operation),
         retryAfterMs: 0,
         receipt: this.receipt(call, objectId),
       };
-    }
     let body: Uint8Array | undefined;
     try {
       if (payload !== undefined)
@@ -226,7 +253,7 @@ export class IntercomClient {
           ? "publicHTTPS"
           : "privateNetworkHTTP",
         timeoutMs: 9_000,
-        signal: call.context.cancellationSignal,
+        signal: dispatch?.signal ?? call.context.cancellationSignal,
       });
     } catch (error) {
       const receipt = this.receipt(call, objectId);
@@ -289,6 +316,19 @@ export class IntercomClient {
         };
       return { outcome: "succeeded", response, receipt };
     }
+    return {
+      ...this.classifyFailureStatus(call, operation, objectId, response),
+      status: response.status,
+    };
+  }
+
+  /** Classify a non-2xx response using only Intercom's error codes and field names. */
+  private classifyFailureStatus(
+    call: Call,
+    operation: string,
+    objectId: string,
+    response: ProviderResponse,
+  ): IntercomFailedExchange {
     const status = response.status;
     const errorSummary = describeIntercomError(response.body);
     const failureReceipt = this.receipt(call, objectId, errorSummary.requestId);
