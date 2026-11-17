@@ -5240,6 +5240,1323 @@
       },
       "name": "deleteDeal-transportFailure",
       "operation": "deleteDeal"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"notes\":[{\"id\":\"91\",\"relid\":\"46\",\"reltype\":\"Deal\",\"note\":\"Follow up\"}],\"meta\":{\"total\":\"12\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "filters[relid]": [
+              "46"
+            ],
+            "filters[reltype]": [
+              "Deal"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "limit": 3,
+          "notes": [
+            {
+              "dealId": "46",
+              "id": "91",
+              "text": "Follow up"
+            }
+          ],
+          "offset": 2,
+          "total": 12
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "46",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listDealNotes-success",
+      "operation": "listDealNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "filters[relid]": [
+              "46"
+            ],
+            "filters[reltype]": [
+              "Deal"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "limit": 0,
+          "notes": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "46",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listDealNotes-providerRejected",
+      "operation": "listDealNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"notes\":{},\"meta\":{\"total\":\"12\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "filters[relid]": [
+              "46"
+            ],
+            "filters[reltype]": [
+              "Deal"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "limit": 0,
+          "notes": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "46",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listDealNotes-invalidResponse",
+      "operation": "listDealNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "limit": 0,
+          "notes": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "../"
+      },
+      "name": "listDealNotes-defect",
+      "operation": "listDealNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "filters[relid]": [
+              "46"
+            ],
+            "filters[reltype]": [
+              "Deal"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "46",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listDealNotes-rateLimit",
+      "operation": "listDealNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "filters[relid]": [
+              "46"
+            ],
+            "filters[reltype]": [
+              "Deal"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "46",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listDealNotes-serverUnavailable",
+      "operation": "listDealNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes",
+          "query": {
+            "filters[relid]": [
+              "46"
+            ],
+            "filters[reltype]": [
+              "Deal"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "46",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listDealNotes-transportFailure",
+      "operation": "listDealNotes"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"note\":{\"id\":\"91\",\"relid\":\"46\",\"reltype\":\"Deal\",\"note\":\"Follow up\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/91",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "dealId": "46",
+          "id": "91",
+          "text": "Follow up"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "91"
+      },
+      "name": "getDealNote-success",
+      "operation": "getDealNote"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/91",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "91"
+      },
+      "name": "getDealNote-notFound",
+      "operation": "getDealNote"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/91",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "91"
+      },
+      "name": "getDealNote-providerRejected",
+      "operation": "getDealNote"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"note\":{\"id\":\"91\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/91",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "91"
+      },
+      "name": "getDealNote-invalidResponse",
+      "operation": "getDealNote"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "../"
+      },
+      "name": "getDealNote-defect",
+      "operation": "getDealNote"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/91",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "91"
+      },
+      "name": "getDealNote-rateLimit",
+      "operation": "getDealNote"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/91",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "91"
+      },
+      "name": "getDealNote-serverUnavailable",
+      "operation": "getDealNote"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/notes/91",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "noteId": "91"
+      },
+      "name": "getDealNote-transportFailure",
+      "operation": "getDealNote"
+    },
+    {
+      "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "exchanges": [
+        {
+          "body": "{\"note\":{\"id\":\"91\",\"relid\":\"46\",\"reltype\":\"Deal\",\"note\":\"Follow up\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals/46/notes",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+          "providerId": "91",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "dealId": "46",
+          "id": "91",
+          "text": "Follow up"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "input": {
+        "dealId": "46",
+        "text": "Follow up"
+      },
+      "name": "createDealNote-success",
+      "operation": "createDealNote"
+    },
+    {
+      "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals/46/notes",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "input": {
+        "dealId": "46",
+        "text": "Follow up"
+      },
+      "name": "createDealNote-providerRejected",
+      "operation": "createDealNote"
+    },
+    {
+      "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals/46/notes",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "input": {
+        "dealId": "46",
+        "text": "Follow up"
+      },
+      "name": "createDealNote-uncertain",
+      "operation": "createDealNote"
+    },
+    {
+      "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "input": {
+        "dealId": "46",
+        "text": ""
+      },
+      "name": "createDealNote-defect",
+      "operation": "createDealNote"
+    },
+    {
+      "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals/46/notes",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "input": {
+        "dealId": "46",
+        "text": "Follow up"
+      },
+      "name": "createDealNote-rateLimit",
+      "operation": "createDealNote"
+    },
+    {
+      "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals/46/notes",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "input": {
+        "dealId": "46",
+        "text": "Follow up"
+      },
+      "name": "createDealNote-serverUnavailable",
+      "operation": "createDealNote"
+    },
+    {
+      "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals/46/notes",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "input": {
+        "dealId": "46",
+        "text": "Follow up"
+      },
+      "name": "createDealNote-transportFailure",
+      "operation": "createDealNote"
+    },
+    {
+      "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "exchanges": [
+        {
+          "body": "{\"note\":{\"id\":\"91\",\"relid\":\"46\",\"reltype\":\"Deal\",\"note\":\"Follow up\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/46/notes/91",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "dealId": "46",
+          "id": "91",
+          "text": "Follow up"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "input": {
+        "dealId": "46",
+        "noteId": "91",
+        "text": "Follow up"
+      },
+      "name": "updateDealNote-success",
+      "operation": "updateDealNote"
+    },
+    {
+      "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/46/notes/91",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "input": {
+        "dealId": "46",
+        "noteId": "91",
+        "text": "Follow up"
+      },
+      "name": "updateDealNote-notFound",
+      "operation": "updateDealNote"
+    },
+    {
+      "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/46/notes/91",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "input": {
+        "dealId": "46",
+        "noteId": "91",
+        "text": "Follow up"
+      },
+      "name": "updateDealNote-providerRejected",
+      "operation": "updateDealNote"
+    },
+    {
+      "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "exchanges": [
+        {
+          "body": "{\"note\":{\"id\":\"91\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/46/notes/91",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "input": {
+        "dealId": "46",
+        "noteId": "91",
+        "text": "Follow up"
+      },
+      "name": "updateDealNote-invalidResponse",
+      "operation": "updateDealNote"
+    },
+    {
+      "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dealId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "input": {
+        "dealId": "46",
+        "noteId": "../",
+        "text": "Follow up"
+      },
+      "name": "updateDealNote-defect",
+      "operation": "updateDealNote"
+    },
+    {
+      "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/46/notes/91",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "input": {
+        "dealId": "46",
+        "noteId": "91",
+        "text": "Follow up"
+      },
+      "name": "updateDealNote-rateLimit",
+      "operation": "updateDealNote"
+    },
+    {
+      "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/46/notes/91",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "input": {
+        "dealId": "46",
+        "noteId": "91",
+        "text": "Follow up"
+      },
+      "name": "updateDealNote-serverUnavailable",
+      "operation": "updateDealNote"
+    },
+    {
+      "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/46/notes/91",
+          "requestBody": {
+            "note": {
+              "note": "Follow up"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
+      "input": {
+        "dealId": "46",
+        "noteId": "91",
+        "text": "Follow up"
+      },
+      "name": "updateDealNote-transportFailure",
+      "operation": "updateDealNote"
     }
   ],
   "schemaVersion": 1

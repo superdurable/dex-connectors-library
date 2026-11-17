@@ -17,23 +17,27 @@ import (
 
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
-	connection    activecampaign.Connection
-	listDeals     *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage]
-	getDeal       *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata]
-	createDeal    *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata]
-	updateDeal    *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata]
-	deleteDeal    *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion]
-	listTags      *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
-	getTag        *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
-	createTag     *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
-	updateTag     *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata]
-	deleteTag     *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion]
-	listLists     *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
-	getList       *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
-	listContacts  *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
-	getContact    *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
-	syncContact   *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
-	updateContact *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata]
+	connection     activecampaign.Connection
+	listDealNotes  *connectormock.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage]
+	getDealNote    *connectormock.Query[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata]
+	createDealNote *connectormock.Mutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata]
+	updateDealNote *connectormock.Mutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata]
+	listDeals      *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage]
+	getDeal        *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata]
+	createDeal     *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata]
+	updateDeal     *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata]
+	deleteDeal     *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion]
+	listTags       *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
+	getTag         *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
+	createTag      *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
+	updateTag      *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata]
+	deleteTag      *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion]
+	listLists      *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
+	getList        *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
+	listContacts   *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
+	getContact     *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
+	syncContact    *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
+	updateContact  *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -41,23 +45,31 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listDeals:     connectormock.NewQuery[activecampaign.ListDealsInput, activecampaign.DealsPage](t, activecampaign.ListDealsDefinition),
-		getDeal:       connectormock.NewQuery[activecampaign.GetDealInput, activecampaign.DealMetadata](t, activecampaign.GetDealDefinition),
-		createDeal:    connectormock.NewMutation[activecampaign.CreateDealInput, activecampaign.DealMetadata](t, activecampaign.CreateDealDefinition),
-		updateDeal:    connectormock.NewMutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata](t, activecampaign.UpdateDealDefinition),
-		deleteDeal:    connectormock.NewMutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion](t, activecampaign.DeleteDealDefinition),
-		listTags:      connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
-		getTag:        connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
-		createTag:     connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
-		updateTag:     connectormock.NewMutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata](t, activecampaign.UpdateTagDefinition),
-		deleteTag:     connectormock.NewMutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion](t, activecampaign.DeleteTagDefinition),
-		listLists:     connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
-		getList:       connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
-		listContacts:  connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
-		getContact:    connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
-		syncContact:   connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
-		updateContact: connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
+		listDealNotes:  connectormock.NewQuery[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage](t, activecampaign.ListDealNotesDefinition),
+		getDealNote:    connectormock.NewQuery[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.GetDealNoteDefinition),
+		createDealNote: connectormock.NewMutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.CreateDealNoteDefinition),
+		updateDealNote: connectormock.NewMutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.UpdateDealNoteDefinition),
+		listDeals:      connectormock.NewQuery[activecampaign.ListDealsInput, activecampaign.DealsPage](t, activecampaign.ListDealsDefinition),
+		getDeal:        connectormock.NewQuery[activecampaign.GetDealInput, activecampaign.DealMetadata](t, activecampaign.GetDealDefinition),
+		createDeal:     connectormock.NewMutation[activecampaign.CreateDealInput, activecampaign.DealMetadata](t, activecampaign.CreateDealDefinition),
+		updateDeal:     connectormock.NewMutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata](t, activecampaign.UpdateDealDefinition),
+		deleteDeal:     connectormock.NewMutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion](t, activecampaign.DeleteDealDefinition),
+		listTags:       connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
+		getTag:         connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
+		createTag:      connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
+		updateTag:      connectormock.NewMutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata](t, activecampaign.UpdateTagDefinition),
+		deleteTag:      connectormock.NewMutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion](t, activecampaign.DeleteTagDefinition),
+		listLists:      connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
+		getList:        connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
+		listContacts:   connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
+		getContact:     connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
+		syncContact:    connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
+		updateContact:  connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.listDealNotes.Default(ListDealNotesDefault())
+	mock.getDealNote.Default(GetDealNoteDefault())
+	mock.createDealNote.Default(CreateDealNoteDefault())
+	mock.updateDealNote.Default(UpdateDealNoteDefault())
 	mock.listDeals.Default(ListDealsDefault())
 	mock.getDeal.Default(GetDealDefault())
 	mock.createDeal.Default(CreateDealDefault())
@@ -84,6 +96,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// ListDealNotes returns the listDealNotes script.
+func (mock *Mock) ListDealNotes() *connectormock.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage] {
+	return mock.listDealNotes
+}
+
+// GetDealNote returns the getDealNote script.
+func (mock *Mock) GetDealNote() *connectormock.Query[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata] {
+	return mock.getDealNote
+}
+
+// CreateDealNote returns the createDealNote script.
+func (mock *Mock) CreateDealNote() *connectormock.Mutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata] {
+	return mock.createDealNote
+}
+
+// UpdateDealNote returns the updateDealNote script.
+func (mock *Mock) UpdateDealNote() *connectormock.Mutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata] {
+	return mock.updateDealNote
+}
 
 // ListDeals returns the listDeals script.
 func (mock *Mock) ListDeals() *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage] {
@@ -167,6 +199,18 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListDealNotes() sdkgo.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage] {
+	return operations.mock.listDealNotes
+}
+func (operations mockOperations) GetDealNote() sdkgo.Query[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata] {
+	return operations.mock.getDealNote
+}
+func (operations mockOperations) CreateDealNote() sdkgo.Mutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata] {
+	return operations.mock.createDealNote
+}
+func (operations mockOperations) UpdateDealNote() sdkgo.Mutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata] {
+	return operations.mock.updateDealNote
+}
 func (operations mockOperations) ListDeals() sdkgo.Query[activecampaign.ListDealsInput, activecampaign.DealsPage] {
 	return operations.mock.listDeals
 }
@@ -214,6 +258,165 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 }
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
+}
+
+// ListDealNotesListed selects the listed branch: ActiveCampaign completed the note operation.
+func ListDealNotesListed(value activecampaign.DealNotesPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNotesPage] {
+	return connectormock.Branch(activecampaign.ListDealNotesBranchListed, value, failure)
+}
+
+// ListDealNotesProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListDealNotesProviderRejected(value activecampaign.DealNotesPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNotesPage] {
+	return connectormock.Branch(activecampaign.ListDealNotesBranchProviderRejected, value, failure)
+}
+
+// ListDealNotesInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListDealNotesInvalidResponse(value activecampaign.DealNotesPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNotesPage] {
+	return connectormock.Branch(activecampaign.ListDealNotesBranchInvalidResponse, value, failure)
+}
+
+// ListDealNotesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListDealNotesDefect(value activecampaign.DealNotesPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNotesPage] {
+	return connectormock.Branch(activecampaign.ListDealNotesBranchDefect, value, failure)
+}
+
+// ListDealNotesRetry asks Dex to retry the listDealNotes Step, after the delay when it is positive.
+func ListDealNotesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.DealNotesPage] {
+	return connectormock.Retry[activecampaign.DealNotesPage](failure, after)
+}
+
+// ListDealNotesListedDefault is the manifest mock listedDefault: One sample deal note result.
+func ListDealNotesListedDefault() connectormock.Case[activecampaign.DealNotesPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.DealNotesPage](`{"notes":[{"id":"91","dealId":"46","text":"Follow up"}],"offset":0,"limit":20,"total":1}`)
+	return connectormock.Branch(activecampaign.ListDealNotesBranchListed, value, nil)
+}
+
+// ListDealNotesDefault is the manifest default, listedDefault, which New installs.
+func ListDealNotesDefault() connectormock.Case[activecampaign.DealNotesPage] {
+	return ListDealNotesListedDefault()
+}
+
+// GetDealNoteFound selects the found branch: ActiveCampaign completed the note operation.
+func GetDealNoteFound(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.GetDealNoteBranchFound, value, failure)
+}
+
+// GetDealNoteNotFound selects the notFound branch: The deal or note does not exist.
+func GetDealNoteNotFound(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.GetDealNoteBranchNotFound, value, failure)
+}
+
+// GetDealNoteProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func GetDealNoteProviderRejected(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.GetDealNoteBranchProviderRejected, value, failure)
+}
+
+// GetDealNoteInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func GetDealNoteInvalidResponse(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.GetDealNoteBranchInvalidResponse, value, failure)
+}
+
+// GetDealNoteDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetDealNoteDefect(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.GetDealNoteBranchDefect, value, failure)
+}
+
+// GetDealNoteRetry asks Dex to retry the getDealNote Step, after the delay when it is positive.
+func GetDealNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Retry[activecampaign.DealNoteMetadata](failure, after)
+}
+
+// GetDealNoteFoundDefault is the manifest mock foundDefault: One sample deal note result.
+func GetDealNoteFoundDefault() connectormock.Case[activecampaign.DealNoteMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.DealNoteMetadata](`{"id":"91","dealId":"46","text":"Follow up"}`)
+	return connectormock.Branch(activecampaign.GetDealNoteBranchFound, value, nil)
+}
+
+// GetDealNoteDefault is the manifest default, foundDefault, which New installs.
+func GetDealNoteDefault() connectormock.Case[activecampaign.DealNoteMetadata] {
+	return GetDealNoteFoundDefault()
+}
+
+// CreateDealNoteCreated selects the created branch: ActiveCampaign completed the note operation.
+func CreateDealNoteCreated(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.CreateDealNoteBranchCreated, value, failure)
+}
+
+// CreateDealNoteUncertain returns an uncertain createDealNote outcome.
+func CreateDealNoteUncertain(value activecampaign.DealNoteMetadata, failure sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDealNoteProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func CreateDealNoteProviderRejected(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.CreateDealNoteBranchProviderRejected, value, failure)
+}
+
+// CreateDealNoteInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func CreateDealNoteInvalidResponse(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.CreateDealNoteBranchInvalidResponse, value, failure)
+}
+
+// CreateDealNoteDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateDealNoteDefect(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.CreateDealNoteBranchDefect, value, failure)
+}
+
+// CreateDealNoteRetry asks Dex to retry the createDealNote Step, after the delay when it is positive.
+func CreateDealNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Retry[activecampaign.DealNoteMetadata](failure, after)
+}
+
+// CreateDealNoteCreatedDefault is the manifest mock createdDefault: One sample deal note result.
+func CreateDealNoteCreatedDefault() connectormock.Case[activecampaign.DealNoteMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.DealNoteMetadata](`{"id":"91","dealId":"46","text":"Follow up"}`)
+	return connectormock.Branch(activecampaign.CreateDealNoteBranchCreated, value, nil)
+}
+
+// CreateDealNoteDefault is the manifest default, createdDefault, which New installs.
+func CreateDealNoteDefault() connectormock.Case[activecampaign.DealNoteMetadata] {
+	return CreateDealNoteCreatedDefault()
+}
+
+// UpdateDealNoteUpdated selects the updated branch: ActiveCampaign completed the note operation.
+func UpdateDealNoteUpdated(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealNoteBranchUpdated, value, failure)
+}
+
+// UpdateDealNoteNotFound selects the notFound branch: The deal or note does not exist.
+func UpdateDealNoteNotFound(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealNoteBranchNotFound, value, failure)
+}
+
+// UpdateDealNoteProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func UpdateDealNoteProviderRejected(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealNoteBranchProviderRejected, value, failure)
+}
+
+// UpdateDealNoteInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func UpdateDealNoteInvalidResponse(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealNoteBranchInvalidResponse, value, failure)
+}
+
+// UpdateDealNoteDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateDealNoteDefect(value activecampaign.DealNoteMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Branch(activecampaign.UpdateDealNoteBranchDefect, value, failure)
+}
+
+// UpdateDealNoteRetry asks Dex to retry the updateDealNote Step, after the delay when it is positive.
+func UpdateDealNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.DealNoteMetadata] {
+	return connectormock.Retry[activecampaign.DealNoteMetadata](failure, after)
+}
+
+// UpdateDealNoteUpdatedDefault is the manifest mock updatedDefault: One sample deal note result.
+func UpdateDealNoteUpdatedDefault() connectormock.Case[activecampaign.DealNoteMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.DealNoteMetadata](`{"id":"91","dealId":"46","text":"Follow up"}`)
+	return connectormock.Branch(activecampaign.UpdateDealNoteBranchUpdated, value, nil)
+}
+
+// UpdateDealNoteDefault is the manifest default, updatedDefault, which New installs.
+func UpdateDealNoteDefault() connectormock.Case[activecampaign.DealNoteMetadata] {
+	return UpdateDealNoteUpdatedDefault()
 }
 
 // ListDealsListed selects the listed branch: ActiveCampaign completed the deal operation.

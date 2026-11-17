@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listDealNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealNotesPage](`{"notes":[{"id":"91","dealId":"46","text":"Follow up"}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getDealNote/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealNoteMetadata](`{"id":"91","dealId":"46","text":"Follow up"}`)
+			return err
+		}},
+		{name: "createDealNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealNoteMetadata](`{"id":"91","dealId":"46","text":"Follow up"}`)
+			return err
+		}},
+		{name: "updateDealNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.DealNoteMetadata](`{"id":"91","dealId":"46","text":"Follow up"}`)
+			return err
+		}},
 		{name: "listDeals/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.DealsPage](`{"deals":[{"id":"46","title":"Renewal","contactId":"68","stageId":"2","valueMinor":45600,"currency":"USD","status":0}],"offset":0,"limit":20,"total":1}`)
 			return err
@@ -90,6 +106,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListDealNotes().Definition().Operation.OperationID != "listDealNotes" {
+		t.Errorf("listDealNotes mock has another definition")
+	}
+	if mock.GetDealNote().Definition().Operation.OperationID != "getDealNote" {
+		t.Errorf("getDealNote mock has another definition")
+	}
+	if mock.CreateDealNote().Definition().Operation.OperationID != "createDealNote" {
+		t.Errorf("createDealNote mock has another definition")
+	}
+	if mock.UpdateDealNote().Definition().Operation.OperationID != "updateDealNote" {
+		t.Errorf("updateDealNote mock has another definition")
+	}
 	if mock.ListDeals().Definition().Operation.OperationID != "listDeals" {
 		t.Errorf("listDeals mock has another definition")
 	}

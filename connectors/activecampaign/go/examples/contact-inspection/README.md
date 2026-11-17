@@ -1,6 +1,6 @@
 # ActiveCampaign contact-inspection Flow
 
-This Worker registers `ActiveCampaignContactInspection`, `ActiveCampaignSyncContact`, `ActiveCampaignListInspection`, `ActiveCampaignCreateTag`, and `ActiveCampaignCreateDeal`. The deal Flow creates one deal for a contact in a pipeline stage with bounded sends; its checked-in mock integration test exercises the mutation against a real local Dex Server. The tag Flow creates a contact tag definition by name, and the sync Flow upserts a contact by email. The production connection uses the same static `activecampaign` name for all Flows.
+This Worker registers `ActiveCampaignContactInspection`, `ActiveCampaignSyncContact`, `ActiveCampaignListInspection`, `ActiveCampaignCreateTag`, `ActiveCampaignCreateDeal`, and `ActiveCampaignCreateDealNote`. The deal and note Flows create records with bounded sends; their checked-in mock integration tests exercise each mutation against a real local Dex Server. The tag Flow creates a contact tag definition by name, and the sync Flow upserts a contact by email. The production connection uses the same static `activecampaign` name for all Flows.
 
 This runnable Flow calls `listContacts` with the static `activecampaign` connection. Its happy-path contact page is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only basic contact fields enter the Flow result; the API Key does not.
 

@@ -55,6 +55,89 @@ spec:
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
         - Ensure this API user can view the intended contacts and lists; tag writes need tag management permission, and deal operations need Deals and pipeline management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listDealNotes
+      goName: ListDealNotes
+      inputType: ListDealNotesInput
+      outputType: DealNotesPage
+      kind: query
+      description: List one page of notes for a deal.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the note operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample deal note result.
+          output: {notes: [{id: '91', dealId: '46', text: Follow up}], offset: 0, limit: 20, total: 1}
+    - name: getDealNote
+      goName: GetDealNote
+      inputType: GetDealNoteInput
+      outputType: DealNoteMetadata
+      kind: query
+      description: Read one note belonging to a deal.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the note operation.}
+        - {id: notFound, goName: NotFound, description: The deal or note does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample deal note result.
+          output: {id: '91', dealId: '46', text: Follow up}
+    - name: createDealNote
+      goName: CreateDealNote
+      inputType: CreateDealNoteInput
+      outputType: DealNoteMetadata
+      kind: mutation
+      description: Create a deal note with bounded sends and read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the note operation.}
+        - {id: uncertain, goName: Uncertain, description: A bounded note create could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample deal note result.
+          output: {id: '91', dealId: '46', text: Follow up}
+    - name: updateDealNote
+      goName: UpdateDealNote
+      inputType: UpdateDealNoteInput
+      outputType: DealNoteMetadata
+      kind: mutation
+      description: Replace one deal note's text by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the note operation.}
+        - {id: notFound, goName: NotFound, description: The deal or note does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample deal note result.
+          output: {id: '91', dealId: '46', text: Follow up}
     - name: listDeals
       goName: ListDeals
       inputType: ListDealsInput

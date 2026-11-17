@@ -40,6 +40,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListDealNotes() sdkgo.Query[ListDealNotesInput, DealNotesPage]
+	GetDealNote() sdkgo.Query[GetDealNoteInput, DealNoteMetadata]
+	CreateDealNote() sdkgo.Mutation[CreateDealNoteInput, DealNoteMetadata]
+	UpdateDealNote() sdkgo.Mutation[UpdateDealNoteInput, DealNoteMetadata]
 	ListDeals() sdkgo.Query[ListDealsInput, DealsPage]
 	GetDeal() sdkgo.Query[GetDealInput, DealMetadata]
 	CreateDeal() sdkgo.Mutation[CreateDealInput, DealMetadata]
@@ -60,6 +64,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListDealNotes() sdkgo.Query[ListDealNotesInput, DealNotesPage] {
+	return operations.client.ListDealNotes()
+}
+func (operations clientOperations) GetDealNote() sdkgo.Query[GetDealNoteInput, DealNoteMetadata] {
+	return operations.client.GetDealNote()
+}
+func (operations clientOperations) CreateDealNote() sdkgo.Mutation[CreateDealNoteInput, DealNoteMetadata] {
+	return operations.client.CreateDealNote()
+}
+func (operations clientOperations) UpdateDealNote() sdkgo.Mutation[UpdateDealNoteInput, DealNoteMetadata] {
+	return operations.client.UpdateDealNote()
+}
 func (operations clientOperations) ListDeals() sdkgo.Query[ListDealsInput, DealsPage] {
 	return operations.client.ListDeals()
 }
@@ -243,6 +259,314 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListDealNotesBranchListed sdkgo.BranchID = "listed"
+const ListDealNotesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDealNotesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDealNotesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDealNotesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDealNotes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDealNotesBranchListed, Description: "ActiveCampaign completed the note operation."},
+		{ID: ListDealNotesBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListDealNotesBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListDealNotesBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDealNotesResult = sdkgo.QueryResult[DealNotesPage]
+
+type ListDealNotesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                         `connector:"operationId=listDealNotes"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDealNotesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDealNotesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListDealNotesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDealNotesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDealNotesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DealNotesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListDealNotesStep[IN any](config ListDealNotesStepConfig[IN]) sdkgo.QueryStep[IN, ListDealNotesInput, DealNotesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDealNotesInput, DealNotesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDealNotes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDealNotesResult] {
+			branches := make([]sdkgo.BranchTarget[ListDealNotesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDealNotesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDealNotesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDealNotesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDealNotesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetDealNoteBranchFound sdkgo.BranchID = "found"
+const GetDealNoteBranchNotFound sdkgo.BranchID = "notFound"
+const GetDealNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDealNoteBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDealNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDealNoteDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDealNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDealNoteBranchFound, Description: "ActiveCampaign completed the note operation."},
+		{ID: GetDealNoteBranchNotFound, Description: "The deal or note does not exist.", Optional: true},
+		{ID: GetDealNoteBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: GetDealNoteBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: GetDealNoteBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDealNoteResult = sdkgo.QueryResult[DealNoteMetadata]
+
+type GetDealNoteStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                            `connector:"operationId=getDealNote"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDealNoteInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDealNoteResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDealNoteResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDealNoteResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDealNoteResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDealNoteResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DealNoteMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetDealNoteStep[IN any](config GetDealNoteStepConfig[IN]) sdkgo.QueryStep[IN, GetDealNoteInput, DealNoteMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDealNoteInput, DealNoteMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDealNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDealNoteResult] {
+			branches := make([]sdkgo.BranchTarget[GetDealNoteResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDealNoteBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDealNoteBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDealNoteBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDealNoteBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDealNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateDealNoteBranchCreated sdkgo.BranchID = "created"
+const CreateDealNoteBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateDealNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDealNoteBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateDealNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateDealNoteDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDealNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDealNoteBranchCreated, Description: "ActiveCampaign completed the note operation."},
+		{ID: CreateDealNoteBranchUncertain, Description: "A bounded note create could not be confirmed.", Optional: true},
+		{ID: CreateDealNoteBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: CreateDealNoteBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: CreateDealNoteBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDealNoteResult = sdkgo.MutationResult[DealNoteMetadata]
+
+type CreateDealNoteStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                               `connector:"operationId=createDealNote"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDealNoteInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateDealNoteResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DealNoteMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDealNoteStep[IN any](config CreateDealNoteStepConfig[IN]) sdkgo.MutationStep[IN, CreateDealNoteInput, DealNoteMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDealNoteInput, DealNoteMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDealNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDealNoteResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDealNoteResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDealNoteBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDealNoteBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDealNoteBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateDealNoteBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDealNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateDealNoteBranchUpdated sdkgo.BranchID = "updated"
+const UpdateDealNoteBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateDealNoteBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateDealNoteBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateDealNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateDealNoteDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateDealNote"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateDealNoteBranchUpdated, Description: "ActiveCampaign completed the note operation."},
+		{ID: UpdateDealNoteBranchNotFound, Description: "The deal or note does not exist.", Optional: true},
+		{ID: UpdateDealNoteBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UpdateDealNoteBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateDealNoteBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateDealNoteResult = sdkgo.MutationResult[DealNoteMetadata]
+
+type UpdateDealNoteStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                               `connector:"operationId=updateDealNote"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateDealNoteInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateDealNoteResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DealNoteMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateDealNoteStep[IN any](config UpdateDealNoteStepConfig[IN]) sdkgo.MutationStep[IN, UpdateDealNoteInput, DealNoteMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateDealNoteInput, DealNoteMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateDealNote(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateDealNoteResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateDealNoteResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateDealNoteBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateDealNoteBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateDealNoteBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateDealNoteBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateDealNoteBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListDealsBranchListed sdkgo.BranchID = "listed"
