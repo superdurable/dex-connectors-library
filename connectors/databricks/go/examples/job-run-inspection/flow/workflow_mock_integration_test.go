@@ -24,7 +24,8 @@ import (
 func TestJobRunInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := databricksmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	listingFlow := NewJobListingFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, listingFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -58,4 +59,14 @@ func TestJobRunInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "", output.ResultState)
 	require.Equal(t, "RUNNING", output.Status)
 	require.Len(t, mock.GetJobRun().Calls(), 1)
+	listingFlowID := "databricks-job-listing-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, listingFlow, listingFlowID, databricks.ListJobsInput{Name: "Example job"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	listingResult, err := client.WaitForFlow(ctx, listingFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, listingResult.Status, listingResult.ErrorMessage)
+	var jobPage databricks.JobPage
+	require.NoError(t, listingResult.DecodeSingleOutput(&jobPage))
+	require.Equal(t, []databricks.JobSummary{{ID: "11223344", Name: "Example job"}}, jobPage.Jobs)
+	require.Len(t, mock.ListJobs().Calls(), 1)
 }

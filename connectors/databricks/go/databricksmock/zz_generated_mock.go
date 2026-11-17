@@ -17,8 +17,13 @@ import (
 
 // Mock is a scripted databricks connection. Script each operation through its accessor.
 type Mock struct {
-	connection databricks.Connection
-	getJobRun  *connectormock.Query[databricks.GetJobRunInput, databricks.JobRunStatus]
+	connection   databricks.Connection
+	listJobs     *connectormock.Query[databricks.ListJobsInput, databricks.JobPage]
+	getJob       *connectormock.Query[databricks.GetJobInput, databricks.JobSummary]
+	listJobRuns  *connectormock.Query[databricks.ListJobRunsInput, databricks.JobRunPage]
+	runJob       *connectormock.Mutation[databricks.RunJobInput, databricks.StartedJobRun]
+	cancelJobRun *connectormock.Mutation[databricks.CancelJobRunInput, databricks.CancelledJobRun]
+	getJobRun    *connectormock.Query[databricks.GetJobRunInput, databricks.JobRunStatus]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +31,18 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getJobRun: connectormock.NewQuery[databricks.GetJobRunInput, databricks.JobRunStatus](t, databricks.GetJobRunDefinition),
+		listJobs:     connectormock.NewQuery[databricks.ListJobsInput, databricks.JobPage](t, databricks.ListJobsDefinition),
+		getJob:       connectormock.NewQuery[databricks.GetJobInput, databricks.JobSummary](t, databricks.GetJobDefinition),
+		listJobRuns:  connectormock.NewQuery[databricks.ListJobRunsInput, databricks.JobRunPage](t, databricks.ListJobRunsDefinition),
+		runJob:       connectormock.NewMutation[databricks.RunJobInput, databricks.StartedJobRun](t, databricks.RunJobDefinition),
+		cancelJobRun: connectormock.NewMutation[databricks.CancelJobRunInput, databricks.CancelledJobRun](t, databricks.CancelJobRunDefinition),
+		getJobRun:    connectormock.NewQuery[databricks.GetJobRunInput, databricks.JobRunStatus](t, databricks.GetJobRunDefinition),
 	}
+	mock.listJobs.Default(ListJobsDefault())
+	mock.getJob.Default(GetJobDefault())
+	mock.listJobRuns.Default(ListJobRunsDefault())
+	mock.runJob.Default(RunJobDefault())
+	mock.cancelJobRun.Default(CancelJobRunDefault())
 	mock.getJobRun.Default(GetJobRunDefault())
 	connection, err := databricks.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "databricks", Name: connectionName})
 	if err != nil {
@@ -40,6 +55,31 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() databricks.Connection { return mock.connection }
 
+// ListJobs returns the listJobs script.
+func (mock *Mock) ListJobs() *connectormock.Query[databricks.ListJobsInput, databricks.JobPage] {
+	return mock.listJobs
+}
+
+// GetJob returns the getJob script.
+func (mock *Mock) GetJob() *connectormock.Query[databricks.GetJobInput, databricks.JobSummary] {
+	return mock.getJob
+}
+
+// ListJobRuns returns the listJobRuns script.
+func (mock *Mock) ListJobRuns() *connectormock.Query[databricks.ListJobRunsInput, databricks.JobRunPage] {
+	return mock.listJobRuns
+}
+
+// RunJob returns the runJob script.
+func (mock *Mock) RunJob() *connectormock.Mutation[databricks.RunJobInput, databricks.StartedJobRun] {
+	return mock.runJob
+}
+
+// CancelJobRun returns the cancelJobRun script.
+func (mock *Mock) CancelJobRun() *connectormock.Mutation[databricks.CancelJobRunInput, databricks.CancelledJobRun] {
+	return mock.cancelJobRun
+}
+
 // GetJobRun returns the getJobRun script.
 func (mock *Mock) GetJobRun() *connectormock.Query[databricks.GetJobRunInput, databricks.JobRunStatus] {
 	return mock.getJobRun
@@ -47,8 +87,207 @@ func (mock *Mock) GetJobRun() *connectormock.Query[databricks.GetJobRunInput, da
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListJobs() sdkgo.Query[databricks.ListJobsInput, databricks.JobPage] {
+	return operations.mock.listJobs
+}
+func (operations mockOperations) GetJob() sdkgo.Query[databricks.GetJobInput, databricks.JobSummary] {
+	return operations.mock.getJob
+}
+func (operations mockOperations) ListJobRuns() sdkgo.Query[databricks.ListJobRunsInput, databricks.JobRunPage] {
+	return operations.mock.listJobRuns
+}
+func (operations mockOperations) RunJob() sdkgo.Mutation[databricks.RunJobInput, databricks.StartedJobRun] {
+	return operations.mock.runJob
+}
+func (operations mockOperations) CancelJobRun() sdkgo.Mutation[databricks.CancelJobRunInput, databricks.CancelledJobRun] {
+	return operations.mock.cancelJobRun
+}
 func (operations mockOperations) GetJobRun() sdkgo.Query[databricks.GetJobRunInput, databricks.JobRunStatus] {
 	return operations.mock.getJobRun
+}
+
+// ListJobsListed selects the listed branch: Databricks returned a job page.
+func ListJobsListed(value databricks.JobPage, failure *sdkgo.Failure) connectormock.Case[databricks.JobPage] {
+	return connectormock.Branch(databricks.ListJobsBranchListed, value, failure)
+}
+
+// ListJobsProviderRejected selects the providerRejected branch: Databricks rejected the list request.
+func ListJobsProviderRejected(value databricks.JobPage, failure *sdkgo.Failure) connectormock.Case[databricks.JobPage] {
+	return connectormock.Branch(databricks.ListJobsBranchProviderRejected, value, failure)
+}
+
+// ListJobsInvalidResponse selects the invalidResponse branch: Databricks returned malformed or oversized JSON.
+func ListJobsInvalidResponse(value databricks.JobPage, failure *sdkgo.Failure) connectormock.Case[databricks.JobPage] {
+	return connectormock.Branch(databricks.ListJobsBranchInvalidResponse, value, failure)
+}
+
+// ListJobsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListJobsDefect(value databricks.JobPage, failure *sdkgo.Failure) connectormock.Case[databricks.JobPage] {
+	return connectormock.Branch(databricks.ListJobsBranchDefect, value, failure)
+}
+
+// ListJobsRetry asks Dex to retry the listJobs Step, after the delay when it is positive.
+func ListJobsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[databricks.JobPage] {
+	return connectormock.Retry[databricks.JobPage](failure, after)
+}
+
+// ListJobsListedDefault is the manifest mock listedDefault: One job is returned.
+func ListJobsListedDefault() connectormock.Case[databricks.JobPage] {
+	value := connectormock.MustDecodeOutput[databricks.JobPage](`{"jobs":[{"id":"11223344","name":"Example job"}],"nextPageToken":""}`)
+	return connectormock.Branch(databricks.ListJobsBranchListed, value, nil)
+}
+
+// ListJobsDefault is the manifest default, listedDefault, which New installs.
+func ListJobsDefault() connectormock.Case[databricks.JobPage] { return ListJobsListedDefault() }
+
+// GetJobFound selects the found branch: Databricks returned the job.
+func GetJobFound(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.GetJobBranchFound, value, failure)
+}
+
+// GetJobNotFound selects the notFound branch: Databricks did not expose the job.
+func GetJobNotFound(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.GetJobBranchNotFound, value, failure)
+}
+
+// GetJobProviderRejected selects the providerRejected branch: Databricks rejected the lookup.
+func GetJobProviderRejected(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.GetJobBranchProviderRejected, value, failure)
+}
+
+// GetJobInvalidResponse selects the invalidResponse branch: Databricks returned malformed or oversized JSON.
+func GetJobInvalidResponse(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.GetJobBranchInvalidResponse, value, failure)
+}
+
+// GetJobDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetJobDefect(value databricks.JobSummary, failure *sdkgo.Failure) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Branch(databricks.GetJobBranchDefect, value, failure)
+}
+
+// GetJobRetry asks Dex to retry the getJob Step, after the delay when it is positive.
+func GetJobRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[databricks.JobSummary] {
+	return connectormock.Retry[databricks.JobSummary](failure, after)
+}
+
+// GetJobFoundDefault is the manifest mock foundDefault: One example job is returned.
+func GetJobFoundDefault() connectormock.Case[databricks.JobSummary] {
+	value := connectormock.MustDecodeOutput[databricks.JobSummary](`{"id":"11223344","name":"Example job"}`)
+	return connectormock.Branch(databricks.GetJobBranchFound, value, nil)
+}
+
+// GetJobDefault is the manifest default, foundDefault, which New installs.
+func GetJobDefault() connectormock.Case[databricks.JobSummary] { return GetJobFoundDefault() }
+
+// ListJobRunsListed selects the listed branch: Databricks returned a run page.
+func ListJobRunsListed(value databricks.JobRunPage, failure *sdkgo.Failure) connectormock.Case[databricks.JobRunPage] {
+	return connectormock.Branch(databricks.ListJobRunsBranchListed, value, failure)
+}
+
+// ListJobRunsProviderRejected selects the providerRejected branch: Databricks rejected the list request.
+func ListJobRunsProviderRejected(value databricks.JobRunPage, failure *sdkgo.Failure) connectormock.Case[databricks.JobRunPage] {
+	return connectormock.Branch(databricks.ListJobRunsBranchProviderRejected, value, failure)
+}
+
+// ListJobRunsInvalidResponse selects the invalidResponse branch: Databricks returned malformed or oversized JSON.
+func ListJobRunsInvalidResponse(value databricks.JobRunPage, failure *sdkgo.Failure) connectormock.Case[databricks.JobRunPage] {
+	return connectormock.Branch(databricks.ListJobRunsBranchInvalidResponse, value, failure)
+}
+
+// ListJobRunsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListJobRunsDefect(value databricks.JobRunPage, failure *sdkgo.Failure) connectormock.Case[databricks.JobRunPage] {
+	return connectormock.Branch(databricks.ListJobRunsBranchDefect, value, failure)
+}
+
+// ListJobRunsRetry asks Dex to retry the listJobRuns Step, after the delay when it is positive.
+func ListJobRunsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[databricks.JobRunPage] {
+	return connectormock.Retry[databricks.JobRunPage](failure, after)
+}
+
+// ListJobRunsListedDefault is the manifest mock listedDefault: One run is returned.
+func ListJobRunsListedDefault() connectormock.Case[databricks.JobRunPage] {
+	value := connectormock.MustDecodeOutput[databricks.JobRunPage](`{"runs":[{"id":"455644833","status":"RUNNING","resultState":""}],"nextPageToken":""}`)
+	return connectormock.Branch(databricks.ListJobRunsBranchListed, value, nil)
+}
+
+// ListJobRunsDefault is the manifest default, listedDefault, which New installs.
+func ListJobRunsDefault() connectormock.Case[databricks.JobRunPage] {
+	return ListJobRunsListedDefault()
+}
+
+// RunJobStarted selects the started branch: Databricks returned the started run ID.
+func RunJobStarted(value databricks.StartedJobRun, failure *sdkgo.Failure) connectormock.Case[databricks.StartedJobRun] {
+	return connectormock.Branch(databricks.RunJobBranchStarted, value, failure)
+}
+
+// RunJobNotFound selects the notFound branch: Databricks did not expose the job.
+func RunJobNotFound(value databricks.StartedJobRun, failure *sdkgo.Failure) connectormock.Case[databricks.StartedJobRun] {
+	return connectormock.Branch(databricks.RunJobBranchNotFound, value, failure)
+}
+
+// RunJobProviderRejected selects the providerRejected branch: Databricks rejected the run request.
+func RunJobProviderRejected(value databricks.StartedJobRun, failure *sdkgo.Failure) connectormock.Case[databricks.StartedJobRun] {
+	return connectormock.Branch(databricks.RunJobBranchProviderRejected, value, failure)
+}
+
+// RunJobInvalidResponse selects the invalidResponse branch: Databricks returned an invalid run ID.
+func RunJobInvalidResponse(value databricks.StartedJobRun, failure *sdkgo.Failure) connectormock.Case[databricks.StartedJobRun] {
+	return connectormock.Branch(databricks.RunJobBranchInvalidResponse, value, failure)
+}
+
+// RunJobDefect selects the defect branch: Local input or connection credentials are invalid.
+func RunJobDefect(value databricks.StartedJobRun, failure *sdkgo.Failure) connectormock.Case[databricks.StartedJobRun] {
+	return connectormock.Branch(databricks.RunJobBranchDefect, value, failure)
+}
+
+// RunJobRetry asks Dex to retry the runJob Step, after the delay when it is positive.
+func RunJobRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[databricks.StartedJobRun] {
+	return connectormock.Retry[databricks.StartedJobRun](failure, after)
+}
+
+// RunJobStartedDefault is the manifest mock startedDefault: One run is started.
+func RunJobStartedDefault() connectormock.Case[databricks.StartedJobRun] {
+	value := connectormock.MustDecodeOutput[databricks.StartedJobRun](`{"runId":"455644833"}`)
+	return connectormock.Branch(databricks.RunJobBranchStarted, value, nil)
+}
+
+// RunJobDefault is the manifest default, startedDefault, which New installs.
+func RunJobDefault() connectormock.Case[databricks.StartedJobRun] { return RunJobStartedDefault() }
+
+// CancelJobRunCancelled selects the cancelled branch: Databricks accepted the cancellation request.
+func CancelJobRunCancelled(value databricks.CancelledJobRun, failure *sdkgo.Failure) connectormock.Case[databricks.CancelledJobRun] {
+	return connectormock.Branch(databricks.CancelJobRunBranchCancelled, value, failure)
+}
+
+// CancelJobRunNotFound selects the notFound branch: Databricks did not expose the run.
+func CancelJobRunNotFound(value databricks.CancelledJobRun, failure *sdkgo.Failure) connectormock.Case[databricks.CancelledJobRun] {
+	return connectormock.Branch(databricks.CancelJobRunBranchNotFound, value, failure)
+}
+
+// CancelJobRunProviderRejected selects the providerRejected branch: Databricks rejected cancellation.
+func CancelJobRunProviderRejected(value databricks.CancelledJobRun, failure *sdkgo.Failure) connectormock.Case[databricks.CancelledJobRun] {
+	return connectormock.Branch(databricks.CancelJobRunBranchProviderRejected, value, failure)
+}
+
+// CancelJobRunDefect selects the defect branch: Local input or connection credentials are invalid.
+func CancelJobRunDefect(value databricks.CancelledJobRun, failure *sdkgo.Failure) connectormock.Case[databricks.CancelledJobRun] {
+	return connectormock.Branch(databricks.CancelJobRunBranchDefect, value, failure)
+}
+
+// CancelJobRunRetry asks Dex to retry the cancelJobRun Step, after the delay when it is positive.
+func CancelJobRunRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[databricks.CancelledJobRun] {
+	return connectormock.Retry[databricks.CancelledJobRun](failure, after)
+}
+
+// CancelJobRunCancelledDefault is the manifest mock cancelledDefault: A run cancellation is accepted.
+func CancelJobRunCancelledDefault() connectormock.Case[databricks.CancelledJobRun] {
+	value := connectormock.MustDecodeOutput[databricks.CancelledJobRun](`{"runId":"455644833"}`)
+	return connectormock.Branch(databricks.CancelJobRunBranchCancelled, value, nil)
+}
+
+// CancelJobRunDefault is the manifest default, cancelledDefault, which New installs.
+func CancelJobRunDefault() connectormock.Case[databricks.CancelledJobRun] {
+	return CancelJobRunCancelledDefault()
 }
 
 // GetJobRunFound selects the found branch: Databricks returned the job run.

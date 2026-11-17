@@ -5,6 +5,7 @@
 package databricks
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -67,6 +68,14 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.exchange(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) post(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.exchange(call, http.MethodPost, path, body)
+}
+
+func (client *Client) exchange(call sdkgo.Call, method, path string, payload []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -75,11 +84,14 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(payload))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
+	if payload != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("Authorization", "Bearer "+apiToken)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
