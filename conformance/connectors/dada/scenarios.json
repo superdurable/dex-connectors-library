@@ -1,0 +1,565 @@
+{
+  "connector": "dada",
+  "scenarios": [
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"success\",\"code\":0,\"result\":{\"orderId\":\"orderNo1653708880866\",\"statusCode\":1,\"statusMsg\":\"待接单\",\"transporterPhone\":\"18500000000\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "orderID": "orderNo1653708880866",
+          "statusCode": 1,
+          "statusMessage": "待接单"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-success",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"fail\",\"code\":2070,\"msg\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "orderID": "",
+          "statusCode": 0,
+          "statusMessage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-provider-rejected",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "orderID": "",
+          "statusCode": 0,
+          "statusMessage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-http-rejected",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"status\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "orderID": "",
+          "statusCode": 0,
+          "statusMessage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-invalid-json",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"success\",\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "orderID": "",
+          "statusCode": 0,
+          "statusMessage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-missing-result",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"success\",\"code\":0,\"result\":{\"orderId\":\"other\",\"statusCode\":1,\"statusMsg\":\"待接单\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "orderID": "",
+          "statusCode": 0,
+          "statusMessage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-wrong-order",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"success\",\"code\":0,\"result\":{\"orderId\":\"orderNo1653708880866\",\"statusCode\":1,\"statusMsg\":\"待接单\",\"transporterPhone\":\"18500000000\"}} {}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "orderID": "",
+          "statusCode": 0,
+          "statusMessage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-trailing-json",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"success\",\"code\":0,\"result\":{\"orderId\":\"orderNo1653708880866\",\"statusCode\":1,\"statusMsg\":\"待接单\",\"transporterPhone\":\"18500000000\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "orderID": "",
+          "statusCode": 0,
+          "statusMessage": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-oversize",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-rate-limit",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-server-error",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/order/status/query",
+          "requestBody": {
+            "app_key": "123456",
+            "body": "{\"order_id\":\"orderNo1653708880866\"}",
+            "format": "json",
+            "signature": "31F1E3E070BFF6F3CF1F4BB9608A516E",
+            "source_id": "73753",
+            "timestamp": "1488363493",
+            "v": "1.0"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-transport-before-send",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "orderID": "",
+          "statusCode": 0,
+          "statusMessage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "orderNo1653708880866"
+      },
+      "name": "queryOrderStatus-missing-credentials",
+      "operation": "queryOrderStatus"
+    },
+    {
+      "callId": "e2f2b911-10c1-5bbf-a0e0-eb463a393702",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "orderID": "",
+          "statusCode": 0,
+          "statusMessage": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderID": "  bad  "
+      },
+      "name": "queryOrderStatus-invalid-input",
+      "operation": "queryOrderStatus"
+    }
+  ],
+  "schemaVersion": 1
+}
