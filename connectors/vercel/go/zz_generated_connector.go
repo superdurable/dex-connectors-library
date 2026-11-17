@@ -42,6 +42,19 @@ type Connection struct {
 type Operations interface {
 	ListDeployments() sdkgo.Query[ListDeploymentsInput, DeploymentsPage]
 	GetDeployment() sdkgo.Query[GetDeploymentInput, Deployment]
+	CancelDeployment() sdkgo.Mutation[CancelDeploymentInput, Deployment]
+	DeleteDeployment() sdkgo.Mutation[DeleteDeploymentInput, DeletedDeployment]
+	ListProjects() sdkgo.Query[ListProjectsInput, ProjectsPage]
+	GetProject() sdkgo.Query[GetProjectInput, Project]
+	CreateProject() sdkgo.Mutation[CreateProjectInput, Project]
+	UpdateProject() sdkgo.Mutation[UpdateProjectInput, Project]
+	DeleteProject() sdkgo.Mutation[DeleteProjectInput, DeletedProject]
+	ListProjectDomains() sdkgo.Query[ListProjectDomainsInput, ProjectDomainsPage]
+	GetProjectDomain() sdkgo.Query[ProjectDomainInput, ProjectDomain]
+	AddProjectDomain() sdkgo.Mutation[ProjectDomainInput, ProjectDomain]
+	UpdateProjectDomain() sdkgo.Mutation[UpdateProjectDomainInput, ProjectDomain]
+	RemoveProjectDomain() sdkgo.Mutation[ProjectDomainInput, RemovedProjectDomain]
+	VerifyProjectDomain() sdkgo.Mutation[ProjectDomainInput, ProjectDomain]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +64,45 @@ func (operations clientOperations) ListDeployments() sdkgo.Query[ListDeployments
 }
 func (operations clientOperations) GetDeployment() sdkgo.Query[GetDeploymentInput, Deployment] {
 	return operations.client.GetDeployment()
+}
+func (operations clientOperations) CancelDeployment() sdkgo.Mutation[CancelDeploymentInput, Deployment] {
+	return operations.client.CancelDeployment()
+}
+func (operations clientOperations) DeleteDeployment() sdkgo.Mutation[DeleteDeploymentInput, DeletedDeployment] {
+	return operations.client.DeleteDeployment()
+}
+func (operations clientOperations) ListProjects() sdkgo.Query[ListProjectsInput, ProjectsPage] {
+	return operations.client.ListProjects()
+}
+func (operations clientOperations) GetProject() sdkgo.Query[GetProjectInput, Project] {
+	return operations.client.GetProject()
+}
+func (operations clientOperations) CreateProject() sdkgo.Mutation[CreateProjectInput, Project] {
+	return operations.client.CreateProject()
+}
+func (operations clientOperations) UpdateProject() sdkgo.Mutation[UpdateProjectInput, Project] {
+	return operations.client.UpdateProject()
+}
+func (operations clientOperations) DeleteProject() sdkgo.Mutation[DeleteProjectInput, DeletedProject] {
+	return operations.client.DeleteProject()
+}
+func (operations clientOperations) ListProjectDomains() sdkgo.Query[ListProjectDomainsInput, ProjectDomainsPage] {
+	return operations.client.ListProjectDomains()
+}
+func (operations clientOperations) GetProjectDomain() sdkgo.Query[ProjectDomainInput, ProjectDomain] {
+	return operations.client.GetProjectDomain()
+}
+func (operations clientOperations) AddProjectDomain() sdkgo.Mutation[ProjectDomainInput, ProjectDomain] {
+	return operations.client.AddProjectDomain()
+}
+func (operations clientOperations) UpdateProjectDomain() sdkgo.Mutation[UpdateProjectDomainInput, ProjectDomain] {
+	return operations.client.UpdateProjectDomain()
+}
+func (operations clientOperations) RemoveProjectDomain() sdkgo.Mutation[ProjectDomainInput, RemovedProjectDomain] {
+	return operations.client.RemoveProjectDomain()
+}
+func (operations clientOperations) VerifyProjectDomain() sdkgo.Mutation[ProjectDomainInput, ProjectDomain] {
+	return operations.client.VerifyProjectDomain()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +382,970 @@ func NewGetDeploymentStep[IN any](config GetDeploymentStepConfig[IN]) sdkgo.Quer
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetDeploymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelDeploymentBranchCanceled sdkgo.BranchID = "canceled"
+const CancelDeploymentBranchNotFound sdkgo.BranchID = "notFound"
+const CancelDeploymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelDeploymentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelDeploymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelDeploymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelDeployment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelDeploymentBranchCanceled, Description: "Vercel accepted the cancellation."},
+		{ID: CancelDeploymentBranchNotFound, Description: "The deployment does not exist or is inaccessible.", Optional: true},
+		{ID: CancelDeploymentBranchProviderRejected, Description: "Vercel conclusively rejected cancellation.", Optional: true},
+		{ID: CancelDeploymentBranchInvalidResponse, Description: "Vercel returned malformed or oversized JSON.", Optional: true},
+		{ID: CancelDeploymentBranchDefect, Description: "The deployment ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CancelDeploymentResult = sdkgo.MutationResult[Deployment]
+
+type CancelDeploymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=vercel"`
+	operationID                       struct{}                                         `connector:"operationId=cancelDeployment"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelDeploymentInput                   `connector:"mapToOperationInput"`
+	Canceled                          sdkgo.Target[CancelDeploymentResult]             `connector:"branch=canceled"`
+	NotFound                          sdkgo.Target[CancelDeploymentResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelDeploymentResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelDeploymentResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelDeploymentResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Deployment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewCancelDeploymentStep[IN any](config CancelDeploymentStepConfig[IN]) sdkgo.MutationStep[IN, CancelDeploymentInput, Deployment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelDeploymentInput, Deployment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelDeployment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelDeploymentResult] {
+			branches := make([]sdkgo.BranchTarget[CancelDeploymentResult], 0, 5)
+			if config.Canceled.HasStep() {
+				branches = append(branches, config.Canceled.BranchTarget(CancelDeploymentBranchCanceled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelDeploymentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelDeploymentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelDeploymentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelDeploymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteDeploymentBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteDeploymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteDeploymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteDeploymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteDeployment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteDeploymentBranchDeleted, Description: "The deployment is now absent."},
+		{ID: DeleteDeploymentBranchProviderRejected, Description: "Vercel conclusively rejected deletion.", Optional: true},
+		{ID: DeleteDeploymentBranchDefect, Description: "The deployment ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteDeploymentResult = sdkgo.MutationResult[DeletedDeployment]
+
+type DeleteDeploymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=vercel"`
+	operationID                       struct{}                                                `connector:"operationId=deleteDeployment"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteDeploymentInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteDeploymentResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteDeploymentResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteDeploymentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedDeployment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteDeploymentStep[IN any](config DeleteDeploymentStepConfig[IN]) sdkgo.MutationStep[IN, DeleteDeploymentInput, DeletedDeployment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteDeploymentInput, DeletedDeployment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteDeployment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteDeploymentResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteDeploymentResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteDeploymentBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDeploymentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteDeploymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListProjectsBranchListed sdkgo.BranchID = "listed"
+const ListProjectsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListProjectsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListProjectsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListProjectsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listProjects"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListProjectsBranchListed, Description: "A page of projects was returned."},
+		{ID: ListProjectsBranchProviderRejected, Description: "Vercel rejected the request.", Optional: true},
+		{ID: ListProjectsBranchInvalidResponse, Description: "Vercel returned malformed or oversized JSON.", Optional: true},
+		{ID: ListProjectsBranchDefect, Description: "The team ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListProjectsResult = sdkgo.QueryResult[ProjectsPage]
+
+type ListProjectsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=vercel"`
+	operationID                    struct{}                                        `connector:"operationId=listProjects"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListProjectsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListProjectsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListProjectsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListProjectsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListProjectsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ProjectsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListProjectsStep[IN any](config ListProjectsStepConfig[IN]) sdkgo.QueryStep[IN, ListProjectsInput, ProjectsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListProjectsInput, ProjectsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListProjects(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListProjectsResult] {
+			branches := make([]sdkgo.BranchTarget[ListProjectsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListProjectsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListProjectsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListProjectsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListProjectsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetProjectBranchFound sdkgo.BranchID = "found"
+const GetProjectBranchNotFound sdkgo.BranchID = "notFound"
+const GetProjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetProjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetProjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetProjectDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getProject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetProjectBranchFound, Description: "The project was returned."},
+		{ID: GetProjectBranchNotFound, Description: "The project does not exist or is inaccessible.", Optional: true},
+		{ID: GetProjectBranchProviderRejected, Description: "Vercel rejected the request.", Optional: true},
+		{ID: GetProjectBranchInvalidResponse, Description: "Vercel returned malformed or oversized JSON.", Optional: true},
+		{ID: GetProjectBranchDefect, Description: "The project ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetProjectResult = sdkgo.QueryResult[Project]
+
+type GetProjectStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=vercel"`
+	operationID                    struct{}                                   `connector:"operationId=getProject"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetProjectInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetProjectResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetProjectResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetProjectResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetProjectResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetProjectResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Project]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetProjectStep[IN any](config GetProjectStepConfig[IN]) sdkgo.QueryStep[IN, GetProjectInput, Project] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetProjectInput, Project]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetProject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetProjectResult] {
+			branches := make([]sdkgo.BranchTarget[GetProjectResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetProjectBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetProjectBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetProjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetProjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetProjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateProjectBranchCreated sdkgo.BranchID = "created"
+const CreateProjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateProjectBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateProjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateProjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createProject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateProjectBranchCreated, Description: "The project was created."},
+		{ID: CreateProjectBranchProviderRejected, Description: "Vercel rejected the create request.", Optional: true},
+		{ID: CreateProjectBranchUncertain, Description: "The project may have been created but could not be confirmed.", Optional: true},
+		{ID: CreateProjectBranchDefect, Description: "The project name or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateProjectResult = sdkgo.MutationResult[Project]
+
+type CreateProjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=vercel"`
+	operationID                       struct{}                                      `connector:"operationId=createProject"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateProjectInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateProjectResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateProjectResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateProjectResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateProjectResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Project]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateProjectStep[IN any](config CreateProjectStepConfig[IN]) sdkgo.MutationStep[IN, CreateProjectInput, Project] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateProjectInput, Project]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateProject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateProjectResult] {
+			branches := make([]sdkgo.BranchTarget[CreateProjectResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateProjectBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateProjectBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateProjectBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateProjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateProjectBranchUpdated sdkgo.BranchID = "updated"
+const UpdateProjectBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateProjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateProjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateProjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateProjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateProject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateProjectBranchUpdated, Description: "The project has the requested name."},
+		{ID: UpdateProjectBranchNotFound, Description: "The project does not exist or is inaccessible.", Optional: true},
+		{ID: UpdateProjectBranchProviderRejected, Description: "Vercel rejected the update.", Optional: true},
+		{ID: UpdateProjectBranchInvalidResponse, Description: "Vercel returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateProjectBranchDefect, Description: "The project ID, name, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateProjectResult = sdkgo.MutationResult[Project]
+
+type UpdateProjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=vercel"`
+	operationID                       struct{}                                      `connector:"operationId=updateProject"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateProjectInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateProjectResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateProjectResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateProjectResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateProjectResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateProjectResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Project]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateProjectStep[IN any](config UpdateProjectStepConfig[IN]) sdkgo.MutationStep[IN, UpdateProjectInput, Project] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateProjectInput, Project]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateProject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateProjectResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateProjectResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateProjectBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateProjectBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateProjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateProjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateProjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteProjectBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteProjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteProjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteProjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteProject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteProjectBranchDeleted, Description: "The project is now absent."},
+		{ID: DeleteProjectBranchProviderRejected, Description: "Vercel rejected the deletion.", Optional: true},
+		{ID: DeleteProjectBranchDefect, Description: "The project ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteProjectResult = sdkgo.MutationResult[DeletedProject]
+
+type DeleteProjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=vercel"`
+	operationID                       struct{}                                             `connector:"operationId=deleteProject"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteProjectInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteProjectResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteProjectResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteProjectResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedProject]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteProjectStep[IN any](config DeleteProjectStepConfig[IN]) sdkgo.MutationStep[IN, DeleteProjectInput, DeletedProject] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteProjectInput, DeletedProject]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteProject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteProjectResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteProjectResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteProjectBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteProjectBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteProjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListProjectDomainsBranchListed sdkgo.BranchID = "listed"
+const ListProjectDomainsBranchNotFound sdkgo.BranchID = "notFound"
+const ListProjectDomainsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListProjectDomainsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListProjectDomainsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListProjectDomainsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listProjectDomains"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListProjectDomainsBranchListed, Description: "The project domains were returned."},
+		{ID: ListProjectDomainsBranchNotFound, Description: "The project does not exist.", Optional: true},
+		{ID: ListProjectDomainsBranchProviderRejected, Description: "Vercel rejected the request.", Optional: true},
+		{ID: ListProjectDomainsBranchInvalidResponse, Description: "Vercel returned malformed or oversized JSON.", Optional: true},
+		{ID: ListProjectDomainsBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListProjectDomainsResult = sdkgo.QueryResult[ProjectDomainsPage]
+
+type ListProjectDomainsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=vercel"`
+	operationID                    struct{}                                              `connector:"operationId=listProjectDomains"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListProjectDomainsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListProjectDomainsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListProjectDomainsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListProjectDomainsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListProjectDomainsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListProjectDomainsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ProjectDomainsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewListProjectDomainsStep[IN any](config ListProjectDomainsStepConfig[IN]) sdkgo.QueryStep[IN, ListProjectDomainsInput, ProjectDomainsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListProjectDomainsInput, ProjectDomainsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListProjectDomains(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListProjectDomainsResult] {
+			branches := make([]sdkgo.BranchTarget[ListProjectDomainsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListProjectDomainsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListProjectDomainsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListProjectDomainsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListProjectDomainsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListProjectDomainsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetProjectDomainBranchFound sdkgo.BranchID = "found"
+const GetProjectDomainBranchNotFound sdkgo.BranchID = "notFound"
+const GetProjectDomainBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetProjectDomainBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetProjectDomainBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetProjectDomainDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getProjectDomain"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetProjectDomainBranchFound, Description: "The project domain was returned."},
+		{ID: GetProjectDomainBranchNotFound, Description: "The domain is not assigned to the project.", Optional: true},
+		{ID: GetProjectDomainBranchProviderRejected, Description: "Vercel rejected the request.", Optional: true},
+		{ID: GetProjectDomainBranchInvalidResponse, Description: "Vercel returned malformed or oversized JSON.", Optional: true},
+		{ID: GetProjectDomainBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetProjectDomainResult = sdkgo.QueryResult[ProjectDomain]
+
+type GetProjectDomainStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=vercel"`
+	operationID                    struct{}                                         `connector:"operationId=getProjectDomain"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ProjectDomainInput                      `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetProjectDomainResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetProjectDomainResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetProjectDomainResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetProjectDomainResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetProjectDomainResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ProjectDomain]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetProjectDomainStep[IN any](config GetProjectDomainStepConfig[IN]) sdkgo.QueryStep[IN, ProjectDomainInput, ProjectDomain] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ProjectDomainInput, ProjectDomain]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetProjectDomain(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetProjectDomainResult] {
+			branches := make([]sdkgo.BranchTarget[GetProjectDomainResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetProjectDomainBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetProjectDomainBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetProjectDomainBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetProjectDomainBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetProjectDomainBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AddProjectDomainBranchAdded sdkgo.BranchID = "added"
+const AddProjectDomainBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AddProjectDomainBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const AddProjectDomainBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AddProjectDomainDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addProjectDomain"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AddProjectDomainBranchAdded, Description: "The domain was assigned."},
+		{ID: AddProjectDomainBranchProviderRejected, Description: "Vercel rejected the assignment.", Optional: true},
+		{ID: AddProjectDomainBranchUncertain, Description: "The assignment may have succeeded but could not be confirmed.", Optional: true},
+		{ID: AddProjectDomainBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type AddProjectDomainResult = sdkgo.MutationResult[ProjectDomain]
+
+type AddProjectDomainStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=vercel"`
+	operationID                       struct{}                                            `connector:"operationId=addProjectDomain"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) ProjectDomainInput                         `connector:"mapToOperationInput"`
+	Added                             sdkgo.Target[AddProjectDomainResult]                `connector:"branch=added"`
+	ProviderRejected                  sdkgo.Target[AddProjectDomainResult]                `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[AddProjectDomainResult]                `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[AddProjectDomainResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ProjectDomain]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewAddProjectDomainStep[IN any](config AddProjectDomainStepConfig[IN]) sdkgo.MutationStep[IN, ProjectDomainInput, ProjectDomain] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ProjectDomainInput, ProjectDomain]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AddProjectDomain(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AddProjectDomainResult] {
+			branches := make([]sdkgo.BranchTarget[AddProjectDomainResult], 0, 4)
+			if config.Added.HasStep() {
+				branches = append(branches, config.Added.BranchTarget(AddProjectDomainBranchAdded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AddProjectDomainBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(AddProjectDomainBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AddProjectDomainBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateProjectDomainBranchUpdated sdkgo.BranchID = "updated"
+const UpdateProjectDomainBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateProjectDomainBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateProjectDomainBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateProjectDomainBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateProjectDomainDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateProjectDomain"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateProjectDomainBranchUpdated, Description: "The domain uses the requested branch."},
+		{ID: UpdateProjectDomainBranchNotFound, Description: "The domain is not assigned to the project.", Optional: true},
+		{ID: UpdateProjectDomainBranchProviderRejected, Description: "Vercel rejected the update.", Optional: true},
+		{ID: UpdateProjectDomainBranchInvalidResponse, Description: "Vercel returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateProjectDomainBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateProjectDomainResult = sdkgo.MutationResult[ProjectDomain]
+
+type UpdateProjectDomainStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=vercel"`
+	operationID                       struct{}                                            `connector:"operationId=updateProjectDomain"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateProjectDomainInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateProjectDomainResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateProjectDomainResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateProjectDomainResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateProjectDomainResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateProjectDomainResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ProjectDomain]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateProjectDomainStep[IN any](config UpdateProjectDomainStepConfig[IN]) sdkgo.MutationStep[IN, UpdateProjectDomainInput, ProjectDomain] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateProjectDomainInput, ProjectDomain]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateProjectDomain(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateProjectDomainResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateProjectDomainResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateProjectDomainBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateProjectDomainBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateProjectDomainBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateProjectDomainBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateProjectDomainBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemoveProjectDomainBranchRemoved sdkgo.BranchID = "removed"
+const RemoveProjectDomainBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveProjectDomainBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveProjectDomainDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeProjectDomain"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveProjectDomainBranchRemoved, Description: "The domain is no longer assigned."},
+		{ID: RemoveProjectDomainBranchProviderRejected, Description: "Vercel rejected the removal.", Optional: true},
+		{ID: RemoveProjectDomainBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RemoveProjectDomainResult = sdkgo.MutationResult[RemovedProjectDomain]
+
+type RemoveProjectDomainStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=vercel"`
+	operationID                       struct{}                                                   `connector:"operationId=removeProjectDomain"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) ProjectDomainInput                                `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveProjectDomainResult]                    `connector:"branch=removed"`
+	ProviderRejected                  sdkgo.Target[RemoveProjectDomainResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RemoveProjectDomainResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RemovedProjectDomain]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveProjectDomainStep[IN any](config RemoveProjectDomainStepConfig[IN]) sdkgo.MutationStep[IN, ProjectDomainInput, RemovedProjectDomain] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ProjectDomainInput, RemovedProjectDomain]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveProjectDomain(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveProjectDomainResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveProjectDomainResult], 0, 3)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveProjectDomainBranchRemoved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveProjectDomainBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveProjectDomainBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const VerifyProjectDomainBranchVerified sdkgo.BranchID = "verified"
+const VerifyProjectDomainBranchNotFound sdkgo.BranchID = "notFound"
+const VerifyProjectDomainBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const VerifyProjectDomainBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const VerifyProjectDomainBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var VerifyProjectDomainDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "verifyProjectDomain"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: VerifyProjectDomainBranchVerified, Description: "The domain was verified."},
+		{ID: VerifyProjectDomainBranchNotFound, Description: "The domain is not assigned to the project.", Optional: true},
+		{ID: VerifyProjectDomainBranchProviderRejected, Description: "The challenge is incomplete or Vercel rejected it.", Optional: true},
+		{ID: VerifyProjectDomainBranchInvalidResponse, Description: "Vercel returned malformed or oversized JSON.", Optional: true},
+		{ID: VerifyProjectDomainBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type VerifyProjectDomainResult = sdkgo.MutationResult[ProjectDomain]
+
+type VerifyProjectDomainStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=vercel"`
+	operationID                       struct{}                                            `connector:"operationId=verifyProjectDomain"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) ProjectDomainInput                         `connector:"mapToOperationInput"`
+	Verified                          sdkgo.Target[VerifyProjectDomainResult]             `connector:"branch=verified"`
+	NotFound                          sdkgo.Target[VerifyProjectDomainResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[VerifyProjectDomainResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[VerifyProjectDomainResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[VerifyProjectDomainResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ProjectDomain]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewVerifyProjectDomainStep[IN any](config VerifyProjectDomainStepConfig[IN]) sdkgo.MutationStep[IN, ProjectDomainInput, ProjectDomain] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ProjectDomainInput, ProjectDomain]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.VerifyProjectDomain(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[VerifyProjectDomainResult] {
+			branches := make([]sdkgo.BranchTarget[VerifyProjectDomainResult], 0, 5)
+			if config.Verified.HasStep() {
+				branches = append(branches, config.Verified.BranchTarget(VerifyProjectDomainBranchVerified))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(VerifyProjectDomainBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(VerifyProjectDomainBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(VerifyProjectDomainBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(VerifyProjectDomainBranchDefect))
 			}
 			return branches
 		}(),

@@ -6,7 +6,8 @@ import { SecretString, StaticCredentialProvider, type Call } from '@superdurable
 import { WebflowClient, GetCollectionItemInputSchema, ListCollectionItemsInputSchema } from '../src/index.js';
 import { ExchangeRecorder, loadScenarios, replay, withScenarioHTTPServer, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/webflow/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/webflow/scenarios.json', import.meta.url))
+  .filter(scenario => ['listCollectionItems', 'getCollectionItem'].includes(scenario.operation));
 const connection = { provider: 'webflow', name: 'webflow' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeWebflow));
 

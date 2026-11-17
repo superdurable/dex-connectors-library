@@ -1,10 +1,10 @@
 # Webflow connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/webflow/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/webflow/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/webflow`.
 
-This Dex connector exposes `listCollectionItems`, `getCollectionItem`. The runnable [sample Flow](go/examples/sample-webflow/flow/workflow.go) uses `listCollectionItems` with the static `webflow` connection. Each operation uses the generated typed Step factory.
+This Dex connector exposes `listCollections`, `getCollection`, `listCollectionItems`, `getCollectionItem`, `listLiveCollectionItems`, and `getLiveCollectionItem`. The runnable [sample Flow](go/examples/sample-webflow/flow/workflow.go) uses `listCollections` with the static `webflow` connection. Each operation uses the generated typed Step factory.
 
 The Python package is [`dex-connector-webflow`](python/README.md), imported as
 `dex_connectors.webflow`.
@@ -13,12 +13,15 @@ The TypeScript package is [`@superdurable/connector-webflow`](typescript/README.
 
 ## Provider contract
 
-Both operations read staged CMS items with `CMS:read` scope. A site token is scoped to one site. The `collectionId` and `itemId` are 24-character hexadecimal IDs.
+All operations use `CMS:read` scope. A site token is scoped to one site. `siteId`, `collectionId`, and `itemId` are 24-character hexadecimal IDs. Collection details include the field schema; item reads select staged or published content.
 
 Official documentation used for the endpoint, authentication, and response contract:
 
 - [https://developers.webflow.com/data/reference/cms/collection-items/staged-items/list-items](https://developers.webflow.com/data/reference/cms/collection-items/staged-items/list-items)
 - [https://developers.webflow.com/data/reference/cms/collection-items/staged-items/get-item](https://developers.webflow.com/data/reference/cms/collection-items/staged-items/get-item)
+- [https://developers.webflow.com/data/reference/cms/collections/list](https://developers.webflow.com/data/reference/cms/collections/list)
+- [https://developers.webflow.com/data/reference/cms/collections/get](https://developers.webflow.com/data/reference/cms/collections/get)
+- [https://developers.webflow.com/data/reference/cms/collection-items/live-items/list-items-live](https://developers.webflow.com/data/reference/cms/collection-items/live-items/list-items-live)
 - [https://developers.webflow.com/data/reference/authentication/site-token](https://developers.webflow.com/data/reference/authentication/site-token)
 
 ## Authorization and configuration
@@ -47,8 +50,8 @@ mock := webflowmock.New(t, ConnectionName)
 flow := NewFlow(mock.Connection())
 ```
 
-The mock defaults represent the same Meridian example resource across both operations.
+The mock defaults represent one site collection and related items.
 
 ## Verification limits
 
-The provider HTTP behavior is tested with local `httptest` servers, and the sample's mapping has a deterministic unit test. No live provider account or Dex stack was used during this batch. Real provider authorization, permissions, response variants, and the mock-backed Dex integration remain unverified locally; CI covers the Dex integration.
+The provider HTTP behavior is tested with local HTTP scenarios, and the sample's mapping has a deterministic unit test. Real provider authorization, permissions, and response variants remain unverified without a site token.

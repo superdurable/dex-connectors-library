@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/wise/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/wise/scenarios.json")
+    if scenario["operation"] == "getTransfer"
+]
 CONNECTION = sdk.ConnectionRef("wise", "wise")
 TEST_CREDENTIALS = wise.Credentials(sdk.SecretString("sample-wise-api-token"))
 ADAPTER = conformance.PythonOperationAdapter(

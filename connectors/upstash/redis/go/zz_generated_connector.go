@@ -41,12 +41,40 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetKey() sdkgo.Query[GetKeyInput, KeyLookup]
+	SetKey() sdkgo.Mutation[SetKeyInput, KeyWrite]
+	DeleteKey() sdkgo.Mutation[DeleteKeyInput, KeyDeletion]
+	ListKeys() sdkgo.Query[ListKeysInput, KeyList]
+	GetListLength() sdkgo.Query[GetListLengthInput, ListLength]
+	GetInfo() sdkgo.Query[GetInfoInput, DatabaseInfo]
+	PushListItem() sdkgo.Mutation[PushListItemInput, ListPush]
+	PublishMessage() sdkgo.Mutation[PublishMessageInput, MessagePublication]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetKey() sdkgo.Query[GetKeyInput, KeyLookup] {
 	return operations.client.GetKey()
+}
+func (operations clientOperations) SetKey() sdkgo.Mutation[SetKeyInput, KeyWrite] {
+	return operations.client.SetKey()
+}
+func (operations clientOperations) DeleteKey() sdkgo.Mutation[DeleteKeyInput, KeyDeletion] {
+	return operations.client.DeleteKey()
+}
+func (operations clientOperations) ListKeys() sdkgo.Query[ListKeysInput, KeyList] {
+	return operations.client.ListKeys()
+}
+func (operations clientOperations) GetListLength() sdkgo.Query[GetListLengthInput, ListLength] {
+	return operations.client.GetListLength()
+}
+func (operations clientOperations) GetInfo() sdkgo.Query[GetInfoInput, DatabaseInfo] {
+	return operations.client.GetInfo()
+}
+func (operations clientOperations) PushListItem() sdkgo.Mutation[PushListItemInput, ListPush] {
+	return operations.client.PushListItem()
+}
+func (operations clientOperations) PublishMessage() sdkgo.Mutation[PublishMessageInput, MessagePublication] {
+	return operations.client.PublishMessage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -259,5 +287,514 @@ func NewGetKeyStep[IN any](config GetKeyStepConfig[IN]) sdkgo.QueryStep[IN, GetK
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetKeyBranchSet sdkgo.BranchID = "set"
+const SetKeyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetKeyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SetKeyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetKeyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setKey"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetKeyBranchSet, Description: "The string value was set."},
+		{ID: SetKeyBranchProviderRejected, Description: "Upstash rejected the command.", Optional: true},
+		{ID: SetKeyBranchInvalidResponse, Description: "Upstash returned malformed or oversized JSON.", Optional: true},
+		{ID: SetKeyBranchDefect, Description: "The key or value is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SetKeyResult = sdkgo.MutationResult[KeyWrite]
+
+type SetKeyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=upstash-redis"`
+	operationID                       struct{}                                       `connector:"operationId=setKey"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetKeyInput                           `connector:"mapToOperationInput"`
+	Set                               sdkgo.Target[SetKeyResult]                     `connector:"branch=set"`
+	ProviderRejected                  sdkgo.Target[SetKeyResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SetKeyResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SetKeyResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[KeyWrite]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewSetKeyStep[IN any](config SetKeyStepConfig[IN]) sdkgo.MutationStep[IN, SetKeyInput, KeyWrite] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("upstash-redis connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetKeyInput, KeyWrite]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetKey(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetKeyResult] {
+			branches := make([]sdkgo.BranchTarget[SetKeyResult], 0, 4)
+			if config.Set.HasStep() {
+				branches = append(branches, config.Set.BranchTarget(SetKeyBranchSet))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetKeyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SetKeyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetKeyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteKeyBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteKeyBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteKeyBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteKeyBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteKeyDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteKey"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteKeyBranchDeleted, Description: "The key is now absent."},
+		{ID: DeleteKeyBranchProviderRejected, Description: "Upstash rejected the command.", Optional: true},
+		{ID: DeleteKeyBranchInvalidResponse, Description: "Upstash returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteKeyBranchDefect, Description: "The key is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteKeyResult = sdkgo.MutationResult[KeyDeletion]
+
+type DeleteKeyStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=upstash-redis"`
+	operationID                       struct{}                                          `connector:"operationId=deleteKey"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteKeyInput                           `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteKeyResult]                     `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteKeyResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteKeyResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteKeyResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[KeyDeletion]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteKeyStep[IN any](config DeleteKeyStepConfig[IN]) sdkgo.MutationStep[IN, DeleteKeyInput, KeyDeletion] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("upstash-redis connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteKeyInput, KeyDeletion]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteKey(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteKeyResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteKeyResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteKeyBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteKeyBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteKeyBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteKeyBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListKeysBranchListed sdkgo.BranchID = "listed"
+const ListKeysBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListKeysBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListKeysBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListKeysDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listKeys"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListKeysBranchListed, Description: "Matching key names were returned."},
+		{ID: ListKeysBranchProviderRejected, Description: "Upstash rejected the command.", Optional: true},
+		{ID: ListKeysBranchInvalidResponse, Description: "Upstash returned malformed or oversized JSON.", Optional: true},
+		{ID: ListKeysBranchDefect, Description: "The pattern is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListKeysResult = sdkgo.QueryResult[KeyList]
+
+type ListKeysStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=upstash-redis"`
+	operationID                    struct{}                                   `connector:"operationId=listKeys"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListKeysInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListKeysResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListKeysResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListKeysResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListKeysResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[KeyList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewListKeysStep[IN any](config ListKeysStepConfig[IN]) sdkgo.QueryStep[IN, ListKeysInput, KeyList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("upstash-redis connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListKeysInput, KeyList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListKeys(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListKeysResult] {
+			branches := make([]sdkgo.BranchTarget[ListKeysResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListKeysBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListKeysBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListKeysBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListKeysBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetListLengthBranchFound sdkgo.BranchID = "found"
+const GetListLengthBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetListLengthBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetListLengthBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetListLengthDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getListLength"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetListLengthBranchFound, Description: "The list length was returned."},
+		{ID: GetListLengthBranchProviderRejected, Description: "Upstash rejected the command.", Optional: true},
+		{ID: GetListLengthBranchInvalidResponse, Description: "Upstash returned malformed or oversized JSON.", Optional: true},
+		{ID: GetListLengthBranchDefect, Description: "The key is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetListLengthResult = sdkgo.QueryResult[ListLength]
+
+type GetListLengthStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=upstash-redis"`
+	operationID                    struct{}                                      `connector:"operationId=getListLength"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetListLengthInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetListLengthResult]             `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetListLengthResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetListLengthResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetListLengthResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListLength]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetListLengthStep[IN any](config GetListLengthStepConfig[IN]) sdkgo.QueryStep[IN, GetListLengthInput, ListLength] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("upstash-redis connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetListLengthInput, ListLength]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetListLength(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetListLengthResult] {
+			branches := make([]sdkgo.BranchTarget[GetListLengthResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetListLengthBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetListLengthBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetListLengthBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetListLengthBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetInfoBranchFound sdkgo.BranchID = "found"
+const GetInfoBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInfoBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInfoBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInfoDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInfo"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInfoBranchFound, Description: "Redis server information was returned."},
+		{ID: GetInfoBranchProviderRejected, Description: "Upstash rejected the command.", Optional: true},
+		{ID: GetInfoBranchInvalidResponse, Description: "Upstash returned malformed or oversized JSON.", Optional: true},
+		{ID: GetInfoBranchDefect, Description: "The connection token is unavailable.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInfoResult = sdkgo.QueryResult[DatabaseInfo]
+
+type GetInfoStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=upstash-redis"`
+	operationID                    struct{}                                        `connector:"operationId=getInfo"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInfoInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetInfoResult]                     `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetInfoResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInfoResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInfoResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DatabaseInfo]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetInfoStep[IN any](config GetInfoStepConfig[IN]) sdkgo.QueryStep[IN, GetInfoInput, DatabaseInfo] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("upstash-redis connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInfoInput, DatabaseInfo]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInfo(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInfoResult] {
+			branches := make([]sdkgo.BranchTarget[GetInfoResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetInfoBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInfoBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInfoBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInfoBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PushListItemBranchPushed sdkgo.BranchID = "pushed"
+const PushListItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PushListItemBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const PushListItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PushListItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "pushListItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PushListItemBranchPushed, Description: "The item was pushed onto the list."},
+		{ID: PushListItemBranchProviderRejected, Description: "Upstash rejected the command.", Optional: true},
+		{ID: PushListItemBranchUncertain, Description: "The push may have succeeded but could not be confirmed.", Optional: true},
+		{ID: PushListItemBranchDefect, Description: "The key, value, or direction is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type PushListItemResult = sdkgo.MutationResult[ListPush]
+
+type PushListItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=upstash-redis"`
+	operationID                       struct{}                                       `connector:"operationId=pushListItem"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) PushListItemInput                     `connector:"mapToOperationInput"`
+	Pushed                            sdkgo.Target[PushListItemResult]               `connector:"branch=pushed"`
+	ProviderRejected                  sdkgo.Target[PushListItemResult]               `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[PushListItemResult]               `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[PushListItemResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ListPush]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewPushListItemStep[IN any](config PushListItemStepConfig[IN]) sdkgo.MutationStep[IN, PushListItemInput, ListPush] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("upstash-redis connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PushListItemInput, ListPush]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PushListItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PushListItemResult] {
+			branches := make([]sdkgo.BranchTarget[PushListItemResult], 0, 4)
+			if config.Pushed.HasStep() {
+				branches = append(branches, config.Pushed.BranchTarget(PushListItemBranchPushed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PushListItemBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(PushListItemBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PushListItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const PublishMessageBranchPublished sdkgo.BranchID = "published"
+const PublishMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PublishMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const PublishMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PublishMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "publishMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PublishMessageBranchPublished, Description: "The message was published."},
+		{ID: PublishMessageBranchProviderRejected, Description: "Upstash rejected the command.", Optional: true},
+		{ID: PublishMessageBranchUncertain, Description: "Publication may have succeeded but could not be confirmed.", Optional: true},
+		{ID: PublishMessageBranchDefect, Description: "The channel or message is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type PublishMessageResult = sdkgo.MutationResult[MessagePublication]
+
+type PublishMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=upstash-redis"`
+	operationID                       struct{}                                                 `connector:"operationId=publishMessage"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) PublishMessageInput                             `connector:"mapToOperationInput"`
+	Published                         sdkgo.Target[PublishMessageResult]                       `connector:"branch=published"`
+	ProviderRejected                  sdkgo.Target[PublishMessageResult]                       `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[PublishMessageResult]                       `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[PublishMessageResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MessagePublication]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewPublishMessageStep[IN any](config PublishMessageStepConfig[IN]) sdkgo.MutationStep[IN, PublishMessageInput, MessagePublication] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("upstash-redis connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PublishMessageInput, MessagePublication]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PublishMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PublishMessageResult] {
+			branches := make([]sdkgo.BranchTarget[PublishMessageResult], 0, 4)
+			if config.Published.HasStep() {
+				branches = append(branches, config.Published.BranchTarget(PublishMessageBranchPublished))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PublishMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(PublishMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PublishMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

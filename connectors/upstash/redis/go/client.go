@@ -6,6 +6,7 @@ package redis
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // Option configures the provider HTTP dependency.
@@ -67,7 +69,11 @@ type providerResponse struct {
 	err        error
 }
 
-func (client *Client) readKey(call sdkgo.Call, body []byte) providerResponse {
+func (client *Client) runCommand(call sdkgo.Call, body []byte) providerResponse {
+	return client.runCommandWithContext(call, call.Context, body, false)
+}
+
+func (client *Client) runCommandWithContext(call sdkgo.Call, requestContext context.Context, body []byte, fenced bool) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -76,9 +82,14 @@ func (client *Client) readKey(call sdkgo.Call, body []byte) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(token) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+"/", bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, client.baseURL+"/", bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
+	}
+	if fenced {
+		if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+			return providerResponse{err: errRequest}
+		}
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json")

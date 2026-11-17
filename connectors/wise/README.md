@@ -1,6 +1,6 @@
 # Wise Platform connector
 
-The Go, Python, and TypeScript `getTransfer` Query reads a Wise transfer's numeric ID, status, and source currency. Recipient, customer, and payment details stay out of Dex Results.
+The Go, Python, and TypeScript `getTransfer` Query reads a Wise transfer's numeric ID, status, and source currency. Go also provides `listProfiles`, `getProfile`, `getBalance`, `listBalances`, `createBalance`, `listAvailableBalanceCurrencies`, `listPayinCurrencies`, `listRecipients`, `getExchangeRates`, `createQuote`, `getQuote`, `createTransfer`, and `cancelTransfer`. Profile and recipient Results contain only IDs and selected metadata; transfer Results omit recipient, customer, and payment details.
 
 ## Connect
 
@@ -8,6 +8,20 @@ For a Wise business account, follow the [personal API token guide](https://docs.
 
 Leave `baseUrl` blank for Production at `https://api.wise.com/2026Q4`; use `https://api.wise-sandbox.com/2026Q4` for Sandbox. Match the token to the environment. `timeout` is a per-request Go duration and `maxResponseBytes` is a byte limit; blank uses the displayed defaults. Find a positive numeric transfer ID in Wise transfer details or an API response and pass it as the `transferId` string. The three implementations currently accept IDs through 9007199254740991 to preserve exact JavaScript integer decoding. See [Get a transfer by ID](https://docs.wise.com/api-reference/transfer/transferget).
 
+## Go operations
+
+`listProfiles` and `getProfile` return profile IDs and types. `getBalance` and `listBalances` return IDs, currencies, types, and available amounts without bank account details. `listAvailableBalanceCurrencies` returns currencies a profile may hold; `listPayinCurrencies` returns the subset that supports bank account details. `listRecipients` returns recipient IDs, currencies, and active flags without bank details. `getExchangeRates` reads a current ISO 4217 pair, and `getQuote` reads an authenticated quote by profile ID and UUID. All reads are safe to retry.
+
+`createBalance` opens a `STANDARD` balance or a named `SAVINGS` balance. Wise requires `X-idempotence-uuid`; the connector derives it from the stable Dex Call ID and reuses it across retries. The Result excludes bank account details. Closing a balance can deactivate associated bank details, so this connector does not automate closure.
+
+Wise documents [balance creation](https://docs.wise.com/api-reference/balance/balancecreate) and [single-balance retrieval](https://docs.wise.com/api-reference/balance/balanceget) for personal API tokens.
+
+`createQuote` takes a profile ID, currency pair, one positive decimal amount, and `amountSide` (`source` or `target`). Wise does not document a deduplication key for this endpoint. The connector permits at most three possible sends using a Dex single-dispatch fence, then selects `uncertain` if the quote cannot be identified. The fence requires synchronous Execute durability. Only the returned quote ID and currencies enter the Result.
+
+`createTransfer` creates an unfunded transfer from an authenticated quote and recipient ID. The connector derives `customerTransactionId` from the stable Dex Call ID; Wise documents that repeating the same identifier prevents duplicate transfers. Optional `reference` and `transferPurpose` values must come from Wise's transfer requirements for the chosen corridor. `cancelTransfer` requests cancellation of an unfunded transfer and confirms a `cancelled` status after a conflict. Both mutations are safe to repeat for the same logical request. Funding is a separate Wise action.
+
+See [Wise profiles](https://docs.wise.com/guides/developer/auth-and-security/personal-api-token), [balance accounts](https://docs.wise.com/guides/product/accounts/balance-accounts), [available currencies](https://docs.wise.com/api-reference/multi-currency-account/mcaavailablecurrenciesget), [payin currencies](https://docs.wise.com/api-reference/multi-currency-account/mcapayincurrenciesget), [recipient listing](https://docs.wise.com/guides/product/send-money/recipients/list-create-recipient), [rates](https://docs.wise.com/api-reference/rate/rateget), [quote creation](https://docs.wise.com/guides/product/send-money/quotes/authenticated-quote), [quote retrieval](https://docs.wise.com/api-reference/quote/quoteget), [transfer creation](https://docs.wise.com/guides/product/send-money/transfers/standard-api-transfers), and [cancellation](https://docs.wise.com/api-reference/transfer/transfercancel).
+
 ## Examples and verification
 
-Run the [Go](go/examples/transfer-inspection/README.md), [Python](python/examples/transfer_inspection/README.md), or [TypeScript](typescript/examples/transfer-inspection/README.md) transfer inspection Flow with the static `wise` connection. Go-recorded conformance checks requests, branches, retries, and outputs across all three languages. Local integration tests exercise real Dex with fixture providers. Real Wise authorization and transfer retrieval remain unverified.
+Run the [Go](go/examples/transfer-inspection/README.md), [Python](python/examples/transfer_inspection/README.md), or [TypeScript](typescript/examples/transfer-inspection/README.md) transfer inspection Flow with the static `wise` connection. The Go example also registers `WiseProfileInspection`. Go-recorded conformance checks requests, branches, retries, and outputs; Python and TypeScript replay the `getTransfer` scenarios they implement. Local integration tests exercise real Dex with fixture providers. Real Wise authorization and provider responses remain unverified.

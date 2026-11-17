@@ -1,10 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package wise reads selected Wise transfer status in Dex Flows.
+// Package wise provides typed Dex Steps for selected Wise Platform API operations.
 package wise
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -67,6 +69,18 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.send(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) send(call sdkgo.Call, method, path string, requestBody []byte) providerResponse {
+	return client.sendWithContext(call, call.Context, method, path, requestBody)
+}
+
+func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Context, method, path string, requestBody []byte) providerResponse {
+	return client.sendWithContextAndHeader(call, requestContext, method, path, requestBody, "", "")
+}
+
+func (client *Client) sendWithContextAndHeader(call sdkgo.Call, requestContext context.Context, method, path string, requestBody []byte, headerName, headerValue string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -75,12 +89,18 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(requestBody))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer "+apiToken)
+	if headerName != "" {
+		request.Header.Set(headerName, headerValue)
+	}
+	if requestBody != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return providerResponse{err: errRequest}

@@ -20,6 +20,67 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[wave.CustomerProfile](`{"businessId":"business-1","id":"customer-1","name":"Example Customer"}`)
 			return err
 		}},
+		{name: "listCustomers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.CustomerPage](`{"businessId":"business-1","customers":[{"businessId":"business-1","id":"customer-1","name":"Example Customer"}],"currentPage":1,"totalPages":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "createCustomer/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.CustomerProfile](`{"businessId":"business-1","id":"customer-1","name":"Example Customer"}`)
+			return err
+		}},
+		{name: "updateCustomer/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.CustomerProfile](`{"businessId":"business-1","id":"customer-1","name":"Updated Customer"}`)
+			return err
+		}},
+		{name: "deleteCustomer/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.DeletedCustomer](`{"id":"customer-1"}`)
+			return err
+		}},
+		{name: "listProducts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductPage](`{"businessId":"business-1","products":[{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50"}],"currentPage":1,"totalPages":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "getProduct/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50"}`)
+			return err
+		}},
+		{name: "createProduct/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50"}`)
+			return err
+		}},
+		{name: "updateProduct/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Updated Product","unitPrice":"3.00"}`)
+			return err
+		}},
+		{name: "archiveProduct/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50","isArchived":true}`)
+			return err
+		}},
+		{name: "listInvoices/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.InvoicePage](`{"businessId":"business-1","invoices":[{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"DRAFT","title":"Example Invoice","invoiceNumber":"1001"}],"currentPage":1,"totalPages":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "getInvoice/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.InvoiceProfile](`{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"DRAFT","title":"Example Invoice","invoiceNumber":"1001"}`)
+			return err
+		}},
+		{name: "createInvoice/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.InvoiceProfile](`{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"DRAFT","title":"Example Invoice","invoiceNumber":"1001"}`)
+			return err
+		}},
+		{name: "updateInvoice/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.InvoiceProfile](`{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"DRAFT","title":"Updated Invoice","invoiceNumber":"1001"}`)
+			return err
+		}},
+		{name: "approveInvoice/approvedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.InvoiceProfile](`{"businessId":"business-1","id":"invoice-1","customerId":"customer-1","status":"SAVED","title":"Example Invoice","invoiceNumber":"1001"}`)
+			return err
+		}},
+		{name: "deleteInvoice/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.DeletedInvoice](`{"id":"invoice-1"}`)
+			return err
+		}},
+		{name: "sendInvoice/sentDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[wave.SentInvoice](`{"id":"invoice-1"}`); return err }},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +93,53 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
 		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.ListCustomers().Definition().Operation.OperationID != "listCustomers" {
+		t.Errorf("listCustomers mock has another definition")
+	}
+	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
+		t.Errorf("createCustomer mock has another definition")
+	}
+	if mock.UpdateCustomer().Definition().Operation.OperationID != "updateCustomer" {
+		t.Errorf("updateCustomer mock has another definition")
+	}
+	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
+		t.Errorf("deleteCustomer mock has another definition")
+	}
+	if mock.ListProducts().Definition().Operation.OperationID != "listProducts" {
+		t.Errorf("listProducts mock has another definition")
+	}
+	if mock.GetProduct().Definition().Operation.OperationID != "getProduct" {
+		t.Errorf("getProduct mock has another definition")
+	}
+	if mock.CreateProduct().Definition().Operation.OperationID != "createProduct" {
+		t.Errorf("createProduct mock has another definition")
+	}
+	if mock.UpdateProduct().Definition().Operation.OperationID != "updateProduct" {
+		t.Errorf("updateProduct mock has another definition")
+	}
+	if mock.ArchiveProduct().Definition().Operation.OperationID != "archiveProduct" {
+		t.Errorf("archiveProduct mock has another definition")
+	}
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
+	}
+	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
+		t.Errorf("getInvoice mock has another definition")
+	}
+	if mock.CreateInvoice().Definition().Operation.OperationID != "createInvoice" {
+		t.Errorf("createInvoice mock has another definition")
+	}
+	if mock.UpdateInvoice().Definition().Operation.OperationID != "updateInvoice" {
+		t.Errorf("updateInvoice mock has another definition")
+	}
+	if mock.ApproveInvoice().Definition().Operation.OperationID != "approveInvoice" {
+		t.Errorf("approveInvoice mock has another definition")
+	}
+	if mock.DeleteInvoice().Definition().Operation.OperationID != "deleteInvoice" {
+		t.Errorf("deleteInvoice mock has another definition")
+	}
+	if mock.SendInvoice().Definition().Operation.OperationID != "sendInvoice" {
+		t.Errorf("sendInvoice mock has another definition")
 	}
 }

@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Non-secret HTTPS REST URL from https://console.upstash.com > Redis > selected database > Connect > REST > UPSTASH_REDIS_REST_URL; use the complete origin such as https://example.upstash.io. Blank prevents requests. A loopback HTTP URL is supported only for local tests. */
   baseUrl: string;
-  /** Maximum duration of one GET command as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
+  /** Maximum duration of one Redis REST command as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete GET response in bytes. Blank uses the displayed default; increase only for larger stored strings. */
+  /** Maximum complete Redis REST response in bytes. Blank uses the displayed default; increase only for larger results. */
   maxResponseBytes?: number;
 }
 
@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret opaque UPSTASH_REDIS_REST_TOKEN from https://console.upstash.com > Redis > selected database > Connect > REST. Copy the Read-Only Token for getKey, or the standard Token if writes are later needed. Blank prevents requests. Dex stores it as a secret and sends it only in the Authorization header; reset the database password to revoke it. */
+  /** Secret opaque UPSTASH_REDIS_REST_TOKEN from https://console.upstash.com > Redis > selected database > Connect > REST. Copy the standard Token for writes; the Read-Only Token supports queries only. Blank prevents requests. Dex stores it as a secret and sends it only in the Authorization header; reset the database password to revoke it. */
   restToken: SecretString;
 }
 

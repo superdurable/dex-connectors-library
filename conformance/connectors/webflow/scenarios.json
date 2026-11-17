@@ -627,6 +627,1219 @@
       },
       "name": "getCollectionItem-defect",
       "operation": "getCollectionItem"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"collections\":[{\"id\":\"62b720ef280c7a7a3be8cabf\",\"displayName\":\"Articles\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/sites/62b720ef280c7a7a3be8cabc/collections",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "collections": [
+              {
+                "displayName": "Articles",
+                "id": "62b720ef280c7a7a3be8cabf"
+              }
+            ]
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "62b720ef280c7a7a3be8cabc"
+      },
+      "name": "listCollections-success",
+      "operation": "listCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/sites/62b720ef280c7a7a3be8cabc/collections",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "62b720ef280c7a7a3be8cabc"
+      },
+      "name": "listCollections-notFound",
+      "operation": "listCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/sites/62b720ef280c7a7a3be8cabc/collections",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "62b720ef280c7a7a3be8cabc"
+      },
+      "name": "listCollections-providerRejected",
+      "operation": "listCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/sites/62b720ef280c7a7a3be8cabc/collections",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "62b720ef280c7a7a3be8cabc"
+      },
+      "name": "listCollections-invalidResponse",
+      "operation": "listCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "bad"
+      },
+      "name": "listCollections-defect",
+      "operation": "listCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/sites/62b720ef280c7a7a3be8cabc/collections",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "62b720ef280c7a7a3be8cabc"
+      },
+      "name": "listCollections-retry429",
+      "operation": "listCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/sites/62b720ef280c7a7a3be8cabc/collections",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "62b720ef280c7a7a3be8cabc"
+      },
+      "name": "listCollections-retry500",
+      "operation": "listCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/sites/62b720ef280c7a7a3be8cabc/collections",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "siteId": "62b720ef280c7a7a3be8cabc"
+      },
+      "name": "listCollections-transport",
+      "operation": "listCollections"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"62b720ef280c7a7a3be8cabf\",\"displayName\":\"Articles\",\"fields\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "displayName": "Articles",
+            "fields": [],
+            "id": "62b720ef280c7a7a3be8cabf"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf"
+      },
+      "name": "getCollection-success",
+      "operation": "getCollection"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf"
+      },
+      "name": "getCollection-notFound",
+      "operation": "getCollection"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf"
+      },
+      "name": "getCollection-providerRejected",
+      "operation": "getCollection"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf"
+      },
+      "name": "getCollection-invalidResponse",
+      "operation": "getCollection"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000013",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "bad"
+      },
+      "name": "getCollection-defect",
+      "operation": "getCollection"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000014",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf"
+      },
+      "name": "getCollection-retry429",
+      "operation": "getCollection"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000015",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf"
+      },
+      "name": "getCollection-retry500",
+      "operation": "getCollection"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000016",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf"
+      },
+      "name": "getCollection-transport",
+      "operation": "getCollection"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000101",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"62b720ef280c7a7a3be8cabe\"}],\"pagination\":{\"total\":3,\"limit\":10,\"offset\":2}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/live",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "items": [
+              {
+                "id": "62b720ef280c7a7a3be8cabe"
+              }
+            ],
+            "pagination": {
+              "limit": 10,
+              "offset": 2,
+              "total": 3
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "listLiveCollectionItems-success",
+      "operation": "listLiveCollectionItems"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000102",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/live",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "listLiveCollectionItems-providerRejected",
+      "operation": "listLiveCollectionItems"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000103",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/live",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "listLiveCollectionItems-invalidResponse",
+      "operation": "listLiveCollectionItems"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000104",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "bad",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "listLiveCollectionItems-defect",
+      "operation": "listLiveCollectionItems"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000105",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/live",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "listLiveCollectionItems-retry429",
+      "operation": "listLiveCollectionItems"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000106",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/live",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "listLiveCollectionItems-retry500",
+      "operation": "listLiveCollectionItems"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000107",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/live",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "limit": 10,
+        "offset": 2
+      },
+      "name": "listLiveCollectionItems-transport",
+      "operation": "listLiveCollectionItems"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000108",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"62b720ef280c7a7a3be8cabe\",\"fieldData\":{\"name\":\"Meridian\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/62b720ef280c7a7a3be8cabe/live",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "fieldData": {
+              "name": "Meridian"
+            },
+            "id": "62b720ef280c7a7a3be8cabe"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "itemId": "62b720ef280c7a7a3be8cabe"
+      },
+      "name": "getLiveCollectionItem-success",
+      "operation": "getLiveCollectionItem"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000109",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/62b720ef280c7a7a3be8cabe/live",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "itemId": "62b720ef280c7a7a3be8cabe"
+      },
+      "name": "getLiveCollectionItem-notFound",
+      "operation": "getLiveCollectionItem"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000110",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/62b720ef280c7a7a3be8cabe/live",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "itemId": "62b720ef280c7a7a3be8cabe"
+      },
+      "name": "getLiveCollectionItem-providerRejected",
+      "operation": "getLiveCollectionItem"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/62b720ef280c7a7a3be8cabe/live",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "itemId": "62b720ef280c7a7a3be8cabe"
+      },
+      "name": "getLiveCollectionItem-invalidResponse",
+      "operation": "getLiveCollectionItem"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000112",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "bad",
+        "itemId": "62b720ef280c7a7a3be8cabe"
+      },
+      "name": "getLiveCollectionItem-defect",
+      "operation": "getLiveCollectionItem"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000113",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/62b720ef280c7a7a3be8cabe/live",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "itemId": "62b720ef280c7a7a3be8cabe"
+      },
+      "name": "getLiveCollectionItem-retry429",
+      "operation": "getLiveCollectionItem"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000114",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/62b720ef280c7a7a3be8cabe/live",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "itemId": "62b720ef280c7a7a3be8cabe"
+      },
+      "name": "getLiveCollectionItem-retry500",
+      "operation": "getLiveCollectionItem"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000115",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/collections/62b720ef280c7a7a3be8cabf/items/62b720ef280c7a7a3be8cabe/live",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-webflow/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "collectionId": "62b720ef280c7a7a3be8cabf",
+        "itemId": "62b720ef280c7a7a3be8cabe"
+      },
+      "name": "getLiveCollectionItem-transport",
+      "operation": "getLiveCollectionItem"
     }
   ],
   "schemaVersion": 1

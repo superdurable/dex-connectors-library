@@ -406,6 +406,6135 @@
       },
       "name": "getCustomer-transportFailure",
       "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002001",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"customers\":{\"pageInfo\":{\"currentPage\":1,\"totalPages\":1,\"totalCount\":1},\"edges\":[{\"node\":{\"id\":\"customer-1\",\"name\":\"Example Customer\"}}]}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "currentPage": 1,
+          "customers": [
+            {
+              "businessId": "business-1",
+              "id": "customer-1",
+              "name": "Example Customer"
+            }
+          ],
+          "totalCount": 1,
+          "totalPages": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-success",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002002",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "customers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-notFound",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "customers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-providerRejected",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "customers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-invalidResponse",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "customers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-defect",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-429",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-5xx",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-transport",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"customerCreate\":{\"didSucceed\":true,\"inputErrors\":[],\"customer\":{\"id\":\"customer-1\",\"name\":\"Example Customer\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "business-1",
+          "id": "customer-1",
+          "name": "Example Customer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-success",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-providerRejected",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-defect",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-429",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-5xx",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-transport",
+      "operation": "createCustomer"
+    },
+    {
+      "attempts": 3,
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCustomer-uncertain",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"customerPatch\":{\"didSucceed\":true,\"inputErrors\":[],\"customer\":{\"id\":\"customer-1\",\"name\":\"Updated Customer\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "id": "customer-1",
+          "name": "Updated Customer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-success",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-providerRejected",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-invalidResponse",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-defect",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-429",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-5xx",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-transport",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"customerDelete\":{\"didSucceed\":true,\"inputErrors\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "customer-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-success",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-providerRejected",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-invalidResponse",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": ""
+      },
+      "name": "deleteCustomer-defect",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-429",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-5xx",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-transport",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003001",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"products\":{\"pageInfo\":{\"currentPage\":1,\"totalPages\":1,\"totalCount\":1},\"edges\":[{\"node\":{\"id\":\"product-1\",\"name\":\"Example Product\",\"description\":\"Lamp\",\"unitPrice\":\"2.50\",\"isArchived\":false}}]}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "currentPage": 1,
+          "products": [
+            {
+              "businessId": "business-1",
+              "description": "Lamp",
+              "id": "product-1",
+              "isArchived": false,
+              "name": "Example Product",
+              "unitPrice": "2.50"
+            }
+          ],
+          "totalCount": 1,
+          "totalPages": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-success",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003002",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "products": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-notFound",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "products": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-providerRejected",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "products": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-invalidResponse",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "products": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-defect",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-429",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-5xx",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-transport",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003009",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"product\":{\"id\":\"product-1\",\"name\":\"Example Product\",\"description\":\"Lamp\",\"unitPrice\":\"2.50\",\"isArchived\":false}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "description": "Lamp",
+          "id": "product-1",
+          "isArchived": false,
+          "name": "Example Product",
+          "unitPrice": "2.50"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-success",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003010",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-notFound",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-providerRejected",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-invalidResponse",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003013",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "",
+        "productId": "product-1"
+      },
+      "name": "getProduct-defect",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003014",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-429",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-5xx",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003016",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-transport",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"productCreate\":{\"didSucceed\":true,\"inputErrors\":[],\"product\":{\"id\":\"product-1\",\"name\":\"Example Product\",\"description\":\"Lamp\",\"unitPrice\":\"2.50\",\"isArchived\":false}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "business-1",
+          "description": "Lamp",
+          "id": "product-1",
+          "isArchived": false,
+          "name": "Example Product",
+          "unitPrice": "2.50"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-success",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-providerRejected",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-defect",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-429",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-5xx",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-transport",
+      "operation": "createProduct"
+    },
+    {
+      "attempts": 3,
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProduct-uncertain",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"productPatch\":{\"didSucceed\":true,\"inputErrors\":[],\"product\":{\"id\":\"product-1\",\"name\":\"Updated Product\",\"description\":\"Lamp\",\"unitPrice\":\"3.00\",\"isArchived\":false}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "description": "Lamp",
+          "id": "product-1",
+          "isArchived": false,
+          "name": "Updated Product",
+          "unitPrice": "3.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-success",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-providerRejected",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-invalidResponse",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-defect",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-429",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-5xx",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-transport",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"productArchive\":{\"didSucceed\":true,\"inputErrors\":[],\"product\":{\"id\":\"product-1\",\"name\":\"Example Product\",\"description\":\"Lamp\",\"unitPrice\":\"2.50\",\"isArchived\":true}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "archived",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "description": "Lamp",
+          "id": "product-1",
+          "isArchived": true,
+          "name": "Example Product",
+          "unitPrice": "2.50"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-success",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-providerRejected",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-invalidResponse",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-defect",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-429",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-5xx",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-transport",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004001",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"invoices\":{\"pageInfo\":{\"currentPage\":1,\"totalPages\":1,\"totalCount\":1},\"edges\":[{\"node\":{\"id\":\"invoice-1\",\"status\":\"DRAFT\",\"title\":\"Example Invoice\",\"invoiceNumber\":\"1001\",\"customer\":{\"id\":\"customer-1\"}}}]}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListInvoices($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { invoices(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id status title invoiceNumber customer { id } } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "currentPage": 1,
+          "invoices": [
+            {
+              "businessId": "business-1",
+              "customerId": "customer-1",
+              "id": "invoice-1",
+              "invoiceNumber": "1001",
+              "status": "DRAFT",
+              "title": "Example Invoice"
+            }
+          ],
+          "totalCount": 1,
+          "totalPages": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listInvoices-success",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004002",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListInvoices($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { invoices(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id status title invoiceNumber customer { id } } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "invoices": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listInvoices-notFound",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListInvoices($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { invoices(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id status title invoiceNumber customer { id } } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "invoices": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listInvoices-providerRejected",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListInvoices($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { invoices(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id status title invoiceNumber customer { id } } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "invoices": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listInvoices-invalidResponse",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "invoices": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listInvoices-defect",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListInvoices($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { invoices(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id status title invoiceNumber customer { id } } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listInvoices-429",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListInvoices($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { invoices(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id status title invoiceNumber customer { id } } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listInvoices-5xx",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListInvoices($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { invoices(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id status title invoiceNumber customer { id } } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listInvoices-transport",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004009",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"invoice\":{\"id\":\"invoice-1\",\"status\":\"DRAFT\",\"title\":\"Example Invoice\",\"invoiceNumber\":\"1001\",\"customer\":{\"id\":\"customer-1\"}}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetInvoice($businessId: ID!, $invoiceId: ID!) { business(id: $businessId) { invoice(id: $invoiceId) { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "invoiceId": "invoice-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "customerId": "customer-1",
+          "id": "invoice-1",
+          "invoiceNumber": "1001",
+          "status": "DRAFT",
+          "title": "Example Invoice"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-success",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004010",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetInvoice($businessId: ID!, $invoiceId: ID!) { business(id: $businessId) { invoice(id: $invoiceId) { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "invoiceId": "invoice-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-notFound",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetInvoice($businessId: ID!, $invoiceId: ID!) { business(id: $businessId) { invoice(id: $invoiceId) { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "invoiceId": "invoice-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-providerRejected",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetInvoice($businessId: ID!, $invoiceId: ID!) { business(id: $businessId) { invoice(id: $invoiceId) { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "invoiceId": "invoice-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-invalidResponse",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004013",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "",
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-defect",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004014",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetInvoice($businessId: ID!, $invoiceId: ID!) { business(id: $businessId) { invoice(id: $invoiceId) { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "invoiceId": "invoice-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-429",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetInvoice($businessId: ID!, $invoiceId: ID!) { business(id: $businessId) { invoice(id: $invoiceId) { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "invoiceId": "invoice-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-5xx",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000004016",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetInvoice($businessId: ID!, $invoiceId: ID!) { business(id: $businessId) { invoice(id: $invoiceId) { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "invoiceId": "invoice-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "getInvoice-transport",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"invoiceCreate\":{\"didSucceed\":true,\"inputErrors\":[],\"invoice\":{\"id\":\"invoice-1\",\"status\":\"DRAFT\",\"title\":\"Example Invoice\",\"invoiceNumber\":\"1001\",\"customer\":{\"id\":\"customer-1\"}}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateInvoice($input: InvoiceCreateInput!) { invoiceCreate(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "customerId": "customer-1",
+                "items": [
+                  {
+                    "productId": "product-1"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "business-1",
+          "customerId": "customer-1",
+          "id": "invoice-1",
+          "invoiceNumber": "1001",
+          "status": "DRAFT",
+          "title": "Example Invoice"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47ae2a31-e778-5e05-975f-6644480832db",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "productId": "product-1"
+      },
+      "name": "createInvoice-success",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateInvoice($input: InvoiceCreateInput!) { invoiceCreate(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "customerId": "customer-1",
+                "items": [
+                  {
+                    "productId": "product-1"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47ae2a31-e778-5e05-975f-6644480832db",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "productId": "product-1"
+      },
+      "name": "createInvoice-providerRejected",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47ae2a31-e778-5e05-975f-6644480832db",
+      "input": {
+        "businessId": "",
+        "customerId": "customer-1",
+        "productId": "product-1"
+      },
+      "name": "createInvoice-defect",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateInvoice($input: InvoiceCreateInput!) { invoiceCreate(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "customerId": "customer-1",
+                "items": [
+                  {
+                    "productId": "product-1"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47ae2a31-e778-5e05-975f-6644480832db",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "productId": "product-1"
+      },
+      "name": "createInvoice-429",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateInvoice($input: InvoiceCreateInput!) { invoiceCreate(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "customerId": "customer-1",
+                "items": [
+                  {
+                    "productId": "product-1"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47ae2a31-e778-5e05-975f-6644480832db",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "productId": "product-1"
+      },
+      "name": "createInvoice-5xx",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateInvoice($input: InvoiceCreateInput!) { invoiceCreate(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "customerId": "customer-1",
+                "items": [
+                  {
+                    "productId": "product-1"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "47ae2a31-e778-5e05-975f-6644480832db",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "productId": "product-1"
+      },
+      "name": "createInvoice-transport",
+      "operation": "createInvoice"
+    },
+    {
+      "attempts": 3,
+      "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateInvoice($input: InvoiceCreateInput!) { invoiceCreate(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "customerId": "customer-1",
+                "items": [
+                  {
+                    "productId": "product-1"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateInvoice($input: InvoiceCreateInput!) { invoiceCreate(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "customerId": "customer-1",
+                "items": [
+                  {
+                    "productId": "product-1"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateInvoice($input: InvoiceCreateInput!) { invoiceCreate(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "customerId": "customer-1",
+                "items": [
+                  {
+                    "productId": "product-1"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "47ae2a31-e778-5e05-975f-6644480832db",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "productId": "product-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "47ae2a31-e778-5e05-975f-6644480832db",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createInvoice-uncertain",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"invoicePatch\":{\"didSucceed\":true,\"inputErrors\":[],\"invoice\":{\"id\":\"invoice-1\",\"status\":\"DRAFT\",\"title\":\"Updated Invoice\",\"invoiceNumber\":\"1001\",\"customer\":{\"id\":\"customer-1\"}}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateInvoice($input: InvoicePatchInput!) { invoicePatch(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "id": "invoice-1",
+                "title": "Updated Invoice"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "customerId": "customer-1",
+          "id": "invoice-1",
+          "invoiceNumber": "1001",
+          "status": "DRAFT",
+          "title": "Updated Invoice"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1",
+        "title": "Updated Invoice"
+      },
+      "name": "updateInvoice-success",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateInvoice($input: InvoicePatchInput!) { invoicePatch(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "id": "invoice-1",
+                "title": "Updated Invoice"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1",
+        "title": "Updated Invoice"
+      },
+      "name": "updateInvoice-providerRejected",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateInvoice($input: InvoicePatchInput!) { invoicePatch(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "id": "invoice-1",
+                "title": "Updated Invoice"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1",
+        "title": "Updated Invoice"
+      },
+      "name": "updateInvoice-invalidResponse",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "input": {
+        "businessId": "",
+        "invoiceId": "invoice-1",
+        "title": "Updated Invoice"
+      },
+      "name": "updateInvoice-defect",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateInvoice($input: InvoicePatchInput!) { invoicePatch(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "id": "invoice-1",
+                "title": "Updated Invoice"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1",
+        "title": "Updated Invoice"
+      },
+      "name": "updateInvoice-429",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateInvoice($input: InvoicePatchInput!) { invoicePatch(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "id": "invoice-1",
+                "title": "Updated Invoice"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1",
+        "title": "Updated Invoice"
+      },
+      "name": "updateInvoice-5xx",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateInvoice($input: InvoicePatchInput!) { invoicePatch(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "id": "invoice-1",
+                "title": "Updated Invoice"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ece4f6ad-c50f-5dd3-a15b-222759550765",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1",
+        "title": "Updated Invoice"
+      },
+      "name": "updateInvoice-transport",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"invoiceApprove\":{\"didSucceed\":true,\"inputErrors\":[],\"invoice\":{\"id\":\"invoice-1\",\"status\":\"SAVED\",\"title\":\"Example Invoice\",\"invoiceNumber\":\"1001\",\"customer\":{\"id\":\"customer-1\"}}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ApproveInvoice($input: InvoiceApproveInput!) { invoiceApprove(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "approved",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "customerId": "customer-1",
+          "id": "invoice-1",
+          "invoiceNumber": "1001",
+          "status": "SAVED",
+          "title": "Example Invoice"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "approveInvoice-success",
+      "operation": "approveInvoice"
+    },
+    {
+      "callId": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ApproveInvoice($input: InvoiceApproveInput!) { invoiceApprove(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "approveInvoice-providerRejected",
+      "operation": "approveInvoice"
+    },
+    {
+      "callId": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ApproveInvoice($input: InvoiceApproveInput!) { invoiceApprove(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "approveInvoice-invalidResponse",
+      "operation": "approveInvoice"
+    },
+    {
+      "callId": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "customerId": "",
+          "id": "",
+          "invoiceNumber": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "input": {
+        "businessId": "",
+        "invoiceId": "invoice-1"
+      },
+      "name": "approveInvoice-defect",
+      "operation": "approveInvoice"
+    },
+    {
+      "callId": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ApproveInvoice($input: InvoiceApproveInput!) { invoiceApprove(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "approveInvoice-429",
+      "operation": "approveInvoice"
+    },
+    {
+      "callId": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ApproveInvoice($input: InvoiceApproveInput!) { invoiceApprove(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "approveInvoice-5xx",
+      "operation": "approveInvoice"
+    },
+    {
+      "callId": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ApproveInvoice($input: InvoiceApproveInput!) { invoiceApprove(input: $input) { didSucceed inputErrors { code } invoice { id status title invoiceNumber customer { id } } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9750faa8-6bea-5ff0-96b2-990c87271926",
+      "input": {
+        "businessId": "business-1",
+        "invoiceId": "invoice-1"
+      },
+      "name": "approveInvoice-transport",
+      "operation": "approveInvoice"
+    },
+    {
+      "callId": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"invoiceDelete\":{\"didSucceed\":true,\"inputErrors\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteInvoice($input: InvoiceDeleteInput!) { invoiceDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "invoice-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "deleteInvoice-success",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteInvoice($input: InvoiceDeleteInput!) { invoiceDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "deleteInvoice-providerRejected",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteInvoice($input: InvoiceDeleteInput!) { invoiceDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "deleteInvoice-invalidResponse",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "input": {
+        "invoiceId": ""
+      },
+      "name": "deleteInvoice-defect",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteInvoice($input: InvoiceDeleteInput!) { invoiceDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "deleteInvoice-429",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteInvoice($input: InvoiceDeleteInput!) { invoiceDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "deleteInvoice-5xx",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteInvoice($input: InvoiceDeleteInput!) { invoiceDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "invoiceId": "invoice-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f8e5fc5-178b-5b14-93f1-3217b03db73d",
+      "input": {
+        "invoiceId": "invoice-1"
+      },
+      "name": "deleteInvoice-transport",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"invoiceSend\":{\"didSucceed\":true,\"inputErrors\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation SendInvoice($input: InvoiceSendInput!) { invoiceSend(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "attachPDF": true,
+                "invoiceId": "invoice-1",
+                "to": [
+                  "buyer@example.com"
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "invoice-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "input": {
+        "attachPDF": true,
+        "invoiceId": "invoice-1",
+        "to": [
+          "buyer@example.com"
+        ]
+      },
+      "name": "sendInvoice-success",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation SendInvoice($input: InvoiceSendInput!) { invoiceSend(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "attachPDF": true,
+                "invoiceId": "invoice-1",
+                "to": [
+                  "buyer@example.com"
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "input": {
+        "attachPDF": true,
+        "invoiceId": "invoice-1",
+        "to": [
+          "buyer@example.com"
+        ]
+      },
+      "name": "sendInvoice-providerRejected",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "input": {
+        "attachPDF": true,
+        "invoiceId": "",
+        "to": [
+          "buyer@example.com"
+        ]
+      },
+      "name": "sendInvoice-defect",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation SendInvoice($input: InvoiceSendInput!) { invoiceSend(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "attachPDF": true,
+                "invoiceId": "invoice-1",
+                "to": [
+                  "buyer@example.com"
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "input": {
+        "attachPDF": true,
+        "invoiceId": "invoice-1",
+        "to": [
+          "buyer@example.com"
+        ]
+      },
+      "name": "sendInvoice-429",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation SendInvoice($input: InvoiceSendInput!) { invoiceSend(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "attachPDF": true,
+                "invoiceId": "invoice-1",
+                "to": [
+                  "buyer@example.com"
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "input": {
+        "attachPDF": true,
+        "invoiceId": "invoice-1",
+        "to": [
+          "buyer@example.com"
+        ]
+      },
+      "name": "sendInvoice-5xx",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation SendInvoice($input: InvoiceSendInput!) { invoiceSend(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "attachPDF": true,
+                "invoiceId": "invoice-1",
+                "to": [
+                  "buyer@example.com"
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "input": {
+        "attachPDF": true,
+        "invoiceId": "invoice-1",
+        "to": [
+          "buyer@example.com"
+        ]
+      },
+      "name": "sendInvoice-transport",
+      "operation": "sendInvoice"
+    },
+    {
+      "attempts": 3,
+      "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation SendInvoice($input: InvoiceSendInput!) { invoiceSend(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "attachPDF": true,
+                "invoiceId": "invoice-1",
+                "to": [
+                  "buyer@example.com"
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation SendInvoice($input: InvoiceSendInput!) { invoiceSend(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "attachPDF": true,
+                "invoiceId": "invoice-1",
+                "to": [
+                  "buyer@example.com"
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation SendInvoice($input: InvoiceSendInput!) { invoiceSend(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "attachPDF": true,
+                "invoiceId": "invoice-1",
+                "to": [
+                  "buyer@example.com"
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+      "input": {
+        "attachPDF": true,
+        "invoiceId": "invoice-1",
+        "to": [
+          "buyer@example.com"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "5ef6264d-87e2-51e5-b4eb-c9cd38b13b3c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendInvoice-uncertain",
+      "operation": "sendInvoice"
     }
   ],
   "schemaVersion": 1
