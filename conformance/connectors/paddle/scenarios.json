@@ -4513,6 +4513,1782 @@
       ],
       "name": "createDiscount-send-cap",
       "operation": "createDiscount"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000201",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"name\":\"Sample Product\",\"tax_category\":\"standard\",\"status\":\"active\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "query": {
+            "after": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "items": [
+            {
+              "id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+              "name": "Sample Product",
+              "status": "active",
+              "taxCategory": "standard"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+        "perPage": 2
+      },
+      "name": "listProducts-listed",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000202",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "query": {
+            "after": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+        "perPage": 2
+      },
+      "name": "listProducts-provider-rejected",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000203",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "query": {
+            "after": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+        "perPage": 2
+      },
+      "name": "listProducts-invalid-response",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000204",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "query": {
+            "after": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+        "perPage": 2
+      },
+      "name": "listProducts-rate-limit",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000205",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "query": {
+            "after": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+        "perPage": 2
+      },
+      "name": "listProducts-service-unavailable",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "query": {
+            "after": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+        "perPage": 2
+      },
+      "name": "listProducts-server-error",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000207",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products",
+          "query": {
+            "after": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+        "perPage": 2
+      },
+      "name": "listProducts-transport",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000208",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+        "perPage": 0
+      },
+      "name": "listProducts-defect",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000209",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"name\":\"Sample Product\",\"tax_category\":\"standard\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "name": "Sample Product",
+          "status": "active",
+          "taxCategory": "standard"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "getProduct-found",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000210",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "getProduct-not-found",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000211",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "getProduct-provider-rejected",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000212",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "getProduct-invalid-response",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000213",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "getProduct-rate-limit",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000214",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "getProduct-service-unavailable",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000215",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "getProduct-server-error",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000216",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "getProduct-transport",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000217",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": "bad"
+      },
+      "name": "getProduct-defect",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"name\":\"Sample Product\",\"tax_category\":\"standard\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+          "providerId": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "name": "Sample Product",
+          "status": "active",
+          "taxCategory": "standard"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-created",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-provider-rejected",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-rate-limit",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-service-unavailable",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-server-error",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-transport",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-defect",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"name\":\"Sample Product\",\"tax_category\":\"standard\",\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "name": "Sample Product",
+          "status": "active",
+          "taxCategory": "standard"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-updated",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-not-found",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-provider-rejected",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-invalid-response",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-rate-limit",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-service-unavailable",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-server-error",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "updateProduct-transport",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7bb8e3f7-8b9f-5bda-83af-e12501964a20",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "productId": "bad"
+      },
+      "name": "updateProduct-defect",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"name\":\"Sample Product\",\"tax_category\":\"standard\",\"status\":\"archived\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "archived",
+        "failureKind": "",
+        "output": {
+          "id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "name": "Sample Product",
+          "status": "archived",
+          "taxCategory": "standard"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-archived",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-not-found",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-provider-rejected",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-invalid-response",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-rate-limit",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-service-unavailable",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-server-error",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/products/pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "archiveProduct-transport",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1785cc43-c803-5a9e-ac38-a2d9535feb87",
+      "input": {
+        "productId": "bad"
+      },
+      "name": "archiveProduct-defect",
+      "operation": "archiveProduct"
     }
   ],
   "schemaVersion": 1

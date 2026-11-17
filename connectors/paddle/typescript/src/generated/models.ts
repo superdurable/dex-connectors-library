@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read plus customer.read/write and discount.read/write for Go management operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl. */
+  /** Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read plus customer.read/write, discount.read/write, and product.read/write for Go management operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl. */
   apiKey: SecretString;
 }
 

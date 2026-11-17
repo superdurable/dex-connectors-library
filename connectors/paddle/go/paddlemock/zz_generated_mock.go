@@ -28,6 +28,11 @@ type Mock struct {
 	createDiscount  *connectormock.Mutation[paddle.CreateDiscountInput, paddle.PaddleDiscount]
 	updateDiscount  *connectormock.Mutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount]
 	archiveDiscount *connectormock.Mutation[paddle.DiscountIDInput, paddle.PaddleDiscount]
+	listProducts    *connectormock.Query[paddle.ListProductsInput, paddle.ProductPage]
+	getProduct      *connectormock.Query[paddle.ProductIDInput, paddle.PaddleProduct]
+	createProduct   *connectormock.Mutation[paddle.CreateProductInput, paddle.PaddleProduct]
+	updateProduct   *connectormock.Mutation[paddle.UpdateProductInput, paddle.PaddleProduct]
+	archiveProduct  *connectormock.Mutation[paddle.ProductIDInput, paddle.PaddleProduct]
 	getTransaction  *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus]
 }
 
@@ -46,6 +51,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createDiscount:  connectormock.NewMutation[paddle.CreateDiscountInput, paddle.PaddleDiscount](t, paddle.CreateDiscountDefinition),
 		updateDiscount:  connectormock.NewMutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount](t, paddle.UpdateDiscountDefinition),
 		archiveDiscount: connectormock.NewMutation[paddle.DiscountIDInput, paddle.PaddleDiscount](t, paddle.ArchiveDiscountDefinition),
+		listProducts:    connectormock.NewQuery[paddle.ListProductsInput, paddle.ProductPage](t, paddle.ListProductsDefinition),
+		getProduct:      connectormock.NewQuery[paddle.ProductIDInput, paddle.PaddleProduct](t, paddle.GetProductDefinition),
+		createProduct:   connectormock.NewMutation[paddle.CreateProductInput, paddle.PaddleProduct](t, paddle.CreateProductDefinition),
+		updateProduct:   connectormock.NewMutation[paddle.UpdateProductInput, paddle.PaddleProduct](t, paddle.UpdateProductDefinition),
+		archiveProduct:  connectormock.NewMutation[paddle.ProductIDInput, paddle.PaddleProduct](t, paddle.ArchiveProductDefinition),
 		getTransaction:  connectormock.NewQuery[paddle.GetTransactionInput, paddle.TransactionStatus](t, paddle.GetTransactionDefinition),
 	}
 	mock.listCustomers.Default(ListCustomersDefault())
@@ -58,6 +68,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createDiscount.Default(CreateDiscountDefault())
 	mock.updateDiscount.Default(UpdateDiscountDefault())
 	mock.archiveDiscount.Default(ArchiveDiscountDefault())
+	mock.listProducts.Default(ListProductsDefault())
+	mock.getProduct.Default(GetProductDefault())
+	mock.createProduct.Default(CreateProductDefault())
+	mock.updateProduct.Default(UpdateProductDefault())
+	mock.archiveProduct.Default(ArchiveProductDefault())
 	mock.getTransaction.Default(GetTransactionDefault())
 	connection, err := paddle.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "paddle", Name: connectionName})
 	if err != nil {
@@ -120,6 +135,31 @@ func (mock *Mock) ArchiveDiscount() *connectormock.Mutation[paddle.DiscountIDInp
 	return mock.archiveDiscount
 }
 
+// ListProducts returns the listProducts script.
+func (mock *Mock) ListProducts() *connectormock.Query[paddle.ListProductsInput, paddle.ProductPage] {
+	return mock.listProducts
+}
+
+// GetProduct returns the getProduct script.
+func (mock *Mock) GetProduct() *connectormock.Query[paddle.ProductIDInput, paddle.PaddleProduct] {
+	return mock.getProduct
+}
+
+// CreateProduct returns the createProduct script.
+func (mock *Mock) CreateProduct() *connectormock.Mutation[paddle.CreateProductInput, paddle.PaddleProduct] {
+	return mock.createProduct
+}
+
+// UpdateProduct returns the updateProduct script.
+func (mock *Mock) UpdateProduct() *connectormock.Mutation[paddle.UpdateProductInput, paddle.PaddleProduct] {
+	return mock.updateProduct
+}
+
+// ArchiveProduct returns the archiveProduct script.
+func (mock *Mock) ArchiveProduct() *connectormock.Mutation[paddle.ProductIDInput, paddle.PaddleProduct] {
+	return mock.archiveProduct
+}
+
 // GetTransaction returns the getTransaction script.
 func (mock *Mock) GetTransaction() *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus] {
 	return mock.getTransaction
@@ -156,6 +196,21 @@ func (operations mockOperations) UpdateDiscount() sdkgo.Mutation[paddle.UpdateDi
 }
 func (operations mockOperations) ArchiveDiscount() sdkgo.Mutation[paddle.DiscountIDInput, paddle.PaddleDiscount] {
 	return operations.mock.archiveDiscount
+}
+func (operations mockOperations) ListProducts() sdkgo.Query[paddle.ListProductsInput, paddle.ProductPage] {
+	return operations.mock.listProducts
+}
+func (operations mockOperations) GetProduct() sdkgo.Query[paddle.ProductIDInput, paddle.PaddleProduct] {
+	return operations.mock.getProduct
+}
+func (operations mockOperations) CreateProduct() sdkgo.Mutation[paddle.CreateProductInput, paddle.PaddleProduct] {
+	return operations.mock.createProduct
+}
+func (operations mockOperations) UpdateProduct() sdkgo.Mutation[paddle.UpdateProductInput, paddle.PaddleProduct] {
+	return operations.mock.updateProduct
+}
+func (operations mockOperations) ArchiveProduct() sdkgo.Mutation[paddle.ProductIDInput, paddle.PaddleProduct] {
+	return operations.mock.archiveProduct
 }
 func (operations mockOperations) GetTransaction() sdkgo.Query[paddle.GetTransactionInput, paddle.TransactionStatus] {
 	return operations.mock.getTransaction
@@ -535,6 +590,192 @@ func ArchiveDiscountArchivedDefault() connectormock.Case[paddle.PaddleDiscount] 
 // ArchiveDiscountDefault is the manifest default, archivedDefault, which New installs.
 func ArchiveDiscountDefault() connectormock.Case[paddle.PaddleDiscount] {
 	return ArchiveDiscountArchivedDefault()
+}
+
+// ListProductsListed selects the listed branch: Paddle returned the listProducts.
+func ListProductsListed(value paddle.ProductPage, failure *sdkgo.Failure) connectormock.Case[paddle.ProductPage] {
+	return connectormock.Branch(paddle.ListProductsBranchListed, value, failure)
+}
+
+// ListProductsProviderRejected selects the providerRejected branch: providerRejected outcome.
+func ListProductsProviderRejected(value paddle.ProductPage, failure *sdkgo.Failure) connectormock.Case[paddle.ProductPage] {
+	return connectormock.Branch(paddle.ListProductsBranchProviderRejected, value, failure)
+}
+
+// ListProductsInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func ListProductsInvalidResponse(value paddle.ProductPage, failure *sdkgo.Failure) connectormock.Case[paddle.ProductPage] {
+	return connectormock.Branch(paddle.ListProductsBranchInvalidResponse, value, failure)
+}
+
+// ListProductsDefect selects the defect branch: defect outcome.
+func ListProductsDefect(value paddle.ProductPage, failure *sdkgo.Failure) connectormock.Case[paddle.ProductPage] {
+	return connectormock.Branch(paddle.ListProductsBranchDefect, value, failure)
+}
+
+// ListProductsRetry asks Dex to retry the listProducts Step, after the delay when it is positive.
+func ListProductsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.ProductPage] {
+	return connectormock.Retry[paddle.ProductPage](failure, after)
+}
+
+// ListProductsListedDefault is the manifest mock listedDefault: A sample product is returned.
+func ListProductsListedDefault() connectormock.Case[paddle.ProductPage] {
+	value := connectormock.MustDecodeOutput[paddle.ProductPage](`{"items":[{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}],"hasMore":false,"nextCursor":""}`)
+	return connectormock.Branch(paddle.ListProductsBranchListed, value, nil)
+}
+
+// ListProductsDefault is the manifest default, listedDefault, which New installs.
+func ListProductsDefault() connectormock.Case[paddle.ProductPage] { return ListProductsListedDefault() }
+
+// GetProductFound selects the found branch: Paddle returned the getProduct.
+func GetProductFound(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.GetProductBranchFound, value, failure)
+}
+
+// GetProductNotFound selects the notFound branch: notFound outcome.
+func GetProductNotFound(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.GetProductBranchNotFound, value, failure)
+}
+
+// GetProductProviderRejected selects the providerRejected branch: providerRejected outcome.
+func GetProductProviderRejected(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.GetProductBranchProviderRejected, value, failure)
+}
+
+// GetProductInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func GetProductInvalidResponse(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.GetProductBranchInvalidResponse, value, failure)
+}
+
+// GetProductDefect selects the defect branch: defect outcome.
+func GetProductDefect(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.GetProductBranchDefect, value, failure)
+}
+
+// GetProductRetry asks Dex to retry the getProduct Step, after the delay when it is positive.
+func GetProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Retry[paddle.PaddleProduct](failure, after)
+}
+
+// GetProductFoundDefault is the manifest mock foundDefault: A sample product is returned.
+func GetProductFoundDefault() connectormock.Case[paddle.PaddleProduct] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}`)
+	return connectormock.Branch(paddle.GetProductBranchFound, value, nil)
+}
+
+// GetProductDefault is the manifest default, foundDefault, which New installs.
+func GetProductDefault() connectormock.Case[paddle.PaddleProduct] { return GetProductFoundDefault() }
+
+// CreateProductCreated selects the created branch: Paddle returned the createProduct.
+func CreateProductCreated(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.CreateProductBranchCreated, value, failure)
+}
+
+// CreateProductProviderRejected selects the providerRejected branch: providerRejected outcome.
+func CreateProductProviderRejected(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.CreateProductBranchProviderRejected, value, failure)
+}
+
+// CreateProductDefect selects the defect branch: defect outcome.
+func CreateProductDefect(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.CreateProductBranchDefect, value, failure)
+}
+
+// CreateProductRetry asks Dex to retry the createProduct Step, after the delay when it is positive.
+func CreateProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Retry[paddle.PaddleProduct](failure, after)
+}
+
+// CreateProductCreatedDefault is the manifest mock createdDefault: A sample product is returned.
+func CreateProductCreatedDefault() connectormock.Case[paddle.PaddleProduct] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}`)
+	return connectormock.Branch(paddle.CreateProductBranchCreated, value, nil)
+}
+
+// CreateProductDefault is the manifest default, createdDefault, which New installs.
+func CreateProductDefault() connectormock.Case[paddle.PaddleProduct] {
+	return CreateProductCreatedDefault()
+}
+
+// UpdateProductUpdated selects the updated branch: Paddle returned the updateProduct.
+func UpdateProductUpdated(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.UpdateProductBranchUpdated, value, failure)
+}
+
+// UpdateProductNotFound selects the notFound branch: notFound outcome.
+func UpdateProductNotFound(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.UpdateProductBranchNotFound, value, failure)
+}
+
+// UpdateProductProviderRejected selects the providerRejected branch: providerRejected outcome.
+func UpdateProductProviderRejected(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.UpdateProductBranchProviderRejected, value, failure)
+}
+
+// UpdateProductInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func UpdateProductInvalidResponse(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.UpdateProductBranchInvalidResponse, value, failure)
+}
+
+// UpdateProductDefect selects the defect branch: defect outcome.
+func UpdateProductDefect(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.UpdateProductBranchDefect, value, failure)
+}
+
+// UpdateProductRetry asks Dex to retry the updateProduct Step, after the delay when it is positive.
+func UpdateProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Retry[paddle.PaddleProduct](failure, after)
+}
+
+// UpdateProductUpdatedDefault is the manifest mock updatedDefault: A sample product is returned.
+func UpdateProductUpdatedDefault() connectormock.Case[paddle.PaddleProduct] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}`)
+	return connectormock.Branch(paddle.UpdateProductBranchUpdated, value, nil)
+}
+
+// UpdateProductDefault is the manifest default, updatedDefault, which New installs.
+func UpdateProductDefault() connectormock.Case[paddle.PaddleProduct] {
+	return UpdateProductUpdatedDefault()
+}
+
+// ArchiveProductArchived selects the archived branch: Paddle returned the archiveProduct.
+func ArchiveProductArchived(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.ArchiveProductBranchArchived, value, failure)
+}
+
+// ArchiveProductNotFound selects the notFound branch: notFound outcome.
+func ArchiveProductNotFound(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.ArchiveProductBranchNotFound, value, failure)
+}
+
+// ArchiveProductProviderRejected selects the providerRejected branch: providerRejected outcome.
+func ArchiveProductProviderRejected(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.ArchiveProductBranchProviderRejected, value, failure)
+}
+
+// ArchiveProductInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func ArchiveProductInvalidResponse(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.ArchiveProductBranchInvalidResponse, value, failure)
+}
+
+// ArchiveProductDefect selects the defect branch: defect outcome.
+func ArchiveProductDefect(value paddle.PaddleProduct, failure *sdkgo.Failure) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Branch(paddle.ArchiveProductBranchDefect, value, failure)
+}
+
+// ArchiveProductRetry asks Dex to retry the archiveProduct Step, after the delay when it is positive.
+func ArchiveProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.PaddleProduct] {
+	return connectormock.Retry[paddle.PaddleProduct](failure, after)
+}
+
+// ArchiveProductArchivedDefault is the manifest mock archivedDefault: A sample product is returned.
+func ArchiveProductArchivedDefault() connectormock.Case[paddle.PaddleProduct] {
+	value := connectormock.MustDecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"archived"}`)
+	return connectormock.Branch(paddle.ArchiveProductBranchArchived, value, nil)
+}
+
+// ArchiveProductDefault is the manifest default, archivedDefault, which New installs.
+func ArchiveProductDefault() connectormock.Case[paddle.PaddleProduct] {
+	return ArchiveProductArchivedDefault()
 }
 
 // GetTransactionFound selects the found branch: Paddle returned the transaction.

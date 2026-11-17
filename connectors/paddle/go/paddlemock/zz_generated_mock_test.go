@@ -56,6 +56,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[paddle.PaddleDiscount](`{"id":"dsc_01gtgztp8fpchantd5g1wrksa3","code":"SAVE10","description":"Sample discount","type":"percentage","amount":"10","status":"archived"}`)
 			return err
 		}},
+		{name: "listProducts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.ProductPage](`{"items":[{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getProduct/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}`)
+			return err
+		}},
+		{name: "createProduct/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}`)
+			return err
+		}},
+		{name: "updateProduct/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"active"}`)
+			return err
+		}},
+		{name: "archiveProduct/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"archived"}`)
+			return err
+		}},
 		{name: "getTransaction/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}`)
 			return err
@@ -99,6 +119,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ArchiveDiscount().Definition().Operation.OperationID != "archiveDiscount" {
 		t.Errorf("archiveDiscount mock has another definition")
+	}
+	if mock.ListProducts().Definition().Operation.OperationID != "listProducts" {
+		t.Errorf("listProducts mock has another definition")
+	}
+	if mock.GetProduct().Definition().Operation.OperationID != "getProduct" {
+		t.Errorf("getProduct mock has another definition")
+	}
+	if mock.CreateProduct().Definition().Operation.OperationID != "createProduct" {
+		t.Errorf("createProduct mock has another definition")
+	}
+	if mock.UpdateProduct().Definition().Operation.OperationID != "updateProduct" {
+		t.Errorf("updateProduct mock has another definition")
+	}
+	if mock.ArchiveProduct().Definition().Operation.OperationID != "archiveProduct" {
+		t.Errorf("archiveProduct mock has another definition")
 	}
 	if mock.GetTransaction().Definition().Operation.OperationID != "getTransaction" {
 		t.Errorf("getTransaction mock has another definition")
