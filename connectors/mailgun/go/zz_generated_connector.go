@@ -42,6 +42,7 @@ type Connection struct {
 type Operations interface {
 	GetEvents() sdkgo.Query[GetEventsInput, EventsOutput]
 	ListDomains() sdkgo.Query[ListDomainsInput, DomainsOutput]
+	SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +52,9 @@ func (operations clientOperations) GetEvents() sdkgo.Query[GetEventsInput, Event
 }
 func (operations clientOperations) ListDomains() sdkgo.Query[ListDomainsInput, DomainsOutput] {
 	return operations.client.ListDomains()
+}
+func (operations clientOperations) SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage] {
+	return operations.client.SendMessage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -329,5 +333,81 @@ func NewListDomainsStep[IN any](config ListDomainsStepConfig[IN]) sdkgo.QuerySte
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendMessageBranchSent sdkgo.BranchID = "sent"
+const SendMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendMessageBranchSent, Description: "Mailgun confirmed the queued message."},
+		{ID: SendMessageBranchProviderRejected, Description: "Mailgun conclusively rejected the message.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "Mailgun may have queued the message but confirmation is unavailable at the send cap.", Optional: true},
+		{ID: SendMessageBranchDefect, Description: "Message input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendMessageResult = sdkgo.MutationResult[SentMessage]
+
+type SendMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=mailgun"`
+	operationID                       struct{}                                          `connector:"operationId=sendMessage"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendMessageInput                         `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendMessageResult]                   `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendMessageResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendMessageResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendMessageResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("mailgun connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMessageInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendMessageResult] {
+			branches := make([]sdkgo.BranchTarget[SendMessageResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendMessageBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

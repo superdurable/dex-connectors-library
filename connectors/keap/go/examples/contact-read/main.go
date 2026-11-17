@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{contactread.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{contactread.NewFlow(connection), contactread.NewDirectoryFlow(connection), contactread.NewCompanyFlow(connection), contactread.NewNoteFlow(connection), contactread.NewTagFlow(connection), contactread.NewOrderFlow(connection), contactread.NewProductFlow(connection), contactread.NewEmailListFlow(connection), contactread.NewFileListFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Keap worker inspection Flow: %w", err)
 	}

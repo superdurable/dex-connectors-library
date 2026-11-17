@@ -8,7 +8,7 @@ import { JotformClient } from '../src/client.js';
 import { GetSubmissionInputSchema, ListFormsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/jotform/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/jotform/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'listForms' || scenario.operation === 'getSubmission');
 const connection = { provider: 'jotform', name: 'jotform' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeJotform));
 

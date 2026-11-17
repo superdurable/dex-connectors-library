@@ -1,6 +1,6 @@
 {
   "connectorId": "facebook-pages",
-  "releaseTag": "connectors/meta/facebook-pages/go/v0.1.0",
+  "releaseTag": "connectors/meta/facebook-pages/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-meta-facebook-pages",

@@ -17,9 +17,25 @@ import (
 
 // Mock is a scripted kit connection. Script each operation through its accessor.
 type Mock struct {
-	connection      kit.Connection
-	listSubscribers *connectormock.Query[kit.ListSubscribersInput, kit.SubscribersPage]
-	getSubscriber   *connectormock.Query[kit.GetSubscriberInput, kit.SubscriberMetadata]
+	connection              kit.Connection
+	listSubscribers         *connectormock.Query[kit.ListSubscribersInput, kit.SubscribersPage]
+	getSubscriber           *connectormock.Query[kit.GetSubscriberInput, kit.SubscriberMetadata]
+	upsertSubscriber        *connectormock.Mutation[kit.UpsertSubscriberInput, kit.SubscriberMetadata]
+	listTags                *connectormock.Query[kit.ListTagsInput, kit.TagsPage]
+	createTag               *connectormock.Mutation[kit.CreateTagInput, kit.TagMetadata]
+	tagSubscriber           *connectormock.Mutation[kit.TagSubscriberInput, kit.SubscriberMetadata]
+	removeTagFromSubscriber *connectormock.Mutation[kit.TagSubscriberInput, kit.TagRemoval]
+	listCustomFields        *connectormock.Query[kit.ListCustomFieldsInput, kit.CustomFieldsPage]
+	createCustomField       *connectormock.Mutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata]
+	updateCustomField       *connectormock.Mutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata]
+	deleteCustomField       *connectormock.Mutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion]
+	listForms               *connectormock.Query[kit.ListFormsInput, kit.FormsPage]
+	listFormSubscribers     *connectormock.Query[kit.ListFormSubscribersInput, kit.SubscribersPage]
+	addSubscriberToForm     *connectormock.Mutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata]
+	listSequences           *connectormock.Query[kit.ListSequencesInput, kit.SequencesPage]
+	listSequenceSubscribers *connectormock.Query[kit.ListSequenceSubscribersInput, kit.SubscribersPage]
+	addSubscriberToSequence *connectormock.Mutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata]
+	listTagSubscribers      *connectormock.Query[kit.ListTagSubscribersInput, kit.SubscribersPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +43,43 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listSubscribers: connectormock.NewQuery[kit.ListSubscribersInput, kit.SubscribersPage](t, kit.ListSubscribersDefinition),
-		getSubscriber:   connectormock.NewQuery[kit.GetSubscriberInput, kit.SubscriberMetadata](t, kit.GetSubscriberDefinition),
+		listSubscribers:         connectormock.NewQuery[kit.ListSubscribersInput, kit.SubscribersPage](t, kit.ListSubscribersDefinition),
+		getSubscriber:           connectormock.NewQuery[kit.GetSubscriberInput, kit.SubscriberMetadata](t, kit.GetSubscriberDefinition),
+		upsertSubscriber:        connectormock.NewMutation[kit.UpsertSubscriberInput, kit.SubscriberMetadata](t, kit.UpsertSubscriberDefinition),
+		listTags:                connectormock.NewQuery[kit.ListTagsInput, kit.TagsPage](t, kit.ListTagsDefinition),
+		createTag:               connectormock.NewMutation[kit.CreateTagInput, kit.TagMetadata](t, kit.CreateTagDefinition),
+		tagSubscriber:           connectormock.NewMutation[kit.TagSubscriberInput, kit.SubscriberMetadata](t, kit.TagSubscriberDefinition),
+		removeTagFromSubscriber: connectormock.NewMutation[kit.TagSubscriberInput, kit.TagRemoval](t, kit.RemoveTagFromSubscriberDefinition),
+		listCustomFields:        connectormock.NewQuery[kit.ListCustomFieldsInput, kit.CustomFieldsPage](t, kit.ListCustomFieldsDefinition),
+		createCustomField:       connectormock.NewMutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata](t, kit.CreateCustomFieldDefinition),
+		updateCustomField:       connectormock.NewMutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata](t, kit.UpdateCustomFieldDefinition),
+		deleteCustomField:       connectormock.NewMutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion](t, kit.DeleteCustomFieldDefinition),
+		listForms:               connectormock.NewQuery[kit.ListFormsInput, kit.FormsPage](t, kit.ListFormsDefinition),
+		listFormSubscribers:     connectormock.NewQuery[kit.ListFormSubscribersInput, kit.SubscribersPage](t, kit.ListFormSubscribersDefinition),
+		addSubscriberToForm:     connectormock.NewMutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata](t, kit.AddSubscriberToFormDefinition),
+		listSequences:           connectormock.NewQuery[kit.ListSequencesInput, kit.SequencesPage](t, kit.ListSequencesDefinition),
+		listSequenceSubscribers: connectormock.NewQuery[kit.ListSequenceSubscribersInput, kit.SubscribersPage](t, kit.ListSequenceSubscribersDefinition),
+		addSubscriberToSequence: connectormock.NewMutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata](t, kit.AddSubscriberToSequenceDefinition),
+		listTagSubscribers:      connectormock.NewQuery[kit.ListTagSubscribersInput, kit.SubscribersPage](t, kit.ListTagSubscribersDefinition),
 	}
 	mock.listSubscribers.Default(ListSubscribersDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
+	mock.upsertSubscriber.Default(UpsertSubscriberDefault())
+	mock.listTags.Default(ListTagsDefault())
+	mock.createTag.Default(CreateTagDefault())
+	mock.tagSubscriber.Default(TagSubscriberDefault())
+	mock.removeTagFromSubscriber.Default(RemoveTagFromSubscriberDefault())
+	mock.listCustomFields.Default(ListCustomFieldsDefault())
+	mock.createCustomField.Default(CreateCustomFieldDefault())
+	mock.updateCustomField.Default(UpdateCustomFieldDefault())
+	mock.deleteCustomField.Default(DeleteCustomFieldDefault())
+	mock.listForms.Default(ListFormsDefault())
+	mock.listFormSubscribers.Default(ListFormSubscribersDefault())
+	mock.addSubscriberToForm.Default(AddSubscriberToFormDefault())
+	mock.listSequences.Default(ListSequencesDefault())
+	mock.listSequenceSubscribers.Default(ListSequenceSubscribersDefault())
+	mock.addSubscriberToSequence.Default(AddSubscriberToSequenceDefault())
+	mock.listTagSubscribers.Default(ListTagSubscribersDefault())
 	connection, err := kit.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "kit", Name: connectionName})
 	if err != nil {
 		t.Fatalf("kit mock connection: %v", err)
@@ -53,6 +101,86 @@ func (mock *Mock) GetSubscriber() *connectormock.Query[kit.GetSubscriberInput, k
 	return mock.getSubscriber
 }
 
+// UpsertSubscriber returns the upsertSubscriber script.
+func (mock *Mock) UpsertSubscriber() *connectormock.Mutation[kit.UpsertSubscriberInput, kit.SubscriberMetadata] {
+	return mock.upsertSubscriber
+}
+
+// ListTags returns the listTags script.
+func (mock *Mock) ListTags() *connectormock.Query[kit.ListTagsInput, kit.TagsPage] {
+	return mock.listTags
+}
+
+// CreateTag returns the createTag script.
+func (mock *Mock) CreateTag() *connectormock.Mutation[kit.CreateTagInput, kit.TagMetadata] {
+	return mock.createTag
+}
+
+// TagSubscriber returns the tagSubscriber script.
+func (mock *Mock) TagSubscriber() *connectormock.Mutation[kit.TagSubscriberInput, kit.SubscriberMetadata] {
+	return mock.tagSubscriber
+}
+
+// RemoveTagFromSubscriber returns the removeTagFromSubscriber script.
+func (mock *Mock) RemoveTagFromSubscriber() *connectormock.Mutation[kit.TagSubscriberInput, kit.TagRemoval] {
+	return mock.removeTagFromSubscriber
+}
+
+// ListCustomFields returns the listCustomFields script.
+func (mock *Mock) ListCustomFields() *connectormock.Query[kit.ListCustomFieldsInput, kit.CustomFieldsPage] {
+	return mock.listCustomFields
+}
+
+// CreateCustomField returns the createCustomField script.
+func (mock *Mock) CreateCustomField() *connectormock.Mutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata] {
+	return mock.createCustomField
+}
+
+// UpdateCustomField returns the updateCustomField script.
+func (mock *Mock) UpdateCustomField() *connectormock.Mutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata] {
+	return mock.updateCustomField
+}
+
+// DeleteCustomField returns the deleteCustomField script.
+func (mock *Mock) DeleteCustomField() *connectormock.Mutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion] {
+	return mock.deleteCustomField
+}
+
+// ListForms returns the listForms script.
+func (mock *Mock) ListForms() *connectormock.Query[kit.ListFormsInput, kit.FormsPage] {
+	return mock.listForms
+}
+
+// ListFormSubscribers returns the listFormSubscribers script.
+func (mock *Mock) ListFormSubscribers() *connectormock.Query[kit.ListFormSubscribersInput, kit.SubscribersPage] {
+	return mock.listFormSubscribers
+}
+
+// AddSubscriberToForm returns the addSubscriberToForm script.
+func (mock *Mock) AddSubscriberToForm() *connectormock.Mutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata] {
+	return mock.addSubscriberToForm
+}
+
+// ListSequences returns the listSequences script.
+func (mock *Mock) ListSequences() *connectormock.Query[kit.ListSequencesInput, kit.SequencesPage] {
+	return mock.listSequences
+}
+
+// ListSequenceSubscribers returns the listSequenceSubscribers script.
+func (mock *Mock) ListSequenceSubscribers() *connectormock.Query[kit.ListSequenceSubscribersInput, kit.SubscribersPage] {
+	return mock.listSequenceSubscribers
+}
+
+// AddSubscriberToSequence returns the addSubscriberToSequence script.
+func (mock *Mock) AddSubscriberToSequence() *connectormock.Mutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata] {
+	return mock.addSubscriberToSequence
+}
+
+// ListTagSubscribers returns the listTagSubscribers script.
+func (mock *Mock) ListTagSubscribers() *connectormock.Query[kit.ListTagSubscribersInput, kit.SubscribersPage] {
+	return mock.listTagSubscribers
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSubscribers() sdkgo.Query[kit.ListSubscribersInput, kit.SubscribersPage] {
@@ -60,6 +188,54 @@ func (operations mockOperations) ListSubscribers() sdkgo.Query[kit.ListSubscribe
 }
 func (operations mockOperations) GetSubscriber() sdkgo.Query[kit.GetSubscriberInput, kit.SubscriberMetadata] {
 	return operations.mock.getSubscriber
+}
+func (operations mockOperations) UpsertSubscriber() sdkgo.Mutation[kit.UpsertSubscriberInput, kit.SubscriberMetadata] {
+	return operations.mock.upsertSubscriber
+}
+func (operations mockOperations) ListTags() sdkgo.Query[kit.ListTagsInput, kit.TagsPage] {
+	return operations.mock.listTags
+}
+func (operations mockOperations) CreateTag() sdkgo.Mutation[kit.CreateTagInput, kit.TagMetadata] {
+	return operations.mock.createTag
+}
+func (operations mockOperations) TagSubscriber() sdkgo.Mutation[kit.TagSubscriberInput, kit.SubscriberMetadata] {
+	return operations.mock.tagSubscriber
+}
+func (operations mockOperations) RemoveTagFromSubscriber() sdkgo.Mutation[kit.TagSubscriberInput, kit.TagRemoval] {
+	return operations.mock.removeTagFromSubscriber
+}
+func (operations mockOperations) ListCustomFields() sdkgo.Query[kit.ListCustomFieldsInput, kit.CustomFieldsPage] {
+	return operations.mock.listCustomFields
+}
+func (operations mockOperations) CreateCustomField() sdkgo.Mutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata] {
+	return operations.mock.createCustomField
+}
+func (operations mockOperations) UpdateCustomField() sdkgo.Mutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata] {
+	return operations.mock.updateCustomField
+}
+func (operations mockOperations) DeleteCustomField() sdkgo.Mutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion] {
+	return operations.mock.deleteCustomField
+}
+func (operations mockOperations) ListForms() sdkgo.Query[kit.ListFormsInput, kit.FormsPage] {
+	return operations.mock.listForms
+}
+func (operations mockOperations) ListFormSubscribers() sdkgo.Query[kit.ListFormSubscribersInput, kit.SubscribersPage] {
+	return operations.mock.listFormSubscribers
+}
+func (operations mockOperations) AddSubscriberToForm() sdkgo.Mutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata] {
+	return operations.mock.addSubscriberToForm
+}
+func (operations mockOperations) ListSequences() sdkgo.Query[kit.ListSequencesInput, kit.SequencesPage] {
+	return operations.mock.listSequences
+}
+func (operations mockOperations) ListSequenceSubscribers() sdkgo.Query[kit.ListSequenceSubscribersInput, kit.SubscribersPage] {
+	return operations.mock.listSequenceSubscribers
+}
+func (operations mockOperations) AddSubscriberToSequence() sdkgo.Mutation[kit.AddSubscriberToSequenceInput, kit.SubscriberMetadata] {
+	return operations.mock.addSubscriberToSequence
+}
+func (operations mockOperations) ListTagSubscribers() sdkgo.Query[kit.ListTagSubscribersInput, kit.SubscribersPage] {
+	return operations.mock.listTagSubscribers
 }
 
 // ListSubscribersListed selects the listed branch: Kit returned the selected subscriber page.
@@ -137,4 +313,619 @@ func GetSubscriberFoundDefault() connectormock.Case[kit.SubscriberMetadata] {
 // GetSubscriberDefault is the manifest default, foundDefault, which New installs.
 func GetSubscriberDefault() connectormock.Case[kit.SubscriberMetadata] {
 	return GetSubscriberFoundDefault()
+}
+
+// UpsertSubscriberUpserted selects the upserted branch: Kit returned the created or updated subscriber.
+func UpsertSubscriberUpserted(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.UpsertSubscriberBranchUpserted, value, failure)
+}
+
+// UpsertSubscriberProviderRejected selects the providerRejected branch: Kit conclusively rejected the subscriber.
+func UpsertSubscriberProviderRejected(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.UpsertSubscriberBranchProviderRejected, value, failure)
+}
+
+// UpsertSubscriberInvalidResponse selects the invalidResponse branch: Kit returned malformed or oversized JSON.
+func UpsertSubscriberInvalidResponse(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.UpsertSubscriberBranchInvalidResponse, value, failure)
+}
+
+// UpsertSubscriberDefect selects the defect branch: Local input or credentials are invalid.
+func UpsertSubscriberDefect(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.UpsertSubscriberBranchDefect, value, failure)
+}
+
+// UpsertSubscriberRetry asks Dex to retry the upsertSubscriber Step, after the delay when it is positive.
+func UpsertSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Retry[kit.SubscriberMetadata](failure, after)
+}
+
+// UpsertSubscriberUpsertedDefault is the manifest mock upsertedDefault: A sample subscriber was accepted.
+func UpsertSubscriberUpsertedDefault() connectormock.Case[kit.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+	return connectormock.Branch(kit.UpsertSubscriberBranchUpserted, value, nil)
+}
+
+// UpsertSubscriberDefault is the manifest default, upsertedDefault, which New installs.
+func UpsertSubscriberDefault() connectormock.Case[kit.SubscriberMetadata] {
+	return UpsertSubscriberUpsertedDefault()
+}
+
+// ListTagsListed selects the listed branch: Kit returned a tag page.
+func ListTagsListed(value kit.TagsPage, failure *sdkgo.Failure) connectormock.Case[kit.TagsPage] {
+	return connectormock.Branch(kit.ListTagsBranchListed, value, failure)
+}
+
+// ListTagsProviderRejected selects the providerRejected branch: Kit conclusively rejected the list request.
+func ListTagsProviderRejected(value kit.TagsPage, failure *sdkgo.Failure) connectormock.Case[kit.TagsPage] {
+	return connectormock.Branch(kit.ListTagsBranchProviderRejected, value, failure)
+}
+
+// ListTagsInvalidResponse selects the invalidResponse branch: Kit returned malformed or oversized JSON.
+func ListTagsInvalidResponse(value kit.TagsPage, failure *sdkgo.Failure) connectormock.Case[kit.TagsPage] {
+	return connectormock.Branch(kit.ListTagsBranchInvalidResponse, value, failure)
+}
+
+// ListTagsDefect selects the defect branch: Local input or credentials are invalid.
+func ListTagsDefect(value kit.TagsPage, failure *sdkgo.Failure) connectormock.Case[kit.TagsPage] {
+	return connectormock.Branch(kit.ListTagsBranchDefect, value, failure)
+}
+
+// ListTagsRetry asks Dex to retry the listTags Step, after the delay when it is positive.
+func ListTagsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.TagsPage] {
+	return connectormock.Retry[kit.TagsPage](failure, after)
+}
+
+// ListTagsListedDefault is the manifest mock listedDefault: One sample tag was returned.
+func ListTagsListedDefault() connectormock.Case[kit.TagsPage] {
+	value := connectormock.MustDecodeOutput[kit.TagsPage](`{"tags":[{"id":12,"name":"Welcome"}],"nextCursor":""}`)
+	return connectormock.Branch(kit.ListTagsBranchListed, value, nil)
+}
+
+// ListTagsDefault is the manifest default, listedDefault, which New installs.
+func ListTagsDefault() connectormock.Case[kit.TagsPage] { return ListTagsListedDefault() }
+
+// CreateTagCreated selects the created branch: Kit returned the created or matching tag.
+func CreateTagCreated(value kit.TagMetadata, failure *sdkgo.Failure) connectormock.Case[kit.TagMetadata] {
+	return connectormock.Branch(kit.CreateTagBranchCreated, value, failure)
+}
+
+// CreateTagProviderRejected selects the providerRejected branch: Kit conclusively rejected the tag.
+func CreateTagProviderRejected(value kit.TagMetadata, failure *sdkgo.Failure) connectormock.Case[kit.TagMetadata] {
+	return connectormock.Branch(kit.CreateTagBranchProviderRejected, value, failure)
+}
+
+// CreateTagInvalidResponse selects the invalidResponse branch: Kit returned malformed or oversized JSON.
+func CreateTagInvalidResponse(value kit.TagMetadata, failure *sdkgo.Failure) connectormock.Case[kit.TagMetadata] {
+	return connectormock.Branch(kit.CreateTagBranchInvalidResponse, value, failure)
+}
+
+// CreateTagDefect selects the defect branch: Local input or credentials are invalid.
+func CreateTagDefect(value kit.TagMetadata, failure *sdkgo.Failure) connectormock.Case[kit.TagMetadata] {
+	return connectormock.Branch(kit.CreateTagBranchDefect, value, failure)
+}
+
+// CreateTagRetry asks Dex to retry the createTag Step, after the delay when it is positive.
+func CreateTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.TagMetadata] {
+	return connectormock.Retry[kit.TagMetadata](failure, after)
+}
+
+// CreateTagCreatedDefault is the manifest mock createdDefault: A sample tag was returned.
+func CreateTagCreatedDefault() connectormock.Case[kit.TagMetadata] {
+	value := connectormock.MustDecodeOutput[kit.TagMetadata](`{"id":12,"name":"Welcome"}`)
+	return connectormock.Branch(kit.CreateTagBranchCreated, value, nil)
+}
+
+// CreateTagDefault is the manifest default, createdDefault, which New installs.
+func CreateTagDefault() connectormock.Case[kit.TagMetadata] { return CreateTagCreatedDefault() }
+
+// TagSubscriberTagged selects the tagged branch: Kit returned the tagged subscriber.
+func TagSubscriberTagged(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.TagSubscriberBranchTagged, value, failure)
+}
+
+// TagSubscriberNotFound selects the notFound branch: The tag or subscriber does not exist.
+func TagSubscriberNotFound(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.TagSubscriberBranchNotFound, value, failure)
+}
+
+// TagSubscriberProviderRejected selects the providerRejected branch: Kit conclusively rejected the tag application.
+func TagSubscriberProviderRejected(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.TagSubscriberBranchProviderRejected, value, failure)
+}
+
+// TagSubscriberInvalidResponse selects the invalidResponse branch: Kit returned malformed or oversized JSON.
+func TagSubscriberInvalidResponse(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.TagSubscriberBranchInvalidResponse, value, failure)
+}
+
+// TagSubscriberDefect selects the defect branch: Local input or credentials are invalid.
+func TagSubscriberDefect(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.TagSubscriberBranchDefect, value, failure)
+}
+
+// TagSubscriberRetry asks Dex to retry the tagSubscriber Step, after the delay when it is positive.
+func TagSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Retry[kit.SubscriberMetadata](failure, after)
+}
+
+// TagSubscriberTaggedDefault is the manifest mock taggedDefault: A sample subscriber was tagged.
+func TagSubscriberTaggedDefault() connectormock.Case[kit.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+	return connectormock.Branch(kit.TagSubscriberBranchTagged, value, nil)
+}
+
+// TagSubscriberDefault is the manifest default, taggedDefault, which New installs.
+func TagSubscriberDefault() connectormock.Case[kit.SubscriberMetadata] {
+	return TagSubscriberTaggedDefault()
+}
+
+// RemoveTagFromSubscriberRemoved selects the removed branch: Kit removed the tag association.
+func RemoveTagFromSubscriberRemoved(value kit.TagRemoval, failure *sdkgo.Failure) connectormock.Case[kit.TagRemoval] {
+	return connectormock.Branch(kit.RemoveTagFromSubscriberBranchRemoved, value, failure)
+}
+
+// RemoveTagFromSubscriberNotFound selects the notFound branch: The tag or subscriber does not exist.
+func RemoveTagFromSubscriberNotFound(value kit.TagRemoval, failure *sdkgo.Failure) connectormock.Case[kit.TagRemoval] {
+	return connectormock.Branch(kit.RemoveTagFromSubscriberBranchNotFound, value, failure)
+}
+
+// RemoveTagFromSubscriberProviderRejected selects the providerRejected branch: Kit conclusively rejected the tag removal.
+func RemoveTagFromSubscriberProviderRejected(value kit.TagRemoval, failure *sdkgo.Failure) connectormock.Case[kit.TagRemoval] {
+	return connectormock.Branch(kit.RemoveTagFromSubscriberBranchProviderRejected, value, failure)
+}
+
+// RemoveTagFromSubscriberInvalidResponse selects the invalidResponse branch: Kit returned an oversized response.
+func RemoveTagFromSubscriberInvalidResponse(value kit.TagRemoval, failure *sdkgo.Failure) connectormock.Case[kit.TagRemoval] {
+	return connectormock.Branch(kit.RemoveTagFromSubscriberBranchInvalidResponse, value, failure)
+}
+
+// RemoveTagFromSubscriberDefect selects the defect branch: Local input or credentials are invalid.
+func RemoveTagFromSubscriberDefect(value kit.TagRemoval, failure *sdkgo.Failure) connectormock.Case[kit.TagRemoval] {
+	return connectormock.Branch(kit.RemoveTagFromSubscriberBranchDefect, value, failure)
+}
+
+// RemoveTagFromSubscriberRetry asks Dex to retry the removeTagFromSubscriber Step, after the delay when it is positive.
+func RemoveTagFromSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.TagRemoval] {
+	return connectormock.Retry[kit.TagRemoval](failure, after)
+}
+
+// RemoveTagFromSubscriberRemovedDefault is the manifest mock removedDefault: A sample tag association was removed.
+func RemoveTagFromSubscriberRemovedDefault() connectormock.Case[kit.TagRemoval] {
+	value := connectormock.MustDecodeOutput[kit.TagRemoval](`{"tagId":12,"subscriberId":204,"removed":true}`)
+	return connectormock.Branch(kit.RemoveTagFromSubscriberBranchRemoved, value, nil)
+}
+
+// RemoveTagFromSubscriberDefault is the manifest default, removedDefault, which New installs.
+func RemoveTagFromSubscriberDefault() connectormock.Case[kit.TagRemoval] {
+	return RemoveTagFromSubscriberRemovedDefault()
+}
+
+// ListCustomFieldsListed selects the listed branch: Kit returned a custom-field page.
+func ListCustomFieldsListed(value kit.CustomFieldsPage, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Branch(kit.ListCustomFieldsBranchListed, value, failure)
+}
+
+// ListCustomFieldsProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListCustomFieldsProviderRejected(value kit.CustomFieldsPage, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Branch(kit.ListCustomFieldsBranchProviderRejected, value, failure)
+}
+
+// ListCustomFieldsInvalidResponse selects the invalidResponse branch: Kit returned invalid custom-field JSON.
+func ListCustomFieldsInvalidResponse(value kit.CustomFieldsPage, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Branch(kit.ListCustomFieldsBranchInvalidResponse, value, failure)
+}
+
+// ListCustomFieldsDefect selects the defect branch: Input or credentials are invalid.
+func ListCustomFieldsDefect(value kit.CustomFieldsPage, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Branch(kit.ListCustomFieldsBranchDefect, value, failure)
+}
+
+// ListCustomFieldsRetry asks Dex to retry the listCustomFields Step, after the delay when it is positive.
+func ListCustomFieldsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.CustomFieldsPage] {
+	return connectormock.Retry[kit.CustomFieldsPage](failure, after)
+}
+
+// ListCustomFieldsListedDefault is the manifest mock listedDefault: A sample custom-field page is returned.
+func ListCustomFieldsListedDefault() connectormock.Case[kit.CustomFieldsPage] {
+	value := connectormock.MustDecodeOutput[kit.CustomFieldsPage](`{"customFields":[{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}],"nextCursor":""}`)
+	return connectormock.Branch(kit.ListCustomFieldsBranchListed, value, nil)
+}
+
+// ListCustomFieldsDefault is the manifest default, listedDefault, which New installs.
+func ListCustomFieldsDefault() connectormock.Case[kit.CustomFieldsPage] {
+	return ListCustomFieldsListedDefault()
+}
+
+// CreateCustomFieldCreated selects the created branch: Kit created or reused the field.
+func CreateCustomFieldCreated(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.CreateCustomFieldBranchCreated, value, failure)
+}
+
+// CreateCustomFieldProviderRejected selects the providerRejected branch: Kit rejected the label.
+func CreateCustomFieldProviderRejected(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.CreateCustomFieldBranchProviderRejected, value, failure)
+}
+
+// CreateCustomFieldInvalidResponse selects the invalidResponse branch: Kit returned invalid custom-field JSON.
+func CreateCustomFieldInvalidResponse(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.CreateCustomFieldBranchInvalidResponse, value, failure)
+}
+
+// CreateCustomFieldDefect selects the defect branch: Input or credentials are invalid.
+func CreateCustomFieldDefect(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.CreateCustomFieldBranchDefect, value, failure)
+}
+
+// CreateCustomFieldRetry asks Dex to retry the createCustomField Step, after the delay when it is positive.
+func CreateCustomFieldRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Retry[kit.CustomFieldMetadata](failure, after)
+}
+
+// CreateCustomFieldCreatedDefault is the manifest mock createdDefault: A sample custom field is returned.
+func CreateCustomFieldCreatedDefault() connectormock.Case[kit.CustomFieldMetadata] {
+	value := connectormock.MustDecodeOutput[kit.CustomFieldMetadata](`{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}`)
+	return connectormock.Branch(kit.CreateCustomFieldBranchCreated, value, nil)
+}
+
+// CreateCustomFieldDefault is the manifest default, createdDefault, which New installs.
+func CreateCustomFieldDefault() connectormock.Case[kit.CustomFieldMetadata] {
+	return CreateCustomFieldCreatedDefault()
+}
+
+// UpdateCustomFieldUpdated selects the updated branch: Kit updated the field label.
+func UpdateCustomFieldUpdated(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchUpdated, value, failure)
+}
+
+// UpdateCustomFieldNotFound selects the notFound branch: Kit did not find the field.
+func UpdateCustomFieldNotFound(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchNotFound, value, failure)
+}
+
+// UpdateCustomFieldProviderRejected selects the providerRejected branch: Kit rejected the label.
+func UpdateCustomFieldProviderRejected(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchProviderRejected, value, failure)
+}
+
+// UpdateCustomFieldInvalidResponse selects the invalidResponse branch: Kit returned invalid custom-field JSON.
+func UpdateCustomFieldInvalidResponse(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchInvalidResponse, value, failure)
+}
+
+// UpdateCustomFieldDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCustomFieldDefect(value kit.CustomFieldMetadata, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Branch(kit.UpdateCustomFieldBranchDefect, value, failure)
+}
+
+// UpdateCustomFieldRetry asks Dex to retry the updateCustomField Step, after the delay when it is positive.
+func UpdateCustomFieldRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.CustomFieldMetadata] {
+	return connectormock.Retry[kit.CustomFieldMetadata](failure, after)
+}
+
+// UpdateCustomFieldUpdatedDefault is the manifest mock updatedDefault: A sample updated field is returned.
+func UpdateCustomFieldUpdatedDefault() connectormock.Case[kit.CustomFieldMetadata] {
+	value := connectormock.MustDecodeOutput[kit.CustomFieldMetadata](`{"id":8,"name":"ck_field_8_interests","key":"interests","label":"Interests"}`)
+	return connectormock.Branch(kit.UpdateCustomFieldBranchUpdated, value, nil)
+}
+
+// UpdateCustomFieldDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCustomFieldDefault() connectormock.Case[kit.CustomFieldMetadata] {
+	return UpdateCustomFieldUpdatedDefault()
+}
+
+// DeleteCustomFieldDeleted selects the deleted branch: Kit deleted the field.
+func DeleteCustomFieldDeleted(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchDeleted, value, failure)
+}
+
+// DeleteCustomFieldNotFound selects the notFound branch: Kit did not find the field.
+func DeleteCustomFieldNotFound(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchNotFound, value, failure)
+}
+
+// DeleteCustomFieldProviderRejected selects the providerRejected branch: Kit rejected deletion.
+func DeleteCustomFieldProviderRejected(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchProviderRejected, value, failure)
+}
+
+// DeleteCustomFieldInvalidResponse selects the invalidResponse branch: Kit returned unexpected deletion data.
+func DeleteCustomFieldInvalidResponse(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchInvalidResponse, value, failure)
+}
+
+// DeleteCustomFieldDefect selects the defect branch: Input or credentials are invalid.
+func DeleteCustomFieldDefect(value kit.CustomFieldDeletion, failure *sdkgo.Failure) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Branch(kit.DeleteCustomFieldBranchDefect, value, failure)
+}
+
+// DeleteCustomFieldRetry asks Dex to retry the deleteCustomField Step, after the delay when it is positive.
+func DeleteCustomFieldRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.CustomFieldDeletion] {
+	return connectormock.Retry[kit.CustomFieldDeletion](failure, after)
+}
+
+// DeleteCustomFieldDeletedDefault is the manifest mock deletedDefault: A sample field was deleted.
+func DeleteCustomFieldDeletedDefault() connectormock.Case[kit.CustomFieldDeletion] {
+	value := connectormock.MustDecodeOutput[kit.CustomFieldDeletion](`{"customFieldId":8,"deleted":true}`)
+	return connectormock.Branch(kit.DeleteCustomFieldBranchDeleted, value, nil)
+}
+
+// DeleteCustomFieldDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCustomFieldDefault() connectormock.Case[kit.CustomFieldDeletion] {
+	return DeleteCustomFieldDeletedDefault()
+}
+
+// ListFormsListed selects the listed branch: Kit returned a form page.
+func ListFormsListed(value kit.FormsPage, failure *sdkgo.Failure) connectormock.Case[kit.FormsPage] {
+	return connectormock.Branch(kit.ListFormsBranchListed, value, failure)
+}
+
+// ListFormsProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListFormsProviderRejected(value kit.FormsPage, failure *sdkgo.Failure) connectormock.Case[kit.FormsPage] {
+	return connectormock.Branch(kit.ListFormsBranchProviderRejected, value, failure)
+}
+
+// ListFormsInvalidResponse selects the invalidResponse branch: Kit returned invalid form JSON.
+func ListFormsInvalidResponse(value kit.FormsPage, failure *sdkgo.Failure) connectormock.Case[kit.FormsPage] {
+	return connectormock.Branch(kit.ListFormsBranchInvalidResponse, value, failure)
+}
+
+// ListFormsDefect selects the defect branch: Input or credentials are invalid.
+func ListFormsDefect(value kit.FormsPage, failure *sdkgo.Failure) connectormock.Case[kit.FormsPage] {
+	return connectormock.Branch(kit.ListFormsBranchDefect, value, failure)
+}
+
+// ListFormsRetry asks Dex to retry the listForms Step, after the delay when it is positive.
+func ListFormsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.FormsPage] {
+	return connectormock.Retry[kit.FormsPage](failure, after)
+}
+
+// ListFormsListedDefault is the manifest mock listedDefault: A sample form page is returned.
+func ListFormsListedDefault() connectormock.Case[kit.FormsPage] {
+	value := connectormock.MustDecodeOutput[kit.FormsPage](`{"forms":[{"id":53,"name":"Sign up","type":"embed"}],"nextCursor":""}`)
+	return connectormock.Branch(kit.ListFormsBranchListed, value, nil)
+}
+
+// ListFormsDefault is the manifest default, listedDefault, which New installs.
+func ListFormsDefault() connectormock.Case[kit.FormsPage] { return ListFormsListedDefault() }
+
+// ListFormSubscribersListed selects the listed branch: Kit returned a subscriber page.
+func ListFormSubscribersListed(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchListed, value, failure)
+}
+
+// ListFormSubscribersNotFound selects the notFound branch: Kit did not find the form.
+func ListFormSubscribersNotFound(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchNotFound, value, failure)
+}
+
+// ListFormSubscribersProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListFormSubscribersProviderRejected(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchProviderRejected, value, failure)
+}
+
+// ListFormSubscribersInvalidResponse selects the invalidResponse branch: Kit returned invalid subscriber JSON.
+func ListFormSubscribersInvalidResponse(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchInvalidResponse, value, failure)
+}
+
+// ListFormSubscribersDefect selects the defect branch: Input or credentials are invalid.
+func ListFormSubscribersDefect(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchDefect, value, failure)
+}
+
+// ListFormSubscribersRetry asks Dex to retry the listFormSubscribers Step, after the delay when it is positive.
+func ListFormSubscribersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Retry[kit.SubscribersPage](failure, after)
+}
+
+// ListFormSubscribersListedDefault is the manifest mock listedDefault: A sample form subscriber page is returned.
+func ListFormSubscribersListedDefault() connectormock.Case[kit.SubscribersPage] {
+	value := connectormock.MustDecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+	return connectormock.Branch(kit.ListFormSubscribersBranchListed, value, nil)
+}
+
+// ListFormSubscribersDefault is the manifest default, listedDefault, which New installs.
+func ListFormSubscribersDefault() connectormock.Case[kit.SubscribersPage] {
+	return ListFormSubscribersListedDefault()
+}
+
+// AddSubscriberToFormAdded selects the added branch: Kit added or found the form subscription.
+func AddSubscriberToFormAdded(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchAdded, value, failure)
+}
+
+// AddSubscriberToFormNotFound selects the notFound branch: Kit did not find the form or subscriber.
+func AddSubscriberToFormNotFound(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchNotFound, value, failure)
+}
+
+// AddSubscriberToFormProviderRejected selects the providerRejected branch: Kit rejected the form subscription.
+func AddSubscriberToFormProviderRejected(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchProviderRejected, value, failure)
+}
+
+// AddSubscriberToFormInvalidResponse selects the invalidResponse branch: Kit returned invalid subscriber JSON.
+func AddSubscriberToFormInvalidResponse(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchInvalidResponse, value, failure)
+}
+
+// AddSubscriberToFormDefect selects the defect branch: Input or credentials are invalid.
+func AddSubscriberToFormDefect(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchDefect, value, failure)
+}
+
+// AddSubscriberToFormRetry asks Dex to retry the addSubscriberToForm Step, after the delay when it is positive.
+func AddSubscriberToFormRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Retry[kit.SubscriberMetadata](failure, after)
+}
+
+// AddSubscriberToFormAddedDefault is the manifest mock addedDefault: A sample form subscriber is returned.
+func AddSubscriberToFormAddedDefault() connectormock.Case[kit.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+	return connectormock.Branch(kit.AddSubscriberToFormBranchAdded, value, nil)
+}
+
+// AddSubscriberToFormDefault is the manifest default, addedDefault, which New installs.
+func AddSubscriberToFormDefault() connectormock.Case[kit.SubscriberMetadata] {
+	return AddSubscriberToFormAddedDefault()
+}
+
+// ListSequencesListed selects the listed branch: Kit returned a sequence page.
+func ListSequencesListed(value kit.SequencesPage, failure *sdkgo.Failure) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Branch(kit.ListSequencesBranchListed, value, failure)
+}
+
+// ListSequencesProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListSequencesProviderRejected(value kit.SequencesPage, failure *sdkgo.Failure) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Branch(kit.ListSequencesBranchProviderRejected, value, failure)
+}
+
+// ListSequencesInvalidResponse selects the invalidResponse branch: Kit returned invalid sequence JSON.
+func ListSequencesInvalidResponse(value kit.SequencesPage, failure *sdkgo.Failure) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Branch(kit.ListSequencesBranchInvalidResponse, value, failure)
+}
+
+// ListSequencesDefect selects the defect branch: Input or credentials are invalid.
+func ListSequencesDefect(value kit.SequencesPage, failure *sdkgo.Failure) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Branch(kit.ListSequencesBranchDefect, value, failure)
+}
+
+// ListSequencesRetry asks Dex to retry the listSequences Step, after the delay when it is positive.
+func ListSequencesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SequencesPage] {
+	return connectormock.Retry[kit.SequencesPage](failure, after)
+}
+
+// ListSequencesListedDefault is the manifest mock listedDefault: A sample sequence page is returned.
+func ListSequencesListedDefault() connectormock.Case[kit.SequencesPage] {
+	value := connectormock.MustDecodeOutput[kit.SequencesPage](`{"sequences":[{"id":61,"name":"Welcome series","active":true,"repeat":false}],"nextCursor":""}`)
+	return connectormock.Branch(kit.ListSequencesBranchListed, value, nil)
+}
+
+// ListSequencesDefault is the manifest default, listedDefault, which New installs.
+func ListSequencesDefault() connectormock.Case[kit.SequencesPage] {
+	return ListSequencesListedDefault()
+}
+
+// ListSequenceSubscribersListed selects the listed branch: Kit returned a subscriber page.
+func ListSequenceSubscribersListed(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchListed, value, failure)
+}
+
+// ListSequenceSubscribersNotFound selects the notFound branch: Kit did not find the sequence.
+func ListSequenceSubscribersNotFound(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchNotFound, value, failure)
+}
+
+// ListSequenceSubscribersProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListSequenceSubscribersProviderRejected(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchProviderRejected, value, failure)
+}
+
+// ListSequenceSubscribersInvalidResponse selects the invalidResponse branch: Kit returned invalid subscriber JSON.
+func ListSequenceSubscribersInvalidResponse(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchInvalidResponse, value, failure)
+}
+
+// ListSequenceSubscribersDefect selects the defect branch: Input or credentials are invalid.
+func ListSequenceSubscribersDefect(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchDefect, value, failure)
+}
+
+// ListSequenceSubscribersRetry asks Dex to retry the listSequenceSubscribers Step, after the delay when it is positive.
+func ListSequenceSubscribersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Retry[kit.SubscribersPage](failure, after)
+}
+
+// ListSequenceSubscribersListedDefault is the manifest mock listedDefault: A sample sequence subscriber page is returned.
+func ListSequenceSubscribersListedDefault() connectormock.Case[kit.SubscribersPage] {
+	value := connectormock.MustDecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+	return connectormock.Branch(kit.ListSequenceSubscribersBranchListed, value, nil)
+}
+
+// ListSequenceSubscribersDefault is the manifest default, listedDefault, which New installs.
+func ListSequenceSubscribersDefault() connectormock.Case[kit.SubscribersPage] {
+	return ListSequenceSubscribersListedDefault()
+}
+
+// AddSubscriberToSequenceAdded selects the added branch: Kit added or found the sequence membership.
+func AddSubscriberToSequenceAdded(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchAdded, value, failure)
+}
+
+// AddSubscriberToSequenceNotFound selects the notFound branch: Kit did not find the sequence or subscriber.
+func AddSubscriberToSequenceNotFound(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchNotFound, value, failure)
+}
+
+// AddSubscriberToSequenceProviderRejected selects the providerRejected branch: Kit rejected the sequence membership.
+func AddSubscriberToSequenceProviderRejected(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchProviderRejected, value, failure)
+}
+
+// AddSubscriberToSequenceUncertain returns an uncertain addSubscriberToSequence outcome.
+func AddSubscriberToSequenceUncertain(value kit.SubscriberMetadata, failure sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// AddSubscriberToSequenceDefect selects the defect branch: Input or credentials are invalid.
+func AddSubscriberToSequenceDefect(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchDefect, value, failure)
+}
+
+// AddSubscriberToSequenceRetry asks Dex to retry the addSubscriberToSequence Step, after the delay when it is positive.
+func AddSubscriberToSequenceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Retry[kit.SubscriberMetadata](failure, after)
+}
+
+// AddSubscriberToSequenceAddedDefault is the manifest mock addedDefault: A sample sequence subscriber is returned.
+func AddSubscriberToSequenceAddedDefault() connectormock.Case[kit.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+	return connectormock.Branch(kit.AddSubscriberToSequenceBranchAdded, value, nil)
+}
+
+// AddSubscriberToSequenceDefault is the manifest default, addedDefault, which New installs.
+func AddSubscriberToSequenceDefault() connectormock.Case[kit.SubscriberMetadata] {
+	return AddSubscriberToSequenceAddedDefault()
+}
+
+// ListTagSubscribersListed selects the listed branch: Kit returned a subscriber page.
+func ListTagSubscribersListed(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchListed, value, failure)
+}
+
+// ListTagSubscribersNotFound selects the notFound branch: Kit did not find the tag.
+func ListTagSubscribersNotFound(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchNotFound, value, failure)
+}
+
+// ListTagSubscribersProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListTagSubscribersProviderRejected(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchProviderRejected, value, failure)
+}
+
+// ListTagSubscribersInvalidResponse selects the invalidResponse branch: Kit returned invalid subscriber JSON.
+func ListTagSubscribersInvalidResponse(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchInvalidResponse, value, failure)
+}
+
+// ListTagSubscribersDefect selects the defect branch: Input or credentials are invalid.
+func ListTagSubscribersDefect(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListTagSubscribersBranchDefect, value, failure)
+}
+
+// ListTagSubscribersRetry asks Dex to retry the listTagSubscribers Step, after the delay when it is positive.
+func ListTagSubscribersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Retry[kit.SubscribersPage](failure, after)
+}
+
+// ListTagSubscribersListedDefault is the manifest mock listedDefault: A sample tagged-subscriber page is returned.
+func ListTagSubscribersListedDefault() connectormock.Case[kit.SubscribersPage] {
+	value := connectormock.MustDecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+	return connectormock.Branch(kit.ListTagSubscribersBranchListed, value, nil)
+}
+
+// ListTagSubscribersDefault is the manifest default, listedDefault, which New installs.
+func ListTagSubscribersDefault() connectormock.Case[kit.SubscribersPage] {
+	return ListTagSubscribersListedDefault()
 }

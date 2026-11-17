@@ -21,7 +21,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	client.httpClient = transport
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getProfile":  newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.GetProfile(), testConnection),
-		"createEvent": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.CreateEvent(), testConnection, scenario.CallID),
+		"getProfile":   newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.GetProfile(), testConnection),
+		"listProfiles": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.ListProfiles(), testConnection),
+		"createEvent":  newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.CreateEvent(), testConnection, scenario.CallID),
 	}}
 }

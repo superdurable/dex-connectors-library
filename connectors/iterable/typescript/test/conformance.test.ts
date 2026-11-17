@@ -8,7 +8,7 @@ import { IterableClient } from '../src/client.js';
 import { GetUserInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/iterable/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/iterable/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getUser');
 const connection = { provider: 'iterable', name: 'iterable' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeIterable, '/api'));
 

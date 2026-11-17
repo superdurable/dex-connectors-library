@@ -16,6 +16,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "trackEvent/trackedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+			return err
+		}},
+		{name: "subscribeUserToList/subscribedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+			return err
+		}},
+		{name: "unsubscribeUserFromList/unsubscribedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+			return err
+		}},
+		{name: "upsertUser/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+			return err
+		}},
+		{name: "deleteUser/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[iterable.UserWriteResult](`{"accepted":true}`)
+			return err
+		}},
+		{name: "getUserByID/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[iterable.UserIdentity](`{"email":"user@example.com","userId":"example-user-id"}`)
+			return err
+		}},
 		{name: "getUser/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[iterable.UserIdentity](`{"email":"user@example.com","userId":"example-user-id"}`)
 			return err
@@ -30,6 +54,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.TrackEvent().Definition().Operation.OperationID != "trackEvent" {
+		t.Errorf("trackEvent mock has another definition")
+	}
+	if mock.SubscribeUserToList().Definition().Operation.OperationID != "subscribeUserToList" {
+		t.Errorf("subscribeUserToList mock has another definition")
+	}
+	if mock.UnsubscribeUserFromList().Definition().Operation.OperationID != "unsubscribeUserFromList" {
+		t.Errorf("unsubscribeUserFromList mock has another definition")
+	}
+	if mock.UpsertUser().Definition().Operation.OperationID != "upsertUser" {
+		t.Errorf("upsertUser mock has another definition")
+	}
+	if mock.DeleteUser().Definition().Operation.OperationID != "deleteUser" {
+		t.Errorf("deleteUser mock has another definition")
+	}
+	if mock.GetUserByID().Definition().Operation.OperationID != "getUserByID" {
+		t.Errorf("getUserByID mock has another definition")
+	}
 	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
 		t.Errorf("getUser mock has another definition")
 	}

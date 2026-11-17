@@ -5,6 +5,8 @@
 package lever
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // Option configures an HTTP dependency without storing it in a connection.
@@ -69,6 +72,14 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.do(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) do(call sdkgo.Call, method string, path string, payload []byte) providerResponse {
+	return client.doWithContext(call, call.Context, method, path, payload)
+}
+
+func (client *Client) doWithContext(call sdkgo.Call, requestContext context.Context, method string, path string, payload []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -77,11 +88,19 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiKey) || strings.Contains(apiKey, ":") {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(payload))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
+	if method != http.MethodGet {
+		if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+			return providerResponse{err: errRequest}
+		}
+	}
 	request.Header.Set("Accept", "application/json")
+	if payload != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(apiKey+":")))
 	response, err := client.httpClient.Do(request)
 	if err != nil {

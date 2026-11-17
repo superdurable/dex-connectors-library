@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: lever
   displayName: Lever
-  description: Read selected Lever opportunity fields from the Data API.
+  description: Read and manage Lever opportunities, postings, notes, interviews, and users through the Data API.
   company: Lever
   categories: [hr-recruiting]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: lever
   languages:
@@ -38,7 +38,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete opportunity response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large metadata.
+        description: Maximum complete Lever response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large metadata.
         default: 1048576
   auth:
     type: apiKey
@@ -52,9 +52,29 @@ spec:
     guide:
       startURL: https://hire.lever.co
       steps:
-        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities, and copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity UID in Lever or the list opportunities API and pass it as opportunityId; blank is invalid. Confidential opportunities require corresponding account access.
+        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities, postings, notes, interviews, and users and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity, posting, note, interview, or user UID in Lever or the respective list operation and pass it as the relevant ID; blank is invalid. Confidential records require corresponding account access.
   operations:
+    - name: listOpportunities
+      goName: ListOpportunities
+      inputType: ListOpportunitiesInput
+      outputType: OpportunitiesPage
+      kind: query
+      description: List one page of opportunities with optional email and stage filters.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the opportunity page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One opportunity is returned.
+          output: {opportunities: [{id: 250d8f03-738a-4bba-a671-8a3d73477145, name: Sample Candidate, stage: 00922a60-7c15-422b-b086-f62000824fd7}], nextOffset: ''}
     - name: getOpportunity
       goName: GetOpportunity
       inputType: GetOpportunityInput
@@ -76,3 +96,472 @@ spec:
           default: true
           description: One sample opportunity is returned.
           output: {id: 250d8f03-738a-4bba-a671-8a3d73477145, name: Sample Candidate, stage: 00922a60-7c15-422b-b086-f62000824fd7}
+    - name: updateOpportunityStage
+      goName: UpdateOpportunityStage
+      inputType: UpdateOpportunityStageInput
+      outputType: OpportunityStage
+      kind: mutation
+      description: Replace an opportunity's current stage with a selected stage UID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The opportunity now holds the requested stage.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the stage update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized read-back JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The opportunity was advanced to the requested stage.
+          output: {id: 250d8f03-738a-4bba-a671-8a3d73477145, name: Sample Candidate, stage: 00922a60-7c15-422b-b086-f62000824fd7}
+    - name: setOpportunityArchiveState
+      goName: SetOpportunityArchiveState
+      inputType: SetOpportunityArchiveStateInput
+      outputType: OpportunityArchiveState
+      kind: mutation
+      description: Archive an opportunity with a reason UID or unarchive it when the reason is blank.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The opportunity now holds the requested archive state.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the archive change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized read-back JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: updated
+          default: true
+          description: The opportunity is archived for the supplied reason.
+          output: {opportunityId: 250d8f03-738a-4bba-a671-8a3d73477145, archived: true, reasonId: 63dd55b2-a99f-4e7b-985f-22c7bf80ab42}
+    - name: createOpportunity
+      goName: CreateOpportunity
+      inputType: CreateOpportunityInput
+      outputType: CreatedOpportunity
+      kind: mutation
+      description: Create one candidate opportunity using a name and email address.
+      idempotency: required
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+        repeatOnUnknown: limited
+        maxSends: 3
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the new opportunity ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Lever may have created an opportunity but no ID was confirmed at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, credentials, or dispatch checkpoint are invalid.", optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever created a candidate opportunity.
+          output: {id: 250d8f03-738a-4bba-a671-8a3d73477145}
+    - name: getPosting
+      goName: GetPosting
+      inputType: GetPostingInput
+      outputType: Posting
+      kind: query
+      description: Read selected fields of one Lever job posting.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Lever returned the posting.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the posting., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized posting JSON., optional: true}
+        - {id: defect, goName: Defect, description: Posting ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One draft posting is visible.
+          output: {id: f2f01e16-27f8-4711-a728-7d49499795a0, title: Infrastructure Engineer, state: draft}
+    - name: listPostings
+      goName: ListPostings
+      inputType: ListPostingsInput
+      outputType: PostingsPage
+      kind: query
+      description: List selected fields of Lever job postings, optionally filtered by state.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the postings.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized posting JSON., optional: true}
+        - {id: defect, goName: Defect, description: Posting filter or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One draft posting is visible.
+          output: {postings: [{id: f2f01e16-27f8-4711-a728-7d49499795a0, title: Infrastructure Engineer, state: draft}]}
+    - name: createPosting
+      goName: CreatePosting
+      inputType: CreatePostingInput
+      outputType: Posting
+      kind: mutation
+      description: Create a draft job posting with required team, department, and location categories.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the new posting.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Lever may have created the posting but no ID was confirmed at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Posting input or dispatch checkpoint is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever created a draft posting.
+          output: {id: f2f01e16-27f8-4711-a728-7d49499795a0, title: Infrastructure Engineer, state: draft}
+    - name: updatePosting
+      goName: UpdatePosting
+      inputType: UpdatePostingInput
+      outputType: Posting
+      kind: mutation
+      description: Set a posting's title and state to absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Lever confirmed the requested title and state.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the posting., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Posting input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Lever confirmed the changed posting.
+          output: {id: f2f01e16-27f8-4711-a728-7d49499795a0, title: Infrastructure Engineer, state: draft}
+    - name: getNote
+      goName: GetNote
+      inputType: GetNoteInput
+      outputType: NoteSummary
+      kind: query
+      description: Read the metadata of one opportunity note without exposing its text.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Lever returned the note.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid note metadata., optional: true}
+        - {id: defect, goName: Defect, description: Note or opportunity ID is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One note's metadata is visible.
+          output: {id: b1dbbcfe-281c-46a0-8f51-57049158d3f3, createdAt: 1420312438111, commentCount: 1}
+    - name: listNotes
+      goName: ListNotes
+      inputType: ListNotesInput
+      outputType: NotesPage
+      kind: query
+      description: List metadata for one opportunity's notes without exposing note text.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the notes.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid notes JSON., optional: true}
+        - {id: defect, goName: Defect, description: Opportunity ID is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One note's metadata is visible.
+          output: {notes: [{id: b1dbbcfe-281c-46a0-8f51-57049158d3f3, createdAt: 1420312438111, commentCount: 1}]}
+    - name: createNote
+      goName: CreateNote
+      inputType: CreateNoteInput
+      outputType: NoteIdentity
+      kind: mutation
+      description: Create a note on one opportunity.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the note ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected note creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The note may exist but Lever did not confirm its ID at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Input or dispatch checkpoint is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever created one note.
+          output: {id: b1dbbcfe-281c-46a0-8f51-57049158d3f3}
+    - name: updateNote
+      goName: UpdateNote
+      inputType: UpdateNoteInput
+      outputType: NoteIdentity
+      kind: mutation
+      description: Replace all comments of an API-created note.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Lever confirmed the note ID.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected note replacement., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Lever replaced one note.
+          output: {id: b1dbbcfe-281c-46a0-8f51-57049158d3f3}
+    - name: deleteNote
+      goName: DeleteNote
+      inputType: DeleteNoteInput
+      outputType: NoteIdentity
+      kind: mutation
+      description: Delete an API-created opportunity note.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Lever deleted the note or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The note is absent.
+          output: {id: b1dbbcfe-281c-46a0-8f51-57049158d3f3}
+    - name: getInterview
+      goName: GetInterview
+      inputType: GetInterviewInput
+      outputType: InterviewSummary
+      kind: query
+      description: Read schedule metadata for one interview.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Lever returned the interview.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the interview., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid interview JSON., optional: true}
+        - {id: defect, goName: Defect, description: Interview or opportunity ID is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One interview is visible.
+          output: {id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421, panelId: fdb313e8-13c5-47de-9e51-6a21a4d76ff6, date: 1794906000000, durationMinutes: 30}
+    - name: listInterviews
+      goName: ListInterviews
+      inputType: ListInterviewsInput
+      outputType: InterviewsPage
+      kind: query
+      description: List interview schedule metadata for one opportunity.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the interviews.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid interviews JSON., optional: true}
+        - {id: defect, goName: Defect, description: Opportunity ID is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One interview is visible.
+          output: {interviews: [{id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421, panelId: fdb313e8-13c5-47de-9e51-6a21a4d76ff6, date: 1794906000000, durationMinutes: 30}]}
+    - name: createInterview
+      goName: CreateInterview
+      inputType: CreateInterviewInput
+      outputType: InterviewSummary
+      kind: mutation
+      description: Schedule an interview on an externally managed panel.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the interview ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected scheduling., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The interview may exist but its ID was not confirmed at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Input or dispatch checkpoint is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever scheduled one interview.
+          output: {id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421, panelId: fdb313e8-13c5-47de-9e51-6a21a4d76ff6, date: 1794906000000, durationMinutes: 30}
+    - name: updateInterview
+      goName: UpdateInterview
+      inputType: UpdateInterviewInput
+      outputType: InterviewSummary
+      kind: mutation
+      description: Replace the schedule and metadata of an externally managed interview.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Lever confirmed the replacement.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the interview., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the replacement., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Lever replaced one interview.
+          output: {id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421, panelId: fdb313e8-13c5-47de-9e51-6a21a4d76ff6, date: 1794906000000, durationMinutes: 30}
+    - name: deleteInterview
+      goName: DeleteInterview
+      inputType: DeleteInterviewInput
+      outputType: InterviewIdentity
+      kind: mutation
+      description: Delete an interview from an externally managed panel.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The interview is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The interview is absent.
+          output: {id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421}
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: UserSummary
+      kind: query
+      description: Read role and activation state for one Lever user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Lever returned the user.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid user JSON., optional: true}
+        - {id: defect, goName: Defect, description: User ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One active user is visible.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}
+    - name: listUsers
+      goName: ListUsers
+      inputType: ListUsersInput
+      outputType: UsersPage
+      kind: query
+      description: List Lever user role and activation metadata, optionally by email.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the users.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid users JSON., optional: true}
+        - {id: defect, goName: Defect, description: Email filter or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One active user is visible.
+          output: {users: [{id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}]}
+    - name: createUser
+      goName: CreateUser
+      inputType: CreateUserInput
+      outputType: UserSummary
+      kind: mutation
+      description: Create a Lever user with an explicit access role.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the user ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected user creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The user may exist but its ID was not confirmed at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Input or dispatch checkpoint is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever created one user.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}
+    - name: updateUser
+      goName: UpdateUser
+      inputType: UpdateUserInput
+      outputType: UserSummary
+      kind: mutation
+      description: Replace a Lever user's name, email, role, and optional directory fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Lever confirmed the user replacement.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the replacement., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Lever confirmed the replacement.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}
+    - name: deactivateUser
+      goName: DeactivateUser
+      inputType: SetUserActivationInput
+      outputType: UserSummary
+      kind: mutation
+      description: Disable login for one Lever user.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The user is inactive.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected deactivation., optional: true}
+        - {id: defect, goName: Defect, description: User ID or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The user is inactive.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: false}
+    - name: reactivateUser
+      goName: ReactivateUser
+      inputType: SetUserActivationInput
+      outputType: UserSummary
+      kind: mutation
+      description: Restore login for one Lever user.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The user is active.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected reactivation., optional: true}
+        - {id: defect, goName: Defect, description: User ID or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The user is active.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}

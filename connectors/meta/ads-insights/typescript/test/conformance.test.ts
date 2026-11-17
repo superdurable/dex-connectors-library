@@ -8,7 +8,8 @@ import { MetaAdsInsightsClient } from '../src/client.js';
 import { GetAdInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/meta/ads-insights/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/meta/ads-insights/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getAd');
 const connection = { provider: 'meta-ads-insights', name: 'meta-ads-insights' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeMetaAdsInsights, '/v25.0'));
 

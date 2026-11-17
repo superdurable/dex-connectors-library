@@ -42,6 +42,7 @@ type Connection struct {
 type Operations interface {
 	GetProfile() sdkgo.Query[GetProfileInput, Profile]
 	CreateEvent() sdkgo.Mutation[CreateEventInput, EventAcceptance]
+	ListProfiles() sdkgo.Query[ListProfilesInput, ProfilesPage]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +52,9 @@ func (operations clientOperations) GetProfile() sdkgo.Query[GetProfileInput, Pro
 }
 func (operations clientOperations) CreateEvent() sdkgo.Mutation[CreateEventInput, EventAcceptance] {
 	return operations.client.CreateEvent()
+}
+func (operations clientOperations) ListProfiles() sdkgo.Query[ListProfilesInput, ProfilesPage] {
+	return operations.client.ListProfiles()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -324,6 +328,77 @@ func NewCreateEventStep[IN any](config CreateEventStepConfig[IN]) sdkgo.Mutation
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateEventBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListProfilesBranchListed sdkgo.BranchID = "listed"
+const ListProfilesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListProfilesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListProfilesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListProfilesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listProfiles"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListProfilesBranchListed, Description: "Klaviyo returned a profile page."},
+		{ID: ListProfilesBranchProviderRejected, Description: "Klaviyo conclusively rejected the request.", Optional: true},
+		{ID: ListProfilesBranchInvalidResponse, Description: "Klaviyo returned malformed or oversized JSON.", Optional: true},
+		{ID: ListProfilesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListProfilesResult = sdkgo.QueryResult[ProfilesPage]
+
+type ListProfilesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=klaviyo"`
+	operationID                    struct{}                                        `connector:"operationId=listProfiles"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListProfilesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListProfilesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListProfilesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListProfilesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListProfilesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ProfilesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListProfilesStep[IN any](config ListProfilesStepConfig[IN]) sdkgo.QueryStep[IN, ListProfilesInput, ProfilesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("klaviyo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListProfilesInput, ProfilesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListProfiles(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListProfilesResult] {
+			branches := make([]sdkgo.BranchTarget[ListProfilesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListProfilesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListProfilesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListProfilesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListProfilesBranchDefect))
 			}
 			return branches
 		}(),

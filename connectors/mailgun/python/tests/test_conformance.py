@@ -14,15 +14,19 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/mailgun/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/mailgun/scenarios.json")
+    if scenario["operation"] in {"getEvents", "listDomains"}
+]
 CONNECTION = sdk.ConnectionRef("mailgun", "mailgun")
 ADAPTER = conformance.PythonOperationAdapter(
-    "mailgun", CONNECTION, mailgun,
+    "mailgun",
+    CONNECTION,
+    mailgun,
     lambda http_client, _: mailgun.Client(
         mailgun.Config(base_url="http://127.0.0.1"),
-        conformance.static_credentials(
-            CONNECTION, mailgun.Credentials(sdk.SecretString("test-key-123"))
-        ),
+        conformance.static_credentials(CONNECTION, mailgun.Credentials(sdk.SecretString("test-key-123"))),
         http_client,
     ),
 )

@@ -12,7 +12,7 @@ export interface Config {
   baseUrl?: string;
   /** Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow opportunity reads. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete opportunity response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large metadata. */
+  /** Maximum complete Lever response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large metadata. */
   maxResponseBytes?: number;
 }
 

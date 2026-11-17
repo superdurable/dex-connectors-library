@@ -18,6 +18,8 @@ import (
 // Mock is a scripted facebook-pages connection. Script each operation through its accessor.
 type Mock struct {
 	connection      facebookpages.Connection
+	updatePost      *connectormock.Mutation[facebookpages.UpdatePostInput, facebookpages.ChangedPost]
+	deletePost      *connectormock.Mutation[facebookpages.DeletePostInput, facebookpages.ChangedPost]
 	listPosts       *connectormock.Query[facebookpages.ListPostsInput, facebookpages.PagePostsPage]
 	getPost         *connectormock.Query[facebookpages.GetPostInput, facebookpages.PagePostMetadata]
 	publishTextPost *connectormock.Mutation[facebookpages.PublishTextPostInput, facebookpages.PublishedPost]
@@ -28,10 +30,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		updatePost:      connectormock.NewMutation[facebookpages.UpdatePostInput, facebookpages.ChangedPost](t, facebookpages.UpdatePostDefinition),
+		deletePost:      connectormock.NewMutation[facebookpages.DeletePostInput, facebookpages.ChangedPost](t, facebookpages.DeletePostDefinition),
 		listPosts:       connectormock.NewQuery[facebookpages.ListPostsInput, facebookpages.PagePostsPage](t, facebookpages.ListPostsDefinition),
 		getPost:         connectormock.NewQuery[facebookpages.GetPostInput, facebookpages.PagePostMetadata](t, facebookpages.GetPostDefinition),
 		publishTextPost: connectormock.NewMutation[facebookpages.PublishTextPostInput, facebookpages.PublishedPost](t, facebookpages.PublishTextPostDefinition),
 	}
+	mock.updatePost.Default(UpdatePostDefault())
+	mock.deletePost.Default(DeletePostDefault())
 	mock.listPosts.Default(ListPostsDefault())
 	mock.getPost.Default(GetPostDefault())
 	mock.publishTextPost.Default(PublishTextPostDefault())
@@ -45,6 +51,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() facebookpages.Connection { return mock.connection }
+
+// UpdatePost returns the updatePost script.
+func (mock *Mock) UpdatePost() *connectormock.Mutation[facebookpages.UpdatePostInput, facebookpages.ChangedPost] {
+	return mock.updatePost
+}
+
+// DeletePost returns the deletePost script.
+func (mock *Mock) DeletePost() *connectormock.Mutation[facebookpages.DeletePostInput, facebookpages.ChangedPost] {
+	return mock.deletePost
+}
 
 // ListPosts returns the listPosts script.
 func (mock *Mock) ListPosts() *connectormock.Query[facebookpages.ListPostsInput, facebookpages.PagePostsPage] {
@@ -63,6 +79,12 @@ func (mock *Mock) PublishTextPost() *connectormock.Mutation[facebookpages.Publis
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) UpdatePost() sdkgo.Mutation[facebookpages.UpdatePostInput, facebookpages.ChangedPost] {
+	return operations.mock.updatePost
+}
+func (operations mockOperations) DeletePost() sdkgo.Mutation[facebookpages.DeletePostInput, facebookpages.ChangedPost] {
+	return operations.mock.deletePost
+}
 func (operations mockOperations) ListPosts() sdkgo.Query[facebookpages.ListPostsInput, facebookpages.PagePostsPage] {
 	return operations.mock.listPosts
 }
@@ -71,6 +93,88 @@ func (operations mockOperations) GetPost() sdkgo.Query[facebookpages.GetPostInpu
 }
 func (operations mockOperations) PublishTextPost() sdkgo.Mutation[facebookpages.PublishTextPostInput, facebookpages.PublishedPost] {
 	return operations.mock.publishTextPost
+}
+
+// UpdatePostUpdated selects the updated branch: Meta confirmed the post update.
+func UpdatePostUpdated(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.UpdatePostBranchUpdated, value, failure)
+}
+
+// UpdatePostNotFound selects the notFound branch: The post is missing or inaccessible.
+func UpdatePostNotFound(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.UpdatePostBranchNotFound, value, failure)
+}
+
+// UpdatePostProviderRejected selects the providerRejected branch: Meta definitively rejected the update.
+func UpdatePostProviderRejected(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.UpdatePostBranchProviderRejected, value, failure)
+}
+
+// UpdatePostInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+func UpdatePostInvalidResponse(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.UpdatePostBranchInvalidResponse, value, failure)
+}
+
+// UpdatePostDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdatePostDefect(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.UpdatePostBranchDefect, value, failure)
+}
+
+// UpdatePostRetry asks Dex to retry the updatePost Step, after the delay when it is positive.
+func UpdatePostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Retry[facebookpages.ChangedPost](failure, after)
+}
+
+// UpdatePostUpdatedDefault is the manifest mock updatedDefault: A Page post message is replaced.
+func UpdatePostUpdatedDefault() connectormock.Case[facebookpages.ChangedPost] {
+	value := connectormock.MustDecodeOutput[facebookpages.ChangedPost](`{"postId":"123456789_987654321"}`)
+	return connectormock.Branch(facebookpages.UpdatePostBranchUpdated, value, nil)
+}
+
+// UpdatePostDefault is the manifest default, updatedDefault, which New installs.
+func UpdatePostDefault() connectormock.Case[facebookpages.ChangedPost] {
+	return UpdatePostUpdatedDefault()
+}
+
+// DeletePostDeleted selects the deleted branch: Meta confirmed the post deletion.
+func DeletePostDeleted(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.DeletePostBranchDeleted, value, failure)
+}
+
+// DeletePostNotFound selects the notFound branch: The post is already missing or inaccessible.
+func DeletePostNotFound(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.DeletePostBranchNotFound, value, failure)
+}
+
+// DeletePostProviderRejected selects the providerRejected branch: Meta definitively rejected deletion.
+func DeletePostProviderRejected(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.DeletePostBranchProviderRejected, value, failure)
+}
+
+// DeletePostInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+func DeletePostInvalidResponse(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.DeletePostBranchInvalidResponse, value, failure)
+}
+
+// DeletePostDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeletePostDefect(value facebookpages.ChangedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Branch(facebookpages.DeletePostBranchDefect, value, failure)
+}
+
+// DeletePostRetry asks Dex to retry the deletePost Step, after the delay when it is positive.
+func DeletePostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[facebookpages.ChangedPost] {
+	return connectormock.Retry[facebookpages.ChangedPost](failure, after)
+}
+
+// DeletePostDeletedDefault is the manifest mock deletedDefault: A Page post is deleted.
+func DeletePostDeletedDefault() connectormock.Case[facebookpages.ChangedPost] {
+	value := connectormock.MustDecodeOutput[facebookpages.ChangedPost](`{"postId":"123456789_987654321"}`)
+	return connectormock.Branch(facebookpages.DeletePostBranchDeleted, value, nil)
+}
+
+// DeletePostDefault is the manifest default, deletedDefault, which New installs.
+func DeletePostDefault() connectormock.Case[facebookpages.ChangedPost] {
+	return DeletePostDeletedDefault()
 }
 
 // ListPostsListed selects the listed branch: Meta returned one Page feed page.

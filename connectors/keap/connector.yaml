@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: keap
   displayName: Keap
-  description: Read one Keap CRM v2 contact by ID.
+  description: Manage Keap CRM v2 contacts, companies, notes, tags, orders, and products.
   company: Keap
   categories: [crm-sales, marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: keap
   languages:
@@ -33,12 +33,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one contact lookup as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        description: Maximum duration of one CRM call as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete contact JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
+        description: Maximum complete CRM JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
         default: 1048576
   auth:
     type: apiKey
@@ -76,3 +76,662 @@ spec:
           default: true
           description: One sample contact is returned.
           output: {id: '123', givenName: Example, familyName: Contact}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: List one bounded page of Keap CRM v2 contacts.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a contact page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample contact page is returned.
+          output: {contacts: [{id: '123', givenName: Example, familyName: Contact}], nextPageToken: ''}
+    - name: upsertContact
+      goName: UpsertContact
+      inputType: UpsertContactInput
+      outputType: ContactProfile
+      kind: mutation
+      description: Create or update a contact by email using Keap duplicate matching.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: upserted, goName: Upserted, description: Keap returned the created or updated contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap conclusively rejected the contact., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: upsertedDefault
+          branch: upserted
+          default: true
+          description: A sample contact is accepted.
+          output: {id: '123', givenName: Example, familyName: Contact}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: GetContactInput
+      outputType: ContactDeletion
+      kind: mutation
+      description: Delete one Keap CRM v2 contact by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample contact deletion is accepted.
+          output: {contactId: '123', deleted: true}
+    - name: getCompany
+      goName: GetCompany
+      inputType: CompanyIDInput
+      outputType: CompanyProfile
+      kind: query
+      description: Read one Keap company by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Keap returned the company.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the company., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid company JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample company is returned.
+          output: {id: '321', name: Example Company}
+    - name: listCompanies
+      goName: ListCompanies
+      inputType: ListCompaniesInput
+      outputType: CompaniesPage
+      kind: query
+      description: List one bounded page of Keap companies.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a company page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid company list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample company page is returned.
+          output: {companies: [{id: '321', name: Example Company}], nextPageToken: ''}
+    - name: createCompany
+      goName: CreateCompany
+      inputType: CompanyNameInput
+      outputType: CompanyProfile
+      kind: mutation
+      description: Create a Keap company with a bounded resend budget.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Keap created the company.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample company is created.
+          output: {id: '321', name: Example Company}
+    - name: updateCompany
+      goName: UpdateCompany
+      inputType: UpdateCompanyInput
+      outputType: CompanyProfile
+      kind: mutation
+      description: Replace a Keap company's name by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Keap updated the company.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the company., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid company JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample company is updated.
+          output: {id: '321', name: Example Company}
+    - name: deleteCompany
+      goName: DeleteCompany
+      inputType: CompanyIDInput
+      outputType: CompanyDeletion
+      kind: mutation
+      description: Delete one Keap company by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the company., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample company is deleted.
+          output: {companyId: '321', deleted: true}
+    - name: getContactNote
+      goName: GetContactNote
+      inputType: ContactNoteIDInput
+      outputType: ContactNote
+      kind: query
+      description: Read one note attached to a Keap contact.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Keap returned the note.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid note JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample contact note is returned.
+          output: {id: '456', contactId: '123', title: Example note, text: Example details}
+    - name: listContactNotes
+      goName: ListContactNotes
+      inputType: ListContactNotesInput
+      outputType: ContactNotesPage
+      kind: query
+      description: List one page of notes attached to a Keap contact.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a note page.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid note list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample note page is returned.
+          output: {notes: [{id: '456', contactId: '123', title: Example note, text: Example details}], nextPageToken: ''}
+    - name: createContactNote
+      goName: CreateContactNote
+      inputType: CreateContactNoteInput
+      outputType: ContactNote
+      kind: mutation
+      description: Add a note to a Keap contact with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Keap created the note.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the note., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The note create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample contact note is created.
+          output: {id: '456', contactId: '123', title: Example note, text: Example details}
+    - name: updateContactNote
+      goName: UpdateContactNote
+      inputType: UpdateContactNoteInput
+      outputType: ContactNote
+      kind: mutation
+      description: Replace a Keap contact note's title and text.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Keap updated the note.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid note JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample contact note is updated.
+          output: {id: '456', contactId: '123', title: Example note, text: Example details}
+    - name: deleteContactNote
+      goName: DeleteContactNote
+      inputType: ContactNoteIDInput
+      outputType: ContactNoteDeletion
+      kind: mutation
+      description: Delete a Keap contact note.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the note deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample contact note is deleted.
+          output: {contactId: '123', noteId: '456', deleted: true}
+    - name: listContactTags
+      goName: ListContactTags
+      inputType: ListContactTagsInput
+      outputType: ContactTagsPage
+      kind: query
+      description: List one page of tags applied to a Keap contact.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a tag page.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid tag list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample applied tag page is returned.
+          output: {tags: [{id: '567', name: Example tag}], nextPageToken: ''}
+    - name: applyContactTag
+      goName: ApplyContactTag
+      inputType: ContactTagInput
+      outputType: ContactTagChange
+      kind: mutation
+      description: Apply an existing Keap tag to one contact.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: applied, goName: Applied, description: Keap accepted the tag application.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the tag or contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the tag application., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid tag application JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: appliedDefault
+          branch: applied
+          default: true
+          description: A sample tag application is accepted.
+          output: {contactId: '123', tagId: '567', changed: true}
+    - name: removeContactTag
+      goName: RemoveContactTag
+      inputType: ContactTagInput
+      outputType: ContactTagChange
+      kind: mutation
+      description: Remove an existing Keap tag from one contact.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: Keap accepted the tag removal.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the tag or contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the tag removal., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid tag removal JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: A sample tag removal is accepted.
+          output: {contactId: '123', tagId: '567', changed: true}
+    - name: getOrder
+      goName: GetOrder
+      inputType: OrderIDInput
+      outputType: OrderProfile
+      kind: query
+      description: Read one Keap order by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Keap returned the order.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the order., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid order JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample order is returned.
+          output: {id: '678', title: Example order, status: DRAFT}
+    - name: listOrders
+      goName: ListOrders
+      inputType: ListOrdersInput
+      outputType: OrdersPage
+      kind: query
+      description: List one bounded page of Keap orders.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned an order page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid order list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample order page is returned.
+          output: {orders: [{id: '678', title: Example order, status: DRAFT}], nextPageToken: ''}
+    - name: createOrder
+      goName: CreateOrder
+      inputType: CreateOrderInput
+      outputType: OrderProfile
+      kind: mutation
+      description: Create an order with one product and bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Keap created the order.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the order., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The order create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample order is created.
+          output: {id: '678', title: Example order, status: DRAFT}
+    - name: updateOrderTitle
+      goName: UpdateOrderTitle
+      inputType: UpdateOrderTitleInput
+      outputType: OrderProfile
+      kind: mutation
+      description: Replace a Keap order's title by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Keap updated the order.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the order., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid order JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample order is updated.
+          output: {id: '678', title: Example order, status: DRAFT}
+    - name: deleteOrder
+      goName: DeleteOrder
+      inputType: OrderIDInput
+      outputType: OrderDeletion
+      kind: mutation
+      description: Delete one Keap order by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the order deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the order., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample order is deleted.
+          output: {orderId: '678', deleted: true}
+    - name: getProduct
+      goName: GetProduct
+      inputType: ProductIDInput
+      outputType: ProductProfile
+      kind: query
+      description: Read one Keap product by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Keap returned the product.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the product., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid product JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample product is returned.
+          output: {id: '901', name: Example product, sku: EXAMPLE-1, priceMinor: 1250}
+    - name: listProducts
+      goName: ListProducts
+      inputType: ListProductsInput
+      outputType: ProductsPage
+      kind: query
+      description: List one bounded page of Keap products.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a product page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid product list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample product page is returned.
+          output: {products: [{id: '901', name: Example product, sku: EXAMPLE-1, priceMinor: 1250}], nextPageToken: ''}
+    - name: createProduct
+      goName: CreateProduct
+      inputType: CreateProductInput
+      outputType: ProductProfile
+      kind: mutation
+      description: Create a Keap product with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Keap created the product.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the product., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The product create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample product is created.
+          output: {id: '901', name: Example product, sku: EXAMPLE-1, priceMinor: 1250}
+    - name: updateProduct
+      goName: UpdateProduct
+      inputType: UpdateProductInput
+      outputType: ProductProfile
+      kind: mutation
+      description: Replace a Keap product's name and price.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Keap updated the product.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the product., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid product JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample product is updated.
+          output: {id: '901', name: Example product, sku: EXAMPLE-1, priceMinor: 1250}
+    - name: deleteProduct
+      goName: DeleteProduct
+      inputType: ProductIDInput
+      outputType: ProductDeletion
+      kind: mutation
+      description: Delete one Keap product by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the product deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the product., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample product is deleted.
+          output: {productId: '901', deleted: true}
+    - name: listEmails
+      goName: ListEmails
+      inputType: ListEmailsInput
+      outputType: EmailsPage
+      kind: query
+      description: List one bounded page of Keap sent-email records.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned an email page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid email list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample sent-email page is returned.
+          output: {emails: [{id: '801', subject: Example email, contactId: '123', sentToAddress: contact@example.com}], nextPageToken: ''}
+    - name: createEmailRecord
+      goName: CreateEmailRecord
+      inputType: CreateEmailRecordInput
+      outputType: EmailRecord
+      kind: mutation
+      description: Record an email that was already sent outside Keap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Keap stored the sent-email record.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the record., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The record-create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample sent-email record is created.
+          output: {id: '801', subject: Example email, contactId: '123', sentToAddress: contact@example.com}
+    - name: sendEmail
+      goName: SendEmail
+      inputType: SendEmailInput
+      outputType: EmailSendReceipt
+      kind: mutation
+      description: Send one email to one Keap contact with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Keap accepted the email send.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: A sample email send is accepted.
+          output: {contactId: '123', accepted: true}
+    - name: deleteEmailRecord
+      goName: DeleteEmailRecord
+      inputType: EmailRecordIDInput
+      outputType: EmailRecordDeletion
+      kind: mutation
+      description: Delete one Keap sent-email record.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the record deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the record., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample sent-email record is deleted.
+          output: {emailId: '801', deleted: true}
+    - name: listFiles
+      goName: ListFiles
+      inputType: ListFilesInput
+      outputType: FilesPage
+      kind: query
+      description: List one bounded page of Keap file metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a file page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid file list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample file-metadata page is returned.
+          output: {files: [{id: '701', fileName: example.pdf, fileSizeBytes: 1024, isPublic: false}], nextPageToken: ''}
+    - name: deleteFile
+      goName: DeleteFile
+      inputType: FileIDInput
+      outputType: FileDeletion
+      kind: mutation
+      description: Delete one Keap file by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the file deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the file., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample file is deleted.
+          output: {fileId: '701', deleted: true}

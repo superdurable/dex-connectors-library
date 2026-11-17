@@ -24,6 +24,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[mailgun.DomainsOutput](`{"domains":[{"name":"example.test","state":"active"}],"totalCount":1}`)
 			return err
 		}},
+		{name: "sendMessage/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[mailgun.SentMessage](`{"id":"\u003c20261116.example@example.test\u003e"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +43,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListDomains().Definition().Operation.OperationID != "listDomains" {
 		t.Errorf("listDomains mock has another definition")
+	}
+	if mock.SendMessage().Definition().Operation.OperationID != "sendMessage" {
+		t.Errorf("sendMessage mock has another definition")
 	}
 }
