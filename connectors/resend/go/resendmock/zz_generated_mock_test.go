@@ -140,6 +140,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.ContactPage](`{"data":[{"id":"contact-1","email":"reader@example.test"}],"has_more":false}`)
 			return err
 		}},
+		{name: "addContactToSegment/addContactToSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactSegmentReference](`{"contact_id":"contact-1","segment_id":"segment-1"}`)
+			return err
+		}},
+		{name: "removeContactFromSegment/removeContactFromSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.RemovedContactSegment](`{"contact_id":"contact-1","segment_id":"segment-1","deleted":true}`)
+			return err
+		}},
+		{name: "listContactSegments/listContactSegmentsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SegmentPage](`{"data":[{"id":"segment-1","name":"Active Users"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getContactTopics/getContactTopicsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactTopicPage](`{"data":[{"id":"topic-1","name":"News","subscription":"opt_in"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateContactTopics/updateContactTopicsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.UpdatedContactTopics](`{"contact_id":"contact-1","topics":[{"id":"topic-1","subscription":"opt_in"}]}`)
+			return err
+		}},
+		{name: "listContactImports/listContactImportsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactImportPage](`{"data":[{"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getContactImport/getContactImportDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactImport](`{"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}`)
+			return err
+		}},
 		{name: "getContact/getContactDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.Contact](`{"id":"contact-1","email":"reader@example.test","unsubscribed":false}`)
 			return err
@@ -258,6 +286,27 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListSegmentContacts().Definition().Operation.OperationID != "listSegmentContacts" {
 		t.Errorf("listSegmentContacts mock has another definition")
+	}
+	if mock.AddContactToSegment().Definition().Operation.OperationID != "addContactToSegment" {
+		t.Errorf("addContactToSegment mock has another definition")
+	}
+	if mock.RemoveContactFromSegment().Definition().Operation.OperationID != "removeContactFromSegment" {
+		t.Errorf("removeContactFromSegment mock has another definition")
+	}
+	if mock.ListContactSegments().Definition().Operation.OperationID != "listContactSegments" {
+		t.Errorf("listContactSegments mock has another definition")
+	}
+	if mock.GetContactTopics().Definition().Operation.OperationID != "getContactTopics" {
+		t.Errorf("getContactTopics mock has another definition")
+	}
+	if mock.UpdateContactTopics().Definition().Operation.OperationID != "updateContactTopics" {
+		t.Errorf("updateContactTopics mock has another definition")
+	}
+	if mock.ListContactImports().Definition().Operation.OperationID != "listContactImports" {
+		t.Errorf("listContactImports mock has another definition")
+	}
+	if mock.GetContactImport().Definition().Operation.OperationID != "getContactImport" {
+		t.Errorf("getContactImport mock has another definition")
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")

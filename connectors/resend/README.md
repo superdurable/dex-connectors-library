@@ -61,6 +61,13 @@ unverified.
 | `updateSegment` | mutation | SegmentReference |
 | `deleteSegment` | mutation | DeletedSegment |
 | `listSegmentContacts` | query | ContactPage |
+| `addContactToSegment` | mutation | ContactSegmentReference |
+| `removeContactFromSegment` | mutation | RemovedContactSegment |
+| `listContactSegments` | query | SegmentPage |
+| `getContactTopics` | query | ContactTopicPage |
+| `updateContactTopics` | mutation | UpdatedContactTopics |
+| `listContactImports` | query | ContactImportPage |
+| `getContactImport` | query | ContactImport |
 
 Topic CRUD follows [Resend's Topics API](https://resend.com/docs/api-reference/topics/create-topic).
 `createTopic` is `limited` with three possible sends and read-back by topic
@@ -82,6 +89,23 @@ rename, and `deleteSegment` is repeat-safe. Find segment IDs under
 [Resend Segments](https://resend.com/segments); blank names and IDs are
 invalid. The [create-segment Flow](go/examples/create-segment/README.md)
 demonstrates the generated factory.
+
+Contact segment membership and topic subscription operations use the `safe`
+repeat tier: a repeated add, remove, or absolute subscription assignment
+converges on the requested state. Contact IDs or email addresses come from
+[Resend Contacts](https://resend.com/contacts); segment and topic IDs come
+from their respective dashboard pages. Blank IDs are invalid. Topic choices
+are `opt_in` or `opt_out`; pass one entry per topic whose subscription
+should change. See the
+[add-contact-to-segment Flow](go/examples/add-contact-to-segment/README.md)
+for the generated factory and a real Dex mock run.
+
+`listContactImports` and `getContactImport` are safe queries for import
+progress and row counts. The list accepts a 1–100 `limit`, exclusive `after`
+cursor, and optional `queued`, `in_progress`, `completed`, or `failed`
+status. Find import IDs under [Resend Contacts](https://resend.com/contacts).
+Creating an import requires multipart CSV upload and is outside this JSON
+connector's supported operation shape.
 
 Sent and received attachment queries return metadata but omit Resend's
 short-lived signed `download_url`, because that URL grants access to content.

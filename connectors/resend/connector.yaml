@@ -623,6 +623,123 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: listSegmentContactsDefault, branch: listed, default: true, description: Resend listed the requested resource., output: {"data":[{"id":"contact-1","email":"reader@example.test"}],"has_more":false}}
+  - name: addContactToSegment
+    goName: AddContactToSegment
+    inputType: ContactSegmentInput
+    outputType: ContactSegmentReference
+    kind: mutation
+    description: Add Contact To Segment through the Resend Contacts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: added, goName: Added, description: Resend added the contact relation.}
+    - {id: notFound, goName: NotFound, description: The contact relation does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: addContactToSegmentDefault, branch: added, default: true, description: Resend added the contact relation., output: {"contact_id":"contact-1","segment_id":"segment-1"}}
+  - name: removeContactFromSegment
+    goName: RemoveContactFromSegment
+    inputType: ContactSegmentInput
+    outputType: RemovedContactSegment
+    kind: mutation
+    description: Remove Contact From Segment through the Resend Contacts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: removed, goName: Removed, description: Resend removed the contact relation.}
+    - {id: notFound, goName: NotFound, description: The contact relation does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: removeContactFromSegmentDefault, branch: removed, default: true, description: Resend removed the contact relation., output: {"contact_id":"contact-1","segment_id":"segment-1","deleted":true}}
+  - name: listContactSegments
+    goName: ListContactSegments
+    inputType: ListContactSegmentsInput
+    outputType: SegmentPage
+    kind: query
+    description: List Contact Segments through the Resend Contacts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the contact relation.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listContactSegmentsDefault, branch: listed, default: true, description: Resend listed the contact relation., output: {"data":[{"id":"segment-1","name":"Active Users"}],"has_more":false}}
+  - name: getContactTopics
+    goName: GetContactTopics
+    inputType: GetContactTopicsInput
+    outputType: ContactTopicPage
+    kind: query
+    description: Get Contact Topics through the Resend Contacts API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the contact relation.}
+    - {id: notFound, goName: NotFound, description: The contact relation does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getContactTopicsDefault, branch: found, default: true, description: Resend found the contact relation., output: {"data":[{"id":"topic-1","name":"News","subscription":"opt_in"}],"has_more":false}}
+  - name: updateContactTopics
+    goName: UpdateContactTopics
+    inputType: UpdateContactTopicsInput
+    outputType: UpdatedContactTopics
+    kind: mutation
+    description: Update Contact Topics through the Resend Contacts API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the contact relation.}
+    - {id: notFound, goName: NotFound, description: The contact relation does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateContactTopicsDefault, branch: updated, default: true, description: Resend updated the contact relation., output: {"contact_id":"contact-1","topics":[{"id":"topic-1","subscription":"opt_in"}]}}
+  - name: listContactImports
+    goName: ListContactImports
+    inputType: ListContactImportsInput
+    outputType: ContactImportPage
+    kind: query
+    description: Retrieve Resend contact import status and counts.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend returned contact import status.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listContactImportsDefault, branch: listed, default: true, description: Resend returned contact import status., output: {"data":[{"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}],"has_more":false}}
+  - name: getContactImport
+    goName: GetContactImport
+    inputType: GetContactImportInput
+    outputType: ContactImport
+    kind: query
+    description: Retrieve Resend contact import status and counts.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend returned contact import status.}
+    - {id: notFound, goName: NotFound, description: The import does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getContactImportDefault, branch: found, default: true, description: Resend returned contact import status., output: {"id":"import-1","status":"completed","created_at":"2026-11-01T00:00:00Z"}}
   - name: getContact
     goName: GetContact
     inputType: GetContactInput

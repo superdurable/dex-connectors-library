@@ -13394,6 +13394,2473 @@
       },
       "name": "updateSegment-transport",
       "operation": "updateSegment"
+    },
+    {
+      "callId": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"contact-1\",\"segment_id\":\"segment-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "contact_id": "contact-1",
+          "segment_id": "segment-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "addContactToSegment-success",
+      "operation": "addContactToSegment"
+    },
+    {
+      "callId": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contact_id": "",
+          "segment_id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "addContactToSegment-notFound",
+      "operation": "addContactToSegment"
+    },
+    {
+      "callId": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contact_id": "",
+          "segment_id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "addContactToSegment-rejected",
+      "operation": "addContactToSegment"
+    },
+    {
+      "callId": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"contact-1\",\"segment_id\":\"segment-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "contact_id": "contact-1",
+          "segment_id": "segment-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "addContactToSegment-invalid",
+      "operation": "addContactToSegment"
+    },
+    {
+      "callId": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "addContactToSegment-429",
+      "operation": "addContactToSegment"
+    },
+    {
+      "callId": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "addContactToSegment-5xx",
+      "operation": "addContactToSegment"
+    },
+    {
+      "callId": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "addContactToSegment-transport",
+      "operation": "addContactToSegment"
+    },
+    {
+      "callId": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contact_id": "",
+          "segment_id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7eafbe43-27be-5e33-accf-30e864bfc8a9",
+      "input": {
+        "contactId": "",
+        "segmentId": "segment-1"
+      },
+      "name": "addContactToSegment-defect",
+      "operation": "addContactToSegment"
+    },
+    {
+      "callId": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"contact-1\",\"segment_id\":\"segment-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "contact_id": "contact-1",
+          "deleted": true,
+          "segment_id": "segment-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "removeContactFromSegment-success",
+      "operation": "removeContactFromSegment"
+    },
+    {
+      "callId": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contact_id": "",
+          "deleted": false,
+          "segment_id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "removeContactFromSegment-notFound",
+      "operation": "removeContactFromSegment"
+    },
+    {
+      "callId": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contact_id": "",
+          "deleted": false,
+          "segment_id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "removeContactFromSegment-rejected",
+      "operation": "removeContactFromSegment"
+    },
+    {
+      "callId": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"contact-1\",\"segment_id\":\"segment-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "contact_id": "contact-1",
+          "deleted": true,
+          "segment_id": "segment-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "removeContactFromSegment-invalid",
+      "operation": "removeContactFromSegment"
+    },
+    {
+      "callId": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "removeContactFromSegment-429",
+      "operation": "removeContactFromSegment"
+    },
+    {
+      "callId": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "removeContactFromSegment-5xx",
+      "operation": "removeContactFromSegment"
+    },
+    {
+      "callId": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contacts/contact-1/segments/segment-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "input": {
+        "contactId": "contact-1",
+        "segmentId": "segment-1"
+      },
+      "name": "removeContactFromSegment-transport",
+      "operation": "removeContactFromSegment"
+    },
+    {
+      "callId": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contact_id": "",
+          "deleted": false,
+          "segment_id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab481b7a-bda0-5c63-aff8-ea59914ba6f7",
+      "input": {
+        "contactId": "",
+        "segmentId": "segment-1"
+      },
+      "name": "removeContactFromSegment-defect",
+      "operation": "removeContactFromSegment"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"segment-1\",\"name\":\"Active Users\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/segments",
+          "query": {
+            "after": [
+              "segment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "id": "segment-1",
+              "name": "Active Users"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "segment-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "listContactSegments-success",
+      "operation": "listContactSegments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/segments",
+          "query": {
+            "after": [
+              "segment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "segment-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "listContactSegments-rejected",
+      "operation": "listContactSegments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"segment-1\",\"name\":\"Active Users\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/segments",
+          "query": {
+            "after": [
+              "segment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "id": "segment-1",
+              "name": "Active Users"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "segment-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "listContactSegments-invalid",
+      "operation": "listContactSegments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "segment-0",
+        "contactId": "",
+        "limit": 10
+      },
+      "name": "listContactSegments-defect",
+      "operation": "listContactSegments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/segments",
+          "query": {
+            "after": [
+              "segment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "segment-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "listContactSegments-rate",
+      "operation": "listContactSegments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/segments",
+          "query": {
+            "after": [
+              "segment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "segment-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "listContactSegments-server",
+      "operation": "listContactSegments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/segments",
+          "query": {
+            "after": [
+              "segment-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "segment-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "listContactSegments-transport",
+      "operation": "listContactSegments"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"topic-1\",\"name\":\"News\",\"subscription\":\"opt_in\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "description": "",
+              "id": "topic-1",
+              "name": "News",
+              "subscription": "opt_in"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "getContactTopics-success",
+      "operation": "getContactTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "getContactTopics-missing",
+      "operation": "getContactTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "getContactTopics-rejected",
+      "operation": "getContactTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"topic-1\",\"name\":\"News\",\"subscription\":\"opt_in\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "description": "",
+              "id": "topic-1",
+              "name": "News",
+              "subscription": "opt_in"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "getContactTopics-invalid",
+      "operation": "getContactTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "contactId": "",
+        "limit": 10
+      },
+      "name": "getContactTopics-defect",
+      "operation": "getContactTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "getContactTopics-rate",
+      "operation": "getContactTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "getContactTopics-server",
+      "operation": "getContactTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/contact-1/topics",
+          "query": {
+            "after": [
+              "topic-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "topic-0",
+        "contactId": "contact-1",
+        "limit": 10
+      },
+      "name": "getContactTopics-transport",
+      "operation": "getContactTopics"
+    },
+    {
+      "callId": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"contact-1\",\"topics\":[{\"id\":\"topic-1\",\"subscription\":\"opt_in\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/contact-1/topics",
+          "requestBody": {
+            "topics": [
+              {
+                "id": "topic-1",
+                "subscription": "opt_in"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "contact_id": "contact-1",
+          "topics": [
+            {
+              "id": "topic-1",
+              "subscription": "opt_in"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "input": {
+        "contactId": "contact-1",
+        "topics": [
+          {
+            "id": "topic-1",
+            "subscription": "opt_in"
+          }
+        ]
+      },
+      "name": "updateContactTopics-success",
+      "operation": "updateContactTopics"
+    },
+    {
+      "callId": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/contact-1/topics",
+          "requestBody": {
+            "topics": [
+              {
+                "id": "topic-1",
+                "subscription": "opt_in"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contact_id": "",
+          "topics": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "input": {
+        "contactId": "contact-1",
+        "topics": [
+          {
+            "id": "topic-1",
+            "subscription": "opt_in"
+          }
+        ]
+      },
+      "name": "updateContactTopics-notFound",
+      "operation": "updateContactTopics"
+    },
+    {
+      "callId": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/contact-1/topics",
+          "requestBody": {
+            "topics": [
+              {
+                "id": "topic-1",
+                "subscription": "opt_in"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contact_id": "",
+          "topics": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "input": {
+        "contactId": "contact-1",
+        "topics": [
+          {
+            "id": "topic-1",
+            "subscription": "opt_in"
+          }
+        ]
+      },
+      "name": "updateContactTopics-providerRejected",
+      "operation": "updateContactTopics"
+    },
+    {
+      "callId": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"contact-1\",\"topics\":[{\"id\":\"topic-1\",\"subscription\":\"opt_in\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/contact-1/topics",
+          "requestBody": {
+            "topics": [
+              {
+                "id": "topic-1",
+                "subscription": "opt_in"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "contact_id": "contact-1",
+          "topics": [
+            {
+              "id": "topic-1",
+              "subscription": "opt_in"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "input": {
+        "contactId": "contact-1",
+        "topics": [
+          {
+            "id": "topic-1",
+            "subscription": "opt_in"
+          }
+        ]
+      },
+      "name": "updateContactTopics-invalidResponse",
+      "operation": "updateContactTopics"
+    },
+    {
+      "callId": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contact_id": "",
+          "topics": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "input": {
+        "contactId": "contact-1",
+        "topics": [
+          {
+            "id": "topic-1",
+            "subscription": "invalid"
+          }
+        ]
+      },
+      "name": "updateContactTopics-defect",
+      "operation": "updateContactTopics"
+    },
+    {
+      "callId": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/contact-1/topics",
+          "requestBody": {
+            "topics": [
+              {
+                "id": "topic-1",
+                "subscription": "opt_in"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "input": {
+        "contactId": "contact-1",
+        "topics": [
+          {
+            "id": "topic-1",
+            "subscription": "opt_in"
+          }
+        ]
+      },
+      "name": "updateContactTopics-429",
+      "operation": "updateContactTopics"
+    },
+    {
+      "callId": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/contact-1/topics",
+          "requestBody": {
+            "topics": [
+              {
+                "id": "topic-1",
+                "subscription": "opt_in"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "input": {
+        "contactId": "contact-1",
+        "topics": [
+          {
+            "id": "topic-1",
+            "subscription": "opt_in"
+          }
+        ]
+      },
+      "name": "updateContactTopics-5xx",
+      "operation": "updateContactTopics"
+    },
+    {
+      "callId": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/contacts/contact-1/topics",
+          "requestBody": {
+            "topics": [
+              {
+                "id": "topic-1",
+                "subscription": "opt_in"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "297e81c2-adfd-5539-abe1-f70e5a67ab4d",
+      "input": {
+        "contactId": "contact-1",
+        "topics": [
+          {
+            "id": "topic-1",
+            "subscription": "opt_in"
+          }
+        ]
+      },
+      "name": "updateContactTopics-transport",
+      "operation": "updateContactTopics"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"import-1\",\"status\":\"completed\",\"created_at\":\"2026-11-01T00:00:00Z\",\"counts\":{\"total\":1,\"created\":1,\"updated\":0,\"skipped\":0,\"failed\":0}}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports",
+          "query": {
+            "after": [
+              "import-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "completed_at": "",
+              "counts": {
+                "created": 1,
+                "failed": 0,
+                "skipped": 0,
+                "total": 1,
+                "updated": 0
+              },
+              "created_at": "2026-11-01T00:00:00Z",
+              "id": "import-1",
+              "status": "completed"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "import-0",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listContactImports-success",
+      "operation": "listContactImports"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports",
+          "query": {
+            "after": [
+              "import-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "import-0",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listContactImports-rejected",
+      "operation": "listContactImports"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"import-1\",\"status\":\"completed\",\"created_at\":\"2026-11-01T00:00:00Z\",\"counts\":{\"total\":1,\"created\":1,\"updated\":0,\"skipped\":0,\"failed\":0}}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports",
+          "query": {
+            "after": [
+              "import-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "completed_at": "",
+              "counts": {
+                "created": 1,
+                "failed": 0,
+                "skipped": 0,
+                "total": 1,
+                "updated": 0
+              },
+              "created_at": "2026-11-01T00:00:00Z",
+              "id": "import-1",
+              "status": "completed"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "import-0",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listContactImports-invalid",
+      "operation": "listContactImports"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "import-0",
+        "limit": 10,
+        "status": "invalid"
+      },
+      "name": "listContactImports-defect",
+      "operation": "listContactImports"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports",
+          "query": {
+            "after": [
+              "import-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "import-0",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listContactImports-rate",
+      "operation": "listContactImports"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports",
+          "query": {
+            "after": [
+              "import-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "import-0",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listContactImports-server",
+      "operation": "listContactImports"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports",
+          "query": {
+            "after": [
+              "import-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "import-0",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listContactImports-transport",
+      "operation": "listContactImports"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"import-1\",\"status\":\"completed\",\"created_at\":\"2026-11-01T00:00:00Z\",\"counts\":{\"total\":1,\"created\":1,\"updated\":0,\"skipped\":0,\"failed\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports/import-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "completed_at": "",
+          "counts": {
+            "created": 1,
+            "failed": 0,
+            "skipped": 0,
+            "total": 1,
+            "updated": 0
+          },
+          "created_at": "2026-11-01T00:00:00Z",
+          "id": "import-1",
+          "status": "completed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "import-1"
+      },
+      "name": "getContactImport-success",
+      "operation": "getContactImport"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports/import-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "completed_at": "",
+          "counts": {
+            "created": 0,
+            "failed": 0,
+            "skipped": 0,
+            "total": 0,
+            "updated": 0
+          },
+          "created_at": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "import-1"
+      },
+      "name": "getContactImport-missing",
+      "operation": "getContactImport"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports/import-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "completed_at": "",
+          "counts": {
+            "created": 0,
+            "failed": 0,
+            "skipped": 0,
+            "total": 0,
+            "updated": 0
+          },
+          "created_at": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "import-1"
+      },
+      "name": "getContactImport-rejected",
+      "operation": "getContactImport"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"import-1\",\"status\":\"completed\",\"created_at\":\"2026-11-01T00:00:00Z\",\"counts\":{\"total\":1,\"created\":1,\"updated\":0,\"skipped\":0,\"failed\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports/import-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "completed_at": "",
+          "counts": {
+            "created": 1,
+            "failed": 0,
+            "skipped": 0,
+            "total": 1,
+            "updated": 0
+          },
+          "created_at": "2026-11-01T00:00:00Z",
+          "id": "import-1",
+          "status": "completed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "import-1"
+      },
+      "name": "getContactImport-invalid",
+      "operation": "getContactImport"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "completed_at": "",
+          "counts": {
+            "created": 0,
+            "failed": 0,
+            "skipped": 0,
+            "total": 0,
+            "updated": 0
+          },
+          "created_at": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getContactImport-defect",
+      "operation": "getContactImport"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports/import-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "import-1"
+      },
+      "name": "getContactImport-rate",
+      "operation": "getContactImport"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports/import-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "import-1"
+      },
+      "name": "getContactImport-server",
+      "operation": "getContactImport"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/imports/import-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "import-1"
+      },
+      "name": "getContactImport-transport",
+      "operation": "getContactImport"
     }
   ],
   "schemaVersion": 1
