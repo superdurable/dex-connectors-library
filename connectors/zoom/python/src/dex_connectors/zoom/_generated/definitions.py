@@ -69,9 +69,9 @@ CREATE_MEETING_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, CREATE_MEETING_OPERATION_ID),
     (
         BranchDefinition(CREATED, "Zoom created the meeting and returned its ID and join URL.", False),
-        BranchDefinition(PROVIDER_REJECTED, "Zoom conclusively rejected the meeting, including a documented daily-limit 429 or a user who cannot host; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The request was dispatched but its outcome cannot be confirmed; the meeting may exist and must not be created again automatically.", True),
-        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created.", True),
+        BranchDefinition(UNCERTAIN, "Zoom may have created the meeting, but the send cap was reached, a resend was refused, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again.", True),
+        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid before any send.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),

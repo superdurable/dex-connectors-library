@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: MIT
 """Zoom meeting Queries and Mutations with Go-compatible outcomes."""
 
+import json
 import re
 from datetime import UTC, datetime, timedelta
 
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -53,6 +55,9 @@ from .models import (
     UpdatedMeeting,
     UpdateMeetingInput,
 )
+
+# Only these statuses prove Zoom refused a write; other 4xx statuses leave the outcome unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 def _positive_meeting_id(meeting_id: int) -> None:
@@ -333,13 +338,17 @@ class UpdateMeetingOperation:
         if 200 <= exchange.status < 300:
             return MutationAttempt.branch_result("updated", output, self.client.receipt(call, meeting_id))
         route, problem, delay, code = classify(self.client, operation, exchange)
-        if route == "retry":
-            assert problem is not None
-            return MutationAttempt.retry(problem, delay)
-        branch = "notFound" if route == "notFound" else "providerRejected"
-        return MutationAttempt.branch_result(
-            branch, output, self.client.receipt(call, meeting_id, code), problem
-        )
+        assert problem is not None
+        if route == "notFound":
+            return MutationAttempt.branch_result(
+                "notFound", output, self.client.receipt(call, meeting_id, code), problem
+            )
+        if route == "rejected" and (exchange.status in _DEFINITE_REFUSAL_STATUSES or exchange.status == 429):
+            return MutationAttempt.branch_result(
+                "providerRejected", output, self.client.receipt(call, meeting_id, code), problem
+            )
+        # A redirect or unlisted status leaves the outcome unknown, and repeating the absolute patch is safe.
+        return MutationAttempt.retry(problem, delay)
 
 
 class CreateMeetingOperation:
@@ -390,7 +399,11 @@ class CreateMeetingOperation:
                 "defect", empty, Receipt(), failure(operation, FailureKind.VALIDATION, str(error))
             )
         try:
-            fence = Fence(call, CREATE_MEETING_DEFINITION.step_defaults.execute_method_timeout)
+            fence = Fence(
+                call,
+                CREATE_MEETING_DEFINITION.step_defaults.execute_method_timeout,
+                max_sends=call.max_sends,
+            )
         except ValueError:
             return MutationAttempt.branch_result(
                 "defect",
@@ -402,25 +415,51 @@ class CreateMeetingOperation:
             )
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                requested,
-                failure(operation, FailureKind.TRANSPORT, "the Zoom create checkpoint could not be trusted"),
-                self.client.receipt(call),
+            return MutationAttempt.retry(
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "the Zoom create checkpoint is unreadable; no meeting was created in this attempt",
+                )
             )
+        marker = decision.marker
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            marker = decision.marker
             if marker is None or marker.call_id != call.id or not marker.provider_id:
                 return MutationAttempt.uncertain(
                     requested,
                     failure(
                         operation,
                         FailureKind.TRANSPORT,
-                        "an earlier Zoom create may have succeeded without a confirmed meeting ID",
+                        "an earlier Zoom create may have succeeded without a confirmed meeting ID, "
+                        "and the send cap is reached",
                     ),
                     self.client.receipt(call),
                 )
             return await self._read_back(call, requested, marker.provider_id)
+        if (
+            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+            and marker is not None
+            and marker.provider_id
+        ):
+            # A saved meeting ID proves Zoom created the meeting, so it is read back and never resent.
+            return await self._read_back(call, requested, marker.provider_id)
+        # This attempt's send would be the last one the cap allows when no further send remains.
+        can_resend = decision.prior_send_upper_bound + 1 < call.max_sends
+        # An earlier send may have created the meeting, so a refusal of a resend proves nothing.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         if instant <= self.client.now():
+            if has_possible_earlier_send:
+                # A passed start time forbids the resend, so only the earlier possible create remains.
+                return MutationAttempt.uncertain(
+                    requested,
+                    failure(
+                        operation,
+                        FailureKind.VALIDATION,
+                        "an earlier attempt may have created the Zoom meeting, and its start time "
+                        "has passed, so it cannot be resent",
+                    ),
+                    self.client.receipt(call),
+                )
             try:
                 await fence.record_not_sent()
             except Exception:
@@ -440,6 +479,9 @@ class CreateMeetingOperation:
                 ),
             )
         credentials, problem, retryable = await self.client.resolve(call, operation)
+        if problem and has_possible_earlier_send:
+            # notSent would hide the earlier possible send, so nothing is recorded.
+            return MutationAttempt.retry(problem)
         if problem:
             try:
                 await fence.record_not_sent()
@@ -472,12 +514,25 @@ class CreateMeetingOperation:
                 )
             )
         except (TimeoutError, DispatchNotAllowedError):
-            return MutationAttempt.uncertain(
+            return self._resend_or_select_uncertain(
+                call,
+                can_resend,
                 requested,
                 failure(operation, FailureKind.TRANSPORT, "Zoom meeting outcome is unknown"),
-                self.client.receipt(call),
             )
         if exchange.error == "notBuilt":
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                pass  # The request was never sent; a lost canResend checkpoint leaves a counted claim.
+            if has_possible_earlier_send:
+                return MutationAttempt.retry(
+                    failure(
+                        operation,
+                        FailureKind.LOCAL_DEFECT,
+                        "Zoom request could not be built; no meeting was created in this attempt",
+                    )
+                )
             return MutationAttempt.branch_result(
                 "defect",
                 empty,
@@ -503,56 +558,61 @@ class CreateMeetingOperation:
                         "Zoom could not be reached, so no meeting was created",
                     )
                 )
-            return MutationAttempt.uncertain(
+            return self._resend_or_select_uncertain(
+                call,
+                can_resend,
                 requested,
                 failure(operation, FailureKind.TRANSPORT, "Zoom meeting outcome is unknown"),
-                self.client.receipt(call),
             )
         if 200 <= exchange.status < 300:
             if exchange.is_body_too_large:
                 problem = failure(
                     operation,
                     FailureKind.RESPONSE_TOO_LARGE,
-                    "Zoom accepted the request but its response exceeds the configured size limit",
+                    "Zoom meeting response exceeds the configured size limit",
                 )
             elif exchange.has_body_read_failed:
-                problem = failure(
-                    operation,
-                    FailureKind.TRANSPORT,
-                    "Zoom accepted the request but its response was interrupted",
-                )
+                problem = failure(operation, FailureKind.TRANSPORT, "Zoom meeting response was interrupted")
             elif exchange.reflects_secret:
                 problem = failure(
                     operation,
                     FailureKind.PROTOCOL,
-                    "Zoom accepted the request but its response contained the connection credential",
+                    "Zoom meeting response contained the connection credential",
                 )
             else:
                 try:
                     meeting = decode_meeting_body(exchange.body)
                 except ValueError:
-                    problem = failure(
-                        operation,
-                        FailureKind.PROTOCOL,
-                        "Zoom accepted the request but returned an unusable meeting",
-                    )
+                    if _created_meeting_id(exchange.body) > 0:
+                        # Zoom returned a created meeting ID, so a resend could duplicate the meeting.
+                        return MutationAttempt.uncertain(
+                            requested,
+                            failure(
+                                operation,
+                                FailureKind.PROTOCOL,
+                                "Zoom accepted the request but returned an unusable meeting",
+                            ),
+                            self.client.receipt(call),
+                        )
+                    problem = failure(operation, FailureKind.PROTOCOL, "Zoom meeting response is malformed")
                 else:
                     try:
                         await fence.record_provider_id(str(meeting.id))
                     except Exception:
-                        pass  # A lost checkpoint cannot change a known successful response.
+                        pass  # A lost checkpoint leaves the claim, which still counts this send.
                     return MutationAttempt.branch_result(
                         "created", meeting, self.client.receipt(call, str(meeting.id))
                     )
-            return MutationAttempt.uncertain(requested, problem, self.client.receipt(call))
+            return self._resend_or_select_uncertain(call, can_resend, requested, problem)
         route, problem, delay, code = classify(self.client, operation, exchange)
         assert problem is not None
         receipt = self.client.receipt(call, error_code=code)
         if exchange.status == 401:
             resolver = getattr(self.client.credentials, "resolve_after_rejection", None)
             if resolver is None:
-                return MutationAttempt.branch_result(
-                    "providerRejected",
+                return await _reject_or_select_uncertain(
+                    fence,
+                    has_possible_earlier_send,
                     requested,
                     receipt,
                     failure(
@@ -567,8 +627,9 @@ class CreateMeetingOperation:
             except ReauthorizationRequiredError:
                 replaced = False
             except Exception:
-                return MutationAttempt.branch_result(
-                    "providerRejected",
+                return await _reject_or_select_uncertain(
+                    fence,
+                    has_possible_earlier_send,
                     requested,
                     receipt,
                     failure(
@@ -588,8 +649,9 @@ class CreateMeetingOperation:
                         )
                     )
                 return MutationAttempt.retry(problem)
-            return MutationAttempt.branch_result(
-                "providerRejected",
+            return await _reject_or_select_uncertain(
+                fence,
+                has_possible_earlier_send,
                 requested,
                 receipt,
                 failure(
@@ -599,7 +661,10 @@ class CreateMeetingOperation:
                 ),
             )
         if exchange.status == 429 and route == "rejected":
-            return MutationAttempt.branch_result("providerRejected", requested, receipt, problem)
+            # The documented daily limit refuses the create, so nothing was created by this send.
+            return await _reject_or_select_uncertain(
+                fence, has_possible_earlier_send, requested, receipt, problem
+            )
         if exchange.status in (429, 503):
             try:
                 await fence.record_can_resend()
@@ -612,11 +677,27 @@ class CreateMeetingOperation:
                     )
                 )
             return MutationAttempt.retry(problem, delay)
-        if exchange.status == 409:
-            return MutationAttempt.uncertain(requested, problem, receipt)
-        if 400 <= exchange.status < 500 and exchange.status != 408:
-            return MutationAttempt.branch_result("providerRejected", requested, receipt, problem)
-        return MutationAttempt.uncertain(requested, problem, receipt)
+        if exchange.status in _DEFINITE_REFUSAL_STATUSES and _created_meeting_id(exchange.body) == 0:
+            return await _reject_or_select_uncertain(
+                fence, has_possible_earlier_send, requested, receipt, problem
+            )
+        # 408, 409, 5xx, redirects, and other 4xx responses do not prove whether Zoom applied the create.
+        return self._resend_or_select_uncertain(call, can_resend, requested, problem, delay, code)
+
+    def _resend_or_select_uncertain(
+        self,
+        call: Call,
+        can_resend: bool,
+        requested: Meeting,
+        problem: Failure,
+        delay: float = 0,
+        error_code: str = "",
+    ) -> MutationAttempt[Meeting]:
+        """Retry a possibly sent create while the send cap allows another send."""
+        if can_resend:
+            # The claim stays the last marker, so the next attempt counts this send.
+            return MutationAttempt.retry(problem, delay)
+        return MutationAttempt.uncertain(requested, problem, self.client.receipt(call, error_code=error_code))
 
     async def _read_back(self, call: Call, requested: Meeting, provider_id: str) -> MutationAttempt[Meeting]:
         """Confirm a prior accepted ID without another create request."""
@@ -672,3 +753,26 @@ class CreateMeetingOperation:
             failure(operation, FailureKind.PROTOCOL, "Zoom could not confirm the accepted meeting"),
             self.client.receipt(call, provider_id),
         )
+
+
+async def _reject_or_select_uncertain(
+    fence: Fence, has_possible_earlier_send: bool, requested: Meeting, receipt: Receipt, problem: Failure
+) -> MutationAttempt[Meeting]:
+    """Select providerRejected only when no earlier send may have created the meeting."""
+    if has_possible_earlier_send:
+        return MutationAttempt.uncertain(requested, problem, receipt)
+    try:
+        await fence.record_can_resend()
+    except Exception:
+        pass  # The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+    return MutationAttempt.branch_result("providerRejected", requested, receipt, problem)
+
+
+def _created_meeting_id(body: bytes) -> int:
+    """Return a positive top-level meeting id from a response body, or zero."""
+    try:
+        value = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return 0
+    meeting_id = value.get("id") if isinstance(value, dict) else None
+    return meeting_id if type(meeting_id) is int and 0 < meeting_id <= 2**63 - 1 else 0
