@@ -34,6 +34,10 @@ type Mock struct {
 	getOrder                    *connectormock.Query[eventbrite.GetOrderInput, eventbrite.OrderMetadata]
 	listOrdersByEvent           *connectormock.Query[eventbrite.ListOrdersByEventInput, eventbrite.OrdersPage]
 	listOrdersByOrganization    *connectormock.Query[eventbrite.ListOrdersByOrganizationInput, eventbrite.OrdersPage]
+	getTicketClass              *connectormock.Query[eventbrite.GetTicketClassInput, eventbrite.TicketClassMetadata]
+	listTicketClasses           *connectormock.Query[eventbrite.ListTicketClassesInput, eventbrite.TicketClassesPage]
+	updateTicketClass           *connectormock.Mutation[eventbrite.UpdateTicketClassInput, eventbrite.TicketClassMetadata]
+	createTicketClass           *connectormock.Mutation[eventbrite.CreateTicketClassInput, eventbrite.TicketClassMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -57,6 +61,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		getOrder:                    connectormock.NewQuery[eventbrite.GetOrderInput, eventbrite.OrderMetadata](t, eventbrite.GetOrderDefinition),
 		listOrdersByEvent:           connectormock.NewQuery[eventbrite.ListOrdersByEventInput, eventbrite.OrdersPage](t, eventbrite.ListOrdersByEventDefinition),
 		listOrdersByOrganization:    connectormock.NewQuery[eventbrite.ListOrdersByOrganizationInput, eventbrite.OrdersPage](t, eventbrite.ListOrdersByOrganizationDefinition),
+		getTicketClass:              connectormock.NewQuery[eventbrite.GetTicketClassInput, eventbrite.TicketClassMetadata](t, eventbrite.GetTicketClassDefinition),
+		listTicketClasses:           connectormock.NewQuery[eventbrite.ListTicketClassesInput, eventbrite.TicketClassesPage](t, eventbrite.ListTicketClassesDefinition),
+		updateTicketClass:           connectormock.NewMutation[eventbrite.UpdateTicketClassInput, eventbrite.TicketClassMetadata](t, eventbrite.UpdateTicketClassDefinition),
+		createTicketClass:           connectormock.NewMutation[eventbrite.CreateTicketClassInput, eventbrite.TicketClassMetadata](t, eventbrite.CreateTicketClassDefinition),
 	}
 	mock.listOrganizations.Default(ListOrganizationsDefault())
 	mock.listEvents.Default(ListEventsDefault())
@@ -74,6 +82,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.getOrder.Default(GetOrderDefault())
 	mock.listOrdersByEvent.Default(ListOrdersByEventDefault())
 	mock.listOrdersByOrganization.Default(ListOrdersByOrganizationDefault())
+	mock.getTicketClass.Default(GetTicketClassDefault())
+	mock.listTicketClasses.Default(ListTicketClassesDefault())
+	mock.updateTicketClass.Default(UpdateTicketClassDefault())
+	mock.createTicketClass.Default(CreateTicketClassDefault())
 	connection, err := eventbrite.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "eventbrite", Name: connectionName})
 	if err != nil {
 		t.Fatalf("eventbrite mock connection: %v", err)
@@ -165,6 +177,26 @@ func (mock *Mock) ListOrdersByOrganization() *connectormock.Query[eventbrite.Lis
 	return mock.listOrdersByOrganization
 }
 
+// GetTicketClass returns the getTicketClass script.
+func (mock *Mock) GetTicketClass() *connectormock.Query[eventbrite.GetTicketClassInput, eventbrite.TicketClassMetadata] {
+	return mock.getTicketClass
+}
+
+// ListTicketClasses returns the listTicketClasses script.
+func (mock *Mock) ListTicketClasses() *connectormock.Query[eventbrite.ListTicketClassesInput, eventbrite.TicketClassesPage] {
+	return mock.listTicketClasses
+}
+
+// UpdateTicketClass returns the updateTicketClass script.
+func (mock *Mock) UpdateTicketClass() *connectormock.Mutation[eventbrite.UpdateTicketClassInput, eventbrite.TicketClassMetadata] {
+	return mock.updateTicketClass
+}
+
+// CreateTicketClass returns the createTicketClass script.
+func (mock *Mock) CreateTicketClass() *connectormock.Mutation[eventbrite.CreateTicketClassInput, eventbrite.TicketClassMetadata] {
+	return mock.createTicketClass
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOrganizations() sdkgo.Query[eventbrite.ListOrganizationsInput, eventbrite.OrganizationsPage] {
@@ -214,6 +246,18 @@ func (operations mockOperations) ListOrdersByEvent() sdkgo.Query[eventbrite.List
 }
 func (operations mockOperations) ListOrdersByOrganization() sdkgo.Query[eventbrite.ListOrdersByOrganizationInput, eventbrite.OrdersPage] {
 	return operations.mock.listOrdersByOrganization
+}
+func (operations mockOperations) GetTicketClass() sdkgo.Query[eventbrite.GetTicketClassInput, eventbrite.TicketClassMetadata] {
+	return operations.mock.getTicketClass
+}
+func (operations mockOperations) ListTicketClasses() sdkgo.Query[eventbrite.ListTicketClassesInput, eventbrite.TicketClassesPage] {
+	return operations.mock.listTicketClasses
+}
+func (operations mockOperations) UpdateTicketClass() sdkgo.Mutation[eventbrite.UpdateTicketClassInput, eventbrite.TicketClassMetadata] {
+	return operations.mock.updateTicketClass
+}
+func (operations mockOperations) CreateTicketClass() sdkgo.Mutation[eventbrite.CreateTicketClassInput, eventbrite.TicketClassMetadata] {
+	return operations.mock.createTicketClass
 }
 
 // ListOrganizationsListed selects the listed branch: Eventbrite returned the organization page.
@@ -842,4 +886,163 @@ func ListOrdersByOrganizationListedDefault() connectormock.Case[eventbrite.Order
 // ListOrdersByOrganizationDefault is the manifest default, listedDefault, which New installs.
 func ListOrdersByOrganizationDefault() connectormock.Case[eventbrite.OrdersPage] {
 	return ListOrdersByOrganizationListedDefault()
+}
+
+// GetTicketClassFound selects the found branch: Eventbrite returned the ticket class.
+func GetTicketClassFound(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.GetTicketClassBranchFound, value, failure)
+}
+
+// GetTicketClassNotFound selects the notFound branch: The ticket class does not exist or is inaccessible.
+func GetTicketClassNotFound(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.GetTicketClassBranchNotFound, value, failure)
+}
+
+// GetTicketClassProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the request.
+func GetTicketClassProviderRejected(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.GetTicketClassBranchProviderRejected, value, failure)
+}
+
+// GetTicketClassInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func GetTicketClassInvalidResponse(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.GetTicketClassBranchInvalidResponse, value, failure)
+}
+
+// GetTicketClassDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetTicketClassDefect(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.GetTicketClassBranchDefect, value, failure)
+}
+
+// GetTicketClassRetry asks Dex to retry the getTicketClass Step, after the delay when it is positive.
+func GetTicketClassRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Retry[eventbrite.TicketClassMetadata](failure, after)
+}
+
+// GetTicketClassFoundDefault is the manifest mock foundDefault: Example free ticket class.
+func GetTicketClassFoundDefault() connectormock.Case[eventbrite.TicketClassMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.TicketClassMetadata](`{"id":"13579","eventId":"67890","name":"General Admission","quantityTotal":100}`)
+	return connectormock.Branch(eventbrite.GetTicketClassBranchFound, value, nil)
+}
+
+// GetTicketClassDefault is the manifest default, foundDefault, which New installs.
+func GetTicketClassDefault() connectormock.Case[eventbrite.TicketClassMetadata] {
+	return GetTicketClassFoundDefault()
+}
+
+// ListTicketClassesListed selects the listed branch: Eventbrite returned the requested page.
+func ListTicketClassesListed(value eventbrite.TicketClassesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassesPage] {
+	return connectormock.Branch(eventbrite.ListTicketClassesBranchListed, value, failure)
+}
+
+// ListTicketClassesNotFound selects the notFound branch: The event does not exist or is inaccessible.
+func ListTicketClassesNotFound(value eventbrite.TicketClassesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassesPage] {
+	return connectormock.Branch(eventbrite.ListTicketClassesBranchNotFound, value, failure)
+}
+
+// ListTicketClassesProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the request.
+func ListTicketClassesProviderRejected(value eventbrite.TicketClassesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassesPage] {
+	return connectormock.Branch(eventbrite.ListTicketClassesBranchProviderRejected, value, failure)
+}
+
+// ListTicketClassesInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func ListTicketClassesInvalidResponse(value eventbrite.TicketClassesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassesPage] {
+	return connectormock.Branch(eventbrite.ListTicketClassesBranchInvalidResponse, value, failure)
+}
+
+// ListTicketClassesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListTicketClassesDefect(value eventbrite.TicketClassesPage, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassesPage] {
+	return connectormock.Branch(eventbrite.ListTicketClassesBranchDefect, value, failure)
+}
+
+// ListTicketClassesRetry asks Dex to retry the listTicketClasses Step, after the delay when it is positive.
+func ListTicketClassesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.TicketClassesPage] {
+	return connectormock.Retry[eventbrite.TicketClassesPage](failure, after)
+}
+
+// ListTicketClassesListedDefault is the manifest mock listedDefault: Example ticket class page.
+func ListTicketClassesListedDefault() connectormock.Case[eventbrite.TicketClassesPage] {
+	value := connectormock.MustDecodeOutput[eventbrite.TicketClassesPage](`{"ticketClasses":[{"id":"13579","eventId":"67890","name":"General Admission","quantityTotal":100}],"pageNumber":1,"pageCount":1}`)
+	return connectormock.Branch(eventbrite.ListTicketClassesBranchListed, value, nil)
+}
+
+// ListTicketClassesDefault is the manifest default, listedDefault, which New installs.
+func ListTicketClassesDefault() connectormock.Case[eventbrite.TicketClassesPage] {
+	return ListTicketClassesListedDefault()
+}
+
+// UpdateTicketClassUpdated selects the updated branch: The ticket class name is confirmed.
+func UpdateTicketClassUpdated(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.UpdateTicketClassBranchUpdated, value, failure)
+}
+
+// UpdateTicketClassNotFound selects the notFound branch: The ticket class does not exist or is inaccessible.
+func UpdateTicketClassNotFound(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.UpdateTicketClassBranchNotFound, value, failure)
+}
+
+// UpdateTicketClassProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the update.
+func UpdateTicketClassProviderRejected(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.UpdateTicketClassBranchProviderRejected, value, failure)
+}
+
+// UpdateTicketClassInvalidResponse selects the invalidResponse branch: Eventbrite returned malformed or oversized JSON.
+func UpdateTicketClassInvalidResponse(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.UpdateTicketClassBranchInvalidResponse, value, failure)
+}
+
+// UpdateTicketClassDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateTicketClassDefect(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.UpdateTicketClassBranchDefect, value, failure)
+}
+
+// UpdateTicketClassRetry asks Dex to retry the updateTicketClass Step, after the delay when it is positive.
+func UpdateTicketClassRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Retry[eventbrite.TicketClassMetadata](failure, after)
+}
+
+// UpdateTicketClassUpdatedDefault is the manifest mock updatedDefault: Example renamed ticket class.
+func UpdateTicketClassUpdatedDefault() connectormock.Case[eventbrite.TicketClassMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.TicketClassMetadata](`{"id":"13579","eventId":"67890","name":"VIP Admission","quantityTotal":100}`)
+	return connectormock.Branch(eventbrite.UpdateTicketClassBranchUpdated, value, nil)
+}
+
+// UpdateTicketClassDefault is the manifest default, updatedDefault, which New installs.
+func UpdateTicketClassDefault() connectormock.Case[eventbrite.TicketClassMetadata] {
+	return UpdateTicketClassUpdatedDefault()
+}
+
+// CreateTicketClassCreated selects the created branch: Eventbrite confirmed the ticket class identity.
+func CreateTicketClassCreated(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.CreateTicketClassBranchCreated, value, failure)
+}
+
+// CreateTicketClassProviderRejected selects the providerRejected branch: Eventbrite conclusively rejected the creation.
+func CreateTicketClassProviderRejected(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.CreateTicketClassBranchProviderRejected, value, failure)
+}
+
+// CreateTicketClassUncertain returns an uncertain createTicketClass outcome.
+func CreateTicketClassUncertain(value eventbrite.TicketClassMetadata, failure sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTicketClassDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateTicketClassDefect(value eventbrite.TicketClassMetadata, failure *sdkgo.Failure) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Branch(eventbrite.CreateTicketClassBranchDefect, value, failure)
+}
+
+// CreateTicketClassRetry asks Dex to retry the createTicketClass Step, after the delay when it is positive.
+func CreateTicketClassRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[eventbrite.TicketClassMetadata] {
+	return connectormock.Retry[eventbrite.TicketClassMetadata](failure, after)
+}
+
+// CreateTicketClassCreatedDefault is the manifest mock createdDefault: Example free ticket class.
+func CreateTicketClassCreatedDefault() connectormock.Case[eventbrite.TicketClassMetadata] {
+	value := connectormock.MustDecodeOutput[eventbrite.TicketClassMetadata](`{"id":"13579","eventId":"67890","name":"General Admission","quantityTotal":100}`)
+	return connectormock.Branch(eventbrite.CreateTicketClassBranchCreated, value, nil)
+}
+
+// CreateTicketClassDefault is the manifest default, createdDefault, which New installs.
+func CreateTicketClassDefault() connectormock.Case[eventbrite.TicketClassMetadata] {
+	return CreateTicketClassCreatedDefault()
 }

@@ -71,5 +71,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getOrder":                    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOrder(), reference),
 		"listOrdersByEvent":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrdersByEvent(), reference),
 		"listOrdersByOrganization":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrdersByOrganization(), reference),
+		"getTicketClass":              newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTicketClass(), reference),
+		"listTicketClasses":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTicketClasses(), reference),
+		"updateTicketClass":           newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateTicketClass(), reference, scenario.CallID),
+		"createTicketClass":           newConformanceMutationInvocation(t, scenario.Input, context, client.CreateTicketClass(), reference, scenario.CallID),
 	}}
 }

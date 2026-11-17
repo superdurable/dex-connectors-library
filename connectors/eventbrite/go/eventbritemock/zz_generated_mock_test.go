@@ -80,6 +80,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[eventbrite.OrdersPage](`{"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
 			return err
 		}},
+		{name: "getTicketClass/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.TicketClassMetadata](`{"id":"13579","eventId":"67890","name":"General Admission","quantityTotal":100}`)
+			return err
+		}},
+		{name: "listTicketClasses/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.TicketClassesPage](`{"ticketClasses":[{"id":"13579","eventId":"67890","name":"General Admission","quantityTotal":100}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
+		{name: "updateTicketClass/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.TicketClassMetadata](`{"id":"13579","eventId":"67890","name":"VIP Admission","quantityTotal":100}`)
+			return err
+		}},
+		{name: "createTicketClass/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.TicketClassMetadata](`{"id":"13579","eventId":"67890","name":"General Admission","quantityTotal":100}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -137,5 +153,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListOrdersByOrganization().Definition().Operation.OperationID != "listOrdersByOrganization" {
 		t.Errorf("listOrdersByOrganization mock has another definition")
+	}
+	if mock.GetTicketClass().Definition().Operation.OperationID != "getTicketClass" {
+		t.Errorf("getTicketClass mock has another definition")
+	}
+	if mock.ListTicketClasses().Definition().Operation.OperationID != "listTicketClasses" {
+		t.Errorf("listTicketClasses mock has another definition")
+	}
+	if mock.UpdateTicketClass().Definition().Operation.OperationID != "updateTicketClass" {
+		t.Errorf("updateTicketClass mock has another definition")
+	}
+	if mock.CreateTicketClass().Definition().Operation.OperationID != "createTicketClass" {
+		t.Errorf("createTicketClass mock has another definition")
 	}
 }

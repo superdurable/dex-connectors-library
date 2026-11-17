@@ -6100,7 +6100,7 @@
       "operation": "listOrdersByOrganization"
     },
     {
-      "callId": "c0000040-1111-5111-8111-111111111111",
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
       "exchanges": [
         {
           "body": "{}",
@@ -6140,7 +6140,7 @@
       "operation": "listOrdersByOrganization"
     },
     {
-      "callId": "c0000041-1111-5111-8111-111111111111",
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
       "exchanges": [
         {
           "body": "{}",
@@ -6279,6 +6279,1719 @@
       },
       "name": "listOrdersByOrganization-defect",
       "operation": "listOrdersByOrganization"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"13579\",\"event_id\":\"67890\",\"name\":\"General Admission\",\"quantity_total\":100}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "eventId": "67890",
+          "id": "13579",
+          "name": "General Admission",
+          "quantityTotal": 100
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "ticketClassId": "13579"
+      },
+      "name": "getTicketClass-success",
+      "operation": "getTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "ticketClassId": "13579"
+      },
+      "name": "getTicketClass-notFound",
+      "operation": "getTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "ticketClassId": "13579"
+      },
+      "name": "getTicketClass-providerRejected",
+      "operation": "getTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "ticketClassId": "13579"
+      },
+      "name": "getTicketClass-invalidResponse",
+      "operation": "getTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "ticketClassId": "13579"
+      },
+      "name": "getTicketClass-rateLimited",
+      "operation": "getTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "ticketClassId": "13579"
+      },
+      "name": "getTicketClass-serverUnavailable",
+      "operation": "getTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "ticketClassId": "13579"
+      },
+      "name": "getTicketClass-serviceUnavailable",
+      "operation": "getTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "ticketClassId": "13579"
+      },
+      "name": "getTicketClass-transportFailure",
+      "operation": "getTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "ticketClassId": "bad"
+      },
+      "name": "getTicketClass-defect",
+      "operation": "getTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{\"ticket_classes\":[{\"id\":\"13579\",\"event_id\":\"67890\",\"name\":\"General Admission\",\"quantity_total\":100}],\"pagination\":{\"page_number\":2,\"page_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "pageCount": 3,
+          "pageNumber": 2,
+          "ticketClasses": [
+            {
+              "eventId": "67890",
+              "id": "13579",
+              "name": "General Admission",
+              "quantityTotal": 100
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listTicketClasses-success",
+      "operation": "listTicketClasses"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "pageCount": 0,
+          "pageNumber": 0,
+          "ticketClasses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listTicketClasses-notFound",
+      "operation": "listTicketClasses"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "pageCount": 0,
+          "pageNumber": 0,
+          "ticketClasses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listTicketClasses-providerRejected",
+      "operation": "listTicketClasses"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "pageCount": 0,
+          "pageNumber": 0,
+          "ticketClasses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listTicketClasses-invalidResponse",
+      "operation": "listTicketClasses"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listTicketClasses-rateLimited",
+      "operation": "listTicketClasses"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listTicketClasses-serverUnavailable",
+      "operation": "listTicketClasses"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listTicketClasses-serviceUnavailable",
+      "operation": "listTicketClasses"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": 2
+      },
+      "name": "listTicketClasses-transportFailure",
+      "operation": "listTicketClasses"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "pageCount": 0,
+          "pageNumber": 0,
+          "ticketClasses": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "67890",
+        "page": -1
+      },
+      "name": "listTicketClasses-defect",
+      "operation": "listTicketClasses"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"13579\",\"event_id\":\"67890\",\"name\":\"VIP Admission\",\"quantity_total\":100}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestBody": {
+            "ticket_class": {
+              "name": "VIP Admission"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"13579\",\"event_id\":\"67890\",\"name\":\"VIP Admission\",\"quantity_total\":100}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "eventId": "67890",
+          "id": "13579",
+          "name": "VIP Admission",
+          "quantityTotal": 100
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "input": {
+        "eventId": "67890",
+        "name": "VIP Admission",
+        "ticketClassId": "13579"
+      },
+      "name": "updateTicketClass-success",
+      "operation": "updateTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestBody": {
+            "ticket_class": {
+              "name": "VIP Admission"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "input": {
+        "eventId": "67890",
+        "name": "VIP Admission",
+        "ticketClassId": "13579"
+      },
+      "name": "updateTicketClass-notFound",
+      "operation": "updateTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestBody": {
+            "ticket_class": {
+              "name": "VIP Admission"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "input": {
+        "eventId": "67890",
+        "name": "VIP Admission",
+        "ticketClassId": "13579"
+      },
+      "name": "updateTicketClass-providerRejected",
+      "operation": "updateTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestBody": {
+            "ticket_class": {
+              "name": "VIP Admission"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "input": {
+        "eventId": "67890",
+        "name": "VIP Admission",
+        "ticketClassId": "13579"
+      },
+      "name": "updateTicketClass-invalidResponse",
+      "operation": "updateTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestBody": {
+            "ticket_class": {
+              "name": "VIP Admission"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "input": {
+        "eventId": "67890",
+        "name": "VIP Admission",
+        "ticketClassId": "13579"
+      },
+      "name": "updateTicketClass-rateLimited",
+      "operation": "updateTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestBody": {
+            "ticket_class": {
+              "name": "VIP Admission"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "input": {
+        "eventId": "67890",
+        "name": "VIP Admission",
+        "ticketClassId": "13579"
+      },
+      "name": "updateTicketClass-serverUnavailable",
+      "operation": "updateTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestBody": {
+            "ticket_class": {
+              "name": "VIP Admission"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "input": {
+        "eventId": "67890",
+        "name": "VIP Admission",
+        "ticketClassId": "13579"
+      },
+      "name": "updateTicketClass-serviceUnavailable",
+      "operation": "updateTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestBody": {
+            "ticket_class": {
+              "name": "VIP Admission"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "input": {
+        "eventId": "67890",
+        "name": "VIP Admission",
+        "ticketClassId": "13579"
+      },
+      "name": "updateTicketClass-transportFailure",
+      "operation": "updateTicketClass"
+    },
+    {
+      "callId": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5c25fa5b-8c98-5f0d-b749-2c4ad63203b1",
+      "input": {
+        "eventId": "67890",
+        "name": "",
+        "ticketClassId": "13579"
+      },
+      "name": "updateTicketClass-defect",
+      "operation": "updateTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"13579\",\"event_id\":\"67890\",\"name\":\"General Admission\",\"quantity_total\":100}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "providerId": "13579",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "eventId": "67890",
+          "id": "13579",
+          "name": "General Admission",
+          "quantityTotal": 100
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-success",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-providerRejected",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-acceptedMalformed",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-rateLimited",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-serverUnavailable",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-serviceUnavailable",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-transportFailure",
+      "operation": "createTicketClass"
+    },
+    {
+      "attempts": 3,
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/67890/ticket_classes/",
+          "requestBody": {
+            "ticket_class": {
+              "free": true,
+              "name": "General Admission",
+              "quantity_total": 100
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTicketClass-sendCap",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "eventId": "",
+          "id": "",
+          "name": "",
+          "quantityTotal": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-defect",
+      "operation": "createTicketClass"
+    },
+    {
+      "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"13579\",\"event_id\":\"67890\",\"name\":\"General Admission\",\"quantity_total\":100}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/67890/ticket_classes/13579/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "eventId": "67890",
+          "id": "13579",
+          "name": "General Admission",
+          "quantityTotal": 100
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+      "input": {
+        "eventId": "67890",
+        "name": "General Admission",
+        "quantityTotal": 100
+      },
+      "name": "createTicketClass-readBack",
+      "operation": "createTicketClass",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "0815d39b-c020-5e98-adae-1f27f5a70e36",
+          "providerId": "13579",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

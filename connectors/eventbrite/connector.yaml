@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: eventbrite
   displayName: Eventbrite
-  description: Read organization, event, attendee, and order metadata and manage event lifecycles through Eventbrite API v3.
+  description: Read organization, event, attendee, order, and ticket class metadata and manage events and free ticket classes through Eventbrite API v3.
   company: Eventbrite
   categories: [marketing]
   version: v0.2.0
@@ -387,3 +387,70 @@ spec:
           default: true
           description: Example page without purchaser details.
           output: {"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}
+    - name: getTicketClass
+      goName: GetTicketClass
+      inputType: GetTicketClassInput
+      outputType: TicketClassMetadata
+      kind: query
+      description: Retrieve one ticket class identity, name, and quantity.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Eventbrite returned the ticket class.}
+        - {id: notFound, goName: NotFound, description: The ticket class does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example free ticket class., output: {id: "13579", eventId: "67890", name: General Admission, quantityTotal: 100}}
+    - name: listTicketClasses
+      goName: ListTicketClasses
+      inputType: ListTicketClassesInput
+      outputType: TicketClassesPage
+      kind: query
+      description: List one event's ticket classes with pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the requested page.}
+        - {id: notFound, goName: NotFound, description: The event does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example ticket class page., output: {ticketClasses: [{id: "13579", eventId: "67890", name: General Admission, quantityTotal: 100}], pageNumber: 1, pageCount: 1}}
+    - name: updateTicketClass
+      goName: UpdateTicketClass
+      inputType: UpdateTicketClassInput
+      outputType: TicketClassMetadata
+      kind: mutation
+      description: Replace one ticket class name and verify the change.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The ticket class name is confirmed.}
+        - {id: notFound, goName: NotFound, description: The ticket class does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example renamed ticket class., output: {id: "13579", eventId: "67890", name: VIP Admission, quantityTotal: 100}}
+    - name: createTicketClass
+      goName: CreateTicketClass
+      inputType: CreateTicketClassInput
+      outputType: TicketClassMetadata
+      kind: mutation
+      description: Create one free ticket class for an event with bounded duplicate sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Eventbrite confirmed the ticket class identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Eventbrite may have created a ticket class but its identity is unknown., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example free ticket class., output: {id: "13579", eventId: "67890", name: General Admission, quantityTotal: 100}}

@@ -56,6 +56,10 @@ type Operations interface {
 	GetOrder() sdkgo.Query[GetOrderInput, OrderMetadata]
 	ListOrdersByEvent() sdkgo.Query[ListOrdersByEventInput, OrdersPage]
 	ListOrdersByOrganization() sdkgo.Query[ListOrdersByOrganizationInput, OrdersPage]
+	GetTicketClass() sdkgo.Query[GetTicketClassInput, TicketClassMetadata]
+	ListTicketClasses() sdkgo.Query[ListTicketClassesInput, TicketClassesPage]
+	UpdateTicketClass() sdkgo.Mutation[UpdateTicketClassInput, TicketClassMetadata]
+	CreateTicketClass() sdkgo.Mutation[CreateTicketClassInput, TicketClassMetadata]
 }
 
 type clientOperations struct{ client *Client }
@@ -107,6 +111,18 @@ func (operations clientOperations) ListOrdersByEvent() sdkgo.Query[ListOrdersByE
 }
 func (operations clientOperations) ListOrdersByOrganization() sdkgo.Query[ListOrdersByOrganizationInput, OrdersPage] {
 	return operations.client.ListOrdersByOrganization()
+}
+func (operations clientOperations) GetTicketClass() sdkgo.Query[GetTicketClassInput, TicketClassMetadata] {
+	return operations.client.GetTicketClass()
+}
+func (operations clientOperations) ListTicketClasses() sdkgo.Query[ListTicketClassesInput, TicketClassesPage] {
+	return operations.client.ListTicketClasses()
+}
+func (operations clientOperations) UpdateTicketClass() sdkgo.Mutation[UpdateTicketClassInput, TicketClassMetadata] {
+	return operations.client.UpdateTicketClass()
+}
+func (operations clientOperations) CreateTicketClass() sdkgo.Mutation[CreateTicketClassInput, TicketClassMetadata] {
+	return operations.client.CreateTicketClass()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1466,5 +1482,313 @@ func NewListOrdersByOrganizationStep[IN any](config ListOrdersByOrganizationStep
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTicketClassBranchFound sdkgo.BranchID = "found"
+const GetTicketClassBranchNotFound sdkgo.BranchID = "notFound"
+const GetTicketClassBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTicketClassBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTicketClassBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTicketClassDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTicketClass"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTicketClassBranchFound, Description: "Eventbrite returned the ticket class."},
+		{ID: GetTicketClassBranchNotFound, Description: "The ticket class does not exist or is inaccessible.", Optional: true},
+		{ID: GetTicketClassBranchProviderRejected, Description: "Eventbrite conclusively rejected the request.", Optional: true},
+		{ID: GetTicketClassBranchInvalidResponse, Description: "Eventbrite returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTicketClassBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTicketClassResult = sdkgo.QueryResult[TicketClassMetadata]
+
+type GetTicketClassStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=eventbrite"`
+	operationID                    struct{}                                               `connector:"operationId=getTicketClass"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTicketClassInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTicketClassResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTicketClassResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTicketClassResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTicketClassResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTicketClassResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TicketClassMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewGetTicketClassStep[IN any](config GetTicketClassStepConfig[IN]) sdkgo.QueryStep[IN, GetTicketClassInput, TicketClassMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("eventbrite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTicketClassInput, TicketClassMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTicketClass(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTicketClassResult] {
+			branches := make([]sdkgo.BranchTarget[GetTicketClassResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTicketClassBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTicketClassBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTicketClassBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTicketClassBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTicketClassBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTicketClassesBranchListed sdkgo.BranchID = "listed"
+const ListTicketClassesBranchNotFound sdkgo.BranchID = "notFound"
+const ListTicketClassesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTicketClassesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTicketClassesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTicketClassesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTicketClasses"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTicketClassesBranchListed, Description: "Eventbrite returned the requested page."},
+		{ID: ListTicketClassesBranchNotFound, Description: "The event does not exist or is inaccessible.", Optional: true},
+		{ID: ListTicketClassesBranchProviderRejected, Description: "Eventbrite conclusively rejected the request.", Optional: true},
+		{ID: ListTicketClassesBranchInvalidResponse, Description: "Eventbrite returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTicketClassesBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTicketClassesResult = sdkgo.QueryResult[TicketClassesPage]
+
+type ListTicketClassesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=eventbrite"`
+	operationID                    struct{}                                             `connector:"operationId=listTicketClasses"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTicketClassesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTicketClassesResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListTicketClassesResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListTicketClassesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTicketClassesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTicketClassesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TicketClassesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListTicketClassesStep[IN any](config ListTicketClassesStepConfig[IN]) sdkgo.QueryStep[IN, ListTicketClassesInput, TicketClassesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("eventbrite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTicketClassesInput, TicketClassesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTicketClasses(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTicketClassesResult] {
+			branches := make([]sdkgo.BranchTarget[ListTicketClassesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTicketClassesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListTicketClassesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTicketClassesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTicketClassesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTicketClassesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateTicketClassBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTicketClassBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTicketClassBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTicketClassBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTicketClassBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTicketClassDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTicketClass"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTicketClassBranchUpdated, Description: "The ticket class name is confirmed."},
+		{ID: UpdateTicketClassBranchNotFound, Description: "The ticket class does not exist or is inaccessible.", Optional: true},
+		{ID: UpdateTicketClassBranchProviderRejected, Description: "Eventbrite conclusively rejected the update.", Optional: true},
+		{ID: UpdateTicketClassBranchInvalidResponse, Description: "Eventbrite returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateTicketClassBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTicketClassResult = sdkgo.MutationResult[TicketClassMetadata]
+
+type UpdateTicketClassStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=eventbrite"`
+	operationID                       struct{}                                                  `connector:"operationId=updateTicketClass"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTicketClassInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTicketClassResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTicketClassResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTicketClassResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTicketClassResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTicketClassResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TicketClassMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTicketClassStep[IN any](config UpdateTicketClassStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTicketClassInput, TicketClassMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("eventbrite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTicketClassInput, TicketClassMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTicketClass(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTicketClassResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTicketClassResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTicketClassBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTicketClassBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTicketClassBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTicketClassBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTicketClassBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTicketClassBranchCreated sdkgo.BranchID = "created"
+const CreateTicketClassBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTicketClassBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateTicketClassBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTicketClassDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTicketClass"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTicketClassBranchCreated, Description: "Eventbrite confirmed the ticket class identity."},
+		{ID: CreateTicketClassBranchProviderRejected, Description: "Eventbrite conclusively rejected the creation.", Optional: true},
+		{ID: CreateTicketClassBranchUncertain, Description: "Eventbrite may have created a ticket class but its identity is unknown.", Optional: true},
+		{ID: CreateTicketClassBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateTicketClassResult = sdkgo.MutationResult[TicketClassMetadata]
+
+type CreateTicketClassStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=eventbrite"`
+	operationID                       struct{}                                                  `connector:"operationId=createTicketClass"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTicketClassInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTicketClassResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTicketClassResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateTicketClassResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateTicketClassResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TicketClassMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateTicketClassStep[IN any](config CreateTicketClassStepConfig[IN]) sdkgo.MutationStep[IN, CreateTicketClassInput, TicketClassMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("eventbrite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTicketClassInput, TicketClassMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTicketClass(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTicketClassResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTicketClassResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTicketClassBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTicketClassBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateTicketClassBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTicketClassBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
