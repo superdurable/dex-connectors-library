@@ -35,7 +35,7 @@ func TestAddNoteAddsAPrivateNoteByDefault(t *testing.T) {
 	require.Equal(t, freshdesk.ConversationSourceNote, conversation.Source)
 	require.Equal(t, "Refund issued on Jan 13 <REF-771>.", conversation.Body)
 	require.Equal(t, "5", result.Receipt.ProviderObjectID)
-	require.NotEmpty(t, ctx.recordedHeartbeat)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"providerId":"5"`)
 }
 
 func TestAddNoteSendsAPublicReplyThroughTheReplyEndpoint(t *testing.T) {
@@ -62,12 +62,17 @@ func TestAddNoteBranches(t *testing.T) {
 		name   string
 		status int
 		body   string
-		branch sdkgo.BranchID
+		// branch is empty for a Retry that keeps the claim, so the next attempt resends below the cap.
+		branch    sdkgo.BranchID
+		heartbeat string
 	}{
-		{name: "missing ticket", status: http.StatusNotFound, branch: freshdesk.AddNoteBranchNotFound},
-		{name: "rejected", status: http.StatusBadRequest, body: `{"errors":[{"field":"body","code":"missing_field"}]}`, branch: freshdesk.AddNoteBranchProviderRejected},
-		{name: "bad gateway", status: http.StatusBadGateway, branch: freshdesk.AddNoteBranchUncertain},
-		{name: "another ticket", status: http.StatusCreated, body: `{"id":4,"ticket_id":999,"created_at":"2026-01-27T10:00:00Z"}`, branch: freshdesk.AddNoteBranchUncertain},
+		{name: "missing ticket", status: http.StatusNotFound, branch: freshdesk.AddNoteBranchNotFound, heartbeat: `"state":"canResend"`},
+		{name: "rejected", status: http.StatusBadRequest, body: `{"errors":[{"field":"body","code":"missing_field"}]}`, branch: freshdesk.AddNoteBranchProviderRejected, heartbeat: `"state":"canResend"`},
+		{name: "forbidden", status: http.StatusForbidden, branch: freshdesk.AddNoteBranchProviderRejected, heartbeat: `"state":"canResend"`},
+		{name: "bad gateway", status: http.StatusBadGateway, heartbeat: `"state":"claimed"`},
+		{name: "conflict", status: http.StatusConflict, heartbeat: `"state":"claimed"`},
+		{name: "answer without a conversation ID", status: http.StatusCreated, body: `{"ticket_id":3}`, heartbeat: `"state":"claimed"`},
+		{name: "another ticket", status: http.StatusCreated, body: `{"id":4,"ticket_id":999,"created_at":"2026-01-27T10:00:00Z"}`, branch: freshdesk.AddNoteBranchUncertain, heartbeat: `"providerId":"4"`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -75,17 +80,60 @@ func TestAddNoteBranches(t *testing.T) {
 			})
 			ctx := newFreshdeskDexContext("note-" + test.name)
 			result, err := sdkgo.RunMutation(ctx, newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, freshdesk.AddNoteInput{TicketID: 3, Body: "Hello"})
+			require.Equal(t, 1, provider.requestCount())
+			require.Contains(t, string(ctx.recordedHeartbeat), test.heartbeat)
+			if test.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "an unknown outcome below the send cap is resent by the next attempt")
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
-			require.Equal(t, 1, provider.requestCount())
 			if test.branch == freshdesk.AddNoteBranchUncertain {
 				replayed, replayErr := sdkgo.RunMutation(ctx.nextAttempt(), newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, freshdesk.AddNoteInput{TicketID: 3, Body: "Hello"})
 				require.NoError(t, replayErr)
 				require.Equal(t, freshdesk.AddNoteBranchUncertain, replayed.Branch)
-				require.Equal(t, 1, provider.requestCount(), "an accepted or possibly accepted note is never resent")
+				require.Equal(t, 1, provider.requestCount(), "a note whose ID Freshdesk returned is never resent")
 			}
 		})
 	}
+}
+
+func TestAddNoteResendsBelowTheCapAndSelectsUncertainAtTheCap(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
+	client := newFreshdeskClient(t, provider.URL)
+	input := freshdesk.AddNoteInput{TicketID: 141, Body: "We are working on this issue.", IsPublicReply: true}
+	attempt := newFreshdeskDexContext("reply-cap")
+	for sendCount := 1; sendCount < 3; sendCount++ {
+		_, err := sdkgo.RunMutation(attempt, client.AddNote(), freshdeskConnection, input)
+		require.Error(t, err, "send %d leaves room under the cap of 3", sendCount)
+		attempt = attempt.nextAttempt()
+	}
+	result, err := sdkgo.RunMutation(attempt, client.AddNote(), freshdeskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.AddNoteBranchUncertain, result.Branch, "the third send reaches the cap")
+	result, err = sdkgo.RunMutation(attempt.nextAttempt(), client.AddNote(), freshdeskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.AddNoteBranchUncertain, result.Branch)
+	require.Equal(t, 3, provider.requestCount(), "the fence refuses a fourth send")
+}
+
+func TestAddNoteRefusalAfterAnUnknownOutcomeSelectsUncertain(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusInternalServerError, `{"code":"internal_error"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusNotFound, `{}`)
+	})
+	input := freshdesk.AddNoteInput{TicketID: 3, Body: "Hello"}
+	first := newFreshdeskDexContext("note-refusal-after-unknown")
+	_, err := sdkgo.RunMutation(first, newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, input)
+	require.Error(t, err)
+	result, err := sdkgo.RunMutation(first.nextAttempt(), newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.AddNoteBranchUncertain, result.Branch, "the first send may have added the note")
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestAddNoteRejectsInvalidInputBeforeAnyRequest(t *testing.T) {
@@ -116,11 +164,10 @@ func TestAddNoteRetriesServiceUnavailableWithoutDuplicateReply(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, freshdesk.AddNoteBranchAdded, result.Branch)
 	require.Equal(t, 2, provider.requestCount())
-	third := second.nextAttempt()
-	third.previousHeartbeat = first.recordedHeartbeat
-	result, err = sdkgo.RunMutation(third, newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, input)
+	require.Contains(t, string(second.recordedHeartbeat), `"providerId":"7"`)
+	result, err = sdkgo.RunMutation(second.nextAttempt(), newFreshdeskClient(t, provider.URL).AddNote(), freshdeskConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, freshdesk.AddNoteBranchUncertain, result.Branch)
+	require.Equal(t, freshdesk.AddNoteBranchUncertain, result.Branch, "the saved reply ID is never resent")
 	require.Equal(t, 2, provider.requestCount())
 }
 

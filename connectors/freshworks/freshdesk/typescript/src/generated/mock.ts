@@ -196,7 +196,7 @@ export function updateTicketUpdateRejected(): Case<UpdateTicketOutput> {
 /** Manifest scenario invalidUpdatedTicket for updateTicket. */
 export function updateTicketInvalidUpdatedTicket(): Case<UpdateTicketOutput> {
   const value = emptyUpdateTicketOutput;
-  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "updateTicket", message: "Freshdesk returned an invalid updated ticket." });
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "updateTicket", message: "Freshdesk returned an invalid ticket." });
 }
 
 /** Script the added branch. */

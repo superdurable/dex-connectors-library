@@ -179,8 +179,12 @@ class Client:
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
         write_budget: float | None = None,
+        deadline: datetime | None = None,
     ) -> Exchange:
-        """Send one request and classify its observed provider result."""
+        """Send one request and classify its observed provider result.
+
+        `deadline` replaces the Step deadline, such as a fence's write deadline.
+        """
         try:
             url = self._endpoint + path
             if query:
@@ -197,7 +201,8 @@ class Client:
                 "defect",
                 self.failure(operation, FailureKind.LOCAL_DEFECT, "Freshdesk request could not be built"),
             )
-        deadline = getattr(call.context, "deadline", None)
+        if deadline is None:
+            deadline = getattr(call.context, "deadline", None)
         remaining = (deadline - datetime.now(UTC)).total_seconds() if deadline is not None else None
         minimum_request_time = write_budget if write_budget is not None else 2.0
         if remaining is not None and remaining <= 1 + minimum_request_time:

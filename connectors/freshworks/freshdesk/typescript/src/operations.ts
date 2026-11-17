@@ -1,8 +1,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { newFence } from '@superdurable/connectors-sdk/singledispatch';
 import type { AddNoteInput, AddNoteOutput, CreateTicketInput, CreateTicketOutput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, Ticket, TicketConversation, TicketDetails, UpdateTicketInput, UpdateTicketOutput } from './generated/models.js';
 import { AddNoteDefinition, CreateTicketDefinition, GetTicketDefinition, SearchTicketsDefinition, UpdateTicketDefinition } from './generated/definitions.js';
 import type { Exchange, FreshdeskClient } from './client.js';
@@ -181,40 +182,112 @@ function buildFilter(input: SearchTicketsInput): string {
   return query;
 }
 
-type SingleDispatchMarker = { freshdeskDispatchedCallId: string; freshdeskDispatchedAttempt?: number; freshdeskRetryAttempt?: number };
-async function inspectDispatch(call: Call): Promise<'allowed' | 'uncertain'> {
-  try {
-    if (!call.context.hasLastHeartbeatValue()) return call.context.attempt === 1 ? 'allowed' : 'uncertain';
-    const marker = call.context.getLastHeartbeatValue() as SingleDispatchMarker;
-    return marker?.freshdeskDispatchedCallId === call.id && marker.freshdeskRetryAttempt === call.context.attempt ? 'allowed' : 'uncertain';
-  } catch { return 'uncertain'; }
-}
-async function recordDispatch(call: Call): Promise<boolean> {
-  try { await call.context.recordHeartbeat({ freshdeskDispatchedCallId: call.id, freshdeskDispatchedAttempt: call.context.attempt }); return true; }
-  catch { await permitRetry(call); return false; }
-}
-async function permitRetry(call: Call): Promise<void> {
-  try { await call.context.recordHeartbeat({ freshdeskDispatchedCallId: call.id, freshdeskRetryAttempt: call.context.attempt + 1 }); }
-  catch { /* A missing permit fails closed on the next attempt. */ }
-}
-async function singleDispatchExchange<T>(client: FreshdeskClient, call: Call, exchange: Exchange, zero: T, notFoundBranch = 'providerRejected'): Promise<MutationAttempt<T> | undefined> {
-  if (exchange.outcome === 'succeeded') return undefined;
-  if (['rateLimited', 'notSent', 'serviceUnavailable'].includes(exchange.outcome)) { await permitRetry(call); return newMutationRetry(exchange.failure, exchange.retryAfterMs); }
-  if (exchange.outcome === 'unavailable' || exchange.outcome === 'invalid') return newMutationUncertain(zero, exchange.failure, client.receipt(call, exchange.response));
-  const branch = exchange.outcome === 'notFound' ? notFoundBranch : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
-  return newMutationBranch(branch, zero, client.receipt(call, exchange.response), exchange.failure);
-}
-async function beforeSingleDispatch<T>(client: FreshdeskClient, call: Call, operation: string, zero: T): Promise<MutationAttempt<T> | undefined> {
-  if (await inspectDispatch(call) === 'uncertain') return newMutationUncertain(zero, client.failure(operation, 'TRANSPORT', 'an earlier attempt of this Step may have sent the request, so it is not sent again'), client.receipt(call));
-  return undefined;
+// Only these statuses prove Freshdesk applied nothing; any other non-2xx answer may have been applied.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** A fence that allows this attempt to send, with its send-cap facts. */
+interface WritePermit { fence: ReturnType<typeof newFence>; isFirstSend: boolean; canResendUnknownOutcome: boolean }
+
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
 }
 
-/** Create one ticket with a checkpoint before the unkeyed POST. */
+/** Decide whether this attempt may send; Freshdesk has no read-back by Call ID, so an earlier possible send is resent while the cap allows. */
+function beginWrite<T>(client: FreshdeskClient, call: Call, definition: MutationDefinition, zero: T): WritePermit | MutationAttempt<T> {
+  const operation = definition.operation.operationId;
+  const operationMaxSends = definitionMaxSends(definition);
+  let fence: ReturnType<typeof newFence>;
+  try { fence = newFence(call, definition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends }); }
+  catch { return newMutationBranch('defect', zero, {}, client.failure(operation, 'LOCAL_DEFECT', 'single-dispatch fence could not start')); }
+  const decision = fence.decide();
+  // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+  if (decision.kind === 'failClosed') return newMutationRetry(client.failure(operation, 'AVAILABILITY', 'the single-dispatch checkpoint could not be read; nothing was sent in this attempt'));
+  if (decision.kind === 'readBackRequired') return newMutationUncertain(zero, client.failure(operation, 'TRANSPORT', 'earlier attempts may have sent the request and the send cap is reached, so it is not sent again'), client.receipt(call, undefined, markerProviderID(decision.marker?.providerId)));
+  // A saved provider ID proves Freshdesk accepted the write, so it is never resent.
+  if (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId) return newMutationUncertain(zero, client.failure(operation, 'TRANSPORT', "Freshdesk accepted an earlier attempt's write, and its answer was lost"), client.receipt(call, undefined, markerProviderID(decision.marker.providerId)));
+  const priorSends = decision.priorSendUpperBound ?? 0;
+  return { fence, isFirstSend: priorSends === 0, canResendUnknownOutcome: priorSends + 1 < effectiveMaxSends(call, operationMaxSends) };
+}
+
+/** Map a credential failure before any send in this attempt. */
+async function credentialAttempt<T>(client: FreshdeskClient, permit: WritePermit, failure: Failure, transient: boolean, zero: T): Promise<MutationAttempt<T>> {
+  // notSent would hide the earlier possible send, so nothing is recorded.
+  if (!permit.isFirstSend) return transient ? newMutationRetry(failure) : newMutationUncertain(zero, failure, {});
+  try { await permit.fence.recordNotSent(); } catch { return newMutationRetry(client.failure(failure.operation, 'AVAILABILITY', 'Dex did not record the not-sent checkpoint')); }
+  return transient ? newMutationRetry(failure) : newMutationBranch('defect', zero, {}, failure);
+}
+
+/** Dispatch one POST under the fence; a refused dispatch returns its Retry attempt. */
+async function sendWrite<T>(client: FreshdeskClient, call: Call, permit: WritePermit, operation: string, key: string, path: string, payload: unknown): Promise<Exchange | MutationAttempt<T>> {
+  try { return await permit.fence.dispatch(signal => client.exchange(call, operation, key, 'POST', path, undefined, payload, signal)); }
+  // Dispatch refused before sending, so nothing reached Freshdesk in this attempt.
+  catch { return newMutationRetry(client.failure(operation, 'AVAILABILITY', 'Freshdesk write was not dispatched')); }
+}
+
+/** Map a sent write; only a definite refusal selects a refusal branch, and any other outcome resends while the cap allows. */
+async function writeExchangeAttempt<T>(client: FreshdeskClient, call: Call, permit: WritePermit, exchange: Exchange, zero: T, notFoundBranch = 'providerRejected'): Promise<MutationAttempt<T> | undefined> {
+  if (exchange.outcome === 'succeeded') return undefined;
+  if (exchange.outcome === 'rateLimited' || exchange.outcome === 'notSent' || exchange.outcome === 'serviceUnavailable') {
+    // A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
+    try { await permit.fence.recordCanResend(); } catch { /* counted as a possible send */ }
+    return newMutationRetry(exchange.failure, exchange.retryAfterMs);
+  }
+  const receipt = client.receipt(call, exchange.response);
+  if (exchange.outcome === 'notFound') return rejectWrite(client, permit, exchange.failure, receipt, notFoundBranch, zero);
+  // defect would hide an earlier possible send, so only a first send selects it.
+  if (exchange.outcome === 'defect' && permit.isFirstSend) return rejectWrite(client, permit, exchange.failure, {}, 'defect', zero);
+  if (exchange.outcome === 'rejected' && definiteRefusalStatuses.has(exchange.response?.status ?? 0)) return rejectWrite(client, permit, exchange.failure, receipt, 'providerRejected', zero);
+  return resendOrUncertain(permit, zero, exchange.failure, exchange.retryAfterMs, receipt);
+}
+
+/** Select a refusal branch only when no earlier send of this call may have applied. */
+async function rejectWrite<T>(client: FreshdeskClient, permit: WritePermit, failure: Failure, receipt: ReceiptDraft, branch: string, zero: T): Promise<MutationAttempt<T>> {
+  if (!permit.isFirstSend) return newMutationUncertain(zero, failure, receipt);
+  try { await permit.fence.recordCanResend(); } catch { return newMutationRetry(client.failure(failure.operation, 'AVAILABILITY', 'Dex did not record the refusal checkpoint')); }
+  return newMutationBranch(branch, zero, receipt, failure);
+}
+
+/** Retry an unknown outcome while the send cap allows another send, else select uncertain. */
+function resendOrUncertain<T>(permit: WritePermit, zero: T, failure: Failure, retryAfterMs: number, receipt: ReceiptDraft): MutationAttempt<T> {
+  // The claim stays the last marker, so the next attempt counts this send.
+  return permit.canResendUnknownOutcome ? newMutationRetry(failure, retryAfterMs) : newMutationUncertain(zero, failure, receipt);
+}
+
+/** Handle a 2xx body that failed to decode; only an answer without a provider ID is resent. */
+async function acceptedWriteAttempt<T>(client: FreshdeskClient, call: Call, permit: WritePermit, response: ProviderResponse, zero: T, failure: Failure): Promise<MutationAttempt<T>> {
+  const providerID = acceptedProviderID(response.body);
+  if (!providerID) return resendOrUncertain(permit, zero, failure, 0, client.receipt(call, response));
+  await recordAcceptedWrite(permit, providerID);
+  return newMutationUncertain(zero, failure, client.receipt(call, response, providerID));
+}
+
+/** Return the positive top-level integer id of a 2xx body, or 0 when it has none. */
+function acceptedProviderID(body: Uint8Array): number {
+  try {
+    const document = parse(body);
+    if (!document || typeof document !== 'object' || Array.isArray(document)) return 0;
+    const providerID = (document as Record<string, unknown>).id;
+    return typeof providerID === 'number' && Number.isSafeInteger(providerID) && providerID > 0 ? providerID : 0;
+  } catch { return 0; }
+}
+
+async function recordAcceptedWrite(permit: WritePermit, providerID: number): Promise<void> {
+  try { await permit.fence.recordProviderId(String(providerID)); } catch { /* The accepted response already proves success. */ }
+}
+
+/** Return a checkpointed Freshdesk ID for the Receipt, or 0 when none is valid. */
+function markerProviderID(providerID: string | undefined): number {
+  const parsed = /^[0-9]+$/.test(providerID ?? '') ? Number(providerID) : 0;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
+}
+
+/** Create one ticket under the single-dispatch fence and its send cap. */
 export class CreateTicketOperation implements Mutation<CreateTicketInput, CreateTicketOutput> {
   /** Bind the API client. */ constructor(private readonly client: FreshdeskClient) {}
   /** Return stable manifest metadata. */ definition() { return CreateTicketDefinition; }
   /** Correlate the mutation by Call ID; Freshdesk does not receive this key. */ idempotencyKey(callID: string): string { return callID; }
-  /** Validate, checkpoint, and send at most once per safe attempt. */
+  /** Validate and send the ticket, resending an unknown outcome while the send cap allows. */
   async invoke(call: Call, input: CreateTicketInput): Promise<MutationAttempt<CreateTicketOutput>> {
     const operation = 'createTicket'; const zero: CreateTicketOutput = { ticket: zeroTicket };
     try {
@@ -224,17 +297,20 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
       if (input.type && (input.type !== input.type.trim() || Buffer.byteLength(input.type) > 255)) throw new TypeError('ticket type is invalid');
       validateTags(input.tags ?? []); if (!nonnegative(input.groupId ?? 0) || !nonnegative(input.responderId ?? 0)) throw new TypeError('assignment ID is invalid');
     } catch { return mutationFailure(this.client, call, operation, 'defect', zero, 'VALIDATION', 'Freshdesk create input is invalid'); }
-    const prior = await beforeSingleDispatch(this.client, call, operation, zero); if (prior) return prior;
+    const permit = beginWrite(this.client, call, CreateTicketDefinition, zero); if (!('fence' in permit)) return permit;
     const resolved = await credential(this.client, call, operation);
-    if ('failure' in resolved) { if (resolved.transient || call.context.attempt > 1) { await permitRetry(call); return newMutationRetry(resolved.failure); } return newMutationBranch('defect', zero, {}, resolved.failure); }
-    if (!(await recordDispatch(call))) return newMutationRetry(this.client.failure(operation, 'AVAILABILITY', 'Dex did not record the dispatch checkpoint; nothing was sent'));
+    if ('failure' in resolved) return credentialAttempt(this.client, permit, resolved.failure, resolved.transient, zero);
     const request = { subject: input.subject, description: encodeHTML(input.description), email: input.requester.email,
       ...(input.requester.name ? { name: input.requester.name } : {}), ...(input.status ? { status: input.status } : {}), ...(input.priority ? { priority: input.priority } : {}),
       ...(input.type ? { type: input.type } : {}), ...(input.tags?.length ? { tags: input.tags } : {}), ...(input.groupId ? { group_id: input.groupId } : {}), ...(input.responderId ? { responder_id: input.responderId } : {}) };
-    const exchange = await this.client.exchange(call, operation, resolved.key, 'POST', '/tickets', undefined, request);
-    const terminal = await singleDispatchExchange(this.client, call, exchange, zero); if (terminal) return terminal;
-    try { const created = ticket(parse((exchange as { response: ProviderResponse }).response.body)); return newMutationBranch('created', { ticket: created }, this.client.receipt(call, exchange.response, created.id)); }
-    catch { return newMutationUncertain(zero, this.client.failure(operation, 'PROTOCOL', 'Freshdesk accepted the ticket but returned an invalid ticket'), this.client.receipt(call, exchange.response)); }
+    const exchange = await sendWrite<CreateTicketOutput>(this.client, call, permit, operation, resolved.key, '/tickets', request); if (!('outcome' in exchange)) return exchange;
+    const terminal = await writeExchangeAttempt(this.client, call, permit, exchange, zero); if (terminal) return terminal;
+    const response = (exchange as { response: ProviderResponse }).response;
+    let created: Ticket;
+    try { created = ticket(parse(response.body)); }
+    catch { return acceptedWriteAttempt(this.client, call, permit, response, zero, this.client.failure(operation, 'PROTOCOL', 'Freshdesk accepted the ticket but returned an invalid ticket')); }
+    await recordAcceptedWrite(permit, created.id);
+    return newMutationBranch('created', { ticket: created }, this.client.receipt(call, response, created.id));
   }
 }
 
@@ -272,37 +348,41 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     if (JSON.stringify(tags) !== JSON.stringify(current.tags ?? [])) change.tags = tags;
     if (!Object.keys(change).length) return newMutationBranch('updated', { ticket: current, wasAlreadyApplied: true }, this.client.receipt(call, read.response, input.ticketId));
     const write = await this.client.exchange(call, operation, resolved.key, 'PUT', path, undefined, change);
+    // The PUT sets final values, so an unknown outcome repeats it.
+    if (write.outcome !== 'succeeded' && write.outcome !== 'notFound' && write.outcome !== 'defect' && !(write.outcome === 'rejected' && definiteRefusalStatuses.has(write.response?.status ?? 0))) return newMutationRetry(write.failure, write.retryAfterMs);
     const writeTerminal = updateExchange(this.client, call, write, { ticket: current }, input.ticketId); if (writeTerminal) return writeTerminal;
     try { return newMutationBranch('updated', { ticket: ticket(parse((write as { response: ProviderResponse }).response.body), input.ticketId) }, this.client.receipt(call, write.response, input.ticketId)); }
-    catch { return mutationFailure(this.client, call, operation, 'invalidResponse', { ticket: current }, 'PROTOCOL', 'Freshdesk returned an invalid updated ticket', write.response, input.ticketId); }
+    catch { return newMutationRetry(this.client.failure(operation, 'PROTOCOL', 'Freshdesk accepted the change but returned an invalid updated ticket')); }
   }
 }
 
-/** Add one private note or public reply with a checkpoint before POST. */
+/** Add one private note or public reply under the single-dispatch fence and its send cap. */
 export class AddNoteOperation implements Mutation<AddNoteInput, AddNoteOutput> {
   /** Bind the API client. */ constructor(private readonly client: FreshdeskClient) {}
   /** Return stable manifest metadata. */ definition() { return AddNoteDefinition; }
   /** Correlate the mutation by Call ID; Freshdesk does not receive this key. */ idempotencyKey(callID: string): string { return callID; }
-  /** Validate, checkpoint, and send one note or reply. */
+  /** Validate and send one note or reply, resending an unknown outcome while the send cap allows. */
   async invoke(call: Call, input: AddNoteInput): Promise<MutationAttempt<AddNoteOutput>> {
     const operation = 'addNote'; const zero: AddNoteOutput = { conversation: zeroConversation };
     if (!positive(input.ticketId) || !input.body?.trim()) return mutationFailure(this.client, call, operation, 'defect', zero, 'VALIDATION', 'Freshdesk note input is invalid');
-    const prior = await beforeSingleDispatch(this.client, call, operation, zero); if (prior) return prior;
+    const permit = beginWrite(this.client, call, AddNoteDefinition, zero); if (!('fence' in permit)) return permit;
     const resolved = await credential(this.client, call, operation);
-    if ('failure' in resolved) { if (resolved.transient || call.context.attempt > 1) { await permitRetry(call); return newMutationRetry(resolved.failure); } return newMutationBranch('defect', zero, {}, resolved.failure); }
-    if (!(await recordDispatch(call))) return newMutationRetry(this.client.failure(operation, 'AVAILABILITY', 'Dex did not record the dispatch checkpoint; nothing was sent'));
+    if ('failure' in resolved) return credentialAttempt(this.client, permit, resolved.failure, resolved.transient, zero);
     const path = `/tickets/${input.ticketId}/${input.isPublicReply ? 'reply' : 'notes'}`;
     const payload = input.isPublicReply ? { body: encodeHTML(input.body) } : { body: encodeHTML(input.body), private: true };
-    const exchange = await this.client.exchange(call, operation, resolved.key, 'POST', path, undefined, payload);
-    const terminal = await singleDispatchExchange(this.client, call, exchange, zero, 'notFound'); if (terminal) return terminal;
+    const exchange = await sendWrite<AddNoteOutput>(this.client, call, permit, operation, resolved.key, path, payload); if (!('outcome' in exchange)) return exchange;
+    const terminal = await writeExchangeAttempt(this.client, call, permit, exchange, zero, 'notFound'); if (terminal) return terminal;
+    const response = (exchange as { response: ProviderResponse }).response;
+    let added: TicketConversation;
     try {
-      const wire = object(parse((exchange as { response: ProviderResponse }).response.body));
-      const added = conversation(wire);
+      const wire = object(parse(response.body));
+      added = conversation(wire);
       if (added.ticketId && added.ticketId !== input.ticketId) throw new TypeError('conversation belongs to another ticket');
       added.ticketId = input.ticketId;
       added.source = input.isPublicReply ? 0 : 2;
       added.isPrivate = input.isPublicReply ? false : wire.private !== false;
-      return newMutationBranch('added', { conversation: added }, this.client.receipt(call, exchange.response, added.id));
-    } catch { return newMutationUncertain(zero, this.client.failure(operation, 'PROTOCOL', 'Freshdesk accepted the note but returned an invalid conversation'), this.client.receipt(call, exchange.response)); }
+    } catch { return acceptedWriteAttempt(this.client, call, permit, response, zero, this.client.failure(operation, 'PROTOCOL', 'Freshdesk accepted the note but returned an invalid conversation')); }
+    await recordAcceptedWrite(permit, added.id);
+    return newMutationBranch('added', { conversation: added }, this.client.receipt(call, response, added.id));
   }
 }
