@@ -41,11 +41,15 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	PublishMessage() sdkgo.Mutation[PublishMessageInput, PublishedMessage]
 	GetQueueMetrics() sdkgo.Query[GetQueueMetricsInput, QueueMetrics]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) PublishMessage() sdkgo.Mutation[PublishMessageInput, PublishedMessage] {
+	return operations.client.PublishMessage()
+}
 func (operations clientOperations) GetQueueMetrics() sdkgo.Query[GetQueueMetricsInput, QueueMetrics] {
 	return operations.client.GetQueueMetrics()
 }
@@ -189,6 +193,88 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential password is required")
 	}
 	return nil
+}
+
+const PublishMessageBranchPublished sdkgo.BranchID = "published"
+const PublishMessageBranchUnroutable sdkgo.BranchID = "unroutable"
+const PublishMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PublishMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const PublishMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PublishMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "publishMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PublishMessageBranchPublished, Description: "RabbitMQ routed the message to at least one queue."},
+		{ID: PublishMessageBranchUnroutable, Description: "RabbitMQ accepted the message but routed it to no queue.", Optional: true},
+		{ID: PublishMessageBranchProviderRejected, Description: "RabbitMQ conclusively rejected the publish request.", Optional: true},
+		{ID: PublishMessageBranchUncertain, Description: "The publish outcome could not be confirmed within the send limit.", Optional: true},
+		{ID: PublishMessageBranchDefect, Description: "The publish input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type PublishMessageResult = sdkgo.MutationResult[PublishedMessage]
+
+type PublishMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=rabbitmq"`
+	operationID                       struct{}                                               `connector:"operationId=publishMessage"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) PublishMessageInput                           `connector:"mapToOperationInput"`
+	Published                         sdkgo.Target[PublishMessageResult]                     `connector:"branch=published"`
+	Unroutable                        sdkgo.Target[PublishMessageResult]                     `connector:"branch=unroutable,optional"`
+	ProviderRejected                  sdkgo.Target[PublishMessageResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[PublishMessageResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[PublishMessageResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PublishedMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewPublishMessageStep[IN any](config PublishMessageStepConfig[IN]) sdkgo.MutationStep[IN, PublishMessageInput, PublishedMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("rabbitmq connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PublishMessageInput, PublishedMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PublishMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PublishMessageResult] {
+			branches := make([]sdkgo.BranchTarget[PublishMessageResult], 0, 5)
+			if config.Published.HasStep() {
+				branches = append(branches, config.Published.BranchTarget(PublishMessageBranchPublished))
+			}
+			if config.Unroutable.HasStep() {
+				branches = append(branches, config.Unroutable.BranchTarget(PublishMessageBranchUnroutable))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PublishMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(PublishMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PublishMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const GetQueueMetricsBranchFound sdkgo.BranchID = "found"

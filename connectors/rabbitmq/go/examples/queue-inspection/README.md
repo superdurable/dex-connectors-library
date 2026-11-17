@@ -1,6 +1,6 @@
 # RabbitMQ queue inspection Flow
 
-This runnable Flow calls `getQueueMetrics` through the static `rabbitmq` connection, persists the safe counts in an Attribute, and exposes them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Worker registers `RabbitMQQueueInspection` and `RabbitMQPublishMessage` through the static `rabbitmq` connection. The inspection Flow persists safe counts; the publish Flow persists only the routing boolean. Both expose read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -23,5 +23,7 @@ GOWORK=off go run ./examples/queue-inspection
 ```
 
 Start `RabbitMQQueueInspection` with a unique Flow ID and input `{"virtualHost":"/","name":"work"}`. Replace the sample with the exact virtual host and queue name from the Management UI. The Worker connects to Dex Server without an inbound listener.
+
+Start `RabbitMQPublishMessage` with a unique Flow ID and input `{"virtualHost":"/","exchange":"amq.direct","routingKey":"work","payload":"hello"}`. Select an exchange and routing key already configured in the Management UI. The `payload` is a message body, so do not put secrets in it.
 
 CI runs the fixture-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real RabbitMQ authorization and queue metrics remain unverified.

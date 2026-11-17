@@ -1,6 +1,6 @@
 {
   "connectorId": "rabbitmq",
-  "releaseTag": "connectors/rabbitmq/go/v0.1.0",
+  "releaseTag": "connectors/rabbitmq/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-rabbitmq",
