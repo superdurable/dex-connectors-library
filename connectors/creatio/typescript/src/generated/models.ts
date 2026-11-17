@@ -14,7 +14,7 @@ export interface Config {
   tokenEndpoint: string;
   /** Maximum duration of one Creatio request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete Creatio JSON response in bytes. Blank uses the displayed default; increase only for unusually large contact, account, or activity pages. */
+  /** Maximum complete Creatio JSON response in bytes. Blank uses the displayed default; increase only for unusually large contact, account, activity, or opportunity pages. */
   maxResponseBytes?: number;
 }
 

@@ -36,6 +36,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[creatio.AccountWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
 			return err
 		}},
+		{name: "getOpportunity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Opportunity"}`)
+			return err
+		}},
+		{name: "listOpportunities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunitiesPage](`{"opportunities":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Opportunity"}]}`)
+			return err
+		}},
+		{name: "createOpportunity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Opportunity"}`)
+			return err
+		}},
+		{name: "updateOpportunity/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "deleteOpportunity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
 		{name: "getActivity/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[creatio.ActivitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}`)
 			return err
@@ -100,6 +120,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteAccount().Definition().Operation.OperationID != "deleteAccount" {
 		t.Errorf("deleteAccount mock has another definition")
+	}
+	if mock.GetOpportunity().Definition().Operation.OperationID != "getOpportunity" {
+		t.Errorf("getOpportunity mock has another definition")
+	}
+	if mock.ListOpportunities().Definition().Operation.OperationID != "listOpportunities" {
+		t.Errorf("listOpportunities mock has another definition")
+	}
+	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
+		t.Errorf("createOpportunity mock has another definition")
+	}
+	if mock.UpdateOpportunity().Definition().Operation.OperationID != "updateOpportunity" {
+		t.Errorf("updateOpportunity mock has another definition")
+	}
+	if mock.DeleteOpportunity().Definition().Operation.OperationID != "deleteOpportunity" {
+		t.Errorf("deleteOpportunity mock has another definition")
 	}
 	if mock.GetActivity().Definition().Operation.OperationID != "getActivity" {
 		t.Errorf("getActivity mock has another definition")

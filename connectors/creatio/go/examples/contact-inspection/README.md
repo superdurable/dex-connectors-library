@@ -1,6 +1,6 @@
 # Creatio contact inspection Flow
 
-These runnable Flows call `getContact`, `listContacts`, `createContact`, `listAccounts`, `createAccount`, `listActivities`, and `createActivity` through the static `creatio` connection. They persist typed results in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+These runnable Flows call `getContact`, `listContacts`, `createContact`, `listAccounts`, `createAccount`, `listActivities`, `createActivity`, `listOpportunities`, and `createOpportunity` through the static `creatio` connection. They persist typed results in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -14,6 +14,8 @@ dexcli visualize ./examples/contact-inspection/flow/list_accounts.go --schema-ve
 dexcli visualize ./examples/contact-inspection/flow/create_account.go --schema-version 2.0 --lint app --json --out /tmp/creatio-account-creation-fdg
 dexcli visualize ./examples/contact-inspection/flow/list_activities.go --schema-version 2.0 --lint app --json --out /tmp/creatio-activities-search-fdg
 dexcli visualize ./examples/contact-inspection/flow/create_activity.go --schema-version 2.0 --lint app --json --out /tmp/creatio-activity-creation-fdg
+dexcli visualize ./examples/contact-inspection/flow/list_opportunities.go --schema-version 2.0 --lint app --json --out /tmp/creatio-opportunities-search-fdg
+dexcli visualize ./examples/contact-inspection/flow/create_opportunity.go --schema-version 2.0 --lint app --json --out /tmp/creatio-opportunity-creation-fdg
 ```
 
 Run with `--lint app --open=false` for strict FDG 2.0 validation.
@@ -39,5 +41,7 @@ Start `CreatioAccountSearch` with input `{"pageNumber":1,"pageSize":25}` and a u
 Start `CreatioAccountCreation` with input `{"name":"Example Company"}` and a unique Flow ID. Account names are not unique, so an ambiguous earlier send can select `uncertain`.
 
 Start `CreatioActivitySearch` with input `{"pageNumber":1,"pageSize":25}` and a unique Flow ID. Start `CreatioActivityCreation` with input `{"title":"Prepare proposal","start":"2026-11-17T09:00:00Z","due":"2026-11-17T09:30:00Z"}`. The times use RFC3339 and `due` must follow `start`. An ambiguous prior create can select `uncertain` because an activity title does not identify one unique write.
+
+Start `CreatioOpportunitySearch` with input `{"pageNumber":1,"pageSize":25}` and a unique Flow ID. Start `CreatioOpportunityCreation` with input `{"name":"Example Opportunity","contactId":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","accountId":"59f2ffca-b4ae-4545-82e6-58830db5077b","ownerId":"90a68db5-cb3a-4f64-bb60-c0a934ee7600"}`. Replace sample UUIDs with the buyer Contact, Account, and responsible owner Contact from your instance. An ambiguous prior create can select `uncertain`.
 
 CI runs the mock-backed real-Dex integration test. Real Creatio authorization and retrieval remain unverified.
