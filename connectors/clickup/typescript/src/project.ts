@@ -4,12 +4,12 @@
 import { SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
-import { ClickUpClient } from './client.js';
+import { ClickUpClient, type ClickUpClientOptions } from './client.js';
 import { newProjectConnection as newGeneratedProjectConnection } from './generated/connection.js';
 import type { Config, Credentials } from './generated/models.js';
 
 /** Open one named ClickUp connection declared in a Dex project. */
-export function newProjectConnection(project: LoadedProject, connectionName: string) {
+export function newProjectConnection(project: LoadedProject, connectionName: string, options: ClickUpClientOptions = {}) {
   return newGeneratedProjectConnection(project, connectionName, (loadedProject, name) => {
     const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'clickup' && entry.connectionName === name);
     if (!selected) throw new TypeError('ClickUp project connection is not configured');
@@ -22,6 +22,6 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
         return { apiToken: new SecretString(decoded.api_token), ...(decoded.webhook_secret ? { webhookSecret: new SecretString(decoded.webhook_secret) } : {}) };
       },
     };
-    return new ClickUpClient(config, credentials);
+    return new ClickUpClient(config, credentials, options);
   });
 }

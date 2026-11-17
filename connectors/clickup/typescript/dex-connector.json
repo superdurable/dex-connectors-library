@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-clickup",
-    "version": "0.1.2"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -619,6 +619,16 @@
           "workspaceId"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "defineTaskEventTriggerBinding",
+      "kind": "trigger",
+      "triggerName": "taskEvent",
+      "fields": {
+        "connectionName": "connectionName",
+        "bindingName": "bindingName",
+        "configurationUI": "configurationUI"
       }
     }
   ]

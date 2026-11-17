@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { SecretString, defaultTriggerLogger, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateTaskOperation, FindMemberByEmailOperation, GetTaskOperation, SearchTasksOperation, UpdateTaskOperation, UpdateTaskTagsOperation } from './operations.js';
 
@@ -19,6 +19,7 @@ export interface ClickUpClientOptions {
   now?: () => Date;
   /** Override only with a ClickUp compatible test endpoint. */
   apiBaseURL?: string;
+  /** Destination of secret-safe Trigger records. */ logger?: TriggerLogger;
 }
 /** Outcome of one ClickUp HTTP exchange. */
 export type Exchange =
@@ -29,7 +30,10 @@ export type Exchange =
 export class ClickUpClient {
   private readonly endpoint: string;
   private readonly maxResponseBytes: number;
-  private readonly credentials: CredentialProvider<Credentials>;
+  readonly credentials: CredentialProvider<Credentials>;
+  /** Largest accepted webhook body in bytes. */ readonly webhookMaxBodyBytes: number;
+  /** Destination of Trigger records. */ readonly triggerLogger: TriggerLogger;
+  /** Clock for webhook receipt times. */ readonly triggerNow: () => Date;
   private readonly send: ClickUpRequestSender;
   private readonly now: () => Date;
 
@@ -39,6 +43,10 @@ export class ClickUpClient {
     this.endpoint = validateBaseURL(options.apiBaseURL ?? apiBaseURL);
     this.maxResponseBytes = config.maxResponseBytes ?? defaultMaxResponseBytes;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('ClickUp maxResponseBytes must be positive');
+    this.webhookMaxBodyBytes = config.webhookMaxBodyBytes ?? 1_048_576;
+    if (!Number.isSafeInteger(this.webhookMaxBodyBytes) || this.webhookMaxBodyBytes <= 0) throw new TypeError('ClickUp webhookMaxBodyBytes must be positive');
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
+    this.triggerNow = options.now ?? (() => new Date());
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());

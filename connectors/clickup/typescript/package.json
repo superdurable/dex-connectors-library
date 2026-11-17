@@ -1,7 +1,7 @@
 {
   "name": "@superdurable/connector-clickup",
-  "version": "0.1.2",
-  "description": "ClickUp task operations for Dex Flows",
+  "version": "0.2.0",
+  "description": "ClickUp task operations and signed task webhook Triggers for Dex Flows",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
@@ -41,11 +41,12 @@
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
     "example:task": "npm run build && tsx examples/get-task/main.ts",
-    "example:task:start": "npm run build && tsx examples/get-task/start.ts"
+    "example:task:start": "npm run build && tsx examples/get-task/start.ts",
+    "example:event": "npm run build && tsx examples/task-event/main.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.1",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.11.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

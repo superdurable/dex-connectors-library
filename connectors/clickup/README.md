@@ -31,7 +31,7 @@ The [Python package](python/README.md) implements all seven task operations and 
 
 ## TypeScript package
 
-The [TypeScript package](typescript/README.md) implements all seven task operations at `@superdurable/connector-clickup` v0.1.0. Its [runnable get-task Flow](typescript/examples/get-task/) uses the static `clickup-workspace` connection and is exercised against a real Dex Worker and Client with a local ClickUp HTTP fixture. The signed `taskEvent` Trigger remains unavailable in TypeScript. The shared Go recordings cover 63 TypeScript provider scenarios; live ClickUp authorization and provider calls are unverified.
+The [TypeScript package](typescript/README.md) implements all seven task operations and the signed `taskEvent` Trigger at `@superdurable/connector-clickup` v0.2.0. Its [runnable get-task Flow](typescript/examples/get-task/) and [task-event Flow](typescript/examples/task-event/) use the static `clickup-workspace` connection. The shared Go recordings cover provider operations; real Dex Worker integration covers Trigger delivery and restart recovery. Live ClickUp authorization, provider calls, and webhooks remain unverified.
 
 ## Mocks
 

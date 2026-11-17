@@ -16,9 +16,9 @@ spec:
       operations: [searchTasks, getTask, createTask, updateTask, updateTaskTags, addComment, findMemberByEmail]
       triggers: [taskEvent]
     typescript:
-      version: v0.1.2
+      version: v0.2.0
       operations: [searchTasks, getTask, createTask, updateTask, updateTaskTags, addComment, findMemberByEmail]
-      triggers: []
+      triggers: [taskEvent]
   codegen:
     go:
       package: clickup
