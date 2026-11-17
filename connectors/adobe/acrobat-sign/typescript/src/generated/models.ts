@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret opaque Acrobat Sign integration key from Personal Preferences > Access Tokens after creating one at Acrobat Sign API > API Information > Integration Key with agreement_read scope. Paste the complete key; blank prevents calls. Dex sends it only as a Bearer credential. */
+  /** Secret opaque Acrobat Sign integration key from Personal Preferences > Access Tokens after creating one at Acrobat Sign API > API Information > Integration Key with agreement_read scope, plus agreement_write for updateAgreementVisibility, cancelAgreement, or createAgreementReminder. Paste the complete key; blank prevents calls. Dex sends it only as a Bearer credential. */
   integrationKey: SecretString;
 }
 

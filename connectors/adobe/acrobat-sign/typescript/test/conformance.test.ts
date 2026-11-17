@@ -8,7 +8,8 @@ import { AcrobatSignClient } from '../src/client.js';
 import { GetAgreementInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/adobe/acrobat-sign/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/adobe/acrobat-sign/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getAgreement');
 const connection = { provider: 'adobe-acrobat-sign', name: 'adobe-acrobat-sign' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAcrobatSign, '/api/rest/v6'));
 

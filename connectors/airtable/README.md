@@ -1,6 +1,6 @@
 # Airtable Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/airtable/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/airtable/go@v0.25.0`.
 
 The [TypeScript package](typescript/) is `@superdurable/connector-airtable`
 v0.2.0. It implements the four record operations and the `recordChanged`
@@ -20,7 +20,7 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/airtable`.
 
 The Airtable Connector reads and writes records in Airtable bases through the
 [Airtable Web API](https://airtable.com/developers/web/api/introduction). It
-exposes four operation-specific Dex Step factories:
+exposes six operation-specific Dex Step factories:
 
 | Factory | Kind | Airtable request | Happy branch |
 | --- | --- | --- | --- |
@@ -28,6 +28,8 @@ exposes four operation-specific Dex Step factories:
 | `airtable.NewGetRecordStep` | Query | `GET /v0/{baseId}/{tableIdOrName}/{recordId}` | `found` |
 | `airtable.NewUpsertRecordsStep` | Mutation | `PATCH /v0/{baseId}/{tableIdOrName}` with `performUpsert` | `upserted` |
 | `airtable.NewUpdateRecordsStep` | Mutation | `PATCH /v0/{baseId}/{tableIdOrName}` with record IDs | `updated` |
+| `airtable.NewCreateRecordStep` | Mutation | `POST /v0/{baseId}/{tableIdOrName}` | `created` |
+| `airtable.NewDeleteRecordStep` | Mutation | `DELETE /v0/{baseId}/{tableIdOrName}/{recordId}` | `deleted` |
 
 The Go module also ships the `recordChanged` poll Trigger, which starts a Flow
 for each record created or changed in one picked table; see
@@ -37,6 +39,7 @@ for each record created or changed in one picked table; see
 | --- | --- | --- | --- |
 | `listRecords`, `getRecord`, `upsertRecords`, `updateRecords` | yes | yes | yes |
 | `recordChanged` Trigger | yes | yes | yes |
+| `createRecord`, `deleteRecord` | yes | no | no |
 
 Airtable is a typed table store: fields have types, and linked record fields
 hold the IDs of records in another table of the same base. The connector keeps
@@ -160,9 +163,20 @@ when a Worker is lost mid-request and its retry reaches Airtable before the
 abandoned request finishes; the next upsert of that key then selects
 `providerRejected` for several matches instead of writing the wrong record.
 
-No plain `createRecords` operation ships: without an idempotency key or a
-merge key, a retried create cannot tell whether the first one landed. Give an
-append-only log a stable key field, such as a case or event ID, and upsert it.
+### createRecord
+
+`CreateRecordInput` appends one typed record. Airtable provides no idempotency
+key, so this operation uses the `limited` repeat tier with at most three
+possibly effective sends. A lost response can create duplicates. When Airtable
+returns an ID before a retry, the connector reads that ID back first; after
+the send cap, an unconfirmed write is uncertain. Use `upsertRecords` when a
+stable merge field exists and duplicate records are unacceptable.
+
+### deleteRecord
+
+`DeleteRecordInput` removes one record by ID. Repeated deletion converges on
+absence; a 404 selects `alreadyAbsent`. Airtable's response must confirm both
+the requested record ID and `deleted: true`.
 
 ### updateRecords
 
@@ -344,10 +358,16 @@ once at creation, and a refresh every seven days.
 ## Example
 
 [`examples/refund-decision`](go/examples/refund-decision) runs one Flow from Dex
-Web **Start Flow** that uses every operation: it reads the refund policy row
+Web **Start Flow** that uses list, read, upsert, and update: it reads the refund policy row
 whose key matches the request, decides the refund, upserts the case's decision
 log row with a link to the policy, stamps the policy with the case, and reads
 the log row back.
+
+The same Worker registers `AirtableRecordLifecycle`, which appends a temporary
+record to the picked policy table and deletes its returned ID in a separate
+Step. Its deterministic mock-backed real Dex test checks both calls. Start it
+with `RecordLifecycleInput` fields for the policy table; the Flow supplies the
+picked base and table IDs.
 
 The Worker loads the project configuration once with
 `projectconfig.LoadFromEnvironment` and opens the connection from it:

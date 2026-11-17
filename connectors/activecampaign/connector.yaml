@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: activecampaign
   displayName: ActiveCampaign
-  description: List and inspect contact metadata through the ActiveCampaign API.
+  description: List contacts and lists, and inspect, upsert, and update contacts through the ActiveCampaign API.
   company: ActiveCampaign
   categories: [marketing, crm-sales]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: activecampaign
   languages:
@@ -53,8 +53,991 @@ spec:
       steps:
         - Sign in to the ActiveCampaign account at https://www.activecampaign.com/login, click Settings (gear), then Developer.
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
-        - Ensure this API user can view the intended contacts. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Ensure this API user can view and edit the intended contacts and lists; list subscriptions need contact edit permission and resubscribing an unsubscribed contact needs resubscribe permission. Existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, deal operations need Deals and pipeline management permission, CRM account writes need account management permission, and ecommerce connection writes need integration management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: upsertEcommerceOrder
+      goName: UpsertEcommerceOrder
+      inputType: UpsertEcommerceOrderInput
+      outputType: EcommerceOrderUpsertMetadata
+      kind: mutation
+      description: Create or replace a store order through the ecommerce GraphQL API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: upserted, goName: Upserted, description: ActiveCampaign accepted the keyed order upsert.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the order., optional: true}
+        - {id: defect, goName: Defect, description: Local order input or credentials are invalid., optional: true}
+      mocks:
+        - name: upsertedDefault
+          branch: upserted
+          default: true
+          description: Sample keyed order upsert result.
+          output: {connectionId: '3', storeOrderId: store-order-1, email: 'person@example.com'}
+    - name: listEcommerceOrders
+      goName: ListEcommerceOrders
+      inputType: ListEcommerceOrdersInput
+      outputType: EcommerceOrdersPage
+      kind: query
+      description: List Deep Data ecommerce orders.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign returned the selected ecommerce data.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample ecommerce result.
+          output: {orders: [{id: '1', connectionId: '3', externalId: store-order-1, customerId: '15', email: 'person@example.com', currency: USD, totalMinor: 9111, state: 1}], total: 1}
+    - name: getEcommerceOrder
+      goName: GetEcommerceOrder
+      inputType: GetEcommerceOrderInput
+      outputType: EcommerceOrderMetadata
+      kind: query
+      description: Read one Deep Data ecommerce order.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign returned the selected ecommerce data.}
+        - {id: notFound, goName: NotFound, description: No matching order or product exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample ecommerce result.
+          output: {id: '1', connectionId: '3', externalId: store-order-1, customerId: '15', email: 'person@example.com', currency: USD, totalMinor: 9111, state: 1}
+    - name: listEcommerceOrderProducts
+      goName: ListEcommerceOrderProducts
+      inputType: ListEcommerceOrderProductsInput
+      outputType: EcommerceOrderProductsPage
+      kind: query
+      description: List Deep Data order products.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign returned the selected ecommerce data.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample ecommerce result.
+          output: {products: [{id: '7', orderId: '1', externalId: product-1, name: Skateboard, priceMinor: 5000, quantity: 1}], total: 1}
+    - name: getEcommerceOrderProduct
+      goName: GetEcommerceOrderProduct
+      inputType: GetEcommerceOrderProductInput
+      outputType: EcommerceOrderProductMetadata
+      kind: query
+      description: Read one Deep Data order product.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign returned the selected ecommerce data.}
+        - {id: notFound, goName: NotFound, description: No matching order or product exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample ecommerce result.
+          output: {id: '7', orderId: '1', externalId: product-1, name: Skateboard, priceMinor: 5000, quantity: 1}
+    - name: listProductsForEcommerceOrder
+      goName: ListProductsForEcommerceOrder
+      inputType: ListProductsForEcommerceOrderInput
+      outputType: EcommerceOrderProductsPage
+      kind: query
+      description: List products belonging to one Deep Data order.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign returned the selected ecommerce data.}
+        - {id: notFound, goName: NotFound, description: No matching order or product exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample ecommerce result.
+          output: {products: [{id: '7', orderId: '1', externalId: product-1, name: Skateboard, priceMinor: 5000, quantity: 1}], total: 1}
+    - name: listEcommerceCustomers
+      goName: ListEcommerceCustomers
+      inputType: ListEcommerceCustomersInput
+      outputType: EcommerceCustomersPage
+      kind: query
+      description: List Deep Data ecommerce customers.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample ecommerce customer result.
+          output: {customers: [{id: '15', connectionId: '3', externalId: store-customer-1, email: 'person@example.com'}], total: 1}
+    - name: getEcommerceCustomer
+      goName: GetEcommerceCustomer
+      inputType: GetEcommerceCustomerInput
+      outputType: EcommerceCustomerMetadata
+      kind: query
+      description: Read one Deep Data ecommerce customer.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: notFound, goName: NotFound, description: No customer exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample ecommerce customer result.
+          output: {id: '15', connectionId: '3', externalId: store-customer-1, email: 'person@example.com'}
+    - name: createEcommerceCustomer
+      goName: CreateEcommerceCustomer
+      inputType: CreateEcommerceCustomerInput
+      outputType: EcommerceCustomerMetadata
+      kind: mutation
+      description: Create one ecommerce customer with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: uncertain, goName: Uncertain, description: Bounded customer creation could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample ecommerce customer result.
+          output: {id: '15', connectionId: '3', externalId: store-customer-1, email: 'person@example.com'}
+    - name: updateEcommerceCustomer
+      goName: UpdateEcommerceCustomer
+      inputType: UpdateEcommerceCustomerInput
+      outputType: EcommerceCustomerMetadata
+      kind: mutation
+      description: Replace selected ecommerce customer identity fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: notFound, goName: NotFound, description: No customer exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample ecommerce customer result.
+          output: {id: '15', connectionId: '3', externalId: store-customer-1, email: 'person@example.com'}
+    - name: deleteEcommerceCustomer
+      goName: DeleteEcommerceCustomer
+      inputType: DeleteEcommerceCustomerInput
+      outputType: EcommerceCustomerDeletion
+      kind: mutation
+      description: Delete one Deep Data ecommerce customer.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample ecommerce customer result.
+          output: {customerId: '15', deleted: true}
+    - name: listConnections
+      goName: ListConnections
+      inputType: ListConnectionsInput
+      outputType: ConnectionsPage
+      kind: query
+      description: List Deep Data ecommerce connections.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample ecommerce connection result.
+          output: {connections: [{id: '1', service: fooCommerce, externalId: store-1, name: Store}], total: 1}
+    - name: getConnection
+      goName: GetConnection
+      inputType: GetConnectionInput
+      outputType: ConnectionMetadata
+      kind: query
+      description: Read one ecommerce connection.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: notFound, goName: NotFound, description: No connection exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample ecommerce connection result.
+          output: {id: '1', service: fooCommerce, externalId: store-1, name: Store}
+    - name: createConnection
+      goName: CreateConnection
+      inputType: CreateConnectionInput
+      outputType: ConnectionMetadata
+      kind: mutation
+      description: Create one ecommerce connection with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: uncertain, goName: Uncertain, description: Bounded connection creation could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample ecommerce connection result.
+          output: {id: '1', service: fooCommerce, externalId: store-1, name: Store}
+    - name: updateConnection
+      goName: UpdateConnection
+      inputType: UpdateConnectionInput
+      outputType: ConnectionMetadata
+      kind: mutation
+      description: Replace selected ecommerce connection fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: notFound, goName: NotFound, description: No connection exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample ecommerce connection result.
+          output: {id: '1', service: fooCommerce, externalId: store-1, name: Store}
+    - name: deleteConnection
+      goName: DeleteConnection
+      inputType: DeleteConnectionInput
+      outputType: ConnectionDeletion
+      kind: mutation
+      description: Delete one ecommerce connection.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign completed the ecommerce connection operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample ecommerce connection result.
+          output: {connectionId: '1', deleted: true}
+    - name: listAccountContacts
+      goName: ListAccountContacts
+      inputType: ListAccountContactsInput
+      outputType: AccountContactsPage
+      kind: query
+      description: List one page of account-contact links.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample account-contact link result.
+          output: {associations: [{id: '17', accountId: '2', contactId: '3', jobTitle: Manager}], offset: 0, limit: 20, total: 1}
+    - name: getAccountContact
+      goName: GetAccountContact
+      inputType: GetAccountContactInput
+      outputType: AccountContactAssociation
+      kind: query
+      description: Read one account-contact link.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: notFound, goName: NotFound, description: No link exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample account-contact link result.
+          output: {id: '17', accountId: '2', contactId: '3', jobTitle: Manager}
+    - name: createAccountContact
+      goName: CreateAccountContact
+      inputType: CreateAccountContactInput
+      outputType: AccountContactAssociation
+      kind: mutation
+      description: Link one contact to one CRM account with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: uncertain, goName: Uncertain, description: Bounded link creation could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample account-contact link result.
+          output: {id: '17', accountId: '2', contactId: '3', jobTitle: Manager}
+    - name: updateAccountContact
+      goName: UpdateAccountContact
+      inputType: UpdateAccountContactInput
+      outputType: AccountContactAssociation
+      kind: mutation
+      description: Replace a link's job title or move it to another account.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: notFound, goName: NotFound, description: No link exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample account-contact link result.
+          output: {id: '17', accountId: '2', contactId: '3', jobTitle: Manager}
+    - name: deleteAccountContact
+      goName: DeleteAccountContact
+      inputType: DeleteAccountContactInput
+      outputType: AccountContactDeletion
+      kind: mutation
+      description: Remove a contact-account link while retaining both records.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample account-contact link result.
+          output: {associationId: '17', deleted: true}
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: AccountsPage
+      kind: query
+      description: List one page of CRM accounts.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the account operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample account operation result.
+          output: {accounts: [{id: '1', name: Example Account, accountUrl: 'https://example.com'}], offset: 0, limit: 20, total: 1}
+    - name: getAccount
+      goName: GetAccount
+      inputType: GetAccountInput
+      outputType: AccountMetadata
+      kind: query
+      description: Read one CRM account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the account operation.}
+        - {id: notFound, goName: NotFound, description: No account exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample account operation result.
+          output: {id: '1', name: Example Account, accountUrl: 'https://example.com'}
+    - name: createAccount
+      goName: CreateAccount
+      inputType: CreateAccountInput
+      outputType: AccountMetadata
+      kind: mutation
+      description: Create a CRM account with bounded sends and name read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the account operation.}
+        - {id: uncertain, goName: Uncertain, description: Bounded account creation could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample account operation result.
+          output: {id: '1', name: Example Account, accountUrl: 'https://example.com'}
+    - name: updateAccount
+      goName: UpdateAccount
+      inputType: UpdateAccountInput
+      outputType: AccountMetadata
+      kind: mutation
+      description: Replace a CRM account's selected fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the account operation.}
+        - {id: notFound, goName: NotFound, description: No account exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample account operation result.
+          output: {id: '1', name: Example Account, accountUrl: 'https://example.com'}
+    - name: deleteAccount
+      goName: DeleteAccount
+      inputType: DeleteAccountInput
+      outputType: AccountDeletion
+      kind: mutation
+      description: Delete a CRM account by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign completed the account operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample account operation result.
+          output: {accountId: '1', deleted: true}
+    - name: listContactListMemberships
+      goName: ListContactListMemberships
+      inputType: ListContactListMembershipsInput
+      outputType: ContactListMembershipsPage
+      kind: query
+      description: List one page of a contact's list memberships.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the list-membership operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact-list result.
+          output: {memberships: [{id: '42', contactId: '68', listId: '11', status: 1}], contactId: '68', offset: 0, limit: 20, total: 1}
+    - name: subscribeContactToList
+      goName: SubscribeContactToList
+      inputType: SetContactListMembershipInput
+      outputType: ContactListMembership
+      kind: mutation
+      description: Subscribe a contact to an email list with bounded sends and read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: subscribed, goName: Subscribed, description: ActiveCampaign completed the list-membership operation.}
+        - {id: uncertain, goName: Uncertain, description: A bounded subscription change could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: subscribedDefault
+          branch: subscribed
+          default: true
+          description: One sample contact-list result.
+          output: {id: '42', contactId: '68', listId: '11', status: 1}
+    - name: unsubscribeContactFromList
+      goName: UnsubscribeContactFromList
+      inputType: SetContactListMembershipInput
+      outputType: ContactListMembership
+      kind: mutation
+      description: Unsubscribe a contact from an email list with bounded sends and read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: unsubscribed, goName: Unsubscribed, description: ActiveCampaign completed the list-membership operation.}
+        - {id: uncertain, goName: Uncertain, description: A bounded subscription change could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: unsubscribedDefault
+          branch: unsubscribed
+          default: true
+          description: One sample contact-list result.
+          output: {id: '42', contactId: '68', listId: '11', status: 2}
+    - name: listContactTags
+      goName: ListContactTags
+      inputType: ListContactTagsInput
+      outputType: ContactTagAssociations
+      kind: query
+      description: List the tag associations of one contact.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the contact-tag operation.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact-tag result.
+          output: {contactId: '68', tags: [{associationId: '22', contactId: '68', tagId: '16'}]}
+    - name: applyTagToContact
+      goName: ApplyTagToContact
+      inputType: ApplyTagToContactInput
+      outputType: ContactTagAssociation
+      kind: mutation
+      description: Apply one existing contact tag by ID without creating definitions.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: applied, goName: Applied, description: ActiveCampaign completed the contact-tag operation.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: appliedDefault
+          branch: applied
+          default: true
+          description: One sample contact-tag result.
+          output: {associationId: '22', contactId: '68', tagId: '16'}
+    - name: removeTagFromContact
+      goName: RemoveTagFromContact
+      inputType: RemoveTagFromContactInput
+      outputType: ContactTagRemoval
+      kind: mutation
+      description: Remove one tag from one contact by tag ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: ActiveCampaign completed the contact-tag operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: One sample contact-tag result.
+          output: {contactId: '68', tagId: '16', removed: true}
+    - name: listDealNotes
+      goName: ListDealNotes
+      inputType: ListDealNotesInput
+      outputType: DealNotesPage
+      kind: query
+      description: List one page of notes for a deal.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the note operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample deal note result.
+          output: {notes: [{id: '91', dealId: '46', text: Follow up}], offset: 0, limit: 20, total: 1}
+    - name: getDealNote
+      goName: GetDealNote
+      inputType: GetDealNoteInput
+      outputType: DealNoteMetadata
+      kind: query
+      description: Read one note belonging to a deal.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the note operation.}
+        - {id: notFound, goName: NotFound, description: The deal or note does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample deal note result.
+          output: {id: '91', dealId: '46', text: Follow up}
+    - name: createDealNote
+      goName: CreateDealNote
+      inputType: CreateDealNoteInput
+      outputType: DealNoteMetadata
+      kind: mutation
+      description: Create a deal note with bounded sends and read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the note operation.}
+        - {id: uncertain, goName: Uncertain, description: A bounded note create could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample deal note result.
+          output: {id: '91', dealId: '46', text: Follow up}
+    - name: updateDealNote
+      goName: UpdateDealNote
+      inputType: UpdateDealNoteInput
+      outputType: DealNoteMetadata
+      kind: mutation
+      description: Replace one deal note's text by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the note operation.}
+        - {id: notFound, goName: NotFound, description: The deal or note does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample deal note result.
+          output: {id: '91', dealId: '46', text: Follow up}
+    - name: listDeals
+      goName: ListDeals
+      inputType: ListDealsInput
+      outputType: DealsPage
+      kind: query
+      description: List one page of deals and their basic metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the deal operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample deal result.
+          output: {deals: [{id: '46', title: Renewal, contactId: '68', stageId: '2', valueMinor: 45600, currency: USD, status: 0}], offset: 0, limit: 20, total: 1}
+    - name: getDeal
+      goName: GetDeal
+      inputType: GetDealInput
+      outputType: DealMetadata
+      kind: query
+      description: Read one deal by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the deal operation.}
+        - {id: notFound, goName: NotFound, description: The deal ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample deal result.
+          output: {id: '46', title: Renewal, contactId: '68', stageId: '2', valueMinor: 45600, currency: USD, status: 0}
+    - name: createDeal
+      goName: CreateDeal
+      inputType: CreateDealInput
+      outputType: DealMetadata
+      kind: mutation
+      description: Create a deal for a contact with bounded sends and read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the deal operation.}
+        - {id: uncertain, goName: Uncertain, description: A bounded deal create could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample deal result.
+          output: {id: '46', title: Renewal, contactId: '68', stageId: '2', valueMinor: 45600, currency: USD, status: 0}
+    - name: updateDeal
+      goName: UpdateDeal
+      inputType: UpdateDealInput
+      outputType: DealMetadata
+      kind: mutation
+      description: Set absolute deal fields by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign updated the deal.}
+        - {id: notFound, goName: NotFound, description: The deal ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample deal result.
+          output: {id: '46', title: Renewal, contactId: '68', stageId: '2', valueMinor: 45600, currency: USD, status: 0}
+    - name: deleteDeal
+      goName: DeleteDeal
+      inputType: DeleteDealInput
+      outputType: DealDeletion
+      kind: mutation
+      description: Delete a deal by ID and converge on absence.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign deleted the deal.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample deal result.
+          output: {dealId: '46', deleted: true}
+    - name: listTags
+      goName: ListTags
+      inputType: ListTagsInput
+      outputType: TagsPage
+      kind: query
+      description: List contact tag definitions by page.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the tag operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample tag result.
+          output: {tags: [{id: '16', name: Newsletter, description: Monthly, tagType: contact}], offset: 0, limit: 20, total: 1}
+    - name: getTag
+      goName: GetTag
+      inputType: GetTagInput
+      outputType: TagMetadata
+      kind: query
+      description: Read one contact tag definition by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the tag operation.}
+        - {id: notFound, goName: NotFound, description: The tag ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample tag result.
+          output: {id: '16', name: Newsletter, description: Monthly, tagType: contact}
+    - name: createTag
+      goName: CreateTag
+      inputType: CreateTagInput
+      outputType: TagMetadata
+      kind: mutation
+      description: Create a contact tag definition by name; repeating returns the existing tag.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the tag operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample tag result.
+          output: {id: '16', name: Newsletter, description: Monthly, tagType: contact}
+    - name: updateTag
+      goName: UpdateTag
+      inputType: UpdateTagInput
+      outputType: TagMetadata
+      kind: mutation
+      description: Set a contact tag definition's name and description by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign updated the tag definition.}
+        - {id: notFound, goName: NotFound, description: The tag ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample tag result.
+          output: {id: '16', name: Newsletter, description: Monthly, tagType: contact}
+    - name: deleteTag
+      goName: DeleteTag
+      inputType: DeleteTagInput
+      outputType: TagDeletion
+      kind: mutation
+      description: Delete one tag definition and remove its effect from all contacts.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign deleted the tag definition.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample tag result.
+          output: {tagId: '16', deleted: true}
+    - name: listLists
+      goName: ListLists
+      inputType: ListListsInput
+      outputType: ListsPage
+      kind: query
+      description: List one page of email contact lists and their subscriber counts.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign returned the selected list page.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample email list is returned.
+          output: {lists: [{id: '11', name: Newsletter, activeSubscribers: 7, nonDeletedSubscribers: 8}], offset: 0, limit: 20, total: 1}
+    - name: getList
+      goName: GetList
+      inputType: GetListInput
+      outputType: ListMetadata
+      kind: query
+      description: Read one contact list by numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign returned list metadata.}
+        - {id: notFound, goName: NotFound, description: No list with this ID is visible to the API user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample email list is returned.
+          output: {id: '11', name: Newsletter, activeSubscribers: 0, nonDeletedSubscribers: 0}
     - name: listContacts
       goName: ListContacts
       inputType: ListContactsInput
@@ -95,4 +1078,45 @@ spec:
           branch: found
           default: true
           description: Metadata for one sample contact.
+          output: {id: '68', email: 'ada@example.com', firstName: Ada, lastName: Lovelace}
+    - name: syncContact
+      goName: SyncContact
+      inputType: SyncContactInput
+      outputType: ContactMetadata
+      kind: mutation
+      description: Create or update one contact by email, returning its stable ID and names.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: synced, goName: Synced, description: ActiveCampaign created or updated the contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the contact., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: syncedDefault
+          branch: synced
+          default: true
+          description: One sample contact was synchronized.
+          output: {id: '68', email: 'ada@example.com', firstName: Ada, lastName: Lovelace}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: ContactMetadata
+      kind: mutation
+      description: Set one contact's email or names by numeric contact ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign updated the contact.}
+        - {id: notFound, goName: NotFound, description: No contact with this ID exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample contact was updated.
           output: {id: '68', email: 'ada@example.com', firstName: Ada, lastName: Lovelace}

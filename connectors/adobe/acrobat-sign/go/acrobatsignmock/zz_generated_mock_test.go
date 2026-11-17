@@ -16,8 +16,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createAgreementReminder/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[acrobatsign.CreatedAgreementReminder](`{"reminderId":"SAMPLE_REMINDER_ID"}`)
+			return err
+		}},
+		{name: "cancelAgreement/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[acrobatsign.CancelledAgreement](`{"agreementId":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","status":"CANCELLED"}`)
+			return err
+		}},
 		{name: "getAgreement/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[acrobatsign.AgreementStatus](`{"id":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","name":"Example agreement","status":"SIGNED"}`)
+			return err
+		}},
+		{name: "listAgreements/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[acrobatsign.AgreementPage](`{"agreements":[{"id":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","name":"Example agreement","status":"SIGNED"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "updateAgreementVisibility/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[acrobatsign.AgreementVisibility](`{"agreementId":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","visibility":"SHOW"}`)
 			return err
 		}},
 	}
@@ -30,7 +46,19 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateAgreementReminder().Definition().Operation.OperationID != "createAgreementReminder" {
+		t.Errorf("createAgreementReminder mock has another definition")
+	}
+	if mock.CancelAgreement().Definition().Operation.OperationID != "cancelAgreement" {
+		t.Errorf("cancelAgreement mock has another definition")
+	}
 	if mock.GetAgreement().Definition().Operation.OperationID != "getAgreement" {
 		t.Errorf("getAgreement mock has another definition")
+	}
+	if mock.ListAgreements().Definition().Operation.OperationID != "listAgreements" {
+		t.Errorf("listAgreements mock has another definition")
+	}
+	if mock.UpdateAgreementVisibility().Definition().Operation.OperationID != "updateAgreementVisibility" {
+		t.Errorf("updateAgreementVisibility mock has another definition")
 	}
 }

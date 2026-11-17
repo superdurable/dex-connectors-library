@@ -8,7 +8,8 @@ import { ActiveCampaignClient } from '../src/client.js';
 import { GetContactInputSchema, ListContactsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/activecampaign/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/activecampaign/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listContacts' || scenario.operation === 'getContact');
 const connection = { provider: 'activecampaign', name: 'activecampaign' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeActiveCampaign, '/api/3'));
 
