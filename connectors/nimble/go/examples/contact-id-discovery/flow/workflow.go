@@ -45,7 +45,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Nimble", Explanation: "List a bounded page of contact IDs for the connected Nimble user."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Listed:              sdkgo.GoTo(completeResult{}),
+			Listed:              sdkgo.GoTo(contactIDsListed{}),
 		})),
 		dex.DefineStep(nimble.NewSearchContactIDsStep(nimble.SearchContactIDsStepConfig[nimble.ListContactIDsInput]{
 			StepType: "SearchContactIDs", ConnectionName: ConnectionName,
@@ -56,8 +56,19 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Listed: sdkgo.GoTo(searchFinished{}),
 		})),
+		dex.DefineStep(nimble.NewListContactNotesStep(nimble.ListContactNotesStepConfig[nimble.ListContactIDsResult]{
+			StepType: "ListContactNotes", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Nimble", Explanation: "List notes on the sample contact."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(result nimble.ListContactIDsResult) nimble.ListContactNotesInput {
+				return nimble.ListContactNotesInput{ContactID: result.Value.IDs[0], Page: 1, PerPage: 20}
+			},
+			Listed: sdkgo.GoTo(notesFinished{}),
+		})),
 		dex.DefineStep(completeResult{}),
+		dex.DefineStep(contactIDsListed{}),
 		dex.DefineStep(searchFinished{}),
+		dex.DefineStep(notesFinished{}),
 	}
 }
 
@@ -116,12 +127,38 @@ func (startRequest) Execute(_ dex.Context, input nimble.ListContactIDsInput) (*d
 }
 
 // dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Route the listed contact page to completion and the first contact's notes."
+type contactIDsListed struct {
+	dex.StepDefaultsNoWaitFor[nimble.ListContactIDsResult]
+}
+
+func (contactIDsListed) Execute(_ dex.Context, result nimble.ListContactIDsResult) (*dex.StepDecision, error) {
+	if len(result.Value.IDs) == 0 {
+		return dex.GoTo(completeResult{}, result), nil
+	}
+	return dex.GoToMany(
+		dex.MovementOf(completeResult{}, result),
+		dex.MovementOf(sdkgo.StepRef[nimble.ListContactIDsResult]("ListContactNotes"), result),
+	), nil
+}
+
+// dex:group group-id:result group-label:"Result"
 // dex:explanation text:"Finish the contact search after Nimble responds."
 type searchFinished struct {
 	dex.StepDefaultsNoWaitFor[nimble.SearchContactIDsResult]
 }
 
 func (searchFinished) Execute(_ dex.Context, _ nimble.SearchContactIDsResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Finish the sample contact note listing after Nimble responds."
+type notesFinished struct {
+	dex.StepDefaultsNoWaitFor[nimble.ListContactNotesResult]
+}
+
+func (notesFinished) Execute(_ dex.Context, _ nimble.ListContactNotesResult) (*dex.StepDecision, error) {
 	return dex.DeadEnd(), nil
 }
 

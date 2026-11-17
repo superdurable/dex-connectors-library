@@ -160,3 +160,86 @@ spec:
         - {id: defect, goName: Defect, description: Invalid contact ID or credentials., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Example deleted contact., output: {contactId: '5049fb849b85f669e40000dc'}}
+    - name: listContactNotes
+      goName: ListContactNotes
+      inputType: ListContactNotesInput
+      outputType: ContactNotesPage
+      kind: query
+      description: List notes attached to one Nimble contact.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Nimble returned the requested note outcome.}
+        - {id: notFound, goName: NotFound, description: Nimble did not find the note or contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Nimble rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Nimble returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example contact note outcome., output: {"notes":[{"id":"5049fb849b85f669e40000dd","note":"Call next week","notePreview":"Call next week"}],"page":1,"pages":1,"perPage":20,"total":1}}
+    - name: getContactNote
+      goName: GetContactNote
+      inputType: GetContactNoteInput
+      outputType: ContactNote
+      kind: query
+      description: Read one Nimble contact note.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Nimble returned the requested note outcome.}
+        - {id: notFound, goName: NotFound, description: Nimble did not find the note or contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Nimble rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Nimble returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example contact note outcome., output: {"id":"5049fb849b85f669e40000dd","note":"Call next week","notePreview":"Call next week"}}
+    - name: createContactNote
+      goName: CreateContactNote
+      inputType: CreateContactNoteInput
+      outputType: ContactNote
+      kind: mutation
+      description: Create a note attached to Nimble contacts.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Nimble returned the requested note outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Nimble rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Nimble may have created the note but it could not be confirmed., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example contact note outcome., output: {"id":"5049fb849b85f669e40000dd","note":"Call next week","notePreview":"Call next week"}}
+    - name: updateContactNote
+      goName: UpdateContactNote
+      inputType: UpdateContactNoteInput
+      outputType: ContactNote
+      kind: mutation
+      description: Replace the text and contact associations of a Nimble note.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Nimble returned the requested note outcome.}
+        - {id: notFound, goName: NotFound, description: Nimble did not find the note or contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Nimble rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Nimble returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example contact note outcome., output: {"id":"5049fb849b85f669e40000dd","note":"Call next week","notePreview":"Call next week"}}
+    - name: deleteContactNote
+      goName: DeleteContactNote
+      inputType: DeleteContactNoteInput
+      outputType: DeletedContactNote
+      kind: mutation
+      description: Delete one Nimble contact note.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Nimble returned the requested note outcome.}
+        - {id: notFound, goName: NotFound, description: Nimble did not find the note or contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Nimble rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example contact note outcome., output: {"noteId":"5049fb849b85f669e40000dd"}}
