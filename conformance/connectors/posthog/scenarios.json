@@ -750,6 +750,1296 @@
       },
       "name": "listInsights-transport",
       "operation": "listInsights"
+    },
+    {
+      "callId": "c3441e6d-8ff7-59f1-8bd8-0f9a220513eb",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$create_alias",
+            "properties": {
+              "alias": "member-legacy"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "0626f97f-16f8-359a-3a61-40b1503c113c"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "eventId": "0626f97f-16f8-359a-3a61-40b1503c113c"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0626f97f-16f8-359a-3a61-40b1503c113c",
+      "input": {
+        "alias": "member-legacy",
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "createAlias-accepted",
+      "operation": "createAlias"
+    },
+    {
+      "callId": "c3441e6d-8ff7-59f1-8bd8-0f9a220513eb",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\",\"quota_limited\":[\"events\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$create_alias",
+            "properties": {
+              "alias": "member-legacy"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "0626f97f-16f8-359a-3a61-40b1503c113c"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "quotaLimited",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0626f97f-16f8-359a-3a61-40b1503c113c",
+      "input": {
+        "alias": "member-legacy",
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "createAlias-quotaLimited",
+      "operation": "createAlias"
+    },
+    {
+      "callId": "c3441e6d-8ff7-59f1-8bd8-0f9a220513eb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$create_alias",
+            "properties": {
+              "alias": "member-legacy"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "0626f97f-16f8-359a-3a61-40b1503c113c"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0626f97f-16f8-359a-3a61-40b1503c113c",
+      "input": {
+        "alias": "member-legacy",
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "createAlias-providerRejected",
+      "operation": "createAlias"
+    },
+    {
+      "callId": "c3441e6d-8ff7-59f1-8bd8-0f9a220513eb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0626f97f-16f8-359a-3a61-40b1503c113c",
+      "input": {
+        "alias": "member-legacy",
+        "distinctId": "",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "createAlias-defect",
+      "operation": "createAlias"
+    },
+    {
+      "callId": "c3441e6d-8ff7-59f1-8bd8-0f9a220513eb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$create_alias",
+            "properties": {
+              "alias": "member-legacy"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "0626f97f-16f8-359a-3a61-40b1503c113c"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0626f97f-16f8-359a-3a61-40b1503c113c",
+      "input": {
+        "alias": "member-legacy",
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "createAlias-final429",
+      "operation": "createAlias"
+    },
+    {
+      "callId": "c3441e6d-8ff7-59f1-8bd8-0f9a220513eb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$create_alias",
+            "properties": {
+              "alias": "member-legacy"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "0626f97f-16f8-359a-3a61-40b1503c113c"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0626f97f-16f8-359a-3a61-40b1503c113c",
+      "input": {
+        "alias": "member-legacy",
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "createAlias-final503",
+      "operation": "createAlias"
+    },
+    {
+      "callId": "c3441e6d-8ff7-59f1-8bd8-0f9a220513eb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$create_alias",
+            "properties": {
+              "alias": "member-legacy"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "0626f97f-16f8-359a-3a61-40b1503c113c"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0626f97f-16f8-359a-3a61-40b1503c113c",
+      "input": {
+        "alias": "member-legacy",
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "createAlias-transportFailure",
+      "operation": "createAlias"
+    },
+    {
+      "callId": "4fe70ae3-9795-574e-8918-7d8bd60a5ea8",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$identify",
+            "properties": {
+              "$set": {
+                "tier": "premium"
+              }
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "beb7428f-d036-67da-9fcb-574301df7e9a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "eventId": "beb7428f-d036-67da-9fcb-574301df7e9a"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "beb7428f-d036-67da-9fcb-574301df7e9a",
+      "input": {
+        "distinctId": "member-1",
+        "properties": {
+          "tier": "premium"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "identifyPerson-accepted",
+      "operation": "identifyPerson"
+    },
+    {
+      "callId": "4fe70ae3-9795-574e-8918-7d8bd60a5ea8",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\",\"quota_limited\":[\"events\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$identify",
+            "properties": {
+              "$set": {
+                "tier": "premium"
+              }
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "beb7428f-d036-67da-9fcb-574301df7e9a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "quotaLimited",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "beb7428f-d036-67da-9fcb-574301df7e9a",
+      "input": {
+        "distinctId": "member-1",
+        "properties": {
+          "tier": "premium"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "identifyPerson-quotaLimited",
+      "operation": "identifyPerson"
+    },
+    {
+      "callId": "4fe70ae3-9795-574e-8918-7d8bd60a5ea8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$identify",
+            "properties": {
+              "$set": {
+                "tier": "premium"
+              }
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "beb7428f-d036-67da-9fcb-574301df7e9a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "beb7428f-d036-67da-9fcb-574301df7e9a",
+      "input": {
+        "distinctId": "member-1",
+        "properties": {
+          "tier": "premium"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "identifyPerson-providerRejected",
+      "operation": "identifyPerson"
+    },
+    {
+      "callId": "4fe70ae3-9795-574e-8918-7d8bd60a5ea8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "beb7428f-d036-67da-9fcb-574301df7e9a",
+      "input": {
+        "distinctId": "",
+        "properties": {
+          "tier": "premium"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "identifyPerson-defect",
+      "operation": "identifyPerson"
+    },
+    {
+      "callId": "4fe70ae3-9795-574e-8918-7d8bd60a5ea8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$identify",
+            "properties": {
+              "$set": {
+                "tier": "premium"
+              }
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "beb7428f-d036-67da-9fcb-574301df7e9a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "beb7428f-d036-67da-9fcb-574301df7e9a",
+      "input": {
+        "distinctId": "member-1",
+        "properties": {
+          "tier": "premium"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "identifyPerson-final429",
+      "operation": "identifyPerson"
+    },
+    {
+      "callId": "4fe70ae3-9795-574e-8918-7d8bd60a5ea8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$identify",
+            "properties": {
+              "$set": {
+                "tier": "premium"
+              }
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "beb7428f-d036-67da-9fcb-574301df7e9a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "beb7428f-d036-67da-9fcb-574301df7e9a",
+      "input": {
+        "distinctId": "member-1",
+        "properties": {
+          "tier": "premium"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "identifyPerson-final503",
+      "operation": "identifyPerson"
+    },
+    {
+      "callId": "4fe70ae3-9795-574e-8918-7d8bd60a5ea8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$identify",
+            "properties": {
+              "$set": {
+                "tier": "premium"
+              }
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "beb7428f-d036-67da-9fcb-574301df7e9a"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "beb7428f-d036-67da-9fcb-574301df7e9a",
+      "input": {
+        "distinctId": "member-1",
+        "properties": {
+          "tier": "premium"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "identifyPerson-transportFailure",
+      "operation": "identifyPerson"
+    },
+    {
+      "callId": "bafae9ca-9b95-525d-8899-8296b5813577",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$pageview",
+            "properties": {
+              "$current_url": "https://example.com/pricing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "eventId": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef",
+      "input": {
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z",
+        "url": "https://example.com/pricing"
+      },
+      "name": "trackPageView-accepted",
+      "operation": "trackPageView"
+    },
+    {
+      "callId": "bafae9ca-9b95-525d-8899-8296b5813577",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\",\"quota_limited\":[\"events\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$pageview",
+            "properties": {
+              "$current_url": "https://example.com/pricing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "quotaLimited",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef",
+      "input": {
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z",
+        "url": "https://example.com/pricing"
+      },
+      "name": "trackPageView-quotaLimited",
+      "operation": "trackPageView"
+    },
+    {
+      "callId": "bafae9ca-9b95-525d-8899-8296b5813577",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$pageview",
+            "properties": {
+              "$current_url": "https://example.com/pricing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef",
+      "input": {
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z",
+        "url": "https://example.com/pricing"
+      },
+      "name": "trackPageView-providerRejected",
+      "operation": "trackPageView"
+    },
+    {
+      "callId": "bafae9ca-9b95-525d-8899-8296b5813577",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef",
+      "input": {
+        "distinctId": "",
+        "timestamp": "2026-10-29T00:00:00Z",
+        "url": "https://example.com/pricing"
+      },
+      "name": "trackPageView-defect",
+      "operation": "trackPageView"
+    },
+    {
+      "callId": "bafae9ca-9b95-525d-8899-8296b5813577",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$pageview",
+            "properties": {
+              "$current_url": "https://example.com/pricing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef",
+      "input": {
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z",
+        "url": "https://example.com/pricing"
+      },
+      "name": "trackPageView-final429",
+      "operation": "trackPageView"
+    },
+    {
+      "callId": "bafae9ca-9b95-525d-8899-8296b5813577",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$pageview",
+            "properties": {
+              "$current_url": "https://example.com/pricing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef",
+      "input": {
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z",
+        "url": "https://example.com/pricing"
+      },
+      "name": "trackPageView-final503",
+      "operation": "trackPageView"
+    },
+    {
+      "callId": "bafae9ca-9b95-525d-8899-8296b5813577",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$pageview",
+            "properties": {
+              "$current_url": "https://example.com/pricing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4f5ec84-b9b6-f55e-ac30-eb6a7fd024ef",
+      "input": {
+        "distinctId": "member-1",
+        "timestamp": "2026-10-29T00:00:00Z",
+        "url": "https://example.com/pricing"
+      },
+      "name": "trackPageView-transportFailure",
+      "operation": "trackPageView"
+    },
+    {
+      "callId": "1a9695cb-acb4-55ed-bb1a-b52a510b88bc",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$screen",
+            "properties": {
+              "$screen_name": "Checkout"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "71f5041e-b9f5-f933-3467-b13f454e7724"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "eventId": "71f5041e-b9f5-f933-3467-b13f454e7724"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71f5041e-b9f5-f933-3467-b13f454e7724",
+      "input": {
+        "distinctId": "member-1",
+        "name": "Checkout",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "trackScreenView-accepted",
+      "operation": "trackScreenView"
+    },
+    {
+      "callId": "1a9695cb-acb4-55ed-bb1a-b52a510b88bc",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\",\"quota_limited\":[\"events\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$screen",
+            "properties": {
+              "$screen_name": "Checkout"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "71f5041e-b9f5-f933-3467-b13f454e7724"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "quotaLimited",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71f5041e-b9f5-f933-3467-b13f454e7724",
+      "input": {
+        "distinctId": "member-1",
+        "name": "Checkout",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "trackScreenView-quotaLimited",
+      "operation": "trackScreenView"
+    },
+    {
+      "callId": "1a9695cb-acb4-55ed-bb1a-b52a510b88bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$screen",
+            "properties": {
+              "$screen_name": "Checkout"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "71f5041e-b9f5-f933-3467-b13f454e7724"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71f5041e-b9f5-f933-3467-b13f454e7724",
+      "input": {
+        "distinctId": "member-1",
+        "name": "Checkout",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "trackScreenView-providerRejected",
+      "operation": "trackScreenView"
+    },
+    {
+      "callId": "1a9695cb-acb4-55ed-bb1a-b52a510b88bc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71f5041e-b9f5-f933-3467-b13f454e7724",
+      "input": {
+        "distinctId": "",
+        "name": "Checkout",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "trackScreenView-defect",
+      "operation": "trackScreenView"
+    },
+    {
+      "callId": "1a9695cb-acb4-55ed-bb1a-b52a510b88bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$screen",
+            "properties": {
+              "$screen_name": "Checkout"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "71f5041e-b9f5-f933-3467-b13f454e7724"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71f5041e-b9f5-f933-3467-b13f454e7724",
+      "input": {
+        "distinctId": "member-1",
+        "name": "Checkout",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "trackScreenView-final429",
+      "operation": "trackScreenView"
+    },
+    {
+      "callId": "1a9695cb-acb4-55ed-bb1a-b52a510b88bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$screen",
+            "properties": {
+              "$screen_name": "Checkout"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "71f5041e-b9f5-f933-3467-b13f454e7724"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71f5041e-b9f5-f933-3467-b13f454e7724",
+      "input": {
+        "distinctId": "member-1",
+        "name": "Checkout",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "trackScreenView-final503",
+      "operation": "trackScreenView"
+    },
+    {
+      "callId": "1a9695cb-acb4-55ed-bb1a-b52a510b88bc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "$screen",
+            "properties": {
+              "$screen_name": "Checkout"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "71f5041e-b9f5-f933-3467-b13f454e7724"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "71f5041e-b9f5-f933-3467-b13f454e7724",
+      "input": {
+        "distinctId": "member-1",
+        "name": "Checkout",
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "trackScreenView-transportFailure",
+      "operation": "trackScreenView"
     }
   ],
   "schemaVersion": 1

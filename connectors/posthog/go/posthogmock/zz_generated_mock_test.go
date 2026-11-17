@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createAlias/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[posthog.CapturedEvent](`{"eventId":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed","accepted":true}`)
+			return err
+		}},
+		{name: "identifyPerson/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[posthog.CapturedEvent](`{"eventId":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed","accepted":true}`)
+			return err
+		}},
+		{name: "trackPageView/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[posthog.CapturedEvent](`{"eventId":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed","accepted":true}`)
+			return err
+		}},
+		{name: "trackScreenView/acceptedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[posthog.CapturedEvent](`{"eventId":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed","accepted":true}`)
+			return err
+		}},
 		{name: "captureEvent/acceptedSignup/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[posthog.CapturedEvent](`{"eventId":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed","accepted":true}`)
 			return err
@@ -34,6 +50,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateAlias().Definition().Operation.OperationID != "createAlias" {
+		t.Errorf("createAlias mock has another definition")
+	}
+	if mock.IdentifyPerson().Definition().Operation.OperationID != "identifyPerson" {
+		t.Errorf("identifyPerson mock has another definition")
+	}
+	if mock.TrackPageView().Definition().Operation.OperationID != "trackPageView" {
+		t.Errorf("trackPageView mock has another definition")
+	}
+	if mock.TrackScreenView().Definition().Operation.OperationID != "trackScreenView" {
+		t.Errorf("trackScreenView mock has another definition")
+	}
 	if mock.CaptureEvent().Definition().Operation.OperationID != "captureEvent" {
 		t.Errorf("captureEvent mock has another definition")
 	}

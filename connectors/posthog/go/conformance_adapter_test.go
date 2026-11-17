@@ -24,6 +24,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"createAlias": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.CreateAlias(), testConnection, scenario.CallID),
+		"identifyPerson": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.IdentifyPerson(), testConnection, scenario.CallID),
+		"trackPageView": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.TrackPageView(), testConnection, scenario.CallID),
+		"trackScreenView": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.TrackScreenView(), testConnection, scenario.CallID),
 		"captureEvent": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.CaptureEvent(), testConnection, scenario.CallID),
 		"listInsights": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.ListInsights(), testConnection),
 	}}
