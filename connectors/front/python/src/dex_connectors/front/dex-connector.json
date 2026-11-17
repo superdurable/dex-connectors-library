@@ -1,6 +1,6 @@
 {
   "connectorId": "front",
-  "releaseTag": "connectors/front/go/v0.23.0",
+  "releaseTag": "connectors/front/go/v0.24.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-front",

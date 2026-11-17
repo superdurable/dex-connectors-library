@@ -28,6 +28,74 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[eventbrite.AttendeeMetadata](`{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}`)
 			return err
 		}},
+		{name: "getEvent/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"live"}`)
+			return err
+		}},
+		{name: "publishEvent/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"live"}`)
+			return err
+		}},
+		{name: "createEvent/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"draft"}`)
+			return err
+		}},
+		{name: "copyEvent/copiedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67891","name":"Example event copy","status":"draft"}`)
+			return err
+		}},
+		{name: "updateEvent/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"New event name","status":"draft"}`)
+			return err
+		}},
+		{name: "unpublishEvent/unpublishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"draft"}`)
+			return err
+		}},
+		{name: "cancelEvent/canceledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.EventMetadata](`{"id":"67890","name":"Example event","status":"canceled"}`)
+			return err
+		}},
+		{name: "deleteEvent/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.DeletedEvent](`{"eventId":"67890","deleted":true}`)
+			return err
+		}},
+		{name: "listAttendeesByEvent/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.AttendeesPage](`{"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
+		{name: "listAttendeesByOrganization/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.AttendeesPage](`{"attendees":[{"id":"13579","eventId":"67890","status":"attending","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
+		{name: "getOrder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.OrderMetadata](`{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}`)
+			return err
+		}},
+		{name: "listOrdersByEvent/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.OrdersPage](`{"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
+		{name: "listOrdersByOrganization/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.OrdersPage](`{"orders":[{"id":"24680","eventId":"67890","status":"placed","createdAt":"2026-11-07T10:00:00Z"}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
+		{name: "getTicketClass/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.TicketClassMetadata](`{"id":"13579","eventId":"67890","name":"General Admission","quantityTotal":100}`)
+			return err
+		}},
+		{name: "listTicketClasses/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.TicketClassesPage](`{"ticketClasses":[{"id":"13579","eventId":"67890","name":"General Admission","quantityTotal":100}],"pageNumber":1,"pageCount":1}`)
+			return err
+		}},
+		{name: "updateTicketClass/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.TicketClassMetadata](`{"id":"13579","eventId":"67890","name":"VIP Admission","quantityTotal":100}`)
+			return err
+		}},
+		{name: "createTicketClass/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[eventbrite.TicketClassMetadata](`{"id":"13579","eventId":"67890","name":"General Admission","quantityTotal":100}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -46,5 +114,56 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetAttendee().Definition().Operation.OperationID != "getAttendee" {
 		t.Errorf("getAttendee mock has another definition")
+	}
+	if mock.GetEvent().Definition().Operation.OperationID != "getEvent" {
+		t.Errorf("getEvent mock has another definition")
+	}
+	if mock.PublishEvent().Definition().Operation.OperationID != "publishEvent" {
+		t.Errorf("publishEvent mock has another definition")
+	}
+	if mock.CreateEvent().Definition().Operation.OperationID != "createEvent" {
+		t.Errorf("createEvent mock has another definition")
+	}
+	if mock.CopyEvent().Definition().Operation.OperationID != "copyEvent" {
+		t.Errorf("copyEvent mock has another definition")
+	}
+	if mock.UpdateEvent().Definition().Operation.OperationID != "updateEvent" {
+		t.Errorf("updateEvent mock has another definition")
+	}
+	if mock.UnpublishEvent().Definition().Operation.OperationID != "unpublishEvent" {
+		t.Errorf("unpublishEvent mock has another definition")
+	}
+	if mock.CancelEvent().Definition().Operation.OperationID != "cancelEvent" {
+		t.Errorf("cancelEvent mock has another definition")
+	}
+	if mock.DeleteEvent().Definition().Operation.OperationID != "deleteEvent" {
+		t.Errorf("deleteEvent mock has another definition")
+	}
+	if mock.ListAttendeesByEvent().Definition().Operation.OperationID != "listAttendeesByEvent" {
+		t.Errorf("listAttendeesByEvent mock has another definition")
+	}
+	if mock.ListAttendeesByOrganization().Definition().Operation.OperationID != "listAttendeesByOrganization" {
+		t.Errorf("listAttendeesByOrganization mock has another definition")
+	}
+	if mock.GetOrder().Definition().Operation.OperationID != "getOrder" {
+		t.Errorf("getOrder mock has another definition")
+	}
+	if mock.ListOrdersByEvent().Definition().Operation.OperationID != "listOrdersByEvent" {
+		t.Errorf("listOrdersByEvent mock has another definition")
+	}
+	if mock.ListOrdersByOrganization().Definition().Operation.OperationID != "listOrdersByOrganization" {
+		t.Errorf("listOrdersByOrganization mock has another definition")
+	}
+	if mock.GetTicketClass().Definition().Operation.OperationID != "getTicketClass" {
+		t.Errorf("getTicketClass mock has another definition")
+	}
+	if mock.ListTicketClasses().Definition().Operation.OperationID != "listTicketClasses" {
+		t.Errorf("listTicketClasses mock has another definition")
+	}
+	if mock.UpdateTicketClass().Definition().Operation.OperationID != "updateTicketClass" {
+		t.Errorf("updateTicketClass mock has another definition")
+	}
+	if mock.CreateTicketClass().Definition().Operation.OperationID != "createTicketClass" {
+		t.Errorf("createTicketClass mock has another definition")
 	}
 }

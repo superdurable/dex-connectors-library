@@ -24,6 +24,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[figma.FileComments](`{"comments":[{"id":"1","message":"Review the header."}]}`)
 			return err
 		}},
+		{name: "getFileNodes/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[figma.FileNodes](`{"name":"Meridian Design","lastModified":"2026-10-28T12:00:00Z","nodes":{"0:1":{"document":{"id":"0:1","type":"CANVAS","name":"Home"}}}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +43,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetFileComments().Definition().Operation.OperationID != "getFileComments" {
 		t.Errorf("getFileComments mock has another definition")
+	}
+	if mock.GetFileNodes().Definition().Operation.OperationID != "getFileNodes" {
+		t.Errorf("getFileNodes mock has another definition")
 	}
 }

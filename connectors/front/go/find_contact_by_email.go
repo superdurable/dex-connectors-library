@@ -122,7 +122,7 @@ func decodeContact(body []byte, email string) (Contact, error) {
 	if !contactIDPattern.MatchString(wire.ID) {
 		return Contact{}, errors.New("the contact lacks a valid ID")
 	}
-	hasEmail := false
+	hasEmail := email == ""
 	for _, handle := range wire.Handles {
 		hasEmail = hasEmail || (handle.Source == "email" && strings.EqualFold(handle.Handle, email))
 	}

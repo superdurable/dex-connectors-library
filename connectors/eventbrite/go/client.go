@@ -5,6 +5,9 @@
 package eventbrite
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -60,6 +63,26 @@ var errCredential = errors.New("Eventbrite credential unavailable")
 var errRequest = errors.New("Eventbrite request failed")
 
 func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Duration, error) {
+	return client.request(call, http.MethodGet, path)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string) ([]byte, int, time.Duration, error) {
+	return client.requestWithBody(call, method, path, nil)
+}
+
+func (client *Client) requestJSON(call sdkgo.Call, method, path string, value any) ([]byte, int, time.Duration, error) {
+	body, err := json.Marshal(value)
+	if err != nil {
+		return nil, 0, 0, errRequest
+	}
+	return client.requestWithBody(call, method, path, body)
+}
+
+func (client *Client) requestWithBody(call sdkgo.Call, method, path string, body []byte) ([]byte, int, time.Duration, error) {
+	return client.sendWithBody(call, call.Context, method, path, body)
+}
+
+func (client *Client) sendWithBody(call sdkgo.Call, requestContext context.Context, method, path string, body []byte) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return nil, 0, 0, errCredential
@@ -68,11 +91,14 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	if !providerhttp.IsHeaderSafeCredential(privateToken) {
 		return nil, 0, 0, errCredential
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}
 	request.Header.Set("Accept", "application/json")
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("Authorization", "Bearer "+privateToken)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -80,7 +106,7 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	body, err = providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	return body, response.StatusCode, retryAfter, err
 }
 

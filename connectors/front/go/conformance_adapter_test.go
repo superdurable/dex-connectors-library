@@ -23,8 +23,12 @@ type frontConformanceContext struct {
 func (context *frontConformanceContext) Attempt() int32 { return context.attempt }
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
+	token := testAPIToken
+	if scenario.Name == "listInboxes-defect" || scenario.Name == "listTeammates-defect" {
+		token = ""
+	}
 	client, err := front.New(front.Config{}, sdkgo.StaticCredentialProvider[front.Credentials]{
-		frontConnection: {APIToken: sdkgo.NewSecretString(testAPIToken)},
+		frontConnection: {APIToken: sdkgo.NewSecretString(token)},
 	}, front.WithAPIBaseURL(endpoint), front.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := &frontConformanceContext{testDexContext: newTestDexContext("conformance"), attempt: 1}
@@ -32,10 +36,19 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		context.attempt = int32(attempt) + priorAttempt
 	}, actions: map[string]conformanceOperationInvocation{
-		"searchConversations": newConformanceQueryInvocation(t, scenario.Input, context, client.SearchConversations(), frontConnection),
-		"getConversation":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetConversation(), frontConnection),
-		"replyToConversation": newConformanceMutationInvocation(t, scenario.Input, context, client.ReplyToConversation(), frontConnection, scenario.CallID),
-		"updateConversation":  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateConversation(), frontConnection, scenario.CallID),
-		"findContactByEmail":  newConformanceQueryInvocation(t, scenario.Input, context, client.FindContactByEmail(), frontConnection),
+		"searchConversations":      newConformanceQueryInvocation(t, scenario.Input, context, client.SearchConversations(), frontConnection),
+		"getConversation":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetConversation(), frontConnection),
+		"replyToConversation":      newConformanceMutationInvocation(t, scenario.Input, context, client.ReplyToConversation(), frontConnection, scenario.CallID),
+		"updateConversation":       newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateConversation(), frontConnection, scenario.CallID),
+		"findContactByEmail":       newConformanceQueryInvocation(t, scenario.Input, context, client.FindContactByEmail(), frontConnection),
+		"getContact":               newConformanceQueryInvocation(t, scenario.Input, context, client.GetContact(), frontConnection),
+		"listContacts":             newConformanceQueryInvocation(t, scenario.Input, context, client.ListContacts(), frontConnection),
+		"listInboxes":              newConformanceQueryInvocation(t, scenario.Input, context, client.ListInboxes(), frontConnection),
+		"listTags":                 newConformanceQueryInvocation(t, scenario.Input, context, client.ListTags(), frontConnection),
+		"listTeammates":            newConformanceQueryInvocation(t, scenario.Input, context, client.ListTeammates(), frontConnection),
+		"getMessage":               newConformanceQueryInvocation(t, scenario.Input, context, client.GetMessage(), frontConnection),
+		"listConversationMessages": newConformanceQueryInvocation(t, scenario.Input, context, client.ListConversationMessages(), frontConnection),
+		"listConversationComments": newConformanceQueryInvocation(t, scenario.Input, context, client.ListConversationComments(), frontConnection),
+		"sendNewMessage":           newConformanceMutationInvocation(t, scenario.Input, context, client.SendNewMessage(), frontConnection, scenario.CallID),
 	}}
 }

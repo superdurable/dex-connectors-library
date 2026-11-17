@@ -45,12 +45,16 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetInvoice() sdkgo.Query[GetInvoiceInput, Invoice]
+	ListInvoices() sdkgo.Query[ListInvoicesInput, InvoicePage]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetInvoice() sdkgo.Query[GetInvoiceInput, Invoice] {
 	return operations.client.GetInvoice()
+}
+func (operations clientOperations) ListInvoices() sdkgo.Query[ListInvoicesInput, InvoicePage] {
+	return operations.client.ListInvoices()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -331,6 +335,83 @@ func NewGetInvoiceStep[IN any](config GetInvoiceStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListInvoicesBranchListed sdkgo.BranchID = "listed"
+const ListInvoicesBranchMissing sdkgo.BranchID = "missing"
+const ListInvoicesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInvoicesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInvoicesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInvoicesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInvoices"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInvoicesBranchListed, Description: "FreshBooks returned the requested invoice page."},
+		{ID: ListInvoicesBranchMissing, Description: "FreshBooks did not find the account.", Optional: true},
+		{ID: ListInvoicesBranchProviderRejected, Description: "FreshBooks conclusively rejected the read.", Optional: true},
+		{ID: ListInvoicesBranchInvalidResponse, Description: "FreshBooks returned malformed or oversized invoice JSON.", Optional: true},
+		{ID: ListInvoicesBranchDefect, Description: "The account ID, page, or OAuth credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInvoicesResult = sdkgo.QueryResult[InvoicePage]
+
+type ListInvoicesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=freshbooks"`
+	operationID                    struct{}                                       `connector:"operationId=listInvoices"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInvoicesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInvoicesResult]               `connector:"branch=listed"`
+	Missing                        sdkgo.Target[ListInvoicesResult]               `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[ListInvoicesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInvoicesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInvoicesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InvoicePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListInvoicesStep[IN any](config ListInvoicesStepConfig[IN]) sdkgo.QueryStep[IN, ListInvoicesInput, InvoicePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("freshbooks connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInvoicesInput, InvoicePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInvoices(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInvoicesResult] {
+			branches := make([]sdkgo.BranchTarget[ListInvoicesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInvoicesBranchListed))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(ListInvoicesBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInvoicesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInvoicesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInvoicesBranchDefect))
 			}
 			return branches
 		}(),

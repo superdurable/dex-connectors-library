@@ -8,7 +8,8 @@ import { FreshBooksClient } from '../src/client.js';
 import { GetInvoiceInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/freshbooks/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/freshbooks/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getInvoice');
 const connection = { provider: 'freshbooks', name: 'freshbooks' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeFreshBooks, ''));
 

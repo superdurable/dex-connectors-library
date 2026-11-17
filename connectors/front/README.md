@@ -1,6 +1,6 @@
 # Front Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/front/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/front/go@v0.24.0` after that release is published.
 
 The Python package `dex-connector-front==0.1.0` implements all five operations.
 See the [Python package guide](python/README.md) and its runnable
@@ -29,6 +29,20 @@ The Front connector connects a Dex application to the
 | `replyToConversation` | Mutation | One reply that Front delivers to the recipients, or one internal comment, protected by the shared single-dispatch fence | `replied` |
 | `updateConversation` | Mutation | Sets the status or ticket status and the assignee and adds or removes tags; safe to repeat | `updated` |
 | `findContactByEmail` | Query | The contact whose email handle equals one address | `found` |
+| `getContact` | Query | One contact by Front ID | `found` |
+| `listContacts` | Query | One bounded page of company contacts | `listed` |
+| `listInboxes` | Query | Accessible inbox IDs and names | `listed` |
+| `listTags` | Query | One bounded page of accessible tags | `listed` |
+| `listTeammates` | Query | Accessible teammate IDs and names | `listed` |
+| `getMessage` | Query | One message by Front ID | `found` |
+| `listConversationMessages` | Query | One bounded page of conversation messages with a continuation token | `listed` |
+| `listConversationComments` | Query | Internal comments on one conversation | `listed` |
+| `sendNewMessage` | Mutation | Send a new message from a channel address and create a conversation | `sent` |
+
+The new contact reads need `contacts:read`, which the existing authorization guide already grants. Contact creation and updates require `contacts:write`, and deletion requires `contacts:delete`; these scopes are outside the existing token guide.
+The directory reads need `inboxes:read`, `tags:read`, and `teammates:read`, which the existing guide already grants. Tag creation requires `tags:write`, and channel listing requires `channels:read`; those scopes are outside the existing guide.
+The standalone message and comment reads use the existing `messages:read` and `comments:read` grants. The `FrontMessageHistory` runnable Flow reads a message by ID and then its conversation's message page and comments. Front's message import requires `messages:write`, which is outside the existing guide.
+`sendNewMessage` uses the existing `messages:send` grant. Supply `ChannelAddress` from <https://app.frontapp.com/> under **Settings > Channels** (for example, `support@example.com`), at least one recipient handle in `To`, and plain `Text`; `Subject` is useful for email and blank lets Front choose its default. The runnable `FrontNewMessage` Flow exercises the accepted-send path. Front returns a message UID rather than the final message ID; use the UID alias for read-back. An unknown response can repeat until the three-send cap, and the `uncertain` outcome requires a manual check before any further send.
 
 Every other branch is optional: `notFound`, `providerRejected`,
 `invalidResponse`, and `defect`. `getConversation` adds `merged`;
@@ -266,7 +280,7 @@ new Worker selects `uncertain` without a second POST.
 
 ## Mocks
 
-`frontmock` supplies one consistent default world for all five operations:
+`frontmock` supplies one consistent default world for the conversation triage operations and the new contact reads:
 Jane's `cnv_100` conversation has an inbound message, `crd_100` is her
 contact, search includes `cnv_200` as another open conversation, the triage
 comment becomes `com_100`, and routing assigns `tea_leela` and adds

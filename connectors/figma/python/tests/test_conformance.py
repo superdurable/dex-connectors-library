@@ -14,7 +14,10 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/figma/scenarios.json")
+SCENARIOS = [
+    scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/figma/scenarios.json")
+    if scenario["operation"] in {"getFile", "getFileComments"}
+]
 CONNECTION = sdk.ConnectionRef("figma", "figma")
 ADAPTER = conformance.PythonOperationAdapter(
     "figma", CONNECTION, figma,
