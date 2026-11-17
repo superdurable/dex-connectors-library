@@ -1,6 +1,6 @@
 # Slack Python connector
 
-Install with `pip install dex-connector-slack==0.6.0`.
+Install with `pip install dex-connector-slack==0.6.1`.
 
 This package exposes Dex Query Steps for Slack channel pages, the connected workspace identity, channel history pages, thread pages, and replies, plus durable Mutation Steps for posting channel messages, thread replies, and messages with Block Kit buttons. From 0.5.0 it also implements the `channelThreadCreated`, `threadReplyCreated`, and `buttonClicked` Triggers at parity with the Go connector. It uses the static `ConnectionName` configured in Dex Web. OAuth credentials are resolved at call time; the generated project connection refreshes rotating bot and user tokens through the manifest declaration.
 
@@ -8,7 +8,7 @@ For real Slack use, create a Slack app in [Your Apps](https://api.slack.com/apps
 
 Every Query Step checks the HTTP status before decoding the body: HTTP 429 and 5xx return Retry and honor `Retry-After`, even when Slack sends no JSON body. From 0.4.1 this includes thread pages and replies.
 
-From 0.6.0, the post Steps resend a post whose outcome is unknown, at parity with Go v1.8.0. A connection loss after dispatch, other 5xx, or an `internal_error` or `fatal_error` without a timestamp returns Retry, and the next attempt resends with the same `client_msg_id`. Each Step call sends at most `max_sends` times, 3 from the generated definition; the next unknown outcome at that cap selects `uncertain`. A Step factory's `max_sends_override` changes the cap from 1 (never resend) to 10. A checkpointed timestamp is read back and never resent. A 409 or an accepted post without a usable identity selects `uncertain` without a resend, because Slack accepted the post and a resend would certainly duplicate it. Definite refusals are never resent: a refusal of a first send selects `providerRejected`, and a refusal of a resend selects `uncertain`, because an earlier send may have posted. Slack's `client_msg_id` deduplication is unverified, so a resend may post a duplicate. See the [connector guide](../README.md#operations).
+From 0.6.0, the post Steps resend a post whose outcome is unknown, at parity with Go v1.8.0. A connection loss after dispatch, other 5xx, or an `internal_error` or `fatal_error` without a timestamp returns Retry, and the next attempt resends with the same `client_msg_id`. Each Step call sends at most `max_sends` times, 3 from the generated definition; the next unknown outcome at that cap selects `uncertain`. A Step factory's `max_sends_override` changes the cap from 1 (never resend) to 10. A checkpointed timestamp is read back and never resent. A 409 or an accepted post without a usable identity selects `uncertain` without a resend, because Slack accepted the post and a resend would certainly duplicate it. Definite refusals are never resent: a refusal of a first send selects `providerRejected`, and a refusal of a resend selects `uncertain`, because an earlier send may have posted. From 0.6.1, a refused first send also records the `canResend` dispatch marker, so Dex agent hosts report it as failed instead of unknown. Slack's `client_msg_id` deduplication is unverified, so a resend may post a duplicate. See the [connector guide](../README.md#operations).
 
 ## Operations
 

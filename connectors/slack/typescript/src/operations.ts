@@ -366,7 +366,7 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
   const body = response.body as SlackBody | undefined;
   if (response.status === 401 || (!response.error && response.status >= 200 && response.status < 300 && !body?.ok && isCredentialRejected(response))) {
     const replacement = await client.refreshRejectedToken(call, 'bot', credential.token);
-    if (!replacement.token) return rejectOrSelectUncertain(hasPossibleEarlierSend, client.receipt(call, response), failure(operation, 'AUTHENTICATION', replacement.terminal ? 'Slack rejected the connection credential; reconnect the connection' : 'Slack credential refresh is temporarily unavailable'));
+    if (!replacement.token) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, response, client.receipt(call, response), failure(operation, 'AUTHENTICATION', replacement.terminal ? 'Slack rejected the connection credential; reconnect the connection' : 'Slack credential refresh is temporarily unavailable'));
     if (!await canResend(fence)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack retry checkpoint could not be recorded'));
     return newMutationRetry(failure(operation, 'AUTHENTICATION', 'Slack connection credential was refreshed after rejection'));
   }
@@ -394,7 +394,7 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
   }
   if (response.status >= 500) return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'AVAILABILITY', 'Slack message outcome is unknown'), retryAfter(response), client.receipt(call, response));
   const rejected = classifyResponse(operation, response);
-  if (rejected) return rejectOrSelectUncertain(hasPossibleEarlierSend, client.receipt(call, response), rejected);
+  if (rejected) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, response, client.receipt(call, response), rejected);
   const message: SlackMessage = { ...body?.message };
   if (!message.ts && body?.ts) message.ts = body.ts;
   if (!message.channel && body?.channel) message.channel = body.channel;
@@ -418,9 +418,24 @@ function resendOrSelectUncertain(canResendUnknownOutcome: boolean, unknownFailur
   return canResendUnknownOutcome ? newMutationRetry(unknownFailure, retryDelayMs) : newMutationUncertain(emptyPost, unknownFailure, receipt);
 }
 
-/** Select providerRejected only when no earlier send of this call may have posted. */
-function rejectOrSelectUncertain(hasPossibleEarlierSend: boolean, receipt: ReceiptDraft, rejection: Failure): MutationAttempt<PostMessageOutput> {
-  return hasPossibleEarlierSend ? newMutationUncertain(emptyPost, rejection, receipt) : newMutationBranch('providerRejected', emptyPost, receipt, rejection);
+/**
+ * Select providerRejected only when no earlier send of this call may have posted.
+ * A definite refusal of the first send records canResend, so agent hosts report a failure.
+ */
+async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean, response: SlackExchange, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<PostMessageOutput>> {
+  if (hasPossibleEarlierSend) return newMutationUncertain(emptyPost, rejection, receipt);
+  // A lost checkpoint leaves the claim, which agent hosts conservatively report as unknown.
+  if (isDefiniteRefusal(response)) await canResend(fence);
+  return newMutationBranch('providerRejected', emptyPost, receipt, rejection);
+}
+
+/** Report a coded Slack ok:false response or a non-429, non-409 4xx, which prove nothing was posted. */
+function isDefiniteRefusal(response: SlackExchange): boolean {
+  if (response.status >= 200 && response.status < 300) {
+    const body = response.body as SlackBody | undefined;
+    return body?.ok === false && !!body.error;
+  }
+  return response.status >= 400 && response.status < 500 && response.status !== 409 && response.status !== 429;
 }
 
 async function canResend(fence: ReturnType<typeof newFence>): Promise<boolean> { try { await fence.recordCanResend(); return true; } catch { return false; } }

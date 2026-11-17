@@ -819,13 +819,32 @@ def _resend_or_select_uncertain(
     return MutationAttempt.uncertain(PostMessageOutput(), failure, receipt)
 
 
-def _reject_or_select_uncertain(
-    has_possible_earlier_send: bool, receipt: Receipt, rejection: Failure
+async def _reject_or_select_uncertain(
+    fence: Fence,
+    has_possible_earlier_send: bool,
+    response: _Response,
+    receipt: Receipt,
+    rejection: Failure,
 ) -> MutationAttempt[PostMessageOutput]:
-    """Select providerRejected only when no earlier send of this call may have posted."""
+    """Select providerRejected only when no earlier send of this call may have posted.
+
+    A definite refusal of the first send records canResend, so agent hosts report a failure.
+    """
     if has_possible_earlier_send:
         return MutationAttempt.uncertain(PostMessageOutput(), rejection, receipt)
+    if _is_definite_refusal(response):
+        try:
+            await fence.record_can_resend()
+        except Exception:
+            pass  # A lost checkpoint leaves the claim, which agent hosts conservatively report as unknown.
     return MutationAttempt.branch_result(PROVIDER_REJECTED, PostMessageOutput(), receipt, rejection)
+
+
+def _is_definite_refusal(response: _Response) -> bool:
+    """Report a coded Slack ok:false response or a non-429, non-409 4xx, which prove nothing was posted."""
+    if 200 <= response.status < 300:
+        return response.decoded.get("ok") is False and bool(response.decoded.get("error"))
+    return 400 <= response.status < 500 and response.status not in (409, 429)
 
 
 async def _read_back(
@@ -1050,8 +1069,10 @@ async def _post_message(
             or not replacement.bot_token.reveal()
             or (replacement.bot_token.reveal() == credentials.bot_token.reveal())
         ):
-            return _reject_or_select_uncertain(
+            return await _reject_or_select_uncertain(
+                fence,
                 has_possible_earlier_send,
+                response,
                 client._receipt(call, response),
                 _failure(
                     operation,
@@ -1139,8 +1160,10 @@ async def _post_message(
             client._receipt(call, response),
         )
     if not 200 <= response.status < 300 or not response.decoded.get("ok", False):
-        return _reject_or_select_uncertain(
+        return await _reject_or_select_uncertain(
+            fence,
             has_possible_earlier_send,
+            response,
             client._receipt(call, response),
             _failure(operation, _rejection_kind(response), "Slack rejected the request"),
         )

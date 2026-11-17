@@ -797,8 +797,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "message": {
@@ -1146,8 +1145,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "message": {
@@ -3142,8 +3140,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "message": {
@@ -3244,8 +3241,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "message": {
@@ -3599,8 +3595,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "message": {
@@ -4964,8 +4959,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "10365ece-ffe4-5db3-b8ed-9701443dbb19",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "message": {

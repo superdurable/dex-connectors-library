@@ -126,12 +126,56 @@ async def test_send_cap_of_one_never_resends() -> None:
 
 
 @pytest.mark.asyncio
-async def test_definite_refusal_is_never_resent() -> None:
+@pytest.mark.parametrize(
+    "refusal",
+    [
+        (200, {"ok": False, "error": "channel_not_found"}),
+        (200, {"ok": False, "error": "not_in_channel"}),
+        (400, {"ok": False, "error": "invalid_arguments"}),
+        (403, {"ok": False, "error": "restricted_action"}),
+        (401, {"ok": False, "error": "invalid_auth"}),
+    ],
+)
+async def test_definite_refusal_is_never_resent(refusal: tuple[int, dict[str, object]]) -> None:
     requests: list[httpx.Request] = []
-    refusal = (200, {"ok": False, "error": "channel_not_found"})
-    result = await post(lambda _: refusal, AttemptContext(), requests)
+    context = AttemptContext()
+    result = await post(lambda _: refusal, context, requests)
     assert isinstance(result, MutationResult) and result.branch == "providerRejected"
     assert len(requests) == 1
+    # canResend proves Slack posted nothing, so agent hosts classify the refusal as failed.
+    assert context.marker is not None and context.marker.state == "canResend"
+    assert context.marker.attempt == 1 and context.marker.send_count == 0
+    assert not context.marker.provider_id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [{"ok": False}, {}])
+async def test_uncoded_refusal_keeps_the_claim(body: dict[str, object]) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await post(lambda _: (200, body), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "providerRejected"
+    assert context.marker is not None and context.marker.state == "claimed"
+
+
+class FailingCanResendContext(AttemptContext):
+    """Fail every canResend heartbeat write."""
+
+    async def heartbeat(self, value: object = None) -> None:
+        """Reject canResend markers and record every other marker."""
+        if isinstance(value, Marker) and value.state == "canResend":
+            raise ConnectionError("can-resend heartbeat unavailable")
+        await super().heartbeat(value)
+
+
+@pytest.mark.asyncio
+async def test_definite_refusal_with_lost_checkpoint_still_selects_provider_rejected() -> None:
+    requests: list[httpx.Request] = []
+    context = FailingCanResendContext()
+    result = await post(lambda _: (200, {"ok": False, "error": "channel_not_found"}), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "providerRejected"
+    assert len(requests) == 1
+    assert context.marker is not None and context.marker.state == "claimed"
 
 
 @pytest.mark.asyncio
@@ -146,6 +190,8 @@ async def test_definite_refusal_of_a_resend_selects_uncertain() -> None:
     assert isinstance(result, MutationResult) and result.branch == "uncertain"
     assert result.failure is not None and result.failure.kind == "NOT_FOUND"
     assert len(requests) == 2
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert context.marker.send_count == 2
 
 
 @pytest.mark.asyncio

@@ -6,17 +6,17 @@ metadata:
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
   categories: [communication]
-  version: v1.8.0
+  version: v1.8.1
 spec:
   provider: slack
   languages:
     python:
-      version: v0.6.0
+      version: v0.6.1
       package: dex-connector-slack
       operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply, postButtonMessage]
       triggers: [channelThreadCreated, threadReplyCreated, buttonClicked]
     typescript:
-      version: v0.8.0
+      version: v0.8.1
       package: "@superdurable/connector-slack"
       operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply, postButtonMessage]
       triggers: [channelThreadCreated, threadReplyCreated, buttonClicked]

@@ -513,7 +513,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 			if sdkgo.IsReauthorizationRequired(refreshErr) || (refreshErr == nil && (isReplacementInvalid || isReplacementUnchanged)) {
 				failureMessage = "Slack rejected the connection credential; reconnect the connection"
 			}
-			return rejectOrSelectUncertain(hasPossibleEarlierSend, providerRejected, slackFailure(operationName, sdkgo.FailureAuthentication, failureMessage), client.receipt(call, response, ""))
+			return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, providerRejected, slackFailure(operationName, sdkgo.FailureAuthentication, failureMessage), response, client.receipt(call, response, ""))
 		}
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack retry checkpoint could not be recorded"), 0)
@@ -566,7 +566,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		return resendOrSelectUncertain(canResendUnknownOutcome, slackFailure(operationName, sdkgo.FailureAvailability, "Slack message outcome is unknown"), client.retryAfter(response.header), client.receipt(call, response, ""))
 	}
 	if failure := classifyResponse(operationName, response); failure != nil {
-		return rejectOrSelectUncertain(hasPossibleEarlierSend, providerRejected, *failure, client.receipt(call, response, ""))
+		return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, providerRejected, *failure, response, client.receipt(call, response, ""))
 	}
 	message := response.decoded.Message
 	if message.Timestamp == "" {
@@ -599,11 +599,24 @@ func resendOrSelectUncertain(canResendUnknownOutcome bool, failure sdkgo.Failure
 }
 
 // rejectOrSelectUncertain selects providerRejected only when no earlier send of this call may have posted.
-func rejectOrSelectUncertain(hasPossibleEarlierSend bool, providerRejected sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[PostMessageOutput] {
+// A definite refusal of the first send records canResend, so agent hosts report a failure, not an unknown outcome.
+func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend bool, providerRejected sdkgo.BranchID, failure sdkgo.Failure, response providerResponse, receipt sdkgo.Receipt) sdkgo.MutationAttempt[PostMessageOutput] {
 	if hasPossibleEarlierSend {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, failure, receipt)
 	}
+	if isDefiniteSlackRefusal(response) {
+		// A lost checkpoint leaves the claim, which agent hosts conservatively report as unknown.
+		_ = fence.RecordCanResend()
+	}
 	return sdkgo.NewMutationBranch(providerRejected, PostMessageOutput{}, &failure, receipt)
+}
+
+// isDefiniteSlackRefusal reports a coded Slack ok:false response or a non-429, non-409 4xx, which prove nothing was posted.
+func isDefiniteSlackRefusal(response providerResponse) bool {
+	if response.statusCode >= 200 && response.statusCode < 300 {
+		return !response.decoded.OK && response.decoded.Error != ""
+	}
+	return response.statusCode >= 400 && response.statusCode < 500 && response.statusCode != http.StatusTooManyRequests && response.statusCode != http.StatusConflict
 }
 
 func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispatch.Marker, operationName string, channelID string, threadTimestamp string, uncertain sdkgo.BranchID, sent sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {

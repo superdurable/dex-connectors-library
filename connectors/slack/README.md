@@ -1,6 +1,6 @@
 # Slack Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.8.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.8.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
 
@@ -42,7 +42,7 @@ the same tools for host tests.
 
 ## TypeScript package
 
-`@superdurable/connector-slack@0.8.0` implements every Go operation and Trigger for TypeScript Dex Flows:
+`@superdurable/connector-slack@0.8.1` implements every Go operation and Trigger for TypeScript Dex Flows:
 the channel discovery, channel history and thread reads, and message post operations; from 0.6.0 the
 `channelThreadCreated` and `threadReplyCreated` Triggers through Socket Mode or a host's relay; and from 0.7.0
 `postButtonMessage` and the `buttonClicked` Trigger through Socket Mode. The [runnable thread approval example](typescript/examples/thread-approval/README.md)
@@ -431,7 +431,10 @@ at once and are never resent: they mean Slack accepted the post, so the outcome
 is not unknown and a resend would certainly duplicate it. Definite refusals are
 never resent. A definite refusal of a first send selects `providerRejected`;
 a definite refusal of a resend selects `uncertain`, because an earlier send of
-the same call may have posted the message. The
+the same call may have posted the message. From Go v1.8.1, TypeScript v0.8.1,
+and Python v0.6.1, a first send that selects `providerRejected` also records
+the `canResend` dispatch marker, so Dex agent hosts report the refused post as
+failed instead of unknown. The
 retry policy allows ten attempts within five minutes, enough for three sends
 and their rate-limit, credential-refresh, and read-back retries. A traced DNS,
 connect, or TLS failure before a connection exists, HTTP 429, and HTTP 503
@@ -515,7 +518,7 @@ with the request and button Triggers on one shared runner.
 
 ## Python package
 
-`dex-connector-slack==0.6.0` implements every Go operation and Trigger for
+`dex-connector-slack==0.6.1` implements every Go operation and Trigger for
 Python Dex Flows: the channel discovery, channel history and thread reads, the
 channel, thread, and button message posts, the `channelThreadCreated` and
 `threadReplyCreated` Triggers through Socket Mode or a host's relay, and the

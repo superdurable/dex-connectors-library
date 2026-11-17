@@ -140,8 +140,8 @@ func TestSharedFenceNon2xxBodyErrorsResendOnlyUnknownOutcomes(t *testing.T) {
 				})
 				heartbeats := ctx.Heartbeats()
 				require.NotEmpty(t, heartbeats)
-				require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"claimed"`)
 				if statusCode >= 500 {
+					require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"claimed"`)
 					// A 5xx outcome is unknown, so the post is resent until the send cap.
 					require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
 					require.Equal(t, 2, retries)
@@ -152,6 +152,7 @@ func TestSharedFenceNon2xxBodyErrorsResendOnlyUnknownOutcomes(t *testing.T) {
 				require.Equal(t, slack.PostThreadReplyBranchProviderRejected, result.Branch)
 				require.Zero(t, retries)
 				require.Equal(t, 1, posts, "a definite refusal is never resent")
+				require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"canResend"`)
 			})
 		}
 	}
@@ -166,6 +167,8 @@ func TestSharedFenceDefiniteRefusalIsNeverResent(t *testing.T) {
 		{name: "channel_not_found", statusCode: http.StatusOK, body: `{"ok":false,"error":"channel_not_found"}`},
 		{name: "not_in_channel", statusCode: http.StatusOK, body: `{"ok":false,"error":"not_in_channel"}`},
 		{name: "bad_request", statusCode: http.StatusBadRequest, body: `{"ok":false,"error":"invalid_arguments"}`},
+		{name: "forbidden", statusCode: http.StatusForbidden, body: `{"ok":false,"error":"restricted_action"}`},
+		{name: "unauthorized_without_refresh", statusCode: http.StatusUnauthorized, body: `{"ok":false,"error":"invalid_auth"}`},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			posts := 0
@@ -180,8 +183,49 @@ func TestSharedFenceDefiniteRefusalIsNeverResent(t *testing.T) {
 			require.Equal(t, slack.PostChannelMessageBranchProviderRejected, result.Branch)
 			require.Zero(t, retries)
 			require.Equal(t, 1, posts)
+			// canResend proves Slack posted nothing, so agent hosts classify the refusal as failed.
+			heartbeats := ctx.Heartbeats()
+			require.NotEmpty(t, heartbeats)
+			var marker singledispatch.Marker
+			require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &marker))
+			require.Equal(t, singledispatch.StateCanResend, marker.State)
+			require.EqualValues(t, 1, marker.Attempt)
+			require.Zero(t, marker.SendCount)
+			require.Empty(t, marker.ProviderID)
 		})
 	}
+}
+
+func TestSharedFenceUncodedRefusalKeepsClaim(t *testing.T) {
+	for _, body := range []string{`{"ok":false}`, `{}`} {
+		t.Run(body, func(t *testing.T) {
+			client := newSlackClientWithTransport(t, roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return slackTestResponse(http.StatusOK, body), nil
+			}))
+			ctx := singledispatchtest.NewContext("shared-fence-uncoded-refusal", "post")
+			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+			require.NoError(t, err)
+			require.Equal(t, slack.PostChannelMessageBranchProviderRejected, result.Branch)
+			heartbeats := ctx.Heartbeats()
+			require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"claimed"`)
+		})
+	}
+}
+
+func TestSharedFenceDefiniteRefusalCheckpointFailureStillSelectsProviderRejected(t *testing.T) {
+	posts := 0
+	client := newSlackClientWithTransport(t, roundTripFunc(func(*http.Request) (*http.Response, error) {
+		posts++
+		return slackTestResponse(http.StatusOK, `{"ok":false,"error":"channel_not_found"}`), nil
+	}))
+	ctx := &failingCanResendSlackContext{Context: singledispatchtest.NewContext("shared-fence-definite-lost-checkpoint", "post")}
+	result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"})
+	require.NoError(t, err)
+	require.Equal(t, slack.PostChannelMessageBranchProviderRejected, result.Branch)
+	require.Equal(t, 1, ctx.canResendFailures)
+	require.Equal(t, 1, posts)
+	heartbeats := ctx.Heartbeats()
+	require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"claimed"`)
 }
 
 func TestSharedFenceDefiniteRefusalAfterPossibleSendIsUncertain(t *testing.T) {
@@ -211,6 +255,9 @@ func TestSharedFenceDefiniteRefusalAfterPossibleSendIsUncertain(t *testing.T) {
 			require.NotNil(t, result.Failure)
 			require.Equal(t, 1, retries)
 			require.Equal(t, 2, posts)
+			for _, heartbeat := range ctx.Heartbeats() {
+				require.NotContains(t, string(heartbeat), `"state":"canResend"`)
+			}
 		})
 	}
 }

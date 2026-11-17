@@ -77,10 +77,41 @@ describe('Slack bounded resend of unconfirmed posts', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('never resends a definite refusal', async () => {
-    const { client, requests } = newClient(() => ({ status: 200, body: '{"ok":false,"error":"channel_not_found"}' }));
-    expect(await post(client, new AttemptContext())).toMatchObject({ branch: 'providerRejected' });
+  it.each([
+    { status: 200, body: '{"ok":false,"error":"channel_not_found"}' },
+    { status: 200, body: '{"ok":false,"error":"not_in_channel"}' },
+    { status: 400, body: '{"ok":false,"error":"invalid_arguments"}' },
+    { status: 403, body: '{"ok":false,"error":"restricted_action"}' },
+    { status: 401, body: '{"ok":false,"error":"invalid_auth"}' },
+  ])('never resends a definite refusal and records canResend for $status $body', async refusal => {
+    const { client, requests } = newClient(() => refusal);
+    const context = new AttemptContext();
+    expect(await post(client, context)).toMatchObject({ branch: 'providerRejected' });
     expect(requests).toHaveLength(1);
+    // canResend proves Slack posted nothing, so agent hosts classify the refusal as failed.
+    expect(context.marker).toMatchObject({ callId, attempt: 1, state: 'canResend' });
+    const marker = context.marker as { sendCount?: number; providerId?: string };
+    expect(marker.sendCount ?? 0).toBe(0);
+    expect(marker.providerId).toBeUndefined();
+  });
+
+  it.each(['{"ok":false}', '{}'])('keeps the claim for an uncoded refusal %s', async body => {
+    const { client } = newClient(() => ({ status: 200, body }));
+    const context = new AttemptContext();
+    expect(await post(client, context)).toMatchObject({ branch: 'providerRejected' });
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+  });
+
+  it('selects providerRejected when the canResend checkpoint is lost', async () => {
+    const { client, requests } = newClient(() => ({ status: 200, body: '{"ok":false,"error":"channel_not_found"}' }));
+    const context = new AttemptContext();
+    context.recordHeartbeat = async (value: unknown) => {
+      if ((value as { state?: string }).state === 'canResend') throw new Error('can-resend heartbeat unavailable');
+      context.marker = value;
+    };
+    expect(await post(client, context)).toMatchObject({ branch: 'providerRejected' });
+    expect(requests).toHaveLength(1);
+    expect(context.marker).toMatchObject({ state: 'claimed' });
   });
 
   it('selects uncertain for a definite refusal of a resend after a possible send', async () => {
@@ -91,6 +122,7 @@ describe('Slack bounded resend of unconfirmed posts', () => {
     context.attempt = 2;
     expect(await post(client, context)).toMatchObject({ branch: 'uncertain', failure: { kind: 'NOT_FOUND' } });
     expect(requests).toHaveLength(2);
+    expect(context.marker).toMatchObject({ state: 'claimed', sendCount: 2 });
   });
 
   it('selects uncertain when terminal credentials block a resend after a possible send', async () => {
