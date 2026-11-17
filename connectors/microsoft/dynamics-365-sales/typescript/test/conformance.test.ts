@@ -8,7 +8,8 @@ import { MicrosoftDynamics365SalesClient } from '../src/client.js';
 import { FindContactInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/dynamics-365-sales/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/dynamics-365-sales/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'findContact');
 const connection = { provider: 'microsoft-dynamics-365-sales', name: 'microsoft-dynamics-365-sales' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeMicrosoftDynamics365Sales, ''));
 

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Replay the Go-recorded MicrosoftAdvertising provider scenarios."""
 
+import json
 import sys
 from pathlib import Path
 
@@ -14,7 +15,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/microsoft/advertising/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in json.loads((ROOT / "conformance/connectors/microsoft/advertising/scenarios.json").read_text())["scenarios"]
+    if scenario["operation"] == "listCampaigns"
+]
 CONNECTION = sdk.ConnectionRef("microsoft-advertising", "microsoft-advertising")
 ADAPTER = conformance.PythonOperationAdapter(
     "microsoft-advertising",

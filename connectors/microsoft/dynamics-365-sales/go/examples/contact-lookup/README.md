@@ -1,5 +1,7 @@
 # Go Dynamics 365 Sales contact lookup Flow
 
+The Worker also registers `AccountCreationFlow`. In Power Platform admin center, grant the application user Account table Create and Read permissions under **Environments > selected environment > Settings > Users + permissions > Application users**. Start it with `{"name":"Example"}` and a unique Flow ID. The account UUID is derived from the Dex call, and Dex Web shows its ID and name. The write has been exercised against the checked-in mock.
+
 This runnable Flow calls `findContact` through the static `microsoft-dynamics-365-sales` connection. It stores the selected `Contact` in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation

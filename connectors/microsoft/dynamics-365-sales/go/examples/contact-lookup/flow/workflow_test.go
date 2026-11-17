@@ -24,3 +24,12 @@ func TestContactFlowInputAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestAccountCreationFlowRegisters(t *testing.T) {
+	mock := dynamics365salesmock.New(t, ConnectionName)
+	_, err := dex.NewRegistry([]dex.Flow{NewAccountCreationFlow(mock.Connection())})
+	require.NoError(t, err)
+	wait, err := startAccountCreation{}.WaitFor(nil, dynamics365sales.CreateAccountInput{})
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+}

@@ -45,11 +45,87 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListAds() sdkgo.Query[ListAdsInput, AdsPage]
+	GetAd() sdkgo.Query[GetAdInput, AdSummary]
+	CreateResponsiveSearchAd() sdkgo.Mutation[CreateResponsiveSearchAdInput, AdMutationResult]
+	UpdateAd() sdkgo.Mutation[UpdateAdInput, AdMutationResult]
+	DeleteAd() sdkgo.Mutation[DeleteAdInput, AdMutationResult]
+	ListKeywords() sdkgo.Query[ListKeywordsInput, KeywordsPage]
+	GetKeyword() sdkgo.Query[GetKeywordInput, KeywordSummary]
+	CreateKeyword() sdkgo.Mutation[CreateKeywordInput, KeywordMutationResult]
+	UpdateKeyword() sdkgo.Mutation[UpdateKeywordInput, KeywordMutationResult]
+	DeleteKeyword() sdkgo.Mutation[DeleteKeywordInput, KeywordMutationResult]
+	ListAdGroups() sdkgo.Query[ListAdGroupsInput, AdGroupsPage]
+	GetAdGroup() sdkgo.Query[GetAdGroupInput, AdGroupSummary]
+	CreateAdGroup() sdkgo.Mutation[CreateAdGroupInput, AdGroupMutationResult]
+	UpdateAdGroup() sdkgo.Mutation[UpdateAdGroupInput, AdGroupMutationResult]
+	DeleteAdGroup() sdkgo.Mutation[DeleteAdGroupInput, AdGroupMutationResult]
+	GetCampaign() sdkgo.Query[GetCampaignInput, CampaignSummary]
+	CreateCampaign() sdkgo.Mutation[CreateCampaignInput, CampaignMutationResult]
+	UpdateCampaign() sdkgo.Mutation[UpdateCampaignInput, CampaignMutationResult]
+	DeleteCampaign() sdkgo.Mutation[DeleteCampaignInput, CampaignMutationResult]
 	ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListAds() sdkgo.Query[ListAdsInput, AdsPage] {
+	return operations.client.ListAds()
+}
+func (operations clientOperations) GetAd() sdkgo.Query[GetAdInput, AdSummary] {
+	return operations.client.GetAd()
+}
+func (operations clientOperations) CreateResponsiveSearchAd() sdkgo.Mutation[CreateResponsiveSearchAdInput, AdMutationResult] {
+	return operations.client.CreateResponsiveSearchAd()
+}
+func (operations clientOperations) UpdateAd() sdkgo.Mutation[UpdateAdInput, AdMutationResult] {
+	return operations.client.UpdateAd()
+}
+func (operations clientOperations) DeleteAd() sdkgo.Mutation[DeleteAdInput, AdMutationResult] {
+	return operations.client.DeleteAd()
+}
+func (operations clientOperations) ListKeywords() sdkgo.Query[ListKeywordsInput, KeywordsPage] {
+	return operations.client.ListKeywords()
+}
+func (operations clientOperations) GetKeyword() sdkgo.Query[GetKeywordInput, KeywordSummary] {
+	return operations.client.GetKeyword()
+}
+func (operations clientOperations) CreateKeyword() sdkgo.Mutation[CreateKeywordInput, KeywordMutationResult] {
+	return operations.client.CreateKeyword()
+}
+func (operations clientOperations) UpdateKeyword() sdkgo.Mutation[UpdateKeywordInput, KeywordMutationResult] {
+	return operations.client.UpdateKeyword()
+}
+func (operations clientOperations) DeleteKeyword() sdkgo.Mutation[DeleteKeywordInput, KeywordMutationResult] {
+	return operations.client.DeleteKeyword()
+}
+func (operations clientOperations) ListAdGroups() sdkgo.Query[ListAdGroupsInput, AdGroupsPage] {
+	return operations.client.ListAdGroups()
+}
+func (operations clientOperations) GetAdGroup() sdkgo.Query[GetAdGroupInput, AdGroupSummary] {
+	return operations.client.GetAdGroup()
+}
+func (operations clientOperations) CreateAdGroup() sdkgo.Mutation[CreateAdGroupInput, AdGroupMutationResult] {
+	return operations.client.CreateAdGroup()
+}
+func (operations clientOperations) UpdateAdGroup() sdkgo.Mutation[UpdateAdGroupInput, AdGroupMutationResult] {
+	return operations.client.UpdateAdGroup()
+}
+func (operations clientOperations) DeleteAdGroup() sdkgo.Mutation[DeleteAdGroupInput, AdGroupMutationResult] {
+	return operations.client.DeleteAdGroup()
+}
+func (operations clientOperations) GetCampaign() sdkgo.Query[GetCampaignInput, CampaignSummary] {
+	return operations.client.GetCampaign()
+}
+func (operations clientOperations) CreateCampaign() sdkgo.Mutation[CreateCampaignInput, CampaignMutationResult] {
+	return operations.client.CreateCampaign()
+}
+func (operations clientOperations) UpdateCampaign() sdkgo.Mutation[UpdateCampaignInput, CampaignMutationResult] {
+	return operations.client.UpdateCampaign()
+}
+func (operations clientOperations) DeleteCampaign() sdkgo.Mutation[DeleteCampaignInput, CampaignMutationResult] {
+	return operations.client.DeleteCampaign()
+}
 func (operations clientOperations) ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsPage] {
 	return operations.client.ListCampaigns()
 }
@@ -265,6 +341,1389 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListAdsBranchListed sdkgo.BranchID = "listed"
+const ListAdsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAdsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAdsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAdsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAds"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAdsBranchListed, Description: "Microsoft Advertising returned the ads."},
+		{ID: ListAdsBranchProviderRejected, Description: "Microsoft Advertising rejected the request.", Optional: true},
+		{ID: ListAdsBranchInvalidResponse, Description: "The ad response was invalid.", Optional: true},
+		{ID: ListAdsBranchDefect, Description: "The account or ad group ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAdsResult = sdkgo.QueryResult[AdsPage]
+
+type ListAdsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=microsoft-advertising"`
+	operationID                    struct{}                                   `connector:"operationId=listAds"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAdsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAdsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAdsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAdsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAdsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AdsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewListAdsStep[IN any](config ListAdsStepConfig[IN]) sdkgo.QueryStep[IN, ListAdsInput, AdsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAdsInput, AdsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAds(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAdsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAdsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAdsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAdsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAdsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAdsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetAdBranchFound sdkgo.BranchID = "found"
+const GetAdBranchNotFound sdkgo.BranchID = "notFound"
+const GetAdBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAdBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAdBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAdDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAd"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAdBranchFound, Description: "Microsoft Advertising returned the ad."},
+		{ID: GetAdBranchNotFound, Description: "No ad has the requested ID.", Optional: true},
+		{ID: GetAdBranchProviderRejected, Description: "Microsoft Advertising rejected the request.", Optional: true},
+		{ID: GetAdBranchInvalidResponse, Description: "The ad response was invalid.", Optional: true},
+		{ID: GetAdBranchDefect, Description: "The account, ad group, or ad ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAdResult = sdkgo.QueryResult[AdSummary]
+
+type GetAdStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=microsoft-advertising"`
+	operationID                    struct{}                                     `connector:"operationId=getAd"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAdInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAdResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAdResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAdResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAdResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAdResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AdSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewGetAdStep[IN any](config GetAdStepConfig[IN]) sdkgo.QueryStep[IN, GetAdInput, AdSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAdInput, AdSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAd(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAdResult] {
+			branches := make([]sdkgo.BranchTarget[GetAdResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAdBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAdBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAdBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAdBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAdBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateResponsiveSearchAdBranchCreated sdkgo.BranchID = "created"
+const CreateResponsiveSearchAdBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateResponsiveSearchAdBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateResponsiveSearchAdDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createResponsiveSearchAd"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateResponsiveSearchAdBranchCreated, Description: "Microsoft Advertising created the ad."},
+		{ID: CreateResponsiveSearchAdBranchProviderRejected, Description: "Microsoft Advertising rejected the ad.", Optional: true},
+		{ID: CreateResponsiveSearchAdBranchDefect, Description: "The account, ad group, URL, or copy is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateResponsiveSearchAdResult = sdkgo.MutationResult[AdMutationResult]
+
+type CreateResponsiveSearchAdStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                               `connector:"operationId=createResponsiveSearchAd"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateResponsiveSearchAdInput                 `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateResponsiveSearchAdResult]           `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateResponsiveSearchAdResult]           `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateResponsiveSearchAdResult]           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateResponsiveSearchAdStep[IN any](config CreateResponsiveSearchAdStepConfig[IN]) sdkgo.MutationStep[IN, CreateResponsiveSearchAdInput, AdMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateResponsiveSearchAdInput, AdMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateResponsiveSearchAd(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateResponsiveSearchAdResult] {
+			branches := make([]sdkgo.BranchTarget[CreateResponsiveSearchAdResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateResponsiveSearchAdBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateResponsiveSearchAdBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateResponsiveSearchAdBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateAdBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAdBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAdBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateAdBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAdDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAd"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAdBranchUpdated, Description: "Microsoft Advertising updated the ad."},
+		{ID: UpdateAdBranchProviderRejected, Description: "Microsoft Advertising rejected the update.", Optional: true},
+		{ID: UpdateAdBranchInvalidResponse, Description: "The update response was invalid.", Optional: true},
+		{ID: UpdateAdBranchDefect, Description: "The account, ad group, ad, or status is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateAdResult = sdkgo.MutationResult[AdMutationResult]
+
+type UpdateAdStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                               `connector:"operationId=updateAd"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAdInput                                 `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAdResult]                           `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateAdResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateAdResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateAdResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAdStep[IN any](config UpdateAdStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAdInput, AdMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAdInput, AdMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAd(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAdResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAdResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAdBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAdBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateAdBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAdBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteAdBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteAdBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteAdBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteAdBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteAdDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteAd"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteAdBranchDeleted, Description: "Microsoft Advertising deleted the ad."},
+		{ID: DeleteAdBranchProviderRejected, Description: "Microsoft Advertising rejected the delete.", Optional: true},
+		{ID: DeleteAdBranchInvalidResponse, Description: "The delete response was invalid.", Optional: true},
+		{ID: DeleteAdBranchDefect, Description: "The account, ad group, or ad ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteAdResult = sdkgo.MutationResult[AdMutationResult]
+
+type DeleteAdStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                               `connector:"operationId=deleteAd"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteAdInput                                 `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteAdResult]                           `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteAdResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteAdResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteAdResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteAdStep[IN any](config DeleteAdStepConfig[IN]) sdkgo.MutationStep[IN, DeleteAdInput, AdMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteAdInput, AdMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteAd(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteAdResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteAdResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteAdBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteAdBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteAdBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteAdBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListKeywordsBranchListed sdkgo.BranchID = "listed"
+const ListKeywordsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListKeywordsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListKeywordsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListKeywordsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listKeywords"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListKeywordsBranchListed, Description: "Microsoft Advertising returned the keywords."},
+		{ID: ListKeywordsBranchProviderRejected, Description: "Microsoft Advertising rejected the request.", Optional: true},
+		{ID: ListKeywordsBranchInvalidResponse, Description: "The keyword response was invalid.", Optional: true},
+		{ID: ListKeywordsBranchDefect, Description: "The account or ad group ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListKeywordsResult = sdkgo.QueryResult[KeywordsPage]
+
+type ListKeywordsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=microsoft-advertising"`
+	operationID                    struct{}                                        `connector:"operationId=listKeywords"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListKeywordsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListKeywordsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListKeywordsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListKeywordsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListKeywordsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[KeywordsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListKeywordsStep[IN any](config ListKeywordsStepConfig[IN]) sdkgo.QueryStep[IN, ListKeywordsInput, KeywordsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListKeywordsInput, KeywordsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListKeywords(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListKeywordsResult] {
+			branches := make([]sdkgo.BranchTarget[ListKeywordsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListKeywordsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListKeywordsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListKeywordsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListKeywordsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetKeywordBranchFound sdkgo.BranchID = "found"
+const GetKeywordBranchNotFound sdkgo.BranchID = "notFound"
+const GetKeywordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetKeywordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetKeywordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetKeywordDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getKeyword"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetKeywordBranchFound, Description: "Microsoft Advertising returned the keyword."},
+		{ID: GetKeywordBranchNotFound, Description: "No keyword has the requested ID.", Optional: true},
+		{ID: GetKeywordBranchProviderRejected, Description: "Microsoft Advertising rejected the request.", Optional: true},
+		{ID: GetKeywordBranchInvalidResponse, Description: "The keyword response was invalid.", Optional: true},
+		{ID: GetKeywordBranchDefect, Description: "The account, ad group, or keyword ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetKeywordResult = sdkgo.QueryResult[KeywordSummary]
+
+type GetKeywordStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=microsoft-advertising"`
+	operationID                    struct{}                                          `connector:"operationId=getKeyword"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetKeywordInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetKeywordResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetKeywordResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetKeywordResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetKeywordResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetKeywordResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[KeywordSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetKeywordStep[IN any](config GetKeywordStepConfig[IN]) sdkgo.QueryStep[IN, GetKeywordInput, KeywordSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetKeywordInput, KeywordSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetKeyword(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetKeywordResult] {
+			branches := make([]sdkgo.BranchTarget[GetKeywordResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetKeywordBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetKeywordBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetKeywordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetKeywordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetKeywordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateKeywordBranchCreated sdkgo.BranchID = "created"
+const CreateKeywordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateKeywordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateKeywordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createKeyword"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateKeywordBranchCreated, Description: "Microsoft Advertising created the keyword."},
+		{ID: CreateKeywordBranchProviderRejected, Description: "Microsoft Advertising rejected the create.", Optional: true},
+		{ID: CreateKeywordBranchDefect, Description: "The account, ad group, text, or match type is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateKeywordResult = sdkgo.MutationResult[KeywordMutationResult]
+
+type CreateKeywordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                                    `connector:"operationId=createKeyword"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateKeywordInput                                 `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateKeywordResult]                           `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateKeywordResult]                           `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateKeywordResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[KeywordMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateKeywordStep[IN any](config CreateKeywordStepConfig[IN]) sdkgo.MutationStep[IN, CreateKeywordInput, KeywordMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateKeywordInput, KeywordMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateKeyword(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateKeywordResult] {
+			branches := make([]sdkgo.BranchTarget[CreateKeywordResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateKeywordBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateKeywordBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateKeywordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateKeywordBranchUpdated sdkgo.BranchID = "updated"
+const UpdateKeywordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateKeywordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateKeywordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateKeywordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateKeyword"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateKeywordBranchUpdated, Description: "Microsoft Advertising updated the keyword."},
+		{ID: UpdateKeywordBranchProviderRejected, Description: "Microsoft Advertising rejected the update.", Optional: true},
+		{ID: UpdateKeywordBranchInvalidResponse, Description: "The update response was invalid.", Optional: true},
+		{ID: UpdateKeywordBranchDefect, Description: "The account, ad group, keyword, or status is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateKeywordResult = sdkgo.MutationResult[KeywordMutationResult]
+
+type UpdateKeywordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                                    `connector:"operationId=updateKeyword"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateKeywordInput                                 `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateKeywordResult]                           `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateKeywordResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateKeywordResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateKeywordResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[KeywordMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateKeywordStep[IN any](config UpdateKeywordStepConfig[IN]) sdkgo.MutationStep[IN, UpdateKeywordInput, KeywordMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateKeywordInput, KeywordMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateKeyword(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateKeywordResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateKeywordResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateKeywordBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateKeywordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateKeywordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateKeywordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteKeywordBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteKeywordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteKeywordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteKeywordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteKeywordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteKeyword"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteKeywordBranchDeleted, Description: "Microsoft Advertising deleted the keyword."},
+		{ID: DeleteKeywordBranchProviderRejected, Description: "Microsoft Advertising rejected the delete.", Optional: true},
+		{ID: DeleteKeywordBranchInvalidResponse, Description: "The delete response was invalid.", Optional: true},
+		{ID: DeleteKeywordBranchDefect, Description: "The account, ad group, or keyword ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteKeywordResult = sdkgo.MutationResult[KeywordMutationResult]
+
+type DeleteKeywordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                                    `connector:"operationId=deleteKeyword"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteKeywordInput                                 `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteKeywordResult]                           `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteKeywordResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteKeywordResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteKeywordResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[KeywordMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteKeywordStep[IN any](config DeleteKeywordStepConfig[IN]) sdkgo.MutationStep[IN, DeleteKeywordInput, KeywordMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteKeywordInput, KeywordMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteKeyword(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteKeywordResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteKeywordResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteKeywordBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteKeywordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteKeywordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteKeywordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAdGroupsBranchListed sdkgo.BranchID = "listed"
+const ListAdGroupsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAdGroupsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAdGroupsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAdGroupsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAdGroups"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAdGroupsBranchListed, Description: "Microsoft Advertising returned the ad groups."},
+		{ID: ListAdGroupsBranchProviderRejected, Description: "Microsoft Advertising rejected the request.", Optional: true},
+		{ID: ListAdGroupsBranchInvalidResponse, Description: "The ad group response was invalid.", Optional: true},
+		{ID: ListAdGroupsBranchDefect, Description: "The account or campaign ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAdGroupsResult = sdkgo.QueryResult[AdGroupsPage]
+
+type ListAdGroupsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=microsoft-advertising"`
+	operationID                    struct{}                                        `connector:"operationId=listAdGroups"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAdGroupsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAdGroupsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAdGroupsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAdGroupsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAdGroupsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AdGroupsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListAdGroupsStep[IN any](config ListAdGroupsStepConfig[IN]) sdkgo.QueryStep[IN, ListAdGroupsInput, AdGroupsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAdGroupsInput, AdGroupsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAdGroups(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAdGroupsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAdGroupsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAdGroupsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAdGroupsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAdGroupsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAdGroupsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetAdGroupBranchFound sdkgo.BranchID = "found"
+const GetAdGroupBranchNotFound sdkgo.BranchID = "notFound"
+const GetAdGroupBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAdGroupBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAdGroupBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAdGroupDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAdGroup"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAdGroupBranchFound, Description: "Microsoft Advertising returned the ad group."},
+		{ID: GetAdGroupBranchNotFound, Description: "No ad group has the requested ID.", Optional: true},
+		{ID: GetAdGroupBranchProviderRejected, Description: "Microsoft Advertising rejected the request.", Optional: true},
+		{ID: GetAdGroupBranchInvalidResponse, Description: "The ad group response was invalid.", Optional: true},
+		{ID: GetAdGroupBranchDefect, Description: "The account, campaign, or ad group ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAdGroupResult = sdkgo.QueryResult[AdGroupSummary]
+
+type GetAdGroupStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=microsoft-advertising"`
+	operationID                    struct{}                                          `connector:"operationId=getAdGroup"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAdGroupInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAdGroupResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAdGroupResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAdGroupResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAdGroupResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAdGroupResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AdGroupSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetAdGroupStep[IN any](config GetAdGroupStepConfig[IN]) sdkgo.QueryStep[IN, GetAdGroupInput, AdGroupSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAdGroupInput, AdGroupSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAdGroup(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAdGroupResult] {
+			branches := make([]sdkgo.BranchTarget[GetAdGroupResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAdGroupBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAdGroupBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAdGroupBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAdGroupBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAdGroupBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateAdGroupBranchCreated sdkgo.BranchID = "created"
+const CreateAdGroupBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAdGroupBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateAdGroupDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAdGroup"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAdGroupBranchCreated, Description: "Microsoft Advertising created the ad group."},
+		{ID: CreateAdGroupBranchProviderRejected, Description: "Microsoft Advertising rejected the create.", Optional: true},
+		{ID: CreateAdGroupBranchDefect, Description: "The account, campaign, or name is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateAdGroupResult = sdkgo.MutationResult[AdGroupMutationResult]
+
+type CreateAdGroupStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                                    `connector:"operationId=createAdGroup"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAdGroupInput                                 `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAdGroupResult]                           `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateAdGroupResult]                           `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateAdGroupResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdGroupMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateAdGroupStep[IN any](config CreateAdGroupStepConfig[IN]) sdkgo.MutationStep[IN, CreateAdGroupInput, AdGroupMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAdGroupInput, AdGroupMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAdGroup(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAdGroupResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAdGroupResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAdGroupBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAdGroupBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAdGroupBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateAdGroupBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAdGroupBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAdGroupBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateAdGroupBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAdGroupDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAdGroup"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAdGroupBranchUpdated, Description: "Microsoft Advertising updated the ad group."},
+		{ID: UpdateAdGroupBranchProviderRejected, Description: "Microsoft Advertising rejected the update.", Optional: true},
+		{ID: UpdateAdGroupBranchInvalidResponse, Description: "The update response was invalid.", Optional: true},
+		{ID: UpdateAdGroupBranchDefect, Description: "The account, campaign, ad group, or replacement is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateAdGroupResult = sdkgo.MutationResult[AdGroupMutationResult]
+
+type UpdateAdGroupStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                                    `connector:"operationId=updateAdGroup"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAdGroupInput                                 `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAdGroupResult]                           `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateAdGroupResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateAdGroupResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateAdGroupResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdGroupMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAdGroupStep[IN any](config UpdateAdGroupStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAdGroupInput, AdGroupMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAdGroupInput, AdGroupMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAdGroup(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAdGroupResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAdGroupResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAdGroupBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAdGroupBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateAdGroupBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAdGroupBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteAdGroupBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteAdGroupBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteAdGroupBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteAdGroupBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteAdGroupDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteAdGroup"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteAdGroupBranchDeleted, Description: "Microsoft Advertising deleted the ad group."},
+		{ID: DeleteAdGroupBranchProviderRejected, Description: "Microsoft Advertising rejected the delete.", Optional: true},
+		{ID: DeleteAdGroupBranchInvalidResponse, Description: "The delete response was invalid.", Optional: true},
+		{ID: DeleteAdGroupBranchDefect, Description: "The account, campaign, or ad group ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteAdGroupResult = sdkgo.MutationResult[AdGroupMutationResult]
+
+type DeleteAdGroupStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                                    `connector:"operationId=deleteAdGroup"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteAdGroupInput                                 `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteAdGroupResult]                           `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteAdGroupResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteAdGroupResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteAdGroupResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdGroupMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteAdGroupStep[IN any](config DeleteAdGroupStepConfig[IN]) sdkgo.MutationStep[IN, DeleteAdGroupInput, AdGroupMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteAdGroupInput, AdGroupMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteAdGroup(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteAdGroupResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteAdGroupResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteAdGroupBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteAdGroupBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteAdGroupBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteAdGroupBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCampaignBranchFound sdkgo.BranchID = "found"
+const GetCampaignBranchNotFound sdkgo.BranchID = "notFound"
+const GetCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCampaignBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCampaignDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCampaignBranchFound, Description: "Microsoft Advertising returned the campaign."},
+		{ID: GetCampaignBranchNotFound, Description: "The campaign is absent.", Optional: true},
+		{ID: GetCampaignBranchProviderRejected, Description: "Microsoft Advertising rejected the lookup.", Optional: true},
+		{ID: GetCampaignBranchInvalidResponse, Description: "Microsoft Advertising returned invalid campaign JSON.", Optional: true},
+		{ID: GetCampaignBranchDefect, Description: "The ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCampaignResult = sdkgo.QueryResult[CampaignSummary]
+
+type GetCampaignStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=microsoft-advertising"`
+	operationID                    struct{}                                           `connector:"operationId=getCampaign"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCampaignInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCampaignResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCampaignResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCampaignResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCampaignResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCampaignResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CampaignSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetCampaignStep[IN any](config GetCampaignStepConfig[IN]) sdkgo.QueryStep[IN, GetCampaignInput, CampaignSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCampaignInput, CampaignSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[GetCampaignResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCampaignBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCampaignBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCampaignBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCampaignBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCampaignBranchCreated sdkgo.BranchID = "created"
+const CreateCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCampaignBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCampaignDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCampaignBranchCreated, Description: "Microsoft Advertising returned the new campaign ID."},
+		{ID: CreateCampaignBranchProviderRejected, Description: "Microsoft Advertising rejected the campaign.", Optional: true},
+		{ID: CreateCampaignBranchUncertain, Description: "The create outcome could not be confirmed.", Optional: true},
+		{ID: CreateCampaignBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCampaignResult = sdkgo.MutationResult[CampaignMutationResult]
+
+type CreateCampaignStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                                     `connector:"operationId=createCampaign"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCampaignInput                                 `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCampaignResult]                           `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCampaignResult]                           `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateCampaignResult]                           `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateCampaignResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CampaignMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCampaignStep[IN any](config CreateCampaignStepConfig[IN]) sdkgo.MutationStep[IN, CreateCampaignInput, CampaignMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCampaignInput, CampaignMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCampaignResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCampaignBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCampaignBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCampaignBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCampaignBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCampaignBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCampaignDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCampaignBranchUpdated, Description: "Microsoft Advertising accepted the campaign changes."},
+		{ID: UpdateCampaignBranchProviderRejected, Description: "Microsoft Advertising rejected the changes.", Optional: true},
+		{ID: UpdateCampaignBranchInvalidResponse, Description: "Microsoft Advertising returned invalid update JSON.", Optional: true},
+		{ID: UpdateCampaignBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCampaignResult = sdkgo.MutationResult[CampaignMutationResult]
+
+type UpdateCampaignStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                                     `connector:"operationId=updateCampaign"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCampaignInput                                 `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCampaignResult]                           `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateCampaignResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateCampaignResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateCampaignResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CampaignMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCampaignStep[IN any](config UpdateCampaignStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCampaignInput, CampaignMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCampaignInput, CampaignMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCampaignResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCampaignBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCampaignBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateCampaignBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCampaignBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCampaignBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCampaignDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCampaignBranchDeleted, Description: "Microsoft Advertising accepted the deletion."},
+		{ID: DeleteCampaignBranchProviderRejected, Description: "Microsoft Advertising rejected the deletion.", Optional: true},
+		{ID: DeleteCampaignBranchInvalidResponse, Description: "Microsoft Advertising returned invalid deletion JSON.", Optional: true},
+		{ID: DeleteCampaignBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteCampaignResult = sdkgo.MutationResult[CampaignMutationResult]
+
+type DeleteCampaignStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=microsoft-advertising"`
+	operationID                       struct{}                                                     `connector:"operationId=deleteCampaign"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteCampaignInput                                 `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCampaignResult]                           `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteCampaignResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteCampaignResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteCampaignResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CampaignMutationResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCampaignStep[IN any](config DeleteCampaignStepConfig[IN]) sdkgo.MutationStep[IN, DeleteCampaignInput, CampaignMutationResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-advertising connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteCampaignInput, CampaignMutationResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCampaignResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCampaignBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCampaignBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteCampaignBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListCampaignsBranchListed sdkgo.BranchID = "listed"

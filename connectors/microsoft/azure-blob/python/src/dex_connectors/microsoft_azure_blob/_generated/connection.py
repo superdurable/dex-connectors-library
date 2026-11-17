@@ -108,7 +108,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.microsoft_azure_bl
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"accountName", "endpoint", "timeout", "maxResponseBytes"}:
+    if set(value) - {"accountName", "endpoint", "timeout", "maxResponseBytes", "listPageSize"}:
         raise ValueError("Azure Blob Storage configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "accountName" in value:
@@ -135,4 +135,9 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(max_response_bytes) is int):
             raise ValueError("Azure Blob Storage configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
+    if "listPageSize" in value:
+        list_page_size = value["listPageSize"]
+        if not (type(list_page_size) is int):
+            raise ValueError("Azure Blob Storage configuration listPageSize has an invalid type")
+        config_arguments['list_page_size'] = list_page_size
     return Config(**config_arguments)

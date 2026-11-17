@@ -16,6 +16,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listContainers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[azureblob.ContainersPage](`{"names":["docs"],"nextMarker":""}`)
+			return err
+		}},
+		{name: "getContainer/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[azureblob.ContainerProperties](`{"etag":"\"0x1\"","lastModified":"Mon, 02 Jan 2006 15:04:05 GMT"}`)
+			return err
+		}},
+		{name: "createContainer/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[azureblob.ContainerWriteResult](`{"container":"docs"}`)
+			return err
+		}},
+		{name: "deleteContainer/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[azureblob.ContainerDeleteResult](`{"deleted":true}`)
+			return err
+		}},
+		{name: "listBlobs/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[azureblob.BlobsPage](`{"names":["example.txt"],"nextMarker":""}`)
+			return err
+		}},
+		{name: "putBlob/storedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[azureblob.BlobWriteResult](`{"etag":"\"0x1\""}`)
+			return err
+		}},
+		{name: "deleteBlob/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[azureblob.BlobDeleteResult](`{"deleted":true}`)
+			return err
+		}},
 		{name: "getBlob/downloadedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[azureblob.BlobDownload](`{"dataBase64":"aGVsbG8=","contentType":"text/plain","etag":"\"0x1\""}`)
 			return err
@@ -30,6 +58,27 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListContainers().Definition().Operation.OperationID != "listContainers" {
+		t.Errorf("listContainers mock has another definition")
+	}
+	if mock.GetContainer().Definition().Operation.OperationID != "getContainer" {
+		t.Errorf("getContainer mock has another definition")
+	}
+	if mock.CreateContainer().Definition().Operation.OperationID != "createContainer" {
+		t.Errorf("createContainer mock has another definition")
+	}
+	if mock.DeleteContainer().Definition().Operation.OperationID != "deleteContainer" {
+		t.Errorf("deleteContainer mock has another definition")
+	}
+	if mock.ListBlobs().Definition().Operation.OperationID != "listBlobs" {
+		t.Errorf("listBlobs mock has another definition")
+	}
+	if mock.PutBlob().Definition().Operation.OperationID != "putBlob" {
+		t.Errorf("putBlob mock has another definition")
+	}
+	if mock.DeleteBlob().Definition().Operation.OperationID != "deleteBlob" {
+		t.Errorf("deleteBlob mock has another definition")
+	}
 	if mock.GetBlob().Definition().Operation.OperationID != "getBlob" {
 		t.Errorf("getBlob mock has another definition")
 	}

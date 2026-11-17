@@ -12,10 +12,12 @@ export interface Config {
   accountName: string;
   /** Optional Blob service URL. Blank derives https://<accountName>.blob.core.windows.net from accountName. Override only for a trusted compatible endpoint; local tests may use loopback HTTP. */
   endpoint?: string;
-  /** Maximum duration of one blob download as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
+  /** Maximum duration of one Azure Storage request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete blob body in bytes. Blank uses the displayed default; increase only for a known larger blob that the Flow can safely store. */
+  /** Maximum complete blob body or list XML in bytes. Blank uses the displayed default; increase only for a known larger result that the Flow can safely store. */
   maxResponseBytes?: number;
+  /** Positive maximum number of blob or container names per list page. Blank uses the displayed default; increase for a large account when the returned XML fits maxResponseBytes. */
+  listPageSize?: number;
 }
 
 /** Runtime schema for manifest configuration. */
@@ -24,6 +26,7 @@ export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),
+  "listPageSize": z.number().int().optional(),
 });
 
 /** Private connector credentials resolved by the host. */

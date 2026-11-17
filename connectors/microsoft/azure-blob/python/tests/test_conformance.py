@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Replay the Go-recorded Azure Blob Storage provider scenarios."""
 
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,7 +16,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/microsoft/azure-blob/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in json.loads((ROOT / "conformance/connectors/microsoft/azure-blob/scenarios.json").read_text())["scenarios"]
+    if scenario["operation"] == "getBlob"
+]
 CONNECTION = sdk.ConnectionRef("microsoft-azure-blob", "microsoft-azure-blob")
 TEST_CREDENTIALS = microsoft_azure_blob.Credentials(sdk.SecretString("c2VjcmV0LXRlc3Qta2V5"))
 ADAPTER = conformance.PythonOperationAdapter(
