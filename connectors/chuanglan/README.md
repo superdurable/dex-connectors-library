@@ -15,3 +15,7 @@ same Go-recorded provider outcomes. Its [runnable Flow](python/examples/balance/
 queries through a real Dex Worker and Client and keeps the API account and
 password out of persisted results. The local integration test uses inert
 credentials and a fake provider; live Chuanglan authorization remains unverified.
+
+## TypeScript package
+
+The `@superdurable/connector-chuanglan` package implements `getBalance` with the same request and outcomes as Go. Its [runnable balance Flow](typescript/examples/balance/README.md) passed a real local Dex Worker, Client, retry, and persistence test against a provider stand-in. Eleven Go-recorded scenarios verify exact provider requests and outcomes. A live Chuanglan account lookup remains unverified.
