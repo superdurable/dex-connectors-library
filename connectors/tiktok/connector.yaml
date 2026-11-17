@@ -52,10 +52,70 @@ spec:
     guide:
       startURL: https://business-api.tiktok.com/portal
       steps:
-        - Sign in to TikTok API for Business Portal, register as a developer, create an app, and request Marketing API campaign read access. Under My Apps > selected app > Basic Information, copy the Advertiser authorization URL and have the advertiser approve access.
+        - Sign in to TikTok API for Business Portal, register as a developer, create an app, and request Marketing API campaign, ad group, and ad read access. Request write permission only if using a status mutation. Under My Apps > selected app > Basic Information, copy the Advertiser authorization URL and have the advertiser approve access.
         - Exchange the returned auth_code with the app ID and secret at the documented /oauth2/access_token/ endpoint. Save only the returned access_token in Dex Web secret access_token; never put the app secret or token in Flow input. Renew or reauthorize when TikTok invalidates it.
         - Open https://ads.tiktok.com > Ads Manager > Account Name > ID and copy the decimal ad account ID into listCampaigns advertiserId. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: updateCampaignStatus
+      goName: UpdateCampaignStatus
+      inputType: UpdateCampaignStatusInput
+      outputType: AdvertisingStatusResult
+      kind: mutation
+      description: Set one campaign's operation status to ENABLE, DISABLE, or DELETE.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the campaign status.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the status change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Advertiser ID, campaign ID, status, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example campaign status was updated.
+          output: {resourceId: '1845123456789012345', operationStatus: DISABLE}
+    - name: updateAdgroupStatus
+      goName: UpdateAdgroupStatus
+      inputType: UpdateAdgroupStatusInput
+      outputType: AdvertisingStatusResult
+      kind: mutation
+      description: Set one adgroup's operation status to ENABLE, DISABLE, or DELETE.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the adgroup status.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the status change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Advertiser ID, adgroup ID, status, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example adgroup status was updated.
+          output: {resourceId: '1845123456789012345', operationStatus: DISABLE}
+    - name: updateAdStatus
+      goName: UpdateAdStatus
+      inputType: UpdateAdStatusInput
+      outputType: AdvertisingStatusResult
+      kind: mutation
+      description: Set one ad's operation status to ENABLE, DISABLE, or DELETE.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: TikTok confirmed the ad status.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the status change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Advertiser ID, ad ID, status, or credentials are invalid.", optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Example ad status was updated.
+          output: {resourceId: '1845123456789012345', operationStatus: DISABLE}
     - name: listAdgroups
       goName: ListAdgroups
       inputType: ListAdgroupsInput

@@ -94,3 +94,32 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	}
 	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }
+
+func (client *Client) post(call sdkgo.Call, path string, body []byte) providerResponse {
+	credentials, err := client.credentials.Resolve(call)
+	if err != nil || credentials.Validate() != nil {
+		return providerResponse{err: errCredential}
+	}
+	accessToken := credentials.AccessToken.Reveal()
+	if !providerhttp.IsHeaderSafeCredential(accessToken) {
+		return providerResponse{err: errCredential}
+	}
+	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+path, bytes.NewReader(body))
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Access-Token", accessToken)
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return providerResponse{err: errRequest}
+	}
+	defer func() { _ = response.Body.Close() }()
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if bytes.Contains(responseBody, []byte(accessToken)) {
+		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
+	}
+	return providerResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: err}
+}

@@ -17,10 +17,13 @@ import (
 
 // Mock is a scripted tiktok-business connection. Script each operation through its accessor.
 type Mock struct {
-	connection    tiktok.Connection
-	listAdgroups  *connectormock.Query[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage]
-	listAds       *connectormock.Query[tiktok.ListAdsInput, tiktok.AdsPage]
-	listCampaigns *connectormock.Query[tiktok.ListCampaignsInput, tiktok.CampaignsPage]
+	connection           tiktok.Connection
+	updateCampaignStatus *connectormock.Mutation[tiktok.UpdateCampaignStatusInput, tiktok.AdvertisingStatusResult]
+	updateAdgroupStatus  *connectormock.Mutation[tiktok.UpdateAdgroupStatusInput, tiktok.AdvertisingStatusResult]
+	updateAdStatus       *connectormock.Mutation[tiktok.UpdateAdStatusInput, tiktok.AdvertisingStatusResult]
+	listAdgroups         *connectormock.Query[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage]
+	listAds              *connectormock.Query[tiktok.ListAdsInput, tiktok.AdsPage]
+	listCampaigns        *connectormock.Query[tiktok.ListCampaignsInput, tiktok.CampaignsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,10 +31,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listAdgroups:  connectormock.NewQuery[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage](t, tiktok.ListAdgroupsDefinition),
-		listAds:       connectormock.NewQuery[tiktok.ListAdsInput, tiktok.AdsPage](t, tiktok.ListAdsDefinition),
-		listCampaigns: connectormock.NewQuery[tiktok.ListCampaignsInput, tiktok.CampaignsPage](t, tiktok.ListCampaignsDefinition),
+		updateCampaignStatus: connectormock.NewMutation[tiktok.UpdateCampaignStatusInput, tiktok.AdvertisingStatusResult](t, tiktok.UpdateCampaignStatusDefinition),
+		updateAdgroupStatus:  connectormock.NewMutation[tiktok.UpdateAdgroupStatusInput, tiktok.AdvertisingStatusResult](t, tiktok.UpdateAdgroupStatusDefinition),
+		updateAdStatus:       connectormock.NewMutation[tiktok.UpdateAdStatusInput, tiktok.AdvertisingStatusResult](t, tiktok.UpdateAdStatusDefinition),
+		listAdgroups:         connectormock.NewQuery[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage](t, tiktok.ListAdgroupsDefinition),
+		listAds:              connectormock.NewQuery[tiktok.ListAdsInput, tiktok.AdsPage](t, tiktok.ListAdsDefinition),
+		listCampaigns:        connectormock.NewQuery[tiktok.ListCampaignsInput, tiktok.CampaignsPage](t, tiktok.ListCampaignsDefinition),
 	}
+	mock.updateCampaignStatus.Default(UpdateCampaignStatusDefault())
+	mock.updateAdgroupStatus.Default(UpdateAdgroupStatusDefault())
+	mock.updateAdStatus.Default(UpdateAdStatusDefault())
 	mock.listAdgroups.Default(ListAdgroupsDefault())
 	mock.listAds.Default(ListAdsDefault())
 	mock.listCampaigns.Default(ListCampaignsDefault())
@@ -45,6 +54,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() tiktok.Connection { return mock.connection }
+
+// UpdateCampaignStatus returns the updateCampaignStatus script.
+func (mock *Mock) UpdateCampaignStatus() *connectormock.Mutation[tiktok.UpdateCampaignStatusInput, tiktok.AdvertisingStatusResult] {
+	return mock.updateCampaignStatus
+}
+
+// UpdateAdgroupStatus returns the updateAdgroupStatus script.
+func (mock *Mock) UpdateAdgroupStatus() *connectormock.Mutation[tiktok.UpdateAdgroupStatusInput, tiktok.AdvertisingStatusResult] {
+	return mock.updateAdgroupStatus
+}
+
+// UpdateAdStatus returns the updateAdStatus script.
+func (mock *Mock) UpdateAdStatus() *connectormock.Mutation[tiktok.UpdateAdStatusInput, tiktok.AdvertisingStatusResult] {
+	return mock.updateAdStatus
+}
 
 // ListAdgroups returns the listAdgroups script.
 func (mock *Mock) ListAdgroups() *connectormock.Query[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage] {
@@ -63,6 +87,15 @@ func (mock *Mock) ListCampaigns() *connectormock.Query[tiktok.ListCampaignsInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) UpdateCampaignStatus() sdkgo.Mutation[tiktok.UpdateCampaignStatusInput, tiktok.AdvertisingStatusResult] {
+	return operations.mock.updateCampaignStatus
+}
+func (operations mockOperations) UpdateAdgroupStatus() sdkgo.Mutation[tiktok.UpdateAdgroupStatusInput, tiktok.AdvertisingStatusResult] {
+	return operations.mock.updateAdgroupStatus
+}
+func (operations mockOperations) UpdateAdStatus() sdkgo.Mutation[tiktok.UpdateAdStatusInput, tiktok.AdvertisingStatusResult] {
+	return operations.mock.updateAdStatus
+}
 func (operations mockOperations) ListAdgroups() sdkgo.Query[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage] {
 	return operations.mock.listAdgroups
 }
@@ -71,6 +104,114 @@ func (operations mockOperations) ListAds() sdkgo.Query[tiktok.ListAdsInput, tikt
 }
 func (operations mockOperations) ListCampaigns() sdkgo.Query[tiktok.ListCampaignsInput, tiktok.CampaignsPage] {
 	return operations.mock.listCampaigns
+}
+
+// UpdateCampaignStatusUpdated selects the updated branch: TikTok confirmed the campaign status.
+func UpdateCampaignStatusUpdated(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateCampaignStatusBranchUpdated, value, failure)
+}
+
+// UpdateCampaignStatusProviderRejected selects the providerRejected branch: TikTok conclusively rejected the status change.
+func UpdateCampaignStatusProviderRejected(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateCampaignStatusBranchProviderRejected, value, failure)
+}
+
+// UpdateCampaignStatusInvalidResponse selects the invalidResponse branch: TikTok returned malformed or oversized JSON.
+func UpdateCampaignStatusInvalidResponse(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateCampaignStatusBranchInvalidResponse, value, failure)
+}
+
+// UpdateCampaignStatusDefect selects the defect branch: Advertiser ID, campaign ID, status, or credentials are invalid.
+func UpdateCampaignStatusDefect(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateCampaignStatusBranchDefect, value, failure)
+}
+
+// UpdateCampaignStatusRetry asks Dex to retry the updateCampaignStatus Step, after the delay when it is positive.
+func UpdateCampaignStatusRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Retry[tiktok.AdvertisingStatusResult](failure, after)
+}
+
+// UpdateCampaignStatusUpdatedDefault is the manifest mock updatedDefault: Example campaign status was updated.
+func UpdateCampaignStatusUpdatedDefault() connectormock.Case[tiktok.AdvertisingStatusResult] {
+	value := connectormock.MustDecodeOutput[tiktok.AdvertisingStatusResult](`{"resourceId":"1845123456789012345","operationStatus":"DISABLE"}`)
+	return connectormock.Branch(tiktok.UpdateCampaignStatusBranchUpdated, value, nil)
+}
+
+// UpdateCampaignStatusDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCampaignStatusDefault() connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return UpdateCampaignStatusUpdatedDefault()
+}
+
+// UpdateAdgroupStatusUpdated selects the updated branch: TikTok confirmed the adgroup status.
+func UpdateAdgroupStatusUpdated(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateAdgroupStatusBranchUpdated, value, failure)
+}
+
+// UpdateAdgroupStatusProviderRejected selects the providerRejected branch: TikTok conclusively rejected the status change.
+func UpdateAdgroupStatusProviderRejected(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateAdgroupStatusBranchProviderRejected, value, failure)
+}
+
+// UpdateAdgroupStatusInvalidResponse selects the invalidResponse branch: TikTok returned malformed or oversized JSON.
+func UpdateAdgroupStatusInvalidResponse(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateAdgroupStatusBranchInvalidResponse, value, failure)
+}
+
+// UpdateAdgroupStatusDefect selects the defect branch: Advertiser ID, adgroup ID, status, or credentials are invalid.
+func UpdateAdgroupStatusDefect(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateAdgroupStatusBranchDefect, value, failure)
+}
+
+// UpdateAdgroupStatusRetry asks Dex to retry the updateAdgroupStatus Step, after the delay when it is positive.
+func UpdateAdgroupStatusRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Retry[tiktok.AdvertisingStatusResult](failure, after)
+}
+
+// UpdateAdgroupStatusUpdatedDefault is the manifest mock updatedDefault: Example adgroup status was updated.
+func UpdateAdgroupStatusUpdatedDefault() connectormock.Case[tiktok.AdvertisingStatusResult] {
+	value := connectormock.MustDecodeOutput[tiktok.AdvertisingStatusResult](`{"resourceId":"1845123456789012345","operationStatus":"DISABLE"}`)
+	return connectormock.Branch(tiktok.UpdateAdgroupStatusBranchUpdated, value, nil)
+}
+
+// UpdateAdgroupStatusDefault is the manifest default, updatedDefault, which New installs.
+func UpdateAdgroupStatusDefault() connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return UpdateAdgroupStatusUpdatedDefault()
+}
+
+// UpdateAdStatusUpdated selects the updated branch: TikTok confirmed the ad status.
+func UpdateAdStatusUpdated(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateAdStatusBranchUpdated, value, failure)
+}
+
+// UpdateAdStatusProviderRejected selects the providerRejected branch: TikTok conclusively rejected the status change.
+func UpdateAdStatusProviderRejected(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateAdStatusBranchProviderRejected, value, failure)
+}
+
+// UpdateAdStatusInvalidResponse selects the invalidResponse branch: TikTok returned malformed or oversized JSON.
+func UpdateAdStatusInvalidResponse(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateAdStatusBranchInvalidResponse, value, failure)
+}
+
+// UpdateAdStatusDefect selects the defect branch: Advertiser ID, ad ID, status, or credentials are invalid.
+func UpdateAdStatusDefect(value tiktok.AdvertisingStatusResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Branch(tiktok.UpdateAdStatusBranchDefect, value, failure)
+}
+
+// UpdateAdStatusRetry asks Dex to retry the updateAdStatus Step, after the delay when it is positive.
+func UpdateAdStatusRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return connectormock.Retry[tiktok.AdvertisingStatusResult](failure, after)
+}
+
+// UpdateAdStatusUpdatedDefault is the manifest mock updatedDefault: Example ad status was updated.
+func UpdateAdStatusUpdatedDefault() connectormock.Case[tiktok.AdvertisingStatusResult] {
+	value := connectormock.MustDecodeOutput[tiktok.AdvertisingStatusResult](`{"resourceId":"1845123456789012345","operationStatus":"DISABLE"}`)
+	return connectormock.Branch(tiktok.UpdateAdStatusBranchUpdated, value, nil)
+}
+
+// UpdateAdStatusDefault is the manifest default, updatedDefault, which New installs.
+func UpdateAdStatusDefault() connectormock.Case[tiktok.AdvertisingStatusResult] {
+	return UpdateAdStatusUpdatedDefault()
 }
 
 // ListAdgroupsListed selects the listed branch: TikTok returned an ad group page.
