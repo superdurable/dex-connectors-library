@@ -18,6 +18,10 @@ import (
 // Mock is a scripted drip connection. Script each operation through its accessor.
 type Mock struct {
 	connection       drip.Connection
+	listCampaigns    *connectormock.Query[drip.ListCampaignsInput, drip.CampaignsPage]
+	getCampaign      *connectormock.Query[drip.CampaignIdentityInput, drip.CampaignMetadata]
+	activateCampaign *connectormock.Mutation[drip.CampaignIdentityInput, drip.CampaignState]
+	pauseCampaign    *connectormock.Mutation[drip.CampaignIdentityInput, drip.CampaignState]
 	listAccounts     *connectormock.Query[drip.ListAccountsInput, drip.AccountsList]
 	getSubscriber    *connectormock.Query[drip.GetSubscriberInput, drip.SubscriberMetadata]
 	listSubscribers  *connectormock.Query[drip.ListSubscribersInput, drip.SubscribersPage]
@@ -30,12 +34,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listCampaigns:    connectormock.NewQuery[drip.ListCampaignsInput, drip.CampaignsPage](t, drip.ListCampaignsDefinition),
+		getCampaign:      connectormock.NewQuery[drip.CampaignIdentityInput, drip.CampaignMetadata](t, drip.GetCampaignDefinition),
+		activateCampaign: connectormock.NewMutation[drip.CampaignIdentityInput, drip.CampaignState](t, drip.ActivateCampaignDefinition),
+		pauseCampaign:    connectormock.NewMutation[drip.CampaignIdentityInput, drip.CampaignState](t, drip.PauseCampaignDefinition),
 		listAccounts:     connectormock.NewQuery[drip.ListAccountsInput, drip.AccountsList](t, drip.ListAccountsDefinition),
 		getSubscriber:    connectormock.NewQuery[drip.GetSubscriberInput, drip.SubscriberMetadata](t, drip.GetSubscriberDefinition),
 		listSubscribers:  connectormock.NewQuery[drip.ListSubscribersInput, drip.SubscribersPage](t, drip.ListSubscribersDefinition),
 		upsertSubscriber: connectormock.NewMutation[drip.UpsertSubscriberInput, drip.SubscriberMetadata](t, drip.UpsertSubscriberDefinition),
 		deleteSubscriber: connectormock.NewMutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber](t, drip.DeleteSubscriberDefinition),
 	}
+	mock.listCampaigns.Default(ListCampaignsDefault())
+	mock.getCampaign.Default(GetCampaignDefault())
+	mock.activateCampaign.Default(ActivateCampaignDefault())
+	mock.pauseCampaign.Default(PauseCampaignDefault())
 	mock.listAccounts.Default(ListAccountsDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
 	mock.listSubscribers.Default(ListSubscribersDefault())
@@ -51,6 +63,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() drip.Connection { return mock.connection }
+
+// ListCampaigns returns the listCampaigns script.
+func (mock *Mock) ListCampaigns() *connectormock.Query[drip.ListCampaignsInput, drip.CampaignsPage] {
+	return mock.listCampaigns
+}
+
+// GetCampaign returns the getCampaign script.
+func (mock *Mock) GetCampaign() *connectormock.Query[drip.CampaignIdentityInput, drip.CampaignMetadata] {
+	return mock.getCampaign
+}
+
+// ActivateCampaign returns the activateCampaign script.
+func (mock *Mock) ActivateCampaign() *connectormock.Mutation[drip.CampaignIdentityInput, drip.CampaignState] {
+	return mock.activateCampaign
+}
+
+// PauseCampaign returns the pauseCampaign script.
+func (mock *Mock) PauseCampaign() *connectormock.Mutation[drip.CampaignIdentityInput, drip.CampaignState] {
+	return mock.pauseCampaign
+}
 
 // ListAccounts returns the listAccounts script.
 func (mock *Mock) ListAccounts() *connectormock.Query[drip.ListAccountsInput, drip.AccountsList] {
@@ -79,6 +111,18 @@ func (mock *Mock) DeleteSubscriber() *connectormock.Mutation[drip.DeleteSubscrib
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCampaigns() sdkgo.Query[drip.ListCampaignsInput, drip.CampaignsPage] {
+	return operations.mock.listCampaigns
+}
+func (operations mockOperations) GetCampaign() sdkgo.Query[drip.CampaignIdentityInput, drip.CampaignMetadata] {
+	return operations.mock.getCampaign
+}
+func (operations mockOperations) ActivateCampaign() sdkgo.Mutation[drip.CampaignIdentityInput, drip.CampaignState] {
+	return operations.mock.activateCampaign
+}
+func (operations mockOperations) PauseCampaign() sdkgo.Mutation[drip.CampaignIdentityInput, drip.CampaignState] {
+	return operations.mock.pauseCampaign
+}
 func (operations mockOperations) ListAccounts() sdkgo.Query[drip.ListAccountsInput, drip.AccountsList] {
 	return operations.mock.listAccounts
 }
@@ -93,6 +137,145 @@ func (operations mockOperations) UpsertSubscriber() sdkgo.Mutation[drip.UpsertSu
 }
 func (operations mockOperations) DeleteSubscriber() sdkgo.Mutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber] {
 	return operations.mock.deleteSubscriber
+}
+
+// ListCampaignsListed selects the listed branch: Drip returned a campaign page.
+func ListCampaignsListed(value drip.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[drip.CampaignsPage] {
+	return connectormock.Branch(drip.ListCampaignsBranchListed, value, failure)
+}
+
+// ListCampaignsProviderRejected selects the providerRejected branch: Drip conclusively denied campaign listing.
+func ListCampaignsProviderRejected(value drip.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[drip.CampaignsPage] {
+	return connectormock.Branch(drip.ListCampaignsBranchProviderRejected, value, failure)
+}
+
+// ListCampaignsInvalidResponse selects the invalidResponse branch: Drip returned malformed or oversized campaign data.
+func ListCampaignsInvalidResponse(value drip.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[drip.CampaignsPage] {
+	return connectormock.Branch(drip.ListCampaignsBranchInvalidResponse, value, failure)
+}
+
+// ListCampaignsDefect selects the defect branch: Invalid account or list options or credentials.
+func ListCampaignsDefect(value drip.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[drip.CampaignsPage] {
+	return connectormock.Branch(drip.ListCampaignsBranchDefect, value, failure)
+}
+
+// ListCampaignsRetry asks Dex to retry the listCampaigns Step, after the delay when it is positive.
+func ListCampaignsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.CampaignsPage] {
+	return connectormock.Retry[drip.CampaignsPage](failure, after)
+}
+
+// ListCampaignsListedCampaigns is the manifest mock listedCampaigns: One email series campaign was listed.
+func ListCampaignsListedCampaigns() connectormock.Case[drip.CampaignsPage] {
+	value := connectormock.MustDecodeOutput[drip.CampaignsPage](`{"campaigns":[{"id":"123456","name":"Welcome Series","status":"active"}],"page":1,"totalPages":1,"totalCount":1}`)
+	return connectormock.Branch(drip.ListCampaignsBranchListed, value, nil)
+}
+
+// ListCampaignsDefault is the manifest default, listedCampaigns, which New installs.
+func ListCampaignsDefault() connectormock.Case[drip.CampaignsPage] {
+	return ListCampaignsListedCampaigns()
+}
+
+// GetCampaignFound selects the found branch: Drip returned the campaign.
+func GetCampaignFound(value drip.CampaignMetadata, failure *sdkgo.Failure) connectormock.Case[drip.CampaignMetadata] {
+	return connectormock.Branch(drip.GetCampaignBranchFound, value, failure)
+}
+
+// GetCampaignNotFound selects the notFound branch: No campaign has this ID.
+func GetCampaignNotFound(value drip.CampaignMetadata, failure *sdkgo.Failure) connectormock.Case[drip.CampaignMetadata] {
+	return connectormock.Branch(drip.GetCampaignBranchNotFound, value, failure)
+}
+
+// GetCampaignProviderRejected selects the providerRejected branch: Drip conclusively denied campaign retrieval.
+func GetCampaignProviderRejected(value drip.CampaignMetadata, failure *sdkgo.Failure) connectormock.Case[drip.CampaignMetadata] {
+	return connectormock.Branch(drip.GetCampaignBranchProviderRejected, value, failure)
+}
+
+// GetCampaignInvalidResponse selects the invalidResponse branch: Drip returned malformed or oversized campaign data.
+func GetCampaignInvalidResponse(value drip.CampaignMetadata, failure *sdkgo.Failure) connectormock.Case[drip.CampaignMetadata] {
+	return connectormock.Branch(drip.GetCampaignBranchInvalidResponse, value, failure)
+}
+
+// GetCampaignDefect selects the defect branch: Invalid account or campaign ID or credentials.
+func GetCampaignDefect(value drip.CampaignMetadata, failure *sdkgo.Failure) connectormock.Case[drip.CampaignMetadata] {
+	return connectormock.Branch(drip.GetCampaignBranchDefect, value, failure)
+}
+
+// GetCampaignRetry asks Dex to retry the getCampaign Step, after the delay when it is positive.
+func GetCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.CampaignMetadata] {
+	return connectormock.Retry[drip.CampaignMetadata](failure, after)
+}
+
+// GetCampaignFoundCampaign is the manifest mock foundCampaign: One email series campaign was returned.
+func GetCampaignFoundCampaign() connectormock.Case[drip.CampaignMetadata] {
+	value := connectormock.MustDecodeOutput[drip.CampaignMetadata](`{"id":"123456","name":"Welcome Series","status":"active"}`)
+	return connectormock.Branch(drip.GetCampaignBranchFound, value, nil)
+}
+
+// GetCampaignDefault is the manifest default, foundCampaign, which New installs.
+func GetCampaignDefault() connectormock.Case[drip.CampaignMetadata] {
+	return GetCampaignFoundCampaign()
+}
+
+// ActivateCampaignActive selects the active branch: The campaign is active.
+func ActivateCampaignActive(value drip.CampaignState, failure *sdkgo.Failure) connectormock.Case[drip.CampaignState] {
+	return connectormock.Branch(drip.ActivateCampaignBranchActive, value, failure)
+}
+
+// ActivateCampaignProviderRejected selects the providerRejected branch: Drip conclusively rejected activation.
+func ActivateCampaignProviderRejected(value drip.CampaignState, failure *sdkgo.Failure) connectormock.Case[drip.CampaignState] {
+	return connectormock.Branch(drip.ActivateCampaignBranchProviderRejected, value, failure)
+}
+
+// ActivateCampaignDefect selects the defect branch: Invalid account or campaign ID or credentials.
+func ActivateCampaignDefect(value drip.CampaignState, failure *sdkgo.Failure) connectormock.Case[drip.CampaignState] {
+	return connectormock.Branch(drip.ActivateCampaignBranchDefect, value, failure)
+}
+
+// ActivateCampaignRetry asks Dex to retry the activateCampaign Step, after the delay when it is positive.
+func ActivateCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.CampaignState] {
+	return connectormock.Retry[drip.CampaignState](failure, after)
+}
+
+// ActivateCampaignActiveCampaign is the manifest mock activeCampaign: The email series campaign is active.
+func ActivateCampaignActiveCampaign() connectormock.Case[drip.CampaignState] {
+	value := connectormock.MustDecodeOutput[drip.CampaignState](`{"id":"123456","status":"active"}`)
+	return connectormock.Branch(drip.ActivateCampaignBranchActive, value, nil)
+}
+
+// ActivateCampaignDefault is the manifest default, activeCampaign, which New installs.
+func ActivateCampaignDefault() connectormock.Case[drip.CampaignState] {
+	return ActivateCampaignActiveCampaign()
+}
+
+// PauseCampaignPaused selects the paused branch: The campaign is paused.
+func PauseCampaignPaused(value drip.CampaignState, failure *sdkgo.Failure) connectormock.Case[drip.CampaignState] {
+	return connectormock.Branch(drip.PauseCampaignBranchPaused, value, failure)
+}
+
+// PauseCampaignProviderRejected selects the providerRejected branch: Drip conclusively rejected pausing.
+func PauseCampaignProviderRejected(value drip.CampaignState, failure *sdkgo.Failure) connectormock.Case[drip.CampaignState] {
+	return connectormock.Branch(drip.PauseCampaignBranchProviderRejected, value, failure)
+}
+
+// PauseCampaignDefect selects the defect branch: Invalid account or campaign ID or credentials.
+func PauseCampaignDefect(value drip.CampaignState, failure *sdkgo.Failure) connectormock.Case[drip.CampaignState] {
+	return connectormock.Branch(drip.PauseCampaignBranchDefect, value, failure)
+}
+
+// PauseCampaignRetry asks Dex to retry the pauseCampaign Step, after the delay when it is positive.
+func PauseCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.CampaignState] {
+	return connectormock.Retry[drip.CampaignState](failure, after)
+}
+
+// PauseCampaignPausedCampaign is the manifest mock pausedCampaign: The email series campaign is paused.
+func PauseCampaignPausedCampaign() connectormock.Case[drip.CampaignState] {
+	value := connectormock.MustDecodeOutput[drip.CampaignState](`{"id":"123456","status":"paused"}`)
+	return connectormock.Branch(drip.PauseCampaignBranchPaused, value, nil)
+}
+
+// PauseCampaignDefault is the manifest default, pausedCampaign, which New installs.
+func PauseCampaignDefault() connectormock.Case[drip.CampaignState] {
+	return PauseCampaignPausedCampaign()
 }
 
 // ListAccountsListed selects the listed branch: Drip returned accessible accounts.

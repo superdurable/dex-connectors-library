@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: drip
   displayName: Drip
-  description: Discover Drip accounts, list subscribers, and manage subscriber identity and status.
+  description: Discover Drip accounts and subscribers, and inspect or manage email series campaigns.
   company: Drip
   categories: [marketing]
   version: v0.2.0
@@ -55,6 +55,69 @@ spec:
         - Save the token in secret api_key. Dex sends it as the HTTP Basic username with a blank password. Revoke or rotate the token in Drip when retired.
         - This token is for a private integration you control. Public integrations use Drip OAuth. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
   operations:
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListCampaignsInput
+      outputType: CampaignsPage
+      kind: query
+      description: List one page of email series campaign names and statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Drip returned a campaign page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively denied campaign listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned malformed or oversized campaign data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid account or list options or credentials., optional: true}
+      mocks:
+        - {name: listedCampaigns, branch: listed, description: One email series campaign was listed., default: true, output: {campaigns: [{id: '123456', name: Welcome Series, status: active}], page: 1, totalPages: 1, totalCount: 1}}
+    - name: getCampaign
+      goName: GetCampaign
+      inputType: CampaignIdentityInput
+      outputType: CampaignMetadata
+      kind: query
+      description: Read one email series campaign's identity, name, and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Drip returned the campaign.}
+        - {id: notFound, goName: NotFound, description: No campaign has this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively denied campaign retrieval., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned malformed or oversized campaign data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid account or campaign ID or credentials., optional: true}
+      mocks:
+        - {name: foundCampaign, branch: found, description: One email series campaign was returned., default: true, output: {id: '123456', name: Welcome Series, status: active}}
+    - name: activateCampaign
+      goName: ActivateCampaign
+      inputType: CampaignIdentityInput
+      outputType: CampaignState
+      kind: mutation
+      description: Ensure an email series campaign is active; a repeated activation confirms state by reading the campaign.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: active, goName: Active, description: The campaign is active.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively rejected activation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid account or campaign ID or credentials., optional: true}
+      mocks:
+        - {name: activeCampaign, branch: active, description: The email series campaign is active., default: true, output: {id: '123456', status: active}}
+    - name: pauseCampaign
+      goName: PauseCampaign
+      inputType: CampaignIdentityInput
+      outputType: CampaignState
+      kind: mutation
+      description: Ensure an email series campaign is paused; a repeated pause confirms state by reading the campaign.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: paused, goName: Paused, description: The campaign is paused.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively rejected pausing., optional: true}
+        - {id: defect, goName: Defect, description: Invalid account or campaign ID or credentials., optional: true}
+      mocks:
+        - {name: pausedCampaign, branch: paused, description: The email series campaign is paused., default: true, output: {id: '123456', status: paused}}
     - name: listAccounts
       goName: ListAccounts
       inputType: ListAccountsInput

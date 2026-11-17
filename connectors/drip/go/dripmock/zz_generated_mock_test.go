@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCampaigns/listedCampaigns/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.CampaignsPage](`{"campaigns":[{"id":"123456","name":"Welcome Series","status":"active"}],"page":1,"totalPages":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "getCampaign/foundCampaign/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.CampaignMetadata](`{"id":"123456","name":"Welcome Series","status":"active"}`)
+			return err
+		}},
+		{name: "activateCampaign/activeCampaign/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.CampaignState](`{"id":"123456","status":"active"}`)
+			return err
+		}},
+		{name: "pauseCampaign/pausedCampaign/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.CampaignState](`{"id":"123456","status":"paused"}`)
+			return err
+		}},
 		{name: "listAccounts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[drip.AccountsList](`{"accounts":[{"id":"9999999","name":"Sample Account"}]}`)
 			return err
@@ -46,6 +62,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
+		t.Errorf("listCampaigns mock has another definition")
+	}
+	if mock.GetCampaign().Definition().Operation.OperationID != "getCampaign" {
+		t.Errorf("getCampaign mock has another definition")
+	}
+	if mock.ActivateCampaign().Definition().Operation.OperationID != "activateCampaign" {
+		t.Errorf("activateCampaign mock has another definition")
+	}
+	if mock.PauseCampaign().Definition().Operation.OperationID != "pauseCampaign" {
+		t.Errorf("pauseCampaign mock has another definition")
+	}
 	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
 		t.Errorf("listAccounts mock has another definition")
 	}

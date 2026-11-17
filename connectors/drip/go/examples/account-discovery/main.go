@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{accountdiscovery.NewFlow(connection), accountdiscovery.NewSubscriberPageFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{accountdiscovery.NewFlow(connection), accountdiscovery.NewSubscriberPageFlow(connection), accountdiscovery.NewCampaignPageFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Drip accountdiscovery Flow: %w", err)
 	}
