@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted workday connection. Script each operation through its accessor.
 type Mock struct {
-	connection workday.Connection
-	getWorker  *connectormock.Query[workday.GetWorkerInput, workday.WorkerSummary]
+	connection  workday.Connection
+	listWorkers *connectormock.Query[workday.ListWorkersInput, workday.WorkerPage]
+	getWorker   *connectormock.Query[workday.GetWorkerInput, workday.WorkerSummary]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +27,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getWorker: connectormock.NewQuery[workday.GetWorkerInput, workday.WorkerSummary](t, workday.GetWorkerDefinition),
+		listWorkers: connectormock.NewQuery[workday.ListWorkersInput, workday.WorkerPage](t, workday.ListWorkersDefinition),
+		getWorker:   connectormock.NewQuery[workday.GetWorkerInput, workday.WorkerSummary](t, workday.GetWorkerDefinition),
 	}
+	mock.listWorkers.Default(ListWorkersDefault())
 	mock.getWorker.Default(GetWorkerDefault())
 	connection, err := workday.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "workday", Name: connectionName})
 	if err != nil {
@@ -40,6 +43,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() workday.Connection { return mock.connection }
 
+// ListWorkers returns the listWorkers script.
+func (mock *Mock) ListWorkers() *connectormock.Query[workday.ListWorkersInput, workday.WorkerPage] {
+	return mock.listWorkers
+}
+
 // GetWorker returns the getWorker script.
 func (mock *Mock) GetWorker() *connectormock.Query[workday.GetWorkerInput, workday.WorkerSummary] {
 	return mock.getWorker
@@ -47,9 +55,46 @@ func (mock *Mock) GetWorker() *connectormock.Query[workday.GetWorkerInput, workd
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListWorkers() sdkgo.Query[workday.ListWorkersInput, workday.WorkerPage] {
+	return operations.mock.listWorkers
+}
 func (operations mockOperations) GetWorker() sdkgo.Query[workday.GetWorkerInput, workday.WorkerSummary] {
 	return operations.mock.getWorker
 }
+
+// ListWorkersFound selects the found branch: Workday returned the requested worker page.
+func ListWorkersFound(value workday.WorkerPage, failure *sdkgo.Failure) connectormock.Case[workday.WorkerPage] {
+	return connectormock.Branch(workday.ListWorkersBranchFound, value, failure)
+}
+
+// ListWorkersProviderRejected selects the providerRejected branch: Workday conclusively rejected the search.
+func ListWorkersProviderRejected(value workday.WorkerPage, failure *sdkgo.Failure) connectormock.Case[workday.WorkerPage] {
+	return connectormock.Branch(workday.ListWorkersBranchProviderRejected, value, failure)
+}
+
+// ListWorkersInvalidResponse selects the invalidResponse branch: Workday returned malformed or oversized worker JSON.
+func ListWorkersInvalidResponse(value workday.WorkerPage, failure *sdkgo.Failure) connectormock.Case[workday.WorkerPage] {
+	return connectormock.Branch(workday.ListWorkersBranchInvalidResponse, value, failure)
+}
+
+// ListWorkersDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListWorkersDefect(value workday.WorkerPage, failure *sdkgo.Failure) connectormock.Case[workday.WorkerPage] {
+	return connectormock.Branch(workday.ListWorkersBranchDefect, value, failure)
+}
+
+// ListWorkersRetry asks Dex to retry the listWorkers Step, after the delay when it is positive.
+func ListWorkersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[workday.WorkerPage] {
+	return connectormock.Retry[workday.WorkerPage](failure, after)
+}
+
+// ListWorkersFoundDefault is the manifest mock foundDefault: A sample worker page is returned.
+func ListWorkersFoundDefault() connectormock.Case[workday.WorkerPage] {
+	value := connectormock.MustDecodeOutput[workday.WorkerPage](`{"total":1,"data":[{"id":"0123456789abcdef0123456789abcdef","descriptor":"Ada Lovelace"}]}`)
+	return connectormock.Branch(workday.ListWorkersBranchFound, value, nil)
+}
+
+// ListWorkersDefault is the manifest default, foundDefault, which New installs.
+func ListWorkersDefault() connectormock.Case[workday.WorkerPage] { return ListWorkersFoundDefault() }
 
 // GetWorkerFound selects the found branch: Workday returned the requested worker.
 func GetWorkerFound(value workday.WorkerSummary, failure *sdkgo.Failure) connectormock.Case[workday.WorkerSummary] {
