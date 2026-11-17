@@ -18,6 +18,11 @@ import (
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
 	connection    activecampaign.Connection
+	listTags      *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
+	getTag        *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
+	createTag     *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
+	updateTag     *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata]
+	deleteTag     *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion]
 	listLists     *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
 	getList       *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
 	listContacts  *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
@@ -31,6 +36,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listTags:      connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
+		getTag:        connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
+		createTag:     connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
+		updateTag:     connectormock.NewMutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata](t, activecampaign.UpdateTagDefinition),
+		deleteTag:     connectormock.NewMutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion](t, activecampaign.DeleteTagDefinition),
 		listLists:     connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
 		getList:       connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
 		listContacts:  connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
@@ -38,6 +48,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		syncContact:   connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
 		updateContact: connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.listTags.Default(ListTagsDefault())
+	mock.getTag.Default(GetTagDefault())
+	mock.createTag.Default(CreateTagDefault())
+	mock.updateTag.Default(UpdateTagDefault())
+	mock.deleteTag.Default(DeleteTagDefault())
 	mock.listLists.Default(ListListsDefault())
 	mock.getList.Default(GetListDefault())
 	mock.listContacts.Default(ListContactsDefault())
@@ -54,6 +69,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// ListTags returns the listTags script.
+func (mock *Mock) ListTags() *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage] {
+	return mock.listTags
+}
+
+// GetTag returns the getTag script.
+func (mock *Mock) GetTag() *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata] {
+	return mock.getTag
+}
+
+// CreateTag returns the createTag script.
+func (mock *Mock) CreateTag() *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata] {
+	return mock.createTag
+}
+
+// UpdateTag returns the updateTag script.
+func (mock *Mock) UpdateTag() *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata] {
+	return mock.updateTag
+}
+
+// DeleteTag returns the deleteTag script.
+func (mock *Mock) DeleteTag() *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion] {
+	return mock.deleteTag
+}
 
 // ListLists returns the listLists script.
 func (mock *Mock) ListLists() *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage] {
@@ -87,6 +127,21 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListTags() sdkgo.Query[activecampaign.ListTagsInput, activecampaign.TagsPage] {
+	return operations.mock.listTags
+}
+func (operations mockOperations) GetTag() sdkgo.Query[activecampaign.GetTagInput, activecampaign.TagMetadata] {
+	return operations.mock.getTag
+}
+func (operations mockOperations) CreateTag() sdkgo.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata] {
+	return operations.mock.createTag
+}
+func (operations mockOperations) UpdateTag() sdkgo.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata] {
+	return operations.mock.updateTag
+}
+func (operations mockOperations) DeleteTag() sdkgo.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion] {
+	return operations.mock.deleteTag
+}
 func (operations mockOperations) ListLists() sdkgo.Query[activecampaign.ListListsInput, activecampaign.ListsPage] {
 	return operations.mock.listLists
 }
@@ -104,6 +159,192 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 }
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
+}
+
+// ListTagsListed selects the listed branch: ActiveCampaign completed the tag operation.
+func ListTagsListed(value activecampaign.TagsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagsPage] {
+	return connectormock.Branch(activecampaign.ListTagsBranchListed, value, failure)
+}
+
+// ListTagsProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListTagsProviderRejected(value activecampaign.TagsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagsPage] {
+	return connectormock.Branch(activecampaign.ListTagsBranchProviderRejected, value, failure)
+}
+
+// ListTagsInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListTagsInvalidResponse(value activecampaign.TagsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagsPage] {
+	return connectormock.Branch(activecampaign.ListTagsBranchInvalidResponse, value, failure)
+}
+
+// ListTagsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListTagsDefect(value activecampaign.TagsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagsPage] {
+	return connectormock.Branch(activecampaign.ListTagsBranchDefect, value, failure)
+}
+
+// ListTagsRetry asks Dex to retry the listTags Step, after the delay when it is positive.
+func ListTagsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.TagsPage] {
+	return connectormock.Retry[activecampaign.TagsPage](failure, after)
+}
+
+// ListTagsListedDefault is the manifest mock listedDefault: One sample tag result.
+func ListTagsListedDefault() connectormock.Case[activecampaign.TagsPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.TagsPage](`{"tags":[{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}],"offset":0,"limit":20,"total":1}`)
+	return connectormock.Branch(activecampaign.ListTagsBranchListed, value, nil)
+}
+
+// ListTagsDefault is the manifest default, listedDefault, which New installs.
+func ListTagsDefault() connectormock.Case[activecampaign.TagsPage] { return ListTagsListedDefault() }
+
+// GetTagFound selects the found branch: ActiveCampaign completed the tag operation.
+func GetTagFound(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.GetTagBranchFound, value, failure)
+}
+
+// GetTagNotFound selects the notFound branch: The tag ID does not exist.
+func GetTagNotFound(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.GetTagBranchNotFound, value, failure)
+}
+
+// GetTagProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func GetTagProviderRejected(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.GetTagBranchProviderRejected, value, failure)
+}
+
+// GetTagInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func GetTagInvalidResponse(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.GetTagBranchInvalidResponse, value, failure)
+}
+
+// GetTagDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetTagDefect(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.GetTagBranchDefect, value, failure)
+}
+
+// GetTagRetry asks Dex to retry the getTag Step, after the delay when it is positive.
+func GetTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Retry[activecampaign.TagMetadata](failure, after)
+}
+
+// GetTagFoundDefault is the manifest mock foundDefault: One sample tag result.
+func GetTagFoundDefault() connectormock.Case[activecampaign.TagMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.TagMetadata](`{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}`)
+	return connectormock.Branch(activecampaign.GetTagBranchFound, value, nil)
+}
+
+// GetTagDefault is the manifest default, foundDefault, which New installs.
+func GetTagDefault() connectormock.Case[activecampaign.TagMetadata] { return GetTagFoundDefault() }
+
+// CreateTagCreated selects the created branch: ActiveCampaign completed the tag operation.
+func CreateTagCreated(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.CreateTagBranchCreated, value, failure)
+}
+
+// CreateTagProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func CreateTagProviderRejected(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.CreateTagBranchProviderRejected, value, failure)
+}
+
+// CreateTagInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func CreateTagInvalidResponse(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.CreateTagBranchInvalidResponse, value, failure)
+}
+
+// CreateTagDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateTagDefect(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.CreateTagBranchDefect, value, failure)
+}
+
+// CreateTagRetry asks Dex to retry the createTag Step, after the delay when it is positive.
+func CreateTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Retry[activecampaign.TagMetadata](failure, after)
+}
+
+// CreateTagCreatedDefault is the manifest mock createdDefault: One sample tag result.
+func CreateTagCreatedDefault() connectormock.Case[activecampaign.TagMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.TagMetadata](`{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}`)
+	return connectormock.Branch(activecampaign.CreateTagBranchCreated, value, nil)
+}
+
+// CreateTagDefault is the manifest default, createdDefault, which New installs.
+func CreateTagDefault() connectormock.Case[activecampaign.TagMetadata] {
+	return CreateTagCreatedDefault()
+}
+
+// UpdateTagUpdated selects the updated branch: ActiveCampaign updated the tag definition.
+func UpdateTagUpdated(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.UpdateTagBranchUpdated, value, failure)
+}
+
+// UpdateTagNotFound selects the notFound branch: The tag ID does not exist.
+func UpdateTagNotFound(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.UpdateTagBranchNotFound, value, failure)
+}
+
+// UpdateTagProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func UpdateTagProviderRejected(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.UpdateTagBranchProviderRejected, value, failure)
+}
+
+// UpdateTagInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func UpdateTagInvalidResponse(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.UpdateTagBranchInvalidResponse, value, failure)
+}
+
+// UpdateTagDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateTagDefect(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Branch(activecampaign.UpdateTagBranchDefect, value, failure)
+}
+
+// UpdateTagRetry asks Dex to retry the updateTag Step, after the delay when it is positive.
+func UpdateTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Retry[activecampaign.TagMetadata](failure, after)
+}
+
+// UpdateTagUpdatedDefault is the manifest mock updatedDefault: One sample tag result.
+func UpdateTagUpdatedDefault() connectormock.Case[activecampaign.TagMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.TagMetadata](`{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}`)
+	return connectormock.Branch(activecampaign.UpdateTagBranchUpdated, value, nil)
+}
+
+// UpdateTagDefault is the manifest default, updatedDefault, which New installs.
+func UpdateTagDefault() connectormock.Case[activecampaign.TagMetadata] {
+	return UpdateTagUpdatedDefault()
+}
+
+// DeleteTagDeleted selects the deleted branch: ActiveCampaign deleted the tag definition.
+func DeleteTagDeleted(value activecampaign.TagDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagDeletion] {
+	return connectormock.Branch(activecampaign.DeleteTagBranchDeleted, value, failure)
+}
+
+// DeleteTagProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func DeleteTagProviderRejected(value activecampaign.TagDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagDeletion] {
+	return connectormock.Branch(activecampaign.DeleteTagBranchProviderRejected, value, failure)
+}
+
+// DeleteTagInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func DeleteTagInvalidResponse(value activecampaign.TagDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagDeletion] {
+	return connectormock.Branch(activecampaign.DeleteTagBranchInvalidResponse, value, failure)
+}
+
+// DeleteTagDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteTagDefect(value activecampaign.TagDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagDeletion] {
+	return connectormock.Branch(activecampaign.DeleteTagBranchDefect, value, failure)
+}
+
+// DeleteTagRetry asks Dex to retry the deleteTag Step, after the delay when it is positive.
+func DeleteTagRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.TagDeletion] {
+	return connectormock.Retry[activecampaign.TagDeletion](failure, after)
+}
+
+// DeleteTagDeletedDefault is the manifest mock deletedDefault: One sample tag result.
+func DeleteTagDeletedDefault() connectormock.Case[activecampaign.TagDeletion] {
+	value := connectormock.MustDecodeOutput[activecampaign.TagDeletion](`{"tagId":"16","deleted":true}`)
+	return connectormock.Branch(activecampaign.DeleteTagBranchDeleted, value, nil)
+}
+
+// DeleteTagDefault is the manifest default, deletedDefault, which New installs.
+func DeleteTagDefault() connectormock.Case[activecampaign.TagDeletion] {
+	return DeleteTagDeletedDefault()
 }
 
 // ListListsListed selects the listed branch: ActiveCampaign returned the selected list page.

@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listTags/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagsPage](`{"tags":[{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getTag/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagMetadata](`{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}`)
+			return err
+		}},
+		{name: "createTag/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagMetadata](`{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}`)
+			return err
+		}},
+		{name: "updateTag/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagMetadata](`{"id":"16","name":"Newsletter","description":"Monthly","tagType":"contact"}`)
+			return err
+		}},
+		{name: "deleteTag/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.TagDeletion](`{"tagId":"16","deleted":true}`)
+			return err
+		}},
 		{name: "listLists/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.ListsPage](`{"lists":[{"id":"11","name":"Newsletter","activeSubscribers":7,"nonDeletedSubscribers":8}],"offset":0,"limit":20,"total":1}`)
 			return err
@@ -50,6 +70,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListTags().Definition().Operation.OperationID != "listTags" {
+		t.Errorf("listTags mock has another definition")
+	}
+	if mock.GetTag().Definition().Operation.OperationID != "getTag" {
+		t.Errorf("getTag mock has another definition")
+	}
+	if mock.CreateTag().Definition().Operation.OperationID != "createTag" {
+		t.Errorf("createTag mock has another definition")
+	}
+	if mock.UpdateTag().Definition().Operation.OperationID != "updateTag" {
+		t.Errorf("updateTag mock has another definition")
+	}
+	if mock.DeleteTag().Definition().Operation.OperationID != "deleteTag" {
+		t.Errorf("deleteTag mock has another definition")
+	}
 	if mock.ListLists().Definition().Operation.OperationID != "listLists" {
 		t.Errorf("listLists mock has another definition")
 	}

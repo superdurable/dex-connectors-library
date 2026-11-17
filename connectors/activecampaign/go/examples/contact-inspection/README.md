@@ -1,6 +1,6 @@
 # ActiveCampaign contact-inspection Flow
 
-This Worker registers `ActiveCampaignContactInspection`, `ActiveCampaignSyncContact`, and `ActiveCampaignListInspection`, which reads one email-list page with `listLists`. The sync Flow accepts `email` and optional `firstName` and `lastName`; its checked-in mock integration test exercises the mutation against a real local Dex Server. The production connection uses the same static `activecampaign` name for all Flows.
+This Worker registers `ActiveCampaignContactInspection`, `ActiveCampaignSyncContact`, `ActiveCampaignListInspection`, and `ActiveCampaignCreateTag`. The tag Flow creates a contact tag definition by name; its checked-in mock integration test exercises the mutation against a real local Dex Server. The sync Flow accepts `email` and optional `firstName` and `lastName`. The production connection uses the same static `activecampaign` name for all Flows.
 
 This runnable Flow calls `listContacts` with the static `activecampaign` connection. Its happy-path contact page is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only basic contact fields enter the Flow result; the API Key does not.
 

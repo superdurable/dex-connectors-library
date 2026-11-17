@@ -53,8 +53,110 @@ spec:
       steps:
         - Sign in to the ActiveCampaign account at https://www.activecampaign.com/login, click Settings (gear), then Developer.
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
-        - Ensure this API user can view the intended contacts. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Ensure this API user can view the intended contacts and lists; tag creation, update, and deletion require tag management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listTags
+      goName: ListTags
+      inputType: ListTagsInput
+      outputType: TagsPage
+      kind: query
+      description: List contact tag definitions by page.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the tag operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample tag result.
+          output: {tags: [{id: '16', name: Newsletter, description: Monthly, tagType: contact}], offset: 0, limit: 20, total: 1}
+    - name: getTag
+      goName: GetTag
+      inputType: GetTagInput
+      outputType: TagMetadata
+      kind: query
+      description: Read one contact tag definition by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the tag operation.}
+        - {id: notFound, goName: NotFound, description: The tag ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample tag result.
+          output: {id: '16', name: Newsletter, description: Monthly, tagType: contact}
+    - name: createTag
+      goName: CreateTag
+      inputType: CreateTagInput
+      outputType: TagMetadata
+      kind: mutation
+      description: Create a contact tag definition by name; repeating returns the existing tag.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the tag operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample tag result.
+          output: {id: '16', name: Newsletter, description: Monthly, tagType: contact}
+    - name: updateTag
+      goName: UpdateTag
+      inputType: UpdateTagInput
+      outputType: TagMetadata
+      kind: mutation
+      description: Set a contact tag definition's name and description by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign updated the tag definition.}
+        - {id: notFound, goName: NotFound, description: The tag ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample tag result.
+          output: {id: '16', name: Newsletter, description: Monthly, tagType: contact}
+    - name: deleteTag
+      goName: DeleteTag
+      inputType: DeleteTagInput
+      outputType: TagDeletion
+      kind: mutation
+      description: Delete one tag definition and remove its effect from all contacts.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign deleted the tag definition.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample tag result.
+          output: {tagId: '16', deleted: true}
     - name: listLists
       goName: ListLists
       inputType: ListListsInput
