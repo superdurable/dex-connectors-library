@@ -131,3 +131,9 @@ func isGraphThrottleBody(body []byte) bool {
 	graphErr, ok := decodeGraphError(body)
 	return ok && graphErr.isThrottled()
 }
+
+// isGraphTransientBody reports whether an error body sets is_transient, Meta's sign that it did not process the request.
+func isGraphTransientBody(body []byte) bool {
+	graphErr, ok := decodeGraphError(body)
+	return ok && graphErr.isTransient
+}

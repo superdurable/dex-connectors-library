@@ -72,7 +72,8 @@ func TestPublishTextPostRetriesDefinitiveRateLimitAndUnavailable(t *testing.T) {
 	for _, response := range []struct {
 		status int
 		body   string
-	}{{http.StatusTooManyRequests, ``}, {http.StatusServiceUnavailable, ``}, {http.StatusBadRequest, `{"error":{"code":613}}`}} {
+	}{{http.StatusTooManyRequests, ``}, {http.StatusServiceUnavailable, ``}, {http.StatusBadRequest, `{"error":{"code":613}}`},
+		{http.StatusBadRequest, `{"error":{"code":2,"is_transient":true}}`}} {
 		t.Run(http.StatusText(response.status), func(t *testing.T) {
 			server, requests := newScriptedPublishServer(t, []int{response.status, http.StatusOK}, []string{response.body, publishedPostBody})
 			ctx := singledispatchtest.NewContext("facebook-pages-retry", "publish-post")

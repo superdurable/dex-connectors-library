@@ -1827,18 +1827,15 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
           "state": "canResend"
         },
-        "output": {
-          "postId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

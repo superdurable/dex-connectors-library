@@ -102,6 +102,13 @@ describe('Facebook Pages bounded resend of unconfirmed posts', () => {
     expect(context.marker).toMatchObject({ state: 'canResend' });
   });
 
+  it('retries a transient Graph refusal after checkpointing canResend', async () => {
+    const { client } = newClient([{ status: 400, body: '{"error":{"code":2,"is_transient":true}}' }]);
+    const context = new AttemptContext();
+    expect(await publish(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'canResend' });
+  });
+
   it('selects uncertain for a refusal of a resend after a possible send', async () => {
     const { client, requests } = newClient([serverFailure, { status: 400, body: '{"error":{"code":100}}' }]);
     const context = new AttemptContext();

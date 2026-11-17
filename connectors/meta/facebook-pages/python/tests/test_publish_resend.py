@@ -149,6 +149,14 @@ async def test_graph_throttle_retries_with_can_resend() -> None:
     assert context.marker is not None and context.marker.state == "canResend"
 
 
+async def test_graph_transient_refusal_retries_with_can_resend() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    answer = (400, b'{"error":{"code":2,"is_transient":true}}')
+    assert isinstance(await publish([answer], context, requests), RetryError)
+    assert context.marker is not None and context.marker.state == "canResend"
+
+
 async def test_refusal_of_a_resend_selects_uncertain() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()

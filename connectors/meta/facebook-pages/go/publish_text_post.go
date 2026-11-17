@@ -117,7 +117,9 @@ func (operation PublishTextPostOperation) Invoke(call sdkgo.Call, input PublishT
 	isClientError := response.StatusCode >= 400 && response.StatusCode < 500
 	// A Graph throttling code means Meta refused the post before processing it.
 	isRateLimited := response.StatusCode == http.StatusTooManyRequests || (isClientError && readErr == nil && isGraphThrottleBody(responseBody))
-	if isRateLimited || response.StatusCode == http.StatusServiceUnavailable {
+	// A Graph 4xx marked is_transient is a transient refusal, not a definite one.
+	isTransientRefusal := isClientError && readErr == nil && isGraphTransientBody(responseBody)
+	if isRateLimited || isTransientRefusal || response.StatusCode == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
 			return retryPublish(sdkgo.FailureAvailability, "Meta retry checkpoint is unavailable", 0)
 		}
