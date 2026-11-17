@@ -44,7 +44,7 @@ func (CreateProjectOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateProjec
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates or confirms the project identified by its organization and slug.
+// Invoke creates the project identified by its organization and slug.
 func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProjectInput) sdkgo.MutationAttempt[Project] {
 	if !validSentrySegments(input.Organization, input.Team, input.Name, input.Slug) {
 		return mutationFailure[Project]("createProject", CreateProjectBranchDefect, sdkgo.FailureValidation, "organization, team, name, and slug are required")
@@ -119,10 +119,10 @@ func (request sentryLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 		return request.uncertain("create checkpoint cannot be trusted")
 	}
 	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		value, state := request.readBack(request.call)
+		_, state := request.readBack(request.call)
 		switch state {
 		case readBackMatched:
-			return sdkgo.NewMutationBranch(request.created, value, nil, sdkgo.Receipt{})
+			return request.uncertain("resource fields do not identify this create")
 		case readBackRetry:
 			return request.retry(sdkgo.FailureAvailability, "provider read-back is temporarily unavailable", 0)
 		case readBackConflicted:
@@ -173,9 +173,9 @@ func (request sentryLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 		if !hasPossibleEarlierSend {
 			return mutationFailure[T](request.operation, request.rejected, sdkgo.FailureProviderRejection, "provider reports the resource already exists")
 		}
-		value, state := request.readBack(request.call)
+		_, state := request.readBack(request.call)
 		if state == readBackMatched {
-			return sdkgo.NewMutationBranch(request.created, value, nil, sdkgo.Receipt{})
+			return request.uncertain("resource fields do not identify this create")
 		}
 		if state == readBackRetry {
 			return request.retry(sdkgo.FailureAvailability, "provider read-back is temporarily unavailable", 0)
@@ -193,9 +193,9 @@ func (request sentryLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 	}
 	value, err := request.decode(dispatch.body)
 	if err != nil {
-		confirmed, state := request.readBack(request.call)
+		_, state := request.readBack(request.call)
 		if state == readBackMatched {
-			return sdkgo.NewMutationBranch(request.created, confirmed, nil, sdkgo.Receipt{})
+			return request.uncertain("resource fields do not identify this create")
 		}
 		if state == readBackRetry || (state == readBackAbsent && canResendUnknown) {
 			return request.retry(sdkgo.FailureAvailability, "accepted create could not be confirmed", 0)

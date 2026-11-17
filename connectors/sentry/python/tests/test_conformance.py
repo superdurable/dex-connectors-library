@@ -14,11 +14,16 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = [scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/sentry/scenarios.json")
-             if scenario["operation"] in {"listIssues", "getIssue", "updateIssueStatus"}]
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/sentry/scenarios.json")
+    if scenario["operation"] in {"listIssues", "getIssue", "updateIssueStatus"}
+]
 CONNECTION = sdk.ConnectionRef("sentry", "sentry")
 ADAPTER = conformance.PythonOperationAdapter(
-    "sentry", CONNECTION, sentry,
+    "sentry",
+    CONNECTION,
+    sentry,
     lambda client, _: sentry.Client(
         sentry.Config(base_url="http://127.0.0.1:8848"),
         conformance.static_credentials(CONNECTION, sentry.Credentials(sdk.SecretString("test-secret-token"))),

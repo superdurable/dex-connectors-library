@@ -4713,17 +4713,17 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "43",
-          "name": "Application",
-          "slug": "app"
+          "id": "",
+          "name": "",
+          "slug": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
       "input": {
@@ -4745,7 +4745,7 @@
           "retryAfterMs": 0
         }
       ],
-      "name": "createProject-retry-readback",
+      "name": "createProject-preexisting-slug-after-5xx",
       "operation": "createProject"
     },
     {
@@ -5284,21 +5284,16 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "projects": [
-            {
-              "slug": "app"
-            }
-          ],
-          "status": "open",
-          "version": "app@1.0.0"
+          "status": "",
+          "version": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "21850227-280b-5047-8ded-38014a764eda",
       "input": {
@@ -7231,17 +7226,17 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "51",
-          "name": "Core",
-          "slug": "core"
+          "id": "",
+          "name": "",
+          "slug": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "5f32e859-84f0-5b16-8575-de16ad628516",
       "input": {
@@ -9330,17 +9325,17 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "789",
-          "name": "Acme",
-          "slug": "acme"
+          "id": "",
+          "name": "",
+          "slug": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "d547a94f-cc40-5e4f-a22a-fcf743880eb5",
       "input": {

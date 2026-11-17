@@ -69,7 +69,8 @@ accepts a user ID, primary email, or `team:<team ID>`; blank identifiers and
 names are invalid. Deletion can remain pending after an accepted response.
 `createProject` uses the `limited` tier with at most three sends. It requires
 an explicit project slug, reads it back after an unknown outcome, and selects
-optional `uncertain` when the send cap is reached without confirmation. The
+optional `uncertain` when a matching slug cannot identify this call or the send
+cap is reached without confirmation. The
 organization and team slugs come from Sentry **Settings > Teams**; the name
 and project slug are nonempty Flow inputs. Some organizations also require
 `org:write` or Team Admin permission for creation.
