@@ -32,6 +32,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[keap.ContactDeletion](`{"contactId":"123","deleted":true}`)
 			return err
 		}},
+		{name: "getCompany/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompanyProfile](`{"id":"321","name":"Example Company"}`)
+			return err
+		}},
+		{name: "listCompanies/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompaniesPage](`{"companies":[{"id":"321","name":"Example Company"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "createCompany/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompanyProfile](`{"id":"321","name":"Example Company"}`)
+			return err
+		}},
+		{name: "updateCompany/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompanyProfile](`{"id":"321","name":"Example Company"}`)
+			return err
+		}},
+		{name: "deleteCompany/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.CompanyDeletion](`{"companyId":"321","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -53,5 +73,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
 		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.GetCompany().Definition().Operation.OperationID != "getCompany" {
+		t.Errorf("getCompany mock has another definition")
+	}
+	if mock.ListCompanies().Definition().Operation.OperationID != "listCompanies" {
+		t.Errorf("listCompanies mock has another definition")
+	}
+	if mock.CreateCompany().Definition().Operation.OperationID != "createCompany" {
+		t.Errorf("createCompany mock has another definition")
+	}
+	if mock.UpdateCompany().Definition().Operation.OperationID != "updateCompany" {
+		t.Errorf("updateCompany mock has another definition")
+	}
+	if mock.DeleteCompany().Definition().Operation.OperationID != "deleteCompany" {
+		t.Errorf("deleteCompany mock has another definition")
 	}
 }

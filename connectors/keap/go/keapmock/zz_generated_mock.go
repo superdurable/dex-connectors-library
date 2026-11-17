@@ -22,6 +22,11 @@ type Mock struct {
 	listContacts  *connectormock.Query[keap.ListContactsInput, keap.ContactsPage]
 	upsertContact *connectormock.Mutation[keap.UpsertContactInput, keap.ContactProfile]
 	deleteContact *connectormock.Mutation[keap.GetContactInput, keap.ContactDeletion]
+	getCompany    *connectormock.Query[keap.CompanyIDInput, keap.CompanyProfile]
+	listCompanies *connectormock.Query[keap.ListCompaniesInput, keap.CompaniesPage]
+	createCompany *connectormock.Mutation[keap.CompanyNameInput, keap.CompanyProfile]
+	updateCompany *connectormock.Mutation[keap.UpdateCompanyInput, keap.CompanyProfile]
+	deleteCompany *connectormock.Mutation[keap.CompanyIDInput, keap.CompanyDeletion]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -33,11 +38,21 @@ func New(t testing.TB, connectionName string) *Mock {
 		listContacts:  connectormock.NewQuery[keap.ListContactsInput, keap.ContactsPage](t, keap.ListContactsDefinition),
 		upsertContact: connectormock.NewMutation[keap.UpsertContactInput, keap.ContactProfile](t, keap.UpsertContactDefinition),
 		deleteContact: connectormock.NewMutation[keap.GetContactInput, keap.ContactDeletion](t, keap.DeleteContactDefinition),
+		getCompany:    connectormock.NewQuery[keap.CompanyIDInput, keap.CompanyProfile](t, keap.GetCompanyDefinition),
+		listCompanies: connectormock.NewQuery[keap.ListCompaniesInput, keap.CompaniesPage](t, keap.ListCompaniesDefinition),
+		createCompany: connectormock.NewMutation[keap.CompanyNameInput, keap.CompanyProfile](t, keap.CreateCompanyDefinition),
+		updateCompany: connectormock.NewMutation[keap.UpdateCompanyInput, keap.CompanyProfile](t, keap.UpdateCompanyDefinition),
+		deleteCompany: connectormock.NewMutation[keap.CompanyIDInput, keap.CompanyDeletion](t, keap.DeleteCompanyDefinition),
 	}
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.upsertContact.Default(UpsertContactDefault())
 	mock.deleteContact.Default(DeleteContactDefault())
+	mock.getCompany.Default(GetCompanyDefault())
+	mock.listCompanies.Default(ListCompaniesDefault())
+	mock.createCompany.Default(CreateCompanyDefault())
+	mock.updateCompany.Default(UpdateCompanyDefault())
+	mock.deleteCompany.Default(DeleteCompanyDefault())
 	connection, err := keap.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "keap", Name: connectionName})
 	if err != nil {
 		t.Fatalf("keap mock connection: %v", err)
@@ -69,6 +84,31 @@ func (mock *Mock) DeleteContact() *connectormock.Mutation[keap.GetContactInput, 
 	return mock.deleteContact
 }
 
+// GetCompany returns the getCompany script.
+func (mock *Mock) GetCompany() *connectormock.Query[keap.CompanyIDInput, keap.CompanyProfile] {
+	return mock.getCompany
+}
+
+// ListCompanies returns the listCompanies script.
+func (mock *Mock) ListCompanies() *connectormock.Query[keap.ListCompaniesInput, keap.CompaniesPage] {
+	return mock.listCompanies
+}
+
+// CreateCompany returns the createCompany script.
+func (mock *Mock) CreateCompany() *connectormock.Mutation[keap.CompanyNameInput, keap.CompanyProfile] {
+	return mock.createCompany
+}
+
+// UpdateCompany returns the updateCompany script.
+func (mock *Mock) UpdateCompany() *connectormock.Mutation[keap.UpdateCompanyInput, keap.CompanyProfile] {
+	return mock.updateCompany
+}
+
+// DeleteCompany returns the deleteCompany script.
+func (mock *Mock) DeleteCompany() *connectormock.Mutation[keap.CompanyIDInput, keap.CompanyDeletion] {
+	return mock.deleteCompany
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetContact() sdkgo.Query[keap.GetContactInput, keap.ContactProfile] {
@@ -82,6 +122,21 @@ func (operations mockOperations) UpsertContact() sdkgo.Mutation[keap.UpsertConta
 }
 func (operations mockOperations) DeleteContact() sdkgo.Mutation[keap.GetContactInput, keap.ContactDeletion] {
 	return operations.mock.deleteContact
+}
+func (operations mockOperations) GetCompany() sdkgo.Query[keap.CompanyIDInput, keap.CompanyProfile] {
+	return operations.mock.getCompany
+}
+func (operations mockOperations) ListCompanies() sdkgo.Query[keap.ListCompaniesInput, keap.CompaniesPage] {
+	return operations.mock.listCompanies
+}
+func (operations mockOperations) CreateCompany() sdkgo.Mutation[keap.CompanyNameInput, keap.CompanyProfile] {
+	return operations.mock.createCompany
+}
+func (operations mockOperations) UpdateCompany() sdkgo.Mutation[keap.UpdateCompanyInput, keap.CompanyProfile] {
+	return operations.mock.updateCompany
+}
+func (operations mockOperations) DeleteCompany() sdkgo.Mutation[keap.CompanyIDInput, keap.CompanyDeletion] {
+	return operations.mock.deleteCompany
 }
 
 // GetContactFound selects the found branch: Keap returned the contact.
@@ -232,4 +287,197 @@ func DeleteContactDeletedDefault() connectormock.Case[keap.ContactDeletion] {
 // DeleteContactDefault is the manifest default, deletedDefault, which New installs.
 func DeleteContactDefault() connectormock.Case[keap.ContactDeletion] {
 	return DeleteContactDeletedDefault()
+}
+
+// GetCompanyFound selects the found branch: Keap returned the company.
+func GetCompanyFound(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.GetCompanyBranchFound, value, failure)
+}
+
+// GetCompanyNotFound selects the notFound branch: Keap did not find the company.
+func GetCompanyNotFound(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.GetCompanyBranchNotFound, value, failure)
+}
+
+// GetCompanyProviderRejected selects the providerRejected branch: Keap rejected the lookup.
+func GetCompanyProviderRejected(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.GetCompanyBranchProviderRejected, value, failure)
+}
+
+// GetCompanyInvalidResponse selects the invalidResponse branch: Keap returned invalid company JSON.
+func GetCompanyInvalidResponse(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.GetCompanyBranchInvalidResponse, value, failure)
+}
+
+// GetCompanyDefect selects the defect branch: Input or credentials are invalid.
+func GetCompanyDefect(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.GetCompanyBranchDefect, value, failure)
+}
+
+// GetCompanyRetry asks Dex to retry the getCompany Step, after the delay when it is positive.
+func GetCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Retry[keap.CompanyProfile](failure, after)
+}
+
+// GetCompanyFoundDefault is the manifest mock foundDefault: A sample company is returned.
+func GetCompanyFoundDefault() connectormock.Case[keap.CompanyProfile] {
+	value := connectormock.MustDecodeOutput[keap.CompanyProfile](`{"id":"321","name":"Example Company"}`)
+	return connectormock.Branch(keap.GetCompanyBranchFound, value, nil)
+}
+
+// GetCompanyDefault is the manifest default, foundDefault, which New installs.
+func GetCompanyDefault() connectormock.Case[keap.CompanyProfile] { return GetCompanyFoundDefault() }
+
+// ListCompaniesListed selects the listed branch: Keap returned a company page.
+func ListCompaniesListed(value keap.CompaniesPage, failure *sdkgo.Failure) connectormock.Case[keap.CompaniesPage] {
+	return connectormock.Branch(keap.ListCompaniesBranchListed, value, failure)
+}
+
+// ListCompaniesProviderRejected selects the providerRejected branch: Keap rejected the list request.
+func ListCompaniesProviderRejected(value keap.CompaniesPage, failure *sdkgo.Failure) connectormock.Case[keap.CompaniesPage] {
+	return connectormock.Branch(keap.ListCompaniesBranchProviderRejected, value, failure)
+}
+
+// ListCompaniesInvalidResponse selects the invalidResponse branch: Keap returned invalid company list JSON.
+func ListCompaniesInvalidResponse(value keap.CompaniesPage, failure *sdkgo.Failure) connectormock.Case[keap.CompaniesPage] {
+	return connectormock.Branch(keap.ListCompaniesBranchInvalidResponse, value, failure)
+}
+
+// ListCompaniesDefect selects the defect branch: Input or credentials are invalid.
+func ListCompaniesDefect(value keap.CompaniesPage, failure *sdkgo.Failure) connectormock.Case[keap.CompaniesPage] {
+	return connectormock.Branch(keap.ListCompaniesBranchDefect, value, failure)
+}
+
+// ListCompaniesRetry asks Dex to retry the listCompanies Step, after the delay when it is positive.
+func ListCompaniesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.CompaniesPage] {
+	return connectormock.Retry[keap.CompaniesPage](failure, after)
+}
+
+// ListCompaniesListedDefault is the manifest mock listedDefault: A sample company page is returned.
+func ListCompaniesListedDefault() connectormock.Case[keap.CompaniesPage] {
+	value := connectormock.MustDecodeOutput[keap.CompaniesPage](`{"companies":[{"id":"321","name":"Example Company"}],"nextPageToken":""}`)
+	return connectormock.Branch(keap.ListCompaniesBranchListed, value, nil)
+}
+
+// ListCompaniesDefault is the manifest default, listedDefault, which New installs.
+func ListCompaniesDefault() connectormock.Case[keap.CompaniesPage] {
+	return ListCompaniesListedDefault()
+}
+
+// CreateCompanyCreated selects the created branch: Keap created the company.
+func CreateCompanyCreated(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.CreateCompanyBranchCreated, value, failure)
+}
+
+// CreateCompanyProviderRejected selects the providerRejected branch: Keap rejected the create request.
+func CreateCompanyProviderRejected(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.CreateCompanyBranchProviderRejected, value, failure)
+}
+
+// CreateCompanyUncertain returns an uncertain createCompany outcome.
+func CreateCompanyUncertain(value keap.CompanyProfile, failure sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCompanyDefect selects the defect branch: Input or credentials are invalid.
+func CreateCompanyDefect(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.CreateCompanyBranchDefect, value, failure)
+}
+
+// CreateCompanyRetry asks Dex to retry the createCompany Step, after the delay when it is positive.
+func CreateCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Retry[keap.CompanyProfile](failure, after)
+}
+
+// CreateCompanyCreatedDefault is the manifest mock createdDefault: A sample company is created.
+func CreateCompanyCreatedDefault() connectormock.Case[keap.CompanyProfile] {
+	value := connectormock.MustDecodeOutput[keap.CompanyProfile](`{"id":"321","name":"Example Company"}`)
+	return connectormock.Branch(keap.CreateCompanyBranchCreated, value, nil)
+}
+
+// CreateCompanyDefault is the manifest default, createdDefault, which New installs.
+func CreateCompanyDefault() connectormock.Case[keap.CompanyProfile] {
+	return CreateCompanyCreatedDefault()
+}
+
+// UpdateCompanyUpdated selects the updated branch: Keap updated the company.
+func UpdateCompanyUpdated(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.UpdateCompanyBranchUpdated, value, failure)
+}
+
+// UpdateCompanyNotFound selects the notFound branch: Keap did not find the company.
+func UpdateCompanyNotFound(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.UpdateCompanyBranchNotFound, value, failure)
+}
+
+// UpdateCompanyProviderRejected selects the providerRejected branch: Keap rejected the update.
+func UpdateCompanyProviderRejected(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.UpdateCompanyBranchProviderRejected, value, failure)
+}
+
+// UpdateCompanyInvalidResponse selects the invalidResponse branch: Keap returned invalid company JSON.
+func UpdateCompanyInvalidResponse(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.UpdateCompanyBranchInvalidResponse, value, failure)
+}
+
+// UpdateCompanyDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCompanyDefect(value keap.CompanyProfile, failure *sdkgo.Failure) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Branch(keap.UpdateCompanyBranchDefect, value, failure)
+}
+
+// UpdateCompanyRetry asks Dex to retry the updateCompany Step, after the delay when it is positive.
+func UpdateCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.CompanyProfile] {
+	return connectormock.Retry[keap.CompanyProfile](failure, after)
+}
+
+// UpdateCompanyUpdatedDefault is the manifest mock updatedDefault: A sample company is updated.
+func UpdateCompanyUpdatedDefault() connectormock.Case[keap.CompanyProfile] {
+	value := connectormock.MustDecodeOutput[keap.CompanyProfile](`{"id":"321","name":"Example Company"}`)
+	return connectormock.Branch(keap.UpdateCompanyBranchUpdated, value, nil)
+}
+
+// UpdateCompanyDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCompanyDefault() connectormock.Case[keap.CompanyProfile] {
+	return UpdateCompanyUpdatedDefault()
+}
+
+// DeleteCompanyDeleted selects the deleted branch: Keap accepted the deletion.
+func DeleteCompanyDeleted(value keap.CompanyDeletion, failure *sdkgo.Failure) connectormock.Case[keap.CompanyDeletion] {
+	return connectormock.Branch(keap.DeleteCompanyBranchDeleted, value, failure)
+}
+
+// DeleteCompanyNotFound selects the notFound branch: Keap did not find the company.
+func DeleteCompanyNotFound(value keap.CompanyDeletion, failure *sdkgo.Failure) connectormock.Case[keap.CompanyDeletion] {
+	return connectormock.Branch(keap.DeleteCompanyBranchNotFound, value, failure)
+}
+
+// DeleteCompanyProviderRejected selects the providerRejected branch: Keap rejected the deletion.
+func DeleteCompanyProviderRejected(value keap.CompanyDeletion, failure *sdkgo.Failure) connectormock.Case[keap.CompanyDeletion] {
+	return connectormock.Branch(keap.DeleteCompanyBranchProviderRejected, value, failure)
+}
+
+// DeleteCompanyInvalidResponse selects the invalidResponse branch: Keap returned invalid deletion JSON.
+func DeleteCompanyInvalidResponse(value keap.CompanyDeletion, failure *sdkgo.Failure) connectormock.Case[keap.CompanyDeletion] {
+	return connectormock.Branch(keap.DeleteCompanyBranchInvalidResponse, value, failure)
+}
+
+// DeleteCompanyDefect selects the defect branch: Input or credentials are invalid.
+func DeleteCompanyDefect(value keap.CompanyDeletion, failure *sdkgo.Failure) connectormock.Case[keap.CompanyDeletion] {
+	return connectormock.Branch(keap.DeleteCompanyBranchDefect, value, failure)
+}
+
+// DeleteCompanyRetry asks Dex to retry the deleteCompany Step, after the delay when it is positive.
+func DeleteCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.CompanyDeletion] {
+	return connectormock.Retry[keap.CompanyDeletion](failure, after)
+}
+
+// DeleteCompanyDeletedDefault is the manifest mock deletedDefault: A sample company is deleted.
+func DeleteCompanyDeletedDefault() connectormock.Case[keap.CompanyDeletion] {
+	value := connectormock.MustDecodeOutput[keap.CompanyDeletion](`{"companyId":"321","deleted":true}`)
+	return connectormock.Branch(keap.DeleteCompanyBranchDeleted, value, nil)
+}
+
+// DeleteCompanyDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCompanyDefault() connectormock.Case[keap.CompanyDeletion] {
+	return DeleteCompanyDeletedDefault()
 }

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: keap
   displayName: Keap
-  description: Read, list, upsert, and delete Keap CRM v2 contacts.
+  description: Manage Keap CRM v2 contacts and companies.
   company: Keap
   categories: [crm-sales, marketing]
   version: v0.2.0
@@ -137,3 +137,106 @@ spec:
           default: true
           description: A sample contact deletion is accepted.
           output: {contactId: '123', deleted: true}
+    - name: getCompany
+      goName: GetCompany
+      inputType: CompanyIDInput
+      outputType: CompanyProfile
+      kind: query
+      description: Read one Keap company by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Keap returned the company.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the company., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid company JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample company is returned.
+          output: {id: '321', name: Example Company}
+    - name: listCompanies
+      goName: ListCompanies
+      inputType: ListCompaniesInput
+      outputType: CompaniesPage
+      kind: query
+      description: List one bounded page of Keap companies.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a company page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid company list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample company page is returned.
+          output: {companies: [{id: '321', name: Example Company}], nextPageToken: ''}
+    - name: createCompany
+      goName: CreateCompany
+      inputType: CompanyNameInput
+      outputType: CompanyProfile
+      kind: mutation
+      description: Create a Keap company with a bounded resend budget.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Keap created the company.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample company is created.
+          output: {id: '321', name: Example Company}
+    - name: updateCompany
+      goName: UpdateCompany
+      inputType: UpdateCompanyInput
+      outputType: CompanyProfile
+      kind: mutation
+      description: Replace a Keap company's name by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Keap updated the company.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the company., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid company JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample company is updated.
+          output: {id: '321', name: Example Company}
+    - name: deleteCompany
+      goName: DeleteCompany
+      inputType: CompanyIDInput
+      outputType: CompanyDeletion
+      kind: mutation
+      description: Delete one Keap company by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the company., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned invalid deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample company is deleted.
+          output: {companyId: '321', deleted: true}

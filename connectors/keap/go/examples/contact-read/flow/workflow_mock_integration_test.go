@@ -24,7 +24,7 @@ import (
 func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := keapmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection())})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection()), NewCompanyFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -69,4 +69,15 @@ func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, page.Contacts, 1)
 	require.Equal(t, "123", page.Contacts[0].ID)
 	require.Len(t, mock.ListContacts().Calls(), 1)
+	companyFlow := NewCompanyFlow(mock.Connection())
+	companyFlowID := "keap-company-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, companyFlow, companyFlowID, keap.CompanyIDInput{CompanyID: "321"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	companyResult, err := client.WaitForFlow(ctx, companyFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, companyResult.Status, companyResult.ErrorMessage)
+	var company keap.CompanyProfile
+	require.NoError(t, companyResult.DecodeSingleOutput(&company))
+	require.Equal(t, "321", company.ID)
+	require.Len(t, mock.GetCompany().Calls(), 1)
 }

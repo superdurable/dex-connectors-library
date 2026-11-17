@@ -1294,6 +1294,1829 @@
       },
       "name": "deleteContact-notFound",
       "operation": "deleteContact"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"321\",\"company_name\":\"Example Company\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies/321",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "321",
+          "name": "Example Company"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "321"
+      },
+      "name": "getCompany-found",
+      "operation": "getCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies/321",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "321"
+      },
+      "name": "getCompany-rejected",
+      "operation": "getCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies/321",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "321"
+      },
+      "name": "getCompany-invalid",
+      "operation": "getCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies/321",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "321"
+      },
+      "name": "getCompany-notFound",
+      "operation": "getCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies/321",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "321"
+      },
+      "name": "getCompany-rateLimit",
+      "operation": "getCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies/321",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "321"
+      },
+      "name": "getCompany-unavailable",
+      "operation": "getCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies/321",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "321"
+      },
+      "name": "getCompany-serverFailure",
+      "operation": "getCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies/321",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "321"
+      },
+      "name": "getCompany-transportFailure",
+      "operation": "getCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"companies\":[{\"id\":\"321\",\"company_name\":\"Example Company\"}],\"next_page_token\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "sample-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "companies": [
+            {
+              "id": "321",
+              "name": "Example Company"
+            }
+          ],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "sample-page"
+      },
+      "name": "listCompanies-happy",
+      "operation": "listCompanies"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "sample-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "companies": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "sample-page"
+      },
+      "name": "listCompanies-rejected",
+      "operation": "listCompanies"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "sample-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "companies": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "sample-page"
+      },
+      "name": "listCompanies-invalid",
+      "operation": "listCompanies"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "sample-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "sample-page"
+      },
+      "name": "listCompanies-rateLimit",
+      "operation": "listCompanies"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "sample-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "sample-page"
+      },
+      "name": "listCompanies-unavailable",
+      "operation": "listCompanies"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "sample-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "sample-page"
+      },
+      "name": "listCompanies-serverFailure",
+      "operation": "listCompanies"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/companies",
+          "query": {
+            "fields": [
+              "id,company_name"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "sample-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "sample-page"
+      },
+      "name": "listCompanies-transportFailure",
+      "operation": "listCompanies"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"321\",\"company_name\":\"Example Company\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "321",
+          "name": "Example Company"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-happy",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-rejected",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-rateLimit",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-unavailable",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-serverFailure",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "name": "createCompany-transportFailure",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"321\",\"company_name\":\"Example Company\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/companies/321",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "321",
+          "name": "Example Company"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "input": {
+        "companyId": "321",
+        "name": "Example Company"
+      },
+      "name": "updateCompany-happy",
+      "operation": "updateCompany"
+    },
+    {
+      "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/companies/321",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "input": {
+        "companyId": "321",
+        "name": "Example Company"
+      },
+      "name": "updateCompany-rejected",
+      "operation": "updateCompany"
+    },
+    {
+      "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/companies/321",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "input": {
+        "companyId": "321",
+        "name": "Example Company"
+      },
+      "name": "updateCompany-invalid",
+      "operation": "updateCompany"
+    },
+    {
+      "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/companies/321",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "input": {
+        "companyId": "321",
+        "name": "Example Company"
+      },
+      "name": "updateCompany-notFound",
+      "operation": "updateCompany"
+    },
+    {
+      "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/companies/321",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "input": {
+        "companyId": "321",
+        "name": "Example Company"
+      },
+      "name": "updateCompany-rateLimit",
+      "operation": "updateCompany"
+    },
+    {
+      "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/companies/321",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "input": {
+        "companyId": "321",
+        "name": "Example Company"
+      },
+      "name": "updateCompany-unavailable",
+      "operation": "updateCompany"
+    },
+    {
+      "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/companies/321",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "input": {
+        "companyId": "321",
+        "name": "Example Company"
+      },
+      "name": "updateCompany-serverFailure",
+      "operation": "updateCompany"
+    },
+    {
+      "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/rest/v2/companies/321",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "input": {
+        "companyId": "321",
+        "name": "Example Company"
+      },
+      "name": "updateCompany-transportFailure",
+      "operation": "updateCompany"
+    },
+    {
+      "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/companies/321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "companyId": "321",
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "input": {
+        "companyId": "321"
+      },
+      "name": "deleteCompany-happy",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/companies/321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "companyId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "input": {
+        "companyId": "321"
+      },
+      "name": "deleteCompany-rejected",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/companies/321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "companyId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "input": {
+        "companyId": "321"
+      },
+      "name": "deleteCompany-invalid",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/companies/321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "companyId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "input": {
+        "companyId": "321"
+      },
+      "name": "deleteCompany-notFound",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/companies/321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "input": {
+        "companyId": "321"
+      },
+      "name": "deleteCompany-rateLimit",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/companies/321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "input": {
+        "companyId": "321"
+      },
+      "name": "deleteCompany-unavailable",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/companies/321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "input": {
+        "companyId": "321"
+      },
+      "name": "deleteCompany-serverFailure",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/companies/321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "input": {
+        "companyId": "321"
+      },
+      "name": "deleteCompany-transportFailure",
+      "operation": "deleteCompany"
+    },
+    {
+      "attempts": 3,
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/companies",
+          "requestBody": {
+            "company_name": "Example Company"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": "Example Company"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCompany-uncertain",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "bad/id"
+      },
+      "name": "getCompany-defect",
+      "operation": "getCompany"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "companies": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": -1,
+        "pageToken": "cursor-1"
+      },
+      "name": "listCompanies-defect",
+      "operation": "listCompanies"
+    },
+    {
+      "callId": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9005478-8a34-595a-aa5a-55bcf0be8f8f",
+      "input": {
+        "name": " "
+      },
+      "name": "createCompany-defect",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0854a36-bc5e-5b9d-a647-e5659acb4fc8",
+      "input": {
+        "companyId": "bad/id",
+        "name": "Example Company"
+      },
+      "name": "updateCompany-defect",
+      "operation": "updateCompany"
+    },
+    {
+      "callId": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "companyId": "",
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13bc6895-41f4-5e8d-868e-9d1a86aa8373",
+      "input": {
+        "companyId": "bad/id"
+      },
+      "name": "deleteCompany-defect",
+      "operation": "deleteCompany"
     }
   ],
   "schemaVersion": 1
