@@ -411,6 +411,8 @@ commit.
 
 ## Tests
 
+- Run `dexcli visualize` with `--open=false` for local verification unless
+  the requested verification requires its browser UI.
 - Run Go suites and vet through the repository Makefile. Test every standalone
   module with `GOWORK=off`.
 - Use a real Dex integration test for behavior crossing a Worker, Client,

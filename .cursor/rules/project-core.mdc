@@ -108,6 +108,8 @@ alwaysApply: true
 
 ## Tests
 
+- Run `dexcli visualize` with `--open=false` for local verification unless
+  the requested verification requires its browser UI.
 - Run all modules with `GOWORK=off` and use the repository Makefile.
 - Prefer real Dex integration tests across Worker, Client, persistence, retry,
   Trigger, RPC, Attribute, Stream, and transition boundaries.
