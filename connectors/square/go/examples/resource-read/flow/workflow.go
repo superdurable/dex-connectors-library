@@ -20,6 +20,7 @@ const (
 	createPaymentStepType  = "CreateSquareCashPayment"
 	refundPaymentStepType  = "RefundSquarePayment"
 	createCustomerStepType = "CreateSquareCustomer"
+	createOrderStepType    = "CreateSquareOrder"
 )
 
 // Request is the typed start input for this example.
@@ -38,6 +39,12 @@ type Request struct {
 	CustomerGivenName string `json:"customerGivenName,omitempty"`
 	// CustomerEmailAddress is the new customer's email address.
 	CustomerEmailAddress string `json:"customerEmailAddress,omitempty"`
+	// OrderLocationID selects the seller location for a new order.
+	OrderLocationID string `json:"orderLocationId,omitempty"`
+	// OrderLineItemName names the custom line item on a new order.
+	OrderLineItemName string `json:"orderLineItemName,omitempty"`
+	// OrderQuantity is a positive decimal count for the new order.
+	OrderQuantity string `json:"orderQuantity,omitempty"`
 }
 
 // Outcome is the completed resource read.
@@ -50,6 +57,8 @@ type Outcome struct {
 	Refund square.Refund `json:"refund,omitempty"`
 	// Customer is the new Square customer when CreateCustomer was selected.
 	Customer square.Customer `json:"customer,omitempty"`
+	// Order is the created Square order when OrderLocationID was set.
+	Order square.Order `json:"order,omitempty"`
 }
 
 var outcomeAttribute = dex.DefineAttribute[Outcome]("square-resource-read-outcome")
@@ -93,10 +102,17 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToCreateCustomerInput,
 			Created:             sdkgo.GoTo(completeCustomer{}),
 		})),
+		dex.DefineStep(square.NewCreateOrderStep(square.CreateOrderStepConfig[Request]{
+			StepType: createOrderStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "square", GroupLabel: "Square", Explanation: "Create the requested Square order."},
+			MapToOperationInput: MapToCreateOrderInput,
+			Created:             sdkgo.GoTo(completeOrder{}),
+		})),
 		dex.DefineStep(completeRead{}),
 		dex.DefineStep(completeCashPayment{}),
 		dex.DefineStep(completeRefund{}),
 		dex.DefineStep(completeCustomer{}),
+		dex.DefineStep(completeOrder{}),
 	}
 }
 
@@ -144,6 +160,11 @@ func MapToCreateCustomerInput(request Request) square.CreateCustomerInput {
 	return square.CreateCustomerInput{GivenName: request.CustomerGivenName, EmailAddress: request.CustomerEmailAddress}
 }
 
+// MapToCreateOrderInput maps a custom line item and seller location.
+func MapToCreateOrderInput(request Request) square.CreateOrderInput {
+	return square.CreateOrderInput{LocationID: request.OrderLocationID, LineItemName: request.OrderLineItemName, Quantity: request.OrderQuantity, BasePriceMoney: request.AmountMoney}
+}
+
 // PrepareRequest rejects invalid local input before a provider call.
 func PrepareRequest(request Request) (Request, error) {
 	if request.RecordCashPayment && (request.AmountMoney.Amount <= 0 || request.AmountMoney.Currency == "") {
@@ -159,8 +180,16 @@ func PrepareRequest(request Request) (Request, error) {
 		if request.CustomerGivenName == "" && request.CustomerEmailAddress == "" {
 			return Request{}, errors.New("customer given name or email address is required")
 		}
-		if request.RecordCashPayment || request.RefundPaymentID != "" {
+		if request.RecordCashPayment || request.RefundPaymentID != "" || request.OrderLocationID != "" {
 			return Request{}, errors.New("choose one Square action")
+		}
+	}
+	if request.OrderLocationID != "" {
+		if request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer {
+			return Request{}, errors.New("choose one Square action")
+		}
+		if request.OrderLineItemName == "" || request.OrderQuantity == "" || request.AmountMoney.Currency == "" {
+			return Request{}, errors.New("order item, quantity, and currency are required")
 		}
 	}
 	return request, nil
@@ -187,6 +216,9 @@ func (prepareRequest) Execute(ctx dex.Context, request Request) (*dex.StepDecisi
 	}
 	if prepared.CreateCustomer {
 		return dex.GoTo(sdkgo.StepRef[Request](createCustomerStepType), prepared), nil
+	}
+	if prepared.OrderLocationID != "" {
+		return dex.GoTo(sdkgo.StepRef[Request](createOrderStepType), prepared), nil
 	}
 	return dex.GoTo(sdkgo.StepRef[Request](readStepType), prepared), nil
 }
@@ -245,6 +277,21 @@ type completeCustomer struct {
 func (completeCustomer) GetStepType() string { return "CompleteCustomer" }
 func (completeCustomer) Execute(ctx dex.Context, result square.CreateCustomerResult) (*dex.StepDecision, error) {
 	outcome := Outcome{Customer: result.Value}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:resource-result group-label:"Resource result"
+// dex:explanation text:"Persist the created order as the Flow outcome."
+type completeOrder struct {
+	dex.StepDefaultsNoWaitFor[square.CreateOrderResult]
+}
+
+func (completeOrder) GetStepType() string { return "CompleteOrder" }
+func (completeOrder) Execute(ctx dex.Context, result square.CreateOrderResult) (*dex.StepDecision, error) {
+	outcome := Outcome{Order: result.Value}
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

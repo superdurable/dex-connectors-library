@@ -30,12 +30,18 @@ The Python package is [`dex-connector-square`](python/README.md), imported as
 | `CreateCustomer` | `CreateCustomerInput` | `Customer` | `created` |
 | `UpdateCustomer` | `UpdateCustomerInput` | `Customer` | `updated` |
 | `DeleteCustomer` | `DeleteCustomerInput` | `DeletedCustomer` | `deleted` |
+| `SearchOrders` | `SearchOrdersInput` | `OrderPage` | `listed` |
+| `GetOrder` | `GetOrderInput` | `Order` | `found` |
+| `CreateOrder` | `CreateOrderInput` | `Order` | `created` |
+| `UpdateOrder` | `UpdateOrderInput` | `Order` | `updated` |
 
 Each operation has optional `providerRejected`, `invalidResponse`, and `defect` branches; reads and payment actions also have optional `notFound` where applicable. Unwired optional branches fail the Flow. Reads and writes use async Execute durability and the default one-hour retry budget. All writes use the `safe` repeat tier. `CreatePayment`, `UpdatePayment`, and `RefundPayment` pass a stable Square idempotency key in the request body. `CancelPayment` and `CompletePayment` read the payment status after an unknown response before repeating the action.
 
 `CreatePaymentInput.SourceID` accepts `CASH` or `EXTERNAL` only. This records a payment received outside Square without persisting a payment token in Dex Flow input. Amounts are positive integers in the currency's minor unit, with an uppercase ISO currency code.
 
 Customer operations require `CUSTOMERS_READ` or `CUSTOMERS_WRITE` on the token as appropriate. `SearchCustomers` matches exact email and/or external reference, returning one page. `CreateCustomer` supplies a stable provider idempotency key. `UpdateCustomer` applies nonblank fields as absolute values; blank fields mean no change. `DeleteCustomer` takes a Square customer ID and reports it on success.
+
+Order operations require `ORDERS_READ` or `ORDERS_WRITE`. `SearchOrders` returns one page for a seller location. `CreateOrder` creates one custom-priced line item from a location ID, item name, positive decimal quantity, and minor-unit price. `UpdateOrder` changes the external reference of an open order using its current `version`. Both writes use Square's idempotency key in the request body.
 
 ## Authentication and configuration
 
@@ -75,6 +81,7 @@ flow := resourceread.NewFlow(mock.Connection())
 - [https://developer.squareup.com/reference/square/refunds-api/get-payment-refund](https://developer.squareup.com/reference/square/refunds-api/get-payment-refund)
 - [https://developer.squareup.com/reference/square/refunds-api/refund-payment](https://developer.squareup.com/reference/square/refunds-api/refund-payment)
 - [https://developer.squareup.com/reference/square/customers-api](https://developer.squareup.com/reference/square/customers-api)
+- [https://developer.squareup.com/reference/square/orders](https://developer.squareup.com/reference/square/orders)
 - [https://developer.squareup.com/docs/payments-api/retrieve-payments](https://developer.squareup.com/docs/payments-api/retrieve-payments)
 
 ## Unverified live behavior

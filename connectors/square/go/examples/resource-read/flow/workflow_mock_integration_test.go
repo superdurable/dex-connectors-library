@@ -113,4 +113,19 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, customerFlowID, customerCalls[0].FlowID)
 	require.Equal(t, square.CreateCustomerInput{GivenName: "Ada", EmailAddress: "ada@example.com"}, customerCalls[0].Input)
 	require.Equal(t, square.CreateCustomerBranchCreated, customerCalls[0].Branch)
+	orderFlowID := "square-order-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	orderInput := Request{OrderLocationID: "loc_101", OrderLineItemName: "Coffee", OrderQuantity: "2", AmountMoney: square.Money{Amount: 500, Currency: "USD"}}
+	_, err = client.StartFlow(ctx, flow, orderFlowID, orderInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	orderResult, err := client.WaitForFlow(ctx, orderFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, orderResult.Status, orderResult.ErrorMessage)
+	var orderOutcome Outcome
+	require.NoError(t, orderResult.DecodeSingleOutput(&orderOutcome))
+	require.Equal(t, "order_101", orderOutcome.Order.ID)
+	orderCalls := mock.CreateOrder().Calls()
+	require.Len(t, orderCalls, 1)
+	require.Equal(t, orderFlowID, orderCalls[0].FlowID)
+	require.Equal(t, square.CreateOrderInput{LocationID: "loc_101", LineItemName: "Coffee", Quantity: "2", BasePriceMoney: orderInput.AmountMoney}, orderCalls[0].Input)
+	require.Equal(t, square.CreateOrderBranchCreated, orderCalls[0].Branch)
 }

@@ -33,6 +33,10 @@ type Mock struct {
 	createCustomer  *connectormock.Mutation[square.CreateCustomerInput, square.Customer]
 	updateCustomer  *connectormock.Mutation[square.UpdateCustomerInput, square.Customer]
 	deleteCustomer  *connectormock.Mutation[square.DeleteCustomerInput, square.DeletedCustomer]
+	searchOrders    *connectormock.Query[square.SearchOrdersInput, square.OrderPage]
+	getOrder        *connectormock.Query[square.GetOrderInput, square.Order]
+	createOrder     *connectormock.Mutation[square.CreateOrderInput, square.Order]
+	updateOrder     *connectormock.Mutation[square.UpdateOrderInput, square.Order]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -55,6 +59,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		createCustomer:  connectormock.NewMutation[square.CreateCustomerInput, square.Customer](t, square.CreateCustomerDefinition),
 		updateCustomer:  connectormock.NewMutation[square.UpdateCustomerInput, square.Customer](t, square.UpdateCustomerDefinition),
 		deleteCustomer:  connectormock.NewMutation[square.DeleteCustomerInput, square.DeletedCustomer](t, square.DeleteCustomerDefinition),
+		searchOrders:    connectormock.NewQuery[square.SearchOrdersInput, square.OrderPage](t, square.SearchOrdersDefinition),
+		getOrder:        connectormock.NewQuery[square.GetOrderInput, square.Order](t, square.GetOrderDefinition),
+		createOrder:     connectormock.NewMutation[square.CreateOrderInput, square.Order](t, square.CreateOrderDefinition),
+		updateOrder:     connectormock.NewMutation[square.UpdateOrderInput, square.Order](t, square.UpdateOrderDefinition),
 	}
 	mock.listPayments.Default(ListPaymentsDefault())
 	mock.getPayment.Default(GetPaymentDefault())
@@ -71,6 +79,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createCustomer.Default(CreateCustomerDefault())
 	mock.updateCustomer.Default(UpdateCustomerDefault())
 	mock.deleteCustomer.Default(DeleteCustomerDefault())
+	mock.searchOrders.Default(SearchOrdersDefault())
+	mock.getOrder.Default(GetOrderDefault())
+	mock.createOrder.Default(CreateOrderDefault())
+	mock.updateOrder.Default(UpdateOrderDefault())
 	connection, err := square.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "square", Name: connectionName})
 	if err != nil {
 		t.Fatalf("square mock connection: %v", err)
@@ -157,6 +169,26 @@ func (mock *Mock) DeleteCustomer() *connectormock.Mutation[square.DeleteCustomer
 	return mock.deleteCustomer
 }
 
+// SearchOrders returns the searchOrders script.
+func (mock *Mock) SearchOrders() *connectormock.Query[square.SearchOrdersInput, square.OrderPage] {
+	return mock.searchOrders
+}
+
+// GetOrder returns the getOrder script.
+func (mock *Mock) GetOrder() *connectormock.Query[square.GetOrderInput, square.Order] {
+	return mock.getOrder
+}
+
+// CreateOrder returns the createOrder script.
+func (mock *Mock) CreateOrder() *connectormock.Mutation[square.CreateOrderInput, square.Order] {
+	return mock.createOrder
+}
+
+// UpdateOrder returns the updateOrder script.
+func (mock *Mock) UpdateOrder() *connectormock.Mutation[square.UpdateOrderInput, square.Order] {
+	return mock.updateOrder
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListPayments() sdkgo.Query[square.ListPaymentsInput, square.PaymentPage] {
@@ -203,6 +235,18 @@ func (operations mockOperations) UpdateCustomer() sdkgo.Mutation[square.UpdateCu
 }
 func (operations mockOperations) DeleteCustomer() sdkgo.Mutation[square.DeleteCustomerInput, square.DeletedCustomer] {
 	return operations.mock.deleteCustomer
+}
+func (operations mockOperations) SearchOrders() sdkgo.Query[square.SearchOrdersInput, square.OrderPage] {
+	return operations.mock.searchOrders
+}
+func (operations mockOperations) GetOrder() sdkgo.Query[square.GetOrderInput, square.Order] {
+	return operations.mock.getOrder
+}
+func (operations mockOperations) CreateOrder() sdkgo.Mutation[square.CreateOrderInput, square.Order] {
+	return operations.mock.createOrder
+}
+func (operations mockOperations) UpdateOrder() sdkgo.Mutation[square.UpdateOrderInput, square.Order] {
+	return operations.mock.updateOrder
 }
 
 // ListPaymentsListed selects the listed branch: List one page of Square payments.
@@ -771,3 +815,149 @@ func DeleteCustomerDefaultAnswer() connectormock.Case[square.DeletedCustomer] {
 func DeleteCustomerDefault() connectormock.Case[square.DeletedCustomer] {
 	return DeleteCustomerDefaultAnswer()
 }
+
+// SearchOrdersListed selects the listed branch: Search one page of Square orders for a location.
+func SearchOrdersListed(value square.OrderPage, failure *sdkgo.Failure) connectormock.Case[square.OrderPage] {
+	return connectormock.Branch(square.SearchOrdersBranchListed, value, failure)
+}
+
+// SearchOrdersProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func SearchOrdersProviderRejected(value square.OrderPage, failure *sdkgo.Failure) connectormock.Case[square.OrderPage] {
+	return connectormock.Branch(square.SearchOrdersBranchProviderRejected, value, failure)
+}
+
+// SearchOrdersInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func SearchOrdersInvalidResponse(value square.OrderPage, failure *sdkgo.Failure) connectormock.Case[square.OrderPage] {
+	return connectormock.Branch(square.SearchOrdersBranchInvalidResponse, value, failure)
+}
+
+// SearchOrdersDefect selects the defect branch: Local input or connection credentials are invalid.
+func SearchOrdersDefect(value square.OrderPage, failure *sdkgo.Failure) connectormock.Case[square.OrderPage] {
+	return connectormock.Branch(square.SearchOrdersBranchDefect, value, failure)
+}
+
+// SearchOrdersRetry asks Dex to retry the searchOrders Step, after the delay when it is positive.
+func SearchOrdersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.OrderPage] {
+	return connectormock.Retry[square.OrderPage](failure, after)
+}
+
+// SearchOrdersDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square order response.
+func SearchOrdersDefaultAnswer() connectormock.Case[square.OrderPage] {
+	value := connectormock.MustDecodeOutput[square.OrderPage](`{"orders":[{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}],"cursor":""}`)
+	return connectormock.Branch(square.SearchOrdersBranchListed, value, nil)
+}
+
+// SearchOrdersDefault is the manifest default, defaultAnswer, which New installs.
+func SearchOrdersDefault() connectormock.Case[square.OrderPage] { return SearchOrdersDefaultAnswer() }
+
+// GetOrderFound selects the found branch: Read one Square order.
+func GetOrderFound(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchFound, value, failure)
+}
+
+// GetOrderNotFound selects the notFound branch: The order was not found.
+func GetOrderNotFound(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchNotFound, value, failure)
+}
+
+// GetOrderProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func GetOrderProviderRejected(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchProviderRejected, value, failure)
+}
+
+// GetOrderInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetOrderInvalidResponse(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchInvalidResponse, value, failure)
+}
+
+// GetOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetOrderDefect(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.GetOrderBranchDefect, value, failure)
+}
+
+// GetOrderRetry asks Dex to retry the getOrder Step, after the delay when it is positive.
+func GetOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Order] {
+	return connectormock.Retry[square.Order](failure, after)
+}
+
+// GetOrderDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square order response.
+func GetOrderDefaultAnswer() connectormock.Case[square.Order] {
+	value := connectormock.MustDecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+	return connectormock.Branch(square.GetOrderBranchFound, value, nil)
+}
+
+// GetOrderDefault is the manifest default, defaultAnswer, which New installs.
+func GetOrderDefault() connectormock.Case[square.Order] { return GetOrderDefaultAnswer() }
+
+// CreateOrderCreated selects the created branch: Create a Square order with a stable idempotency key.
+func CreateOrderCreated(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.CreateOrderBranchCreated, value, failure)
+}
+
+// CreateOrderProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func CreateOrderProviderRejected(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.CreateOrderBranchProviderRejected, value, failure)
+}
+
+// CreateOrderInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CreateOrderInvalidResponse(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.CreateOrderBranchInvalidResponse, value, failure)
+}
+
+// CreateOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateOrderDefect(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.CreateOrderBranchDefect, value, failure)
+}
+
+// CreateOrderRetry asks Dex to retry the createOrder Step, after the delay when it is positive.
+func CreateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Order] {
+	return connectormock.Retry[square.Order](failure, after)
+}
+
+// CreateOrderDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square order response.
+func CreateOrderDefaultAnswer() connectormock.Case[square.Order] {
+	value := connectormock.MustDecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+	return connectormock.Branch(square.CreateOrderBranchCreated, value, nil)
+}
+
+// CreateOrderDefault is the manifest default, defaultAnswer, which New installs.
+func CreateOrderDefault() connectormock.Case[square.Order] { return CreateOrderDefaultAnswer() }
+
+// UpdateOrderUpdated selects the updated branch: Update an open Square order using its current version and a stable idempotency key.
+func UpdateOrderUpdated(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchUpdated, value, failure)
+}
+
+// UpdateOrderNotFound selects the notFound branch: The order was not found.
+func UpdateOrderNotFound(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchNotFound, value, failure)
+}
+
+// UpdateOrderProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func UpdateOrderProviderRejected(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchProviderRejected, value, failure)
+}
+
+// UpdateOrderInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func UpdateOrderInvalidResponse(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchInvalidResponse, value, failure)
+}
+
+// UpdateOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateOrderDefect(value square.Order, failure *sdkgo.Failure) connectormock.Case[square.Order] {
+	return connectormock.Branch(square.UpdateOrderBranchDefect, value, failure)
+}
+
+// UpdateOrderRetry asks Dex to retry the updateOrder Step, after the delay when it is positive.
+func UpdateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Order] {
+	return connectormock.Retry[square.Order](failure, after)
+}
+
+// UpdateOrderDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square order response.
+func UpdateOrderDefaultAnswer() connectormock.Case[square.Order] {
+	value := connectormock.MustDecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+	return connectormock.Branch(square.UpdateOrderBranchUpdated, value, nil)
+}
+
+// UpdateOrderDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateOrderDefault() connectormock.Case[square.Order] { return UpdateOrderDefaultAnswer() }

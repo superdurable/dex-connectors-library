@@ -76,6 +76,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[square.DeletedCustomer](`{"customerId":"customer_101"}`)
 			return err
 		}},
+		{name: "searchOrders/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.OrderPage](`{"orders":[{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}],"cursor":""}`)
+			return err
+		}},
+		{name: "getOrder/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+			return err
+		}},
+		{name: "createOrder/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+			return err
+		}},
+		{name: "updateOrder/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Order](`{"id":"order_101","location_id":"loc_101","state":"OPEN","version":1}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -130,5 +146,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
 		t.Errorf("deleteCustomer mock has another definition")
+	}
+	if mock.SearchOrders().Definition().Operation.OperationID != "searchOrders" {
+		t.Errorf("searchOrders mock has another definition")
+	}
+	if mock.GetOrder().Definition().Operation.OperationID != "getOrder" {
+		t.Errorf("getOrder mock has another definition")
+	}
+	if mock.CreateOrder().Definition().Operation.OperationID != "createOrder" {
+		t.Errorf("createOrder mock has another definition")
+	}
+	if mock.UpdateOrder().Definition().Operation.OperationID != "updateOrder" {
+		t.Errorf("updateOrder mock has another definition")
 	}
 }

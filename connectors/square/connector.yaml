@@ -46,12 +46,12 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE for payments and refunds, CUSTOMERS_READ/WRITE for customer operations. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
+        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, and ORDERS_READ/WRITE for the corresponding operations. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
         required: true
     guide:
       startURL: https://developer.squareup.com/apps
       steps:
-        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE for payments and refunds and CUSTOMERS_READ/WRITE for customer operations. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
+        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, and ORDERS_READ/WRITE for the corresponding operation families. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
     - name: listPayments
@@ -367,3 +367,85 @@ spec:
           description: A synthetic Square customer response.
           default: true
           output: {customerId: customer_101}
+    - name: searchOrders
+      goName: SearchOrders
+      inputType: SearchOrdersInput
+      outputType: OrderPage
+      kind: query
+      description: Search one page of Square orders for a location.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Search one page of Square orders for a location.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: A synthetic Square order response.
+          default: true
+          output: {orders: [{id: order_101, location_id: loc_101, state: OPEN, version: 1}], cursor: ""}
+    - name: getOrder
+      goName: GetOrder
+      inputType: GetOrderInput
+      outputType: Order
+      kind: query
+      description: Read one Square order.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Read one Square order.}
+        - {id: notFound, goName: NotFound, description: The order was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: A synthetic Square order response.
+          default: true
+          output: {id: order_101, location_id: loc_101, state: OPEN, version: 1}
+    - name: createOrder
+      goName: CreateOrder
+      inputType: CreateOrderInput
+      outputType: Order
+      kind: mutation
+      description: Create a Square order with a stable idempotency key.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Create a Square order with a stable idempotency key.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          description: A synthetic Square order response.
+          default: true
+          output: {id: order_101, location_id: loc_101, state: OPEN, version: 1}
+    - name: updateOrder
+      goName: UpdateOrder
+      inputType: UpdateOrderInput
+      outputType: Order
+      kind: mutation
+      description: Update an open Square order using its current version and a stable idempotency key.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Update an open Square order using its current version and a stable idempotency key.}
+        - {id: notFound, goName: NotFound, description: The order was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          description: A synthetic Square order response.
+          default: true
+          output: {id: order_101, location_id: loc_101, state: OPEN, version: 1}

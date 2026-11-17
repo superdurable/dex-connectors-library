@@ -5764,6 +5764,1669 @@
       },
       "name": "deleteCustomer-not-found",
       "operation": "deleteCustomer"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000031",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":\"order_101\",\"location_id\":\"loc_101\",\"state\":\"OPEN\",\"version\":1,\"reference_id\":\"web_101\"}],\"cursor\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "location_ids": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "",
+          "orders": [
+            {
+              "id": "order_101",
+              "location_id": "loc_101",
+              "reference_id": "web_101",
+              "state": "OPEN",
+              "version": 1
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "locationId": "loc_101"
+      },
+      "name": "searchOrders-success",
+      "operation": "searchOrders"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000032",
+      "exchanges": [
+        {
+          "body": "{\"order\":{\"id\":\"order_101\",\"location_id\":\"loc_101\",\"state\":\"OPEN\",\"version\":1,\"reference_id\":\"web_101\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "order_101",
+          "location_id": "loc_101",
+          "reference_id": "web_101",
+          "state": "OPEN",
+          "version": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_101"
+      },
+      "name": "getOrder-success",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{\"order\":{\"id\":\"order_101\",\"location_id\":\"loc_101\",\"state\":\"OPEN\",\"version\":1,\"reference_id\":\"web_101\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "order_101",
+          "location_id": "loc_101",
+          "reference_id": "web_101",
+          "state": "OPEN",
+          "version": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-success",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{\"order\":{\"id\":\"order_101\",\"location_id\":\"loc_101\",\"state\":\"OPEN\",\"version\":1,\"reference_id\":\"web_101\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "order_101",
+          "location_id": "loc_101",
+          "reference_id": "web_101",
+          "state": "OPEN",
+          "version": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-success",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000031",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "location_ids": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "cursor": "",
+          "orders": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "locationId": "loc_101"
+      },
+      "name": "searchOrders-rejected",
+      "operation": "searchOrders"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000031",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "location_ids": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "orders": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "locationId": "loc_101"
+      },
+      "name": "searchOrders-invalid",
+      "operation": "searchOrders"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000031",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "location_ids": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "locationId": "loc_101"
+      },
+      "name": "searchOrders-rate-limit",
+      "operation": "searchOrders"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000031",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "location_ids": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "locationId": "loc_101"
+      },
+      "name": "searchOrders-unavailable",
+      "operation": "searchOrders"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000031",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "location_ids": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "locationId": "loc_101"
+      },
+      "name": "searchOrders-server-error",
+      "operation": "searchOrders"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000031",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "location_ids": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "locationId": "loc_101"
+      },
+      "name": "searchOrders-transport",
+      "operation": "searchOrders"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000031",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cursor": "",
+          "orders": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "",
+        "locationId": ""
+      },
+      "name": "searchOrders-defect",
+      "operation": "searchOrders"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000032",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_101"
+      },
+      "name": "getOrder-rejected",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000032",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_101"
+      },
+      "name": "getOrder-invalid",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000032",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_101"
+      },
+      "name": "getOrder-rate-limit",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000032",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_101"
+      },
+      "name": "getOrder-unavailable",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000032",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_101"
+      },
+      "name": "getOrder-server-error",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000032",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_101"
+      },
+      "name": "getOrder-transport",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000032",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": ""
+      },
+      "name": "getOrder-defect",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000032",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/order_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": "order_101"
+      },
+      "name": "getOrder-not-found",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-rejected",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-invalid",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-rate-limit",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-unavailable",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-server-error",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "idempotency_key": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+            "order": {
+              "line_items": [
+                {
+                  "base_price_money": {
+                    "amount": 500,
+                    "currency": "USD"
+                  },
+                  "name": "Coffee",
+                  "quantity": "2"
+                }
+              ],
+              "location_id": "loc_101",
+              "reference_id": "web_101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 500,
+          "currency": "USD"
+        },
+        "lineItemName": "Coffee",
+        "locationId": "loc_101",
+        "quantity": "2",
+        "referenceId": "web_101"
+      },
+      "name": "createOrder-transport",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "1a7c6cce-6059-57bd-9f5c-27600d6119cd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-7270d8ac55b48e4c4cbc1b3f366e232abca62aea",
+      "input": {
+        "basePriceMoney": {
+          "amount": 0,
+          "currency": ""
+        },
+        "lineItemName": "",
+        "locationId": "",
+        "quantity": "",
+        "referenceId": ""
+      },
+      "name": "createOrder-defect",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-rejected",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-invalid",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-rate-limit",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-unavailable",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-server-error",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-transport",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "",
+        "referenceId": "",
+        "version": 0
+      },
+      "name": "updateOrder-defect",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "798174b6-eb5e-5aa3-b0e4-56f69575703c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/order_101",
+          "requestBody": {
+            "idempotency_key": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+            "order": {
+              "reference_id": "web_102",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "location_id": "",
+          "state": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-d82d49f3d4859c172484cd86086580b30cfd8a80",
+      "input": {
+        "orderId": "order_101",
+        "referenceId": "web_102",
+        "version": 1
+      },
+      "name": "updateOrder-not-found",
+      "operation": "updateOrder"
     }
   ],
   "schemaVersion": 1
