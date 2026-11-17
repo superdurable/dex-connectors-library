@@ -112,6 +112,8 @@ func TestUpsertMemberSelectsProviderRejectedAndInvalidResponseWithoutMailchimpTe
 			message: "Mailchimp rejected the request (HTTP 400) [Forgotten Email Not Subscribed]"},
 		{name: "missing audience", status: http.StatusNotFound, title: "Resource Not Found", branch: mailchimp.UpsertMemberBranchProviderRejected,
 			message: "Mailchimp found no such resource (HTTP 404) [Resource Not Found]"},
+		{name: "unprocessable", status: http.StatusUnprocessableEntity, title: "Invalid Resource", branch: mailchimp.UpsertMemberBranchProviderRejected,
+			message: "Mailchimp rejected the request (HTTP 422) [Invalid Resource]"},
 		{name: "invalid contact", status: http.StatusOK, body: `{"status":"subscribed"}`, branch: mailchimp.UpsertMemberBranchInvalidResponse,
 			message: "Mailchimp accepted the contact but returned an invalid contact: the contact has no subscriber hash"},
 	} {
@@ -128,6 +130,28 @@ func TestUpsertMemberSelectsProviderRejectedAndInvalidResponseWithoutMailchimpTe
 			require.Equal(t, test.branch, result.Branch)
 			require.Equal(t, test.message, result.Failure.Message)
 			requireNoSecretOrProviderText(t, result)
+		})
+	}
+}
+
+func TestUpsertMemberRetriesUnknownStatuses(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "conflict", status: http.StatusConflict, body: `{"title":"Conflict"}`},
+		{name: "too early", status: http.StatusTooEarly, body: `{"title":"Too Early"}`},
+		{name: "redirect", status: http.StatusTemporaryRedirect, body: `{"title":"Moved"}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingMailchimp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, test.status, test.body)
+			})
+			_, err := sdkgo.RunMutation(newMailchimpDexContext("upsert-unknown-"+test.name), newMailchimpClient(t, provider.URL).UpsertMember(), mailchimpConnection, validUpsertMemberInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the PUT may have been applied, and repeating it writes the same values")
+			require.Equal(t, 1, provider.requestCount())
 		})
 	}
 }

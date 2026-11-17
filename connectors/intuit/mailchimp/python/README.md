@@ -1,12 +1,15 @@
 # Mailchimp Python connector
 
-`dex-connector-intuit-mailchimp` v0.2.0 implements the Mailchimp Marketing API
+`dex-connector-intuit-mailchimp` v0.2.1 implements the Mailchimp Marketing API
 `getMember`, `listMembers`, `upsertMember`, `updateMemberTags`, and `sendCampaign`
 operations as typed Dex Steps, and the `memberChanged` poll Trigger. It requires
 `dex-connectors-sdk` 0.12.0 or later, the release of the poll Trigger kit. The manifest generates their models, definitions,
 connection bindings, Step factories, and mocks. The provider client and operation
-invocations are hand written. `sendCampaign` checkpoints a dispatch before its
-irreversible POST and reads campaign status before any retry.
+invocations are hand written. `sendCampaign` sends under the SDK single-dispatch
+fence with `max_sends=call.max_sends` (3 by default), reads campaign status before
+every send, resends an unknown outcome only while the campaign is still a draft
+and the cap allows, and selects `uncertain` at the cap; see the
+[connector README](../README.md#duplicate-safety).
 
 ## Use in a Flow
 
@@ -80,11 +83,12 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 uv run pytest examples/member_changed/in
 
 From the repository root,
 `make test-connector-conformance CONNECTOR_DIRECTORY=connectors/intuit/mailchimp`
-replays 65 Go-recorded
+replays the Go-recorded
 provider scenarios against this package. They cover each branch, malformed
 addresses and provider bodies, final 429 and
-5xx retries, transport failure, complete input fields, campaign uncertainty,
-and an earlier send checkpoint. With an isolated Dex development server,
+5xx retries, transport failure, complete input fields, a resend below the send
+cap, read-back of an earlier send, campaign uncertainty at the cap, and a
+pre-fence checkpoint. With an isolated Dex development server,
 `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:25401 uv run pytest
 examples/get_member/integration_test.py` exercises the real Worker and Client
 with a local provider stand-in.

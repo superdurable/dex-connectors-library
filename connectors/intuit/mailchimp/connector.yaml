@@ -3,20 +3,20 @@ kind: Connector
 metadata:
   name: mailchimp
   displayName: Mailchimp
-  description: Read, upsert, tag, and list Mailchimp audience contacts without resubscribing anyone who unsubscribed, receive each contact added or changed in an audience, and send an existing campaign at most once after reading its status.
+  description: Read, upsert, tag, and list Mailchimp audience contacts without resubscribing anyone who unsubscribed, receive each contact added or changed in an audience, and send an existing draft campaign after reading its status, resending an unconfirmed send only while the campaign still reads as a draft and the send cap allows.
   company: Intuit
   categories: [marketing]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: mailchimp
   languages:
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: '@superdurable/connector-intuit-mailchimp'
       operations: [getMember, listMembers, upsertMember, updateMemberTags, sendCampaign]
       triggers: [memberChanged]
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-intuit-mailchimp
       operations: [getMember, listMembers, upsertMember, updateMemberTags, sendCampaign]
       triggers: [memberChanged]
@@ -211,22 +211,26 @@ spec:
       inputType: SendCampaignInput
       outputType: SendCampaignOutput
       kind: mutation
-      description: Send one existing draft campaign now. The connector reads the campaign first and sends only a draft; a send is irreversible and Mailchimp has no idempotency key, so the Step runs with sync durability and sends at most once per Step execution.
+      description: "Send one existing draft campaign now. Every attempt reads the campaign first and sends only a draft; Mailchimp has no idempotency key, so a send whose outcome is unknown is retried, and the retry reads the campaign again and sends only while it is still a draft and the possible sends stay below maxSends."
       idempotency: required
       authorization: required
       branches:
         - {id: sent, goName: Sent, description: Mailchimp accepted the send of the draft campaign this Step read.}
-        - {id: alreadySent, goName: AlreadySent, description: "Mailchimp reports the campaign as sending or sent, so this attempt sent nothing.", optional: true}
+        - {id: alreadySent, goName: AlreadySent, description: "Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing.", optional: true}
         - {id: notSendable, goName: NotSendable, description: "The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent.", optional: true}
         - {id: notFound, goName: NotFound, description: The campaign does not exist; nothing was sent., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Mailchimp returned an invalid or oversized campaign before the send; nothing was sent., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      # Sync: an async fallback attempt would dispatch a slow send again, and Mailchimp has no idempotency key.
+        - {id: invalidResponse, goName: InvalidResponse, description: Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid, and no send was attempted.", optional: true}
+      # Sync with a dispatch fence: an async fallback attempt would dispatch a slow send outside the send count.
       execution:
         executeMethodTimeout: 60s
         durability: sync
+        dispatchFence: true
+        # Every resend first reads the campaign and sends only a draft, so a landed send is not repeated.
+        repeatOnUnknown: limited
+        maxSends: 3
       mocks:
         - name: sentSpringCampaign
           branch: sent

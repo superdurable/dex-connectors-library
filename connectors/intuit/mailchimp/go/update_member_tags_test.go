@@ -54,6 +54,14 @@ func TestUpdateMemberTagsRetriesUnconfirmedOutcomesAndSelectsNotFound(t *testing
 	require.NoError(t, err)
 	require.Equal(t, mailchimp.UpdateMemberTagsBranchInvalidResponse, result.Branch)
 	requireNoSecretOrProviderText(t, result)
+
+	for _, status := range []int{http.StatusConflict, http.StatusTooEarly, http.StatusMethodNotAllowed, http.StatusTemporaryRedirect} {
+		unknown := newRecordingMailchimp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+			writeProblem(t, response, status, "Unknown Outcome")
+		})
+		_, err = sdkgo.RunMutation(newMailchimpDexContext("tags-unknown"), newMailchimpClient(t, unknown.URL).UpdateMemberTags(), mailchimpConnection, input)
+		require.ErrorAs(t, err, &retry, "HTTP %d does not prove the tags were refused", status)
+	}
 }
 
 func TestUpdateMemberTagsRejectsInvalidInputBeforeAnyRequest(t *testing.T) {

@@ -3,7 +3,7 @@
 
 // Package approvedcampaignsend demonstrates every Mailchimp operation in one Flow started from Dex Web Start
 // Flow: enroll a few contacts in an audience and tag them, without touching anyone who unsubscribed, then
-// send an existing draft campaign only after a person approves it, and at most once.
+// send an existing draft campaign only after a person approves it, and only while it is still a draft.
 package approvedcampaignsend
 
 import (
@@ -281,7 +281,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: sendLaunchCampaignStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "mailchimp", GroupLabel: "Mailchimp",
-				Explanation: "Read the approved campaign and send it only if it is still a draft for this audience, at most once.",
+				Explanation: "Read the approved campaign and send it only if it is still a draft for this audience.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToSendCampaignInput,
 			Sent: sdkgo.GoTo(recordCampaignSent{}),

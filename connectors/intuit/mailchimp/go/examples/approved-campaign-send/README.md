@@ -3,7 +3,7 @@
 This example runs one operation-only Flow from Dex Web **Start Flow** and uses
 every Mailchimp operation. It enrolls a few people in an audience and tags
 them, without touching anyone who opted out, then sends an existing draft
-campaign only after a person approves it, and at most once:
+campaign only after a person approves it, and only while it is still a draft:
 
 1. `RecordCampaignLaunch` validates the audience ID, campaign ID, tag,
    `statusIfNew` (`pending` or `subscribed`), and 1 to 25 contacts, and records
@@ -84,7 +84,7 @@ mkdir -p /tmp/mailchimp-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intuit/mailchimp/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go \
-  --version v0.24.0 --tag connectors/intuit/mailchimp/go/v0.24.0 \
+  --version v0.24.1 --tag connectors/intuit/mailchimp/go/v0.24.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mailchimp-release/connector-release.json \
   --digest-output /tmp/mailchimp-release/connector-release.json.sha256
@@ -150,9 +150,14 @@ Mailchimp, has no idempotency key:
 - an upsert and tag update retried after accepted writes return `503` leave one
   contact, one confirmation email, and one tag;
 - a delayed send completes with one request;
-- a lost send response fails on the unwired `uncertain` branch without a resend;
+- a lost send response is retried, and the retry reads the campaign as
+  sending and completes through `alreadySent` without a resend;
+- a lost send Mailchimp did not apply is resent once after the retry reads a
+  draft;
+- a send that is lost every time stops at the three-send cap and fails on the
+  unwired `uncertain` branch;
 - a Worker lost while Mailchimp holds the send is replaced, and the new
-  attempt finds the dispatch checkpoint, reads the campaign as sending,
+  attempt finds the dispatch claim, reads the campaign as sending, and
   completes through `alreadySent` without sending again;
 - a rate-limited send waits for `Retry-After` and sends once;
 - an already sent campaign completes without sending; a scheduled or

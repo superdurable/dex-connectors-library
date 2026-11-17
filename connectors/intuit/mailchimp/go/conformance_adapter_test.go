@@ -4,7 +4,6 @@
 package mailchimp_test
 
 import (
-	"encoding/json"
 	"net"
 	"net/http"
 	"testing"
@@ -18,7 +17,7 @@ const conformanceAPIKey = "mailchimpfixturekey-us6"
 
 // A before-send event represents a dial refusal, which Go classifies by net.OpError.
 type conformanceDialTransport struct {
-	next http.RoundTripper
+	next     http.RoundTripper
 	recorder *conformanceRecorder
 }
 
@@ -40,12 +39,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	context := newMailchimpDexContext("conformance")
 	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) {
-		if scenario.Operation == "sendCampaign" {
-			marker, err := json.Marshal(map[string]string{"mailchimpDispatchedCallId": scenario.CallID})
-			require.NoError(t, err)
-			context.previousHeartbeat = marker
-			return
-		}
 		context.previousHeartbeat = raw
 	})
 	return &conformanceMappedInvoker{t: t, scenario: scenario,
