@@ -266,7 +266,22 @@ func (client *Client) GetObjectText() GetObjectTextOperation {
 func (client *Client) PutObject() PutObjectOperation { return PutObjectOperation{client: client} }
 
 // DeleteObject returns the deleteObject Mutation bound to this client.
-func (client *Client) DeleteObject() DeleteObjectOperation { return DeleteObjectOperation{client: client} }
+func (client *Client) DeleteObject() DeleteObjectOperation {
+	return DeleteObjectOperation{client: client}
+}
+
+// ListBuckets returns the listBuckets Query bound to this client.
+func (client *Client) ListBuckets() ListBucketsOperation { return ListBucketsOperation{client: client} }
+
+// CreateBucket returns the createBucket Mutation bound to this client.
+func (client *Client) CreateBucket() CreateBucketOperation {
+	return CreateBucketOperation{client: client}
+}
+
+// DeleteBucket returns the deleteBucket Mutation bound to this client.
+func (client *Client) DeleteBucket() DeleteBucketOperation {
+	return DeleteBucketOperation{client: client}
+}
 
 // startSession resolves the credential, reread before every call; the caller must call the returned cancel.
 func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
@@ -368,7 +383,9 @@ func (client *Client) signRequest(request *http.Request, credentials Credentials
 // requestURL addresses the bucket in the host or the path and escapes the path the way SigV4 signs it.
 func (client *Client) requestURL(location objectLocation, query url.Values) (*url.URL, error) {
 	host, path := client.endpoint.host, client.endpoint.basePath
-	if client.usesPathStyle(location.bucket) {
+	if location.bucket == "" {
+		path += "/"
+	} else if client.usesPathStyle(location.bucket) {
 		path += "/" + location.bucket
 		if location.hasKey {
 			path += "/" + location.key

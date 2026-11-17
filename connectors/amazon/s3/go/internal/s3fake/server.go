@@ -237,11 +237,23 @@ func (server *Server) serveHTTP(response http.ResponseWriter, httpRequest *http.
 		}
 	}
 	bucket, key, hasKey := server.splitLocation(httpRequest)
+	if bucket == "" && httpRequest.Method == http.MethodGet {
+		server.listBuckets(response)
+		return
+	}
+	if !hasKey && httpRequest.Method == http.MethodPut {
+		server.createBucket(response, bucket)
+		return
+	}
 	if !server.hasBucket(bucket) {
 		writeError(response, http.StatusNotFound, "NoSuchBucket")
 		return
 	}
 	switch {
+	case httpRequest.Method == http.MethodHead && !hasKey:
+		response.WriteHeader(http.StatusOK)
+	case httpRequest.Method == http.MethodDelete && !hasKey:
+		server.deleteBucket(response, bucket)
 	case httpRequest.Method == http.MethodGet && !hasKey && request.Query.Get("list-type") == "2":
 		server.listObjects(response, bucket, request.Query)
 	case httpRequest.Method == http.MethodHead && hasKey:
@@ -329,12 +341,64 @@ func (server *Server) splitLocation(request *http.Request) (string, string, bool
 }
 
 func (server *Server) hasBucket(bucket string) bool {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
 	for _, existing := range server.config.Buckets {
 		if existing == bucket {
 			return true
 		}
 	}
 	return false
+}
+
+func (server *Server) listBuckets(response http.ResponseWriter) {
+	server.mutex.Lock()
+	buckets := append([]string(nil), server.config.Buckets...)
+	server.mutex.Unlock()
+	sort.Strings(buckets)
+	page := &strings.Builder{}
+	page.WriteString(`<ListAllMyBucketsResult><Buckets>`)
+	for _, bucket := range buckets {
+		page.WriteString(`<Bucket><Name>`)
+		page.WriteString(bucket)
+		page.WriteString(`</Name><CreationDate>2026-10-25T09:00:00Z</CreationDate><BucketRegion>`)
+		page.WriteString(server.config.Region)
+		page.WriteString(`</BucketRegion></Bucket>`)
+	}
+	page.WriteString(`</Buckets></ListAllMyBucketsResult>`)
+	response.Header().Set("Content-Type", "application/xml")
+	_, _ = io.WriteString(response, page.String())
+}
+
+func (server *Server) createBucket(response http.ResponseWriter, bucket string) {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
+	for _, existing := range server.config.Buckets {
+		if existing == bucket {
+			writeError(response, http.StatusConflict, "BucketAlreadyOwnedByYou")
+			return
+		}
+	}
+	server.config.Buckets = append(server.config.Buckets, bucket)
+	response.WriteHeader(http.StatusOK)
+}
+
+func (server *Server) deleteBucket(response http.ResponseWriter, bucket string) {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
+	for location := range server.objects {
+		if strings.HasPrefix(location, bucket+"/") {
+			writeError(response, http.StatusConflict, "BucketNotEmpty")
+			return
+		}
+	}
+	for index, existing := range server.config.Buckets {
+		if existing == bucket {
+			server.config.Buckets = append(server.config.Buckets[:index], server.config.Buckets[index+1:]...)
+			break
+		}
+	}
+	response.WriteHeader(http.StatusNoContent)
 }
 
 func (server *Server) listObjects(response http.ResponseWriter, bucket string, query url.Values) {

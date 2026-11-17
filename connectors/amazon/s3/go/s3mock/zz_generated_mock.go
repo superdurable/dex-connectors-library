@@ -18,6 +18,9 @@ import (
 // Mock is a scripted amazon-s3 connection. Script each operation through its accessor.
 type Mock struct {
 	connection    s3.Connection
+	listBuckets   *connectormock.Query[s3.ListBucketsInput, s3.ListBucketsOutput]
+	createBucket  *connectormock.Mutation[s3.CreateBucketInput, s3.CreatedBucket]
+	deleteBucket  *connectormock.Mutation[s3.DeleteBucketInput, s3.DeletedBucket]
 	listObjects   *connectormock.Query[s3.ListObjectsInput, s3.ListObjectsOutput]
 	headObject    *connectormock.Query[s3.HeadObjectInput, s3.ObjectMetadata]
 	getObjectText *connectormock.Query[s3.GetObjectTextInput, s3.ObjectText]
@@ -30,12 +33,18 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listBuckets:   connectormock.NewQuery[s3.ListBucketsInput, s3.ListBucketsOutput](t, s3.ListBucketsDefinition),
+		createBucket:  connectormock.NewMutation[s3.CreateBucketInput, s3.CreatedBucket](t, s3.CreateBucketDefinition),
+		deleteBucket:  connectormock.NewMutation[s3.DeleteBucketInput, s3.DeletedBucket](t, s3.DeleteBucketDefinition),
 		listObjects:   connectormock.NewQuery[s3.ListObjectsInput, s3.ListObjectsOutput](t, s3.ListObjectsDefinition),
 		headObject:    connectormock.NewQuery[s3.HeadObjectInput, s3.ObjectMetadata](t, s3.HeadObjectDefinition),
 		getObjectText: connectormock.NewQuery[s3.GetObjectTextInput, s3.ObjectText](t, s3.GetObjectTextDefinition),
 		putObject:     connectormock.NewMutation[s3.PutObjectInput, s3.StoredObject](t, s3.PutObjectDefinition),
 		deleteObject:  connectormock.NewMutation[s3.DeleteObjectInput, s3.DeletedObject](t, s3.DeleteObjectDefinition),
 	}
+	mock.listBuckets.Default(ListBucketsDefault())
+	mock.createBucket.Default(CreateBucketDefault())
+	mock.deleteBucket.Default(DeleteBucketDefault())
 	mock.listObjects.Default(ListObjectsDefault())
 	mock.headObject.Default(HeadObjectDefault())
 	mock.getObjectText.Default(GetObjectTextDefault())
@@ -51,6 +60,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() s3.Connection { return mock.connection }
+
+// ListBuckets returns the listBuckets script.
+func (mock *Mock) ListBuckets() *connectormock.Query[s3.ListBucketsInput, s3.ListBucketsOutput] {
+	return mock.listBuckets
+}
+
+// CreateBucket returns the createBucket script.
+func (mock *Mock) CreateBucket() *connectormock.Mutation[s3.CreateBucketInput, s3.CreatedBucket] {
+	return mock.createBucket
+}
+
+// DeleteBucket returns the deleteBucket script.
+func (mock *Mock) DeleteBucket() *connectormock.Mutation[s3.DeleteBucketInput, s3.DeletedBucket] {
+	return mock.deleteBucket
+}
 
 // ListObjects returns the listObjects script.
 func (mock *Mock) ListObjects() *connectormock.Query[s3.ListObjectsInput, s3.ListObjectsOutput] {
@@ -79,6 +103,15 @@ func (mock *Mock) DeleteObject() *connectormock.Mutation[s3.DeleteObjectInput, s
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListBuckets() sdkgo.Query[s3.ListBucketsInput, s3.ListBucketsOutput] {
+	return operations.mock.listBuckets
+}
+func (operations mockOperations) CreateBucket() sdkgo.Mutation[s3.CreateBucketInput, s3.CreatedBucket] {
+	return operations.mock.createBucket
+}
+func (operations mockOperations) DeleteBucket() sdkgo.Mutation[s3.DeleteBucketInput, s3.DeletedBucket] {
+	return operations.mock.deleteBucket
+}
 func (operations mockOperations) ListObjects() sdkgo.Query[s3.ListObjectsInput, s3.ListObjectsOutput] {
 	return operations.mock.listObjects
 }
@@ -94,6 +127,103 @@ func (operations mockOperations) PutObject() sdkgo.Mutation[s3.PutObjectInput, s
 func (operations mockOperations) DeleteObject() sdkgo.Mutation[s3.DeleteObjectInput, s3.DeletedObject] {
 	return operations.mock.deleteObject
 }
+
+// ListBucketsListed selects the listed branch: S3 returned a page of buckets.
+func ListBucketsListed(value s3.ListBucketsOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListBucketsOutput] {
+	return connectormock.Branch(s3.ListBucketsBranchListed, value, failure)
+}
+
+// ListBucketsProviderRejected selects the providerRejected branch: S3 conclusively rejected the bucket list.
+func ListBucketsProviderRejected(value s3.ListBucketsOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListBucketsOutput] {
+	return connectormock.Branch(s3.ListBucketsBranchProviderRejected, value, failure)
+}
+
+// ListBucketsInvalidResponse selects the invalidResponse branch: S3 returned an invalid or oversized bucket list.
+func ListBucketsInvalidResponse(value s3.ListBucketsOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListBucketsOutput] {
+	return connectormock.Branch(s3.ListBucketsBranchInvalidResponse, value, failure)
+}
+
+// ListBucketsDefect selects the defect branch: Local input or configuration is invalid.
+func ListBucketsDefect(value s3.ListBucketsOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListBucketsOutput] {
+	return connectormock.Branch(s3.ListBucketsBranchDefect, value, failure)
+}
+
+// ListBucketsRetry asks Dex to retry the listBuckets Step, after the delay when it is positive.
+func ListBucketsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[s3.ListBucketsOutput] {
+	return connectormock.Retry[s3.ListBucketsOutput](failure, after)
+}
+
+// ListBucketsOwnedBuckets is the manifest mock ownedBuckets: The AWS account owns several report and archive buckets.
+func ListBucketsOwnedBuckets() connectormock.Case[s3.ListBucketsOutput] {
+	pages := []s3.ListBucketsOutput{
+		connectormock.MustDecodeOutput[s3.ListBucketsOutput](`{"buckets":[{"name":"acme-reports","creationDate":"2026-10-25T09:00:00Z","region":"eu-west-1"}],"nextContinuationToken":"bucket-page-2"}`),
+		connectormock.MustDecodeOutput[s3.ListBucketsOutput](`{"buckets":[{"name":"acme-archive","creationDate":"2026-10-24T09:00:00Z","region":"eu-west-1"}],"nextContinuationToken":"bucket-page-3"}`),
+		connectormock.MustDecodeOutput[s3.ListBucketsOutput](`{"buckets":[{"name":"acme-backups","creationDate":"2026-10-23T09:00:00Z","region":"eu-west-1"}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[s3.ListBucketsInput]("continuationToken", "nextContinuationToken", pages)
+	return connectormock.Paged(s3.ListBucketsBranchListed, pageNumber, pages...)
+}
+
+// ListBucketsDefault is the manifest default, ownedBuckets, which New installs.
+func ListBucketsDefault() connectormock.Case[s3.ListBucketsOutput] { return ListBucketsOwnedBuckets() }
+
+// CreateBucketCreated selects the created branch: S3 accepted creation or a previous attempt was confirmed.
+func CreateBucketCreated(value s3.CreatedBucket, failure *sdkgo.Failure) connectormock.Case[s3.CreatedBucket] {
+	return connectormock.Branch(s3.CreateBucketBranchCreated, value, failure)
+}
+
+// CreateBucketProviderRejected selects the providerRejected branch: S3 refused the bucket name or permission.
+func CreateBucketProviderRejected(value s3.CreatedBucket, failure *sdkgo.Failure) connectormock.Case[s3.CreatedBucket] {
+	return connectormock.Branch(s3.CreateBucketBranchProviderRejected, value, failure)
+}
+
+// CreateBucketDefect selects the defect branch: The bucket name or connection is invalid.
+func CreateBucketDefect(value s3.CreatedBucket, failure *sdkgo.Failure) connectormock.Case[s3.CreatedBucket] {
+	return connectormock.Branch(s3.CreateBucketBranchDefect, value, failure)
+}
+
+// CreateBucketRetry asks Dex to retry the createBucket Step, after the delay when it is positive.
+func CreateBucketRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[s3.CreatedBucket] {
+	return connectormock.Retry[s3.CreatedBucket](failure, after)
+}
+
+// CreateBucketCreatedBucket is the manifest mock createdBucket: A new reports bucket was accepted.
+func CreateBucketCreatedBucket() connectormock.Case[s3.CreatedBucket] {
+	value := connectormock.MustDecodeOutput[s3.CreatedBucket](`{"bucket":"acme-reports","region":"eu-west-1"}`)
+	return connectormock.Branch(s3.CreateBucketBranchCreated, value, nil)
+}
+
+// CreateBucketDefault is the manifest default, createdBucket, which New installs.
+func CreateBucketDefault() connectormock.Case[s3.CreatedBucket] { return CreateBucketCreatedBucket() }
+
+// DeleteBucketDeleted selects the deleted branch: The empty bucket is absent.
+func DeleteBucketDeleted(value s3.DeletedBucket, failure *sdkgo.Failure) connectormock.Case[s3.DeletedBucket] {
+	return connectormock.Branch(s3.DeleteBucketBranchDeleted, value, failure)
+}
+
+// DeleteBucketProviderRejected selects the providerRejected branch: S3 refused deletion, including when the bucket is not empty.
+func DeleteBucketProviderRejected(value s3.DeletedBucket, failure *sdkgo.Failure) connectormock.Case[s3.DeletedBucket] {
+	return connectormock.Branch(s3.DeleteBucketBranchProviderRejected, value, failure)
+}
+
+// DeleteBucketDefect selects the defect branch: The bucket name or connection is invalid.
+func DeleteBucketDefect(value s3.DeletedBucket, failure *sdkgo.Failure) connectormock.Case[s3.DeletedBucket] {
+	return connectormock.Branch(s3.DeleteBucketBranchDefect, value, failure)
+}
+
+// DeleteBucketRetry asks Dex to retry the deleteBucket Step, after the delay when it is positive.
+func DeleteBucketRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[s3.DeletedBucket] {
+	return connectormock.Retry[s3.DeletedBucket](failure, after)
+}
+
+// DeleteBucketDeletedBucket is the manifest mock deletedBucket: An empty reports bucket was removed.
+func DeleteBucketDeletedBucket() connectormock.Case[s3.DeletedBucket] {
+	value := connectormock.MustDecodeOutput[s3.DeletedBucket](`{"bucket":"acme-reports"}`)
+	return connectormock.Branch(s3.DeleteBucketBranchDeleted, value, nil)
+}
+
+// DeleteBucketDefault is the manifest default, deletedBucket, which New installs.
+func DeleteBucketDefault() connectormock.Case[s3.DeletedBucket] { return DeleteBucketDeletedBucket() }
 
 // ListObjectsFound selects the found branch: The page holds objects or common prefixes, or more pages remain.
 func ListObjectsFound(value s3.ListObjectsOutput, failure *sdkgo.Failure) connectormock.Case[s3.ListObjectsOutput] {

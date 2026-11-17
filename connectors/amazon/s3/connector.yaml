@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: amazon-s3
   displayName: Amazon S3
-  description: List, inspect, and read bounded text from objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO, and store or delete objects.
+  description: Manage buckets and bounded objects in Amazon S3 or an S3-compatible store such as Cloudflare R2 or MinIO.
   company: Amazon
   categories: [databases-storage, files-documents]
   version: v0.24.0
@@ -96,10 +96,83 @@ spec:
         - "Amazon S3: open IAM > Users > Create user and create a user only for Dex; do not use the account's root user. On Permissions, attach an inline policy that allows s3:ListBucket on arn:aws:s3:::your-bucket and s3:GetObject, s3:PutObject, and s3:DeleteObject on arn:aws:s3:::your-bucket/*, so the key reaches nothing else. putObject's create-only mode also needs s3:GetObject to recognize its own earlier attempt, and headObject reads a missing key as notFound only with s3:ListBucket."
         - "Open the user > Security credentials > Access keys > Create access key, choose Other > Next, then Create access key. On the Retrieve access keys page choose Show, paste the Access key into access_key_id and the Secret access key into secret_access_key; AWS never shows the secret again. Leave session_token blank for these long-term keys."
         - "Set region to the bucket's AWS Region from https://console.aws.amazon.com/s3/buckets and leave endpoint blank. Optionally set defaultBucket so operations can leave bucket blank."
+        - "For listBuckets, optionally grant s3:ListAllMyBuckets on arn:aws:s3:::*. For createBucket and deleteBucket, optionally grant s3:CreateBucket and s3:DeleteBucket on the intended bucket ARNs; deletion requires an empty bucket. These grants are additional to the report-archive example's object permissions. Review the globally unique bucket name before creation."
         - "Cloudflare R2: open https://dash.cloudflare.com > R2 object storage > Account Details > API Tokens > Manage, choose Create Account API token with Object Read & Write scoped to the bucket, and copy the Access Key ID and Secret Access Key shown once. Set endpoint to https://<ACCOUNT_ID>.r2.cloudflarestorage.com and region to auto."
         - "MinIO: create a user or service account with a policy limited to the bucket, then set endpoint to the server's API address, keep addressingStyle at auto so requests use path addressing, and set region to the server's Region, which a default server leaves at us-east-1."
         - "To rotate, create a second access key, save it here, run a Flow, then open Actions > Deactivate and Actions > Delete on the old key. This release does not use IAM roles, instance profiles, or SSO; temporary credentials pasted with session_token stop working when they expire."
   operations:
+    - name: listBuckets
+      goName: ListBuckets
+      inputType: ListBucketsInput
+      outputType: ListBucketsOutput
+      kind: query
+      description: List one bounded page of buckets owned by the signing account.
+      idempotency: none
+      authorization: required
+      pagination: {inputField: continuationToken, nextField: nextContinuationToken}
+      branches:
+        - {id: listed, goName: Listed, description: S3 returned a page of buckets.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 conclusively rejected the bucket list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: S3 returned an invalid or oversized bucket list., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: ownedBuckets
+          branch: listed
+          default: true
+          description: The AWS account owns several report and archive buckets.
+          pages:
+            - {buckets: [{name: acme-reports, creationDate: "2026-10-25T09:00:00Z", region: eu-west-1}], nextContinuationToken: bucket-page-2}
+            - {buckets: [{name: acme-archive, creationDate: "2026-10-24T09:00:00Z", region: eu-west-1}], nextContinuationToken: bucket-page-3}
+            - {buckets: [{name: acme-backups, creationDate: "2026-10-23T09:00:00Z", region: eu-west-1}]}
+    - name: createBucket
+      goName: CreateBucket
+      inputType: CreateBucketInput
+      outputType: CreatedBucket
+      kind: mutation
+      description: Create a general purpose bucket in the connection Region, with bounded sends and read-back after an unknown outcome.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: S3 accepted creation or a previous attempt was confirmed.}
+        - {id: providerRejected, goName: ProviderRejected, description: S3 refused the bucket name or permission., optional: true}
+        - {id: defect, goName: Defect, description: The bucket name or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: limited
+        maxSends: 3
+        executeMethodTimeout: 30s
+        durability: sync
+      mocks:
+        - name: createdBucket
+          branch: created
+          default: true
+          description: A new reports bucket was accepted.
+          output: {bucket: acme-reports, region: eu-west-1}
+    - name: deleteBucket
+      goName: DeleteBucket
+      inputType: DeleteBucketInput
+      outputType: DeletedBucket
+      kind: mutation
+      description: Delete an empty bucket; an already absent bucket is considered deleted.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: The empty bucket is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: "S3 refused deletion, including when the bucket is not empty.", optional: true}
+        - {id: defect, goName: Defect, description: The bucket name or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: deletedBucket
+          branch: deleted
+          default: true
+          description: An empty reports bucket was removed.
+          output: {bucket: acme-reports}
     - name: listObjects
       goName: ListObjects
       inputType: ListObjectsInput

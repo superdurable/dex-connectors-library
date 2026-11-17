@@ -8,7 +8,7 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/s3`
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
 
-The Amazon S3 Connector lists, inspects, reads, stores, and deletes objects in Amazon S3
+The Amazon S3 Connector manages buckets and lists, inspects, reads, stores, and deletes objects in Amazon S3
 and in S3-compatible stores, such as Cloudflare R2 and MinIO, through the S3 REST
 API. It exposes operation-specific Dex Step factories:
 
@@ -20,6 +20,9 @@ specific to the Go package described above.
 
 | Operation | Kind | S3 request | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- | --- |
+| `listBuckets` | Query | `GET /?max-buckets=...` | async | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `createBucket` | Mutation | `PUT /{bucket}` | sync | `created` | `providerRejected`, `defect` |
+| `deleteBucket` | Mutation | `DELETE /{bucket}` | async | `deleted` | `providerRejected`, `defect` |
 | `listObjects` | Query | `GET /?list-type=2` (ListObjectsV2) | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `headObject` | Query | `HEAD /{key}` | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `getObjectText` | Query | `GET /{key}` | async | `read` | `notFound`, `unsupportedContent`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
@@ -165,6 +168,16 @@ explicit.
 
 ## Operations
 
+`listBuckets` returns one page of at most 10,000 account-owned buckets, with an
+opaque continuation token. `createBucket` creates a general purpose bucket in
+the connection Region; it limits possible sends to three and checks whether
+the bucket exists after an ambiguous response. In `us-east-1`, an initial HEAD
+check avoids the S3 behavior that can reset an existing bucket's ACL on a
+repeated create. `deleteBucket` removes an empty bucket, and treats a missing
+bucket as already deleted. These operations need optional IAM permissions
+`s3:ListAllMyBuckets`, `s3:CreateBucket`, and `s3:DeleteBucket` respectively;
+the existing report archive Flow needs only its object permissions.
+
 Every operation bounds its requests by 25 seconds in total and each exchange
 by 12 seconds, below the 30-second Execute timeout. Transport failures, 408,
 429, 503 `SlowDown`, other 5xx except 501, 400 `RequestTimeout`, 307
@@ -308,6 +321,9 @@ server errors retry within the Step policy.
 under `reports/<reportId>.md`, reads its metadata and text back, and lists the
 archive folder. Set `shouldDeleteAfterVerification` to true to remove the
 verified report after listing; the output then sets `isDeleted`.
+The same Worker also registers `AmazonS3BucketInventory`, a separate Flow
+that lists one page of buckets with `listBuckets`; its mock-backed Dex test
+exercises the new operation without changing the report Flow's IAM needs.
 
 The [TypeScript package](typescript/) implements all four operations at its
 independent `v0.1.0` package version. Its [report archive

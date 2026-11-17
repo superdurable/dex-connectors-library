@@ -2449,6 +2449,829 @@
       },
       "name": "delete-transport",
       "operation": "deleteObject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "\u003cListAllMyBucketsResult\u003e\u003cBuckets\u003e\u003cBucket\u003e\u003cName\u003eacme-reports\u003c/Name\u003e\u003cCreationDate\u003e2026-10-25T09:00:00Z\u003c/CreationDate\u003e\u003cBucketRegion\u003eeu-west-1\u003c/BucketRegion\u003e\u003c/Bucket\u003e\u003c/Buckets\u003e\u003c/ListAllMyBucketsResult\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "continuation-token": [
+              "next"
+            ],
+            "max-buckets": [
+              "2"
+            ],
+            "prefix": [
+              "acme"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=df715b08b64ffa5c9063be2c5831f0b89e4df53ba44799f832502a1de9023e10"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "buckets": [
+            {
+              "creationDate": "2026-10-25T09:00:00Z",
+              "name": "acme-reports",
+              "region": "eu-west-1"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "continuationToken": "next",
+        "maxBuckets": 2,
+        "prefix": "acme"
+      },
+      "name": "bucket-list-listed",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "max-buckets": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=5905db2913fc6f32a4e31646020cccbc9eade80145369c6eafb0e34e162bd9eb"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBuckets": 2
+      },
+      "name": "bucket-list-rejected",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "not-xml",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "max-buckets": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=5905db2913fc6f32a4e31646020cccbc9eade80145369c6eafb0e34e162bd9eb"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBuckets": 2
+      },
+      "name": "bucket-list-invalid",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "buckets": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBuckets": 10001
+      },
+      "name": "bucket-list-defect",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "max-buckets": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=5905db2913fc6f32a4e31646020cccbc9eade80145369c6eafb0e34e162bd9eb"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBuckets": 2
+      },
+      "name": "bucket-list-429",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "max-buckets": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=5905db2913fc6f32a4e31646020cccbc9eade80145369c6eafb0e34e162bd9eb"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBuckets": 2
+      },
+      "name": "bucket-list-500",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "max-buckets": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=5905db2913fc6f32a4e31646020cccbc9eade80145369c6eafb0e34e162bd9eb"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBuckets": 2
+      },
+      "name": "bucket-list-transport",
+      "operation": "listBuckets"
+    },
+    {
+      "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/new-reports-bucket",
+          "requestBody": "\u003cCreateBucketConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"\u003e\u003cLocationConstraint\u003eeu-west-1\u003c/LocationConstraint\u003e\u003c/CreateBucketConfiguration\u003e",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date, Signature=5ce9d8ea10cf218201ba9bb4c2cb795f4176d7801ad21c88720948a1dd7829a8"
+            ],
+            "Content-Type": [
+              "application/xml"
+            ],
+            "X-Amz-Content-Sha256": [
+              "a2531158b25edb57200e54140cc1b12d0af943f596ea467c2fbbedcc16223cc5"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "bucket": "new-reports-bucket",
+          "region": "eu-west-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "input": {
+        "bucket": "new-reports-bucket"
+      },
+      "name": "bucket-create-created",
+      "operation": "createBucket"
+    },
+    {
+      "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eBucketAlreadyExists\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/new-reports-bucket",
+          "requestBody": "\u003cCreateBucketConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"\u003e\u003cLocationConstraint\u003eeu-west-1\u003c/LocationConstraint\u003e\u003c/CreateBucketConfiguration\u003e",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date, Signature=5ce9d8ea10cf218201ba9bb4c2cb795f4176d7801ad21c88720948a1dd7829a8"
+            ],
+            "Content-Type": [
+              "application/xml"
+            ],
+            "X-Amz-Content-Sha256": [
+              "a2531158b25edb57200e54140cc1b12d0af943f596ea467c2fbbedcc16223cc5"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "bucket": "new-reports-bucket",
+          "region": "eu-west-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "input": {
+        "bucket": "new-reports-bucket"
+      },
+      "name": "bucket-create-rejected",
+      "operation": "createBucket"
+    },
+    {
+      "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bucket": "",
+          "region": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "input": {
+        "bucket": "BAD"
+      },
+      "name": "bucket-create-defect",
+      "operation": "createBucket"
+    },
+    {
+      "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/new-reports-bucket",
+          "requestBody": "\u003cCreateBucketConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"\u003e\u003cLocationConstraint\u003eeu-west-1\u003c/LocationConstraint\u003e\u003c/CreateBucketConfiguration\u003e",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date, Signature=5ce9d8ea10cf218201ba9bb4c2cb795f4176d7801ad21c88720948a1dd7829a8"
+            ],
+            "Content-Type": [
+              "application/xml"
+            ],
+            "X-Amz-Content-Sha256": [
+              "a2531158b25edb57200e54140cc1b12d0af943f596ea467c2fbbedcc16223cc5"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "input": {
+        "bucket": "new-reports-bucket"
+      },
+      "name": "bucket-create-429",
+      "operation": "createBucket"
+    },
+    {
+      "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/new-reports-bucket",
+          "requestBody": "\u003cCreateBucketConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"\u003e\u003cLocationConstraint\u003eeu-west-1\u003c/LocationConstraint\u003e\u003c/CreateBucketConfiguration\u003e",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date, Signature=5ce9d8ea10cf218201ba9bb4c2cb795f4176d7801ad21c88720948a1dd7829a8"
+            ],
+            "Content-Type": [
+              "application/xml"
+            ],
+            "X-Amz-Content-Sha256": [
+              "a2531158b25edb57200e54140cc1b12d0af943f596ea467c2fbbedcc16223cc5"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "input": {
+        "bucket": "new-reports-bucket"
+      },
+      "name": "bucket-create-500",
+      "operation": "createBucket"
+    },
+    {
+      "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/new-reports-bucket",
+          "requestBody": "\u003cCreateBucketConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"\u003e\u003cLocationConstraint\u003eeu-west-1\u003c/LocationConstraint\u003e\u003c/CreateBucketConfiguration\u003e",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date, Signature=5ce9d8ea10cf218201ba9bb4c2cb795f4176d7801ad21c88720948a1dd7829a8"
+            ],
+            "Content-Type": [
+              "application/xml"
+            ],
+            "X-Amz-Content-Sha256": [
+              "a2531158b25edb57200e54140cc1b12d0af943f596ea467c2fbbedcc16223cc5"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
+      "input": {
+        "bucket": "new-reports-bucket"
+      },
+      "name": "bucket-create-transport",
+      "operation": "createBucket"
+    },
+    {
+      "callId": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=6d97d07c5a0739b0228953532471a26fa4aee5270984b3c4f446dc064f78e4ce"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "bucket": "acme-reports"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "bucket-delete-deleted",
+      "operation": "deleteBucket"
+    },
+    {
+      "callId": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eBucketNotEmpty\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=6d97d07c5a0739b0228953532471a26fa4aee5270984b3c4f446dc064f78e4ce"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "CONFLICT",
+        "output": {
+          "bucket": "acme-reports"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "bucket-delete-rejected",
+      "operation": "deleteBucket"
+    },
+    {
+      "callId": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bucket": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "input": {
+        "bucket": "BAD"
+      },
+      "name": "bucket-delete-defect",
+      "operation": "deleteBucket"
+    },
+    {
+      "callId": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=6d97d07c5a0739b0228953532471a26fa4aee5270984b3c4f446dc064f78e4ce"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "bucket-delete-429",
+      "operation": "deleteBucket"
+    },
+    {
+      "callId": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=6d97d07c5a0739b0228953532471a26fa4aee5270984b3c4f446dc064f78e4ce"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "bucket-delete-500",
+      "operation": "deleteBucket"
+    },
+    {
+      "callId": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/acme-reports",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=6d97d07c5a0739b0228953532471a26fa4aee5270984b3c4f446dc064f78e4ce"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f66acd3f-8bd2-5712-b1ab-15dea3ddcea2",
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "bucket-delete-transport",
+      "operation": "deleteBucket"
     }
   ],
   "schemaVersion": 1

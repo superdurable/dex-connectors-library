@@ -40,6 +40,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	context := newDexContext("conformance")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"listBuckets":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListBuckets(), testConnection),
+		"createBucket":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateBucket(), testConnection, scenario.CallID),
+		"deleteBucket":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteBucket(), testConnection, scenario.CallID),
 		"listObjects":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListObjects(), testConnection),
 		"headObject":    newConformanceQueryInvocation(t, scenario.Input, context, client.HeadObject(), testConnection),
 		"getObjectText": newConformanceQueryInvocation(t, scenario.Input, context, client.GetObjectText(), testConnection),

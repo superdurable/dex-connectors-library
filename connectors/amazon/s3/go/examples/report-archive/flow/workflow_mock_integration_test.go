@@ -60,3 +60,20 @@ func TestReportArchiveDeletesVerifiedReportWithRealDex(t *testing.T) {
 	require.Len(t, mock.DeleteObject().Calls(), 1)
 	require.Equal(t, s3.DeleteObjectInput{Key: "reports/ops-weekly.md"}, mock.DeleteObject().Calls()[0].Input)
 }
+
+func TestBucketInventoryUsesMockWithRealDex(t *testing.T) {
+	mock := s3mock.New(t, ConnectionName)
+	_, harness := newReportArchiveHarnessWithConnection(t, mock.Connection())
+	flow := NewBucketInventoryFlow(mock.Connection())
+	flowID := "mock-buckets-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	ctx := integrationContext(t)
+	_, err := harness.client.StartFlow(ctx, flow, flowID, BucketInventoryInput{MaxBuckets: 10}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status)
+	var page s3.ListBucketsOutput
+	require.NoError(t, result.DecodeSingleOutput(&page))
+	require.Equal(t, "acme-reports", page.Buckets[0].Name)
+	require.Len(t, mock.ListBuckets().Calls(), 1)
+}
