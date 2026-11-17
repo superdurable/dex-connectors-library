@@ -8,9 +8,73 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
+
+// QueryWorkItemsInput searches one project with read-only WIQL.
+type QueryWorkItemsInput struct {
+	// Project is the project name or ID from Azure DevOps Projects.
+	Project string `json:"project"`
+	// WIQL is a SELECT query using Azure DevOps Work Item Query Language.
+	WIQL string `json:"wiql"`
+	// Top limits returned IDs from 1 to 200.
+	Top int `json:"top"`
+}
+
+// WorkItemIDs contains the identifiers returned by one WIQL query.
+type WorkItemIDs struct {
+	// IDs are the matching Azure DevOps work item IDs.
+	IDs []int64 `json:"ids"`
+}
+
+// QueryWorkItemsOperation executes a read-only work item query.
+type QueryWorkItemsOperation struct{ client *Client }
+
+// QueryWorkItems binds the Query to this client.
+func (client *Client) QueryWorkItems() QueryWorkItemsOperation {
+	return QueryWorkItemsOperation{client}
+}
+
+// Definition returns the generated work item Query contract.
+func (QueryWorkItemsOperation) Definition() sdkgo.QueryDefinition { return QueryWorkItemsDefinition }
+
+// Invoke runs one bounded WIQL query and returns work item IDs.
+func (operation QueryWorkItemsOperation) Invoke(call sdkgo.Call, input QueryWorkItemsInput) sdkgo.QueryAttempt[WorkItemIDs] {
+	branches := queryBranches{found: QueryWorkItemsBranchListed, rejected: QueryWorkItemsBranchProviderRejected, invalid: QueryWorkItemsBranchInvalidResponse, defect: QueryWorkItemsBranchDefect}
+	queryText := strings.TrimSpace(input.WIQL)
+	if input.Project == "" || len(input.Project) > 128 || strings.ContainsAny(input.Project, "/?#\\\r\n") || len(queryText) > 4096 || !strings.HasPrefix(strings.ToUpper(queryText), "SELECT ") || input.Top < 1 || input.Top > 200 {
+		return queryBranch("queryWorkItems", branches.defect, WorkItemIDs{IDs: []int64{}}, sdkgo.FailureValidation, "project, WIQL SELECT query, or result limit is invalid")
+	}
+	requestBody, err := json.Marshal(map[string]string{"query": queryText})
+	if err != nil {
+		return queryBranch("queryWorkItems", branches.defect, WorkItemIDs{IDs: []int64{}}, sdkgo.FailureValidation, "WIQL query cannot be encoded")
+	}
+	query := url.Values{"$top": {strconv.Itoa(input.Top)}, "api-version": {"7.1"}}
+	body, status, retryAfter, err := operation.client.post(call, "/"+url.PathEscape(input.Project)+"/_apis/wit/wiql?"+query.Encode(), requestBody)
+	return queryResponse("queryWorkItems", body, status, retryAfter, err, branches, decodeWorkItemIDs)
+}
+
+func decodeWorkItemIDs(body []byte) (WorkItemIDs, error) {
+	var wire struct {
+		QueryType string `json:"queryType"`
+		WorkItems []struct {
+			ID int64 `json:"id"`
+		} `json:"workItems"`
+	}
+	if err := json.Unmarshal(body, &wire); err != nil || wire.QueryType != "flat" || wire.WorkItems == nil {
+		return WorkItemIDs{}, fmt.Errorf("invalid flat work item query response")
+	}
+	result := WorkItemIDs{IDs: make([]int64, 0, len(wire.WorkItems))}
+	for _, workItem := range wire.WorkItems {
+		if workItem.ID <= 0 || workItem.ID > 2147483647 {
+			return WorkItemIDs{}, fmt.Errorf("invalid work item ID")
+		}
+		result.IDs = append(result.IDs, workItem.ID)
+	}
+	return result, nil
+}
 
 // ListProjectsInput selects a bounded page of accessible projects.
 type ListProjectsInput struct {

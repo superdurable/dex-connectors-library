@@ -1,6 +1,6 @@
 {
   "connectorId": "azure-devops",
-  "releaseTag": "connectors/microsoft/azure-devops/go/v0.2.0",
+  "releaseTag": "connectors/microsoft/azure-devops/go/v0.3.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-microsoft-azure-devops",

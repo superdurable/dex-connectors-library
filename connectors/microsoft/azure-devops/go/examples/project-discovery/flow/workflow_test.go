@@ -23,3 +23,13 @@ func TestProjectDiscoveryFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestQueryWorkItemsFlowRegisters(t *testing.T) {
+	mock := azuredevopsmock.New(t, ConnectionName)
+	queryFlow := NewQueryWorkItemsFlow(mock.Connection())
+	_, err := dex.NewRegistry([]dex.Flow{queryFlow})
+	require.NoError(t, err)
+	wait, err := startWorkItemQuery{}.WaitFor(nil, azuredevops.QueryWorkItemsInput{})
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+}

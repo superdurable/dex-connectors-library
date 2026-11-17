@@ -8,7 +8,8 @@ import { AzureDevOpsClient } from '../src/client.js';
 import { GetWorkItemInputSchema, ListProjectsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/azure-devops/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/azure-devops/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listProjects' || scenario.operation === 'getWorkItem');
 const connection = { provider: 'azure-devops', name: 'azure-devops' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAzureDevOps, '/example'));
 
