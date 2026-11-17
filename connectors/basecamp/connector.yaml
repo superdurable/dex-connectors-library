@@ -42,7 +42,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large account pages.
+        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large people or resource pages.
         default: 1048576
   auth:
     type: oauth2
@@ -79,6 +79,7 @@ spec:
         - For project changes, open https://3.basecamp.com > your account > Projects. Use the numeric account ID from listAccounts and project ID from a project's URL or listProjects. Supply a non-blank project name; description is non-secret text and blank clears it on update. Archive, restore, and trash use the selected project ID. Trashing may permanently delete a project on plans without an archive/trash period.
         - For to-dos, open https://3.basecamp.com > your account > project > To-dos > to-do list. Use the numeric account ID from listAccounts and the to-do list or to-do ID in the selected page URL or API result. A non-blank content title is required; description is rich text, dates are YYYY-MM-DD, and person IDs come from People. Blank optional dates or description clear them on replacement; empty assignee and subscriber lists clear them. Basecamp PUT replaces all editable fields, so supply the full current state from getTodo when updating. Completion and trash actions use the to-do ID; reposition requires a positive position and optional same-project parent ID.
         - For to-do lists, open https://3.basecamp.com > your account > project > To-dos. Use the numeric to-do set ID from getProject's dock or the Basecamp API, and the selected list ID from its URL or listTodoLists. Name is non-blank; description is non-secret rich text and blank clears it on update. Position is one-based among incomplete lists. Trashing uses the list's recording ID.
+        - For people, open https://3.basecamp.com > your account > People or a project > People. Use the numeric account, project, and person IDs from listAccounts, listProjects, and listPeople or their page URLs. Project grant and revoke require an existing person ID; enrollment requires a non-blank name and email address, optionally project IDs, and can send an invitation email. Blank project IDs enroll only at account level; notify omitted uses Basecamp's invitation default, and false suppresses new invitation emails. Email is personal data, not a credential; some profiles redact it for non-admin callers.
     oauth2:
       authorizationEndpoint: https://launchpad.37signals.com/authorization/new
       tokenEndpoint: https://launchpad.37signals.com/authorization/token
@@ -218,6 +219,127 @@ spec:
           default: true
           description: One project exists.
           output: {id: '123', name: Example Project}
+    - name: listPeople
+      goName: ListPeople
+      inputType: ListPeopleInput
+      outputType: PeoplePage
+      kind: query
+      description: List people visible in one Basecamp account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid person JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Basecamp returned the requested result.
+          output: {people: [{id: '789', name: Example Person}]}
+    - name: listProjectPeople
+      goName: ListProjectPeople
+      inputType: ListProjectPeopleInput
+      outputType: PeoplePage
+      kind: query
+      description: List active people on a project.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid person JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Basecamp returned the requested result.
+          output: {people: [{id: '789', name: Example Person}]}
+    - name: getPerson
+      goName: GetPerson
+      inputType: GetPersonInput
+      outputType: Person
+      kind: query
+      description: Read one Basecamp person.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The requested person or project does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid person JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '789', name: Example Person}
+    - name: grantProjectAccess
+      goName: GrantProjectAccess
+      inputType: ProjectPersonAccessInput
+      outputType: ProjectPersonAccessResult
+      kind: mutation
+      description: Grant an existing person access to a project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: granted, goName: Granted, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The requested person or project does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: grantedDefault
+          branch: granted
+          default: true
+          description: Basecamp returned the requested result.
+          output: {projectId: '456', personId: '789', access: granted}
+    - name: revokeProjectAccess
+      goName: RevokeProjectAccess
+      inputType: ProjectPersonAccessInput
+      outputType: ProjectPersonAccessResult
+      kind: mutation
+      description: Revoke a person's project access.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: revoked, goName: Revoked, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The requested person or project does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: revokedDefault
+          branch: revoked
+          default: true
+          description: Basecamp returned the requested result.
+          output: {projectId: '456', personId: '789', access: revoked}
+    - name: enrollPerson
+      goName: EnrollPerson
+      inputType: EnrollPersonInput
+      outputType: EnrollmentResult
+      kind: mutation
+      description: Enroll or invite one person into an account.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: enrolled, goName: Enrolled, description: Basecamp returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Enrollment cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: enrolledDefault
+          branch: enrolled
+          default: true
+          description: Basecamp returned the requested result.
+          output: {person: {id: '789', name: Example Person}, status: created}
     - name: listTodoLists
       goName: ListTodoLists
       inputType: ListTodoListsInput

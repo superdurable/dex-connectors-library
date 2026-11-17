@@ -17,29 +17,35 @@ import (
 
 // Mock is a scripted basecamp connection. Script each operation through its accessor.
 type Mock struct {
-	connection         basecamp.Connection
-	createProject      *connectormock.Mutation[basecamp.CreateProjectInput, basecamp.Project]
-	updateProject      *connectormock.Mutation[basecamp.UpdateProjectInput, basecamp.Project]
-	archiveProject     *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
-	unarchiveProject   *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
-	trashProject       *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
-	listProjects       *connectormock.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage]
-	getProject         *connectormock.Query[basecamp.GetProjectInput, basecamp.Project]
-	listTodoLists      *connectormock.Query[basecamp.ListTodoListsInput, basecamp.TodoListsPage]
-	getTodoList        *connectormock.Query[basecamp.GetTodoListInput, basecamp.TodoList]
-	createTodoList     *connectormock.Mutation[basecamp.CreateTodoListInput, basecamp.TodoList]
-	updateTodoList     *connectormock.Mutation[basecamp.UpdateTodoListInput, basecamp.TodoList]
-	repositionTodoList *connectormock.Mutation[basecamp.RepositionTodoListInput, basecamp.TodoListActionResult]
-	trashTodoList      *connectormock.Mutation[basecamp.GetTodoListInput, basecamp.TodoListActionResult]
-	createTodo         *connectormock.Mutation[basecamp.CreateTodoInput, basecamp.Todo]
-	updateTodo         *connectormock.Mutation[basecamp.UpdateTodoInput, basecamp.Todo]
-	completeTodo       *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult]
-	uncompleteTodo     *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult]
-	trashTodo          *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult]
-	repositionTodo     *connectormock.Mutation[basecamp.RepositionTodoInput, basecamp.TodoActionResult]
-	listTodos          *connectormock.Query[basecamp.ListTodosInput, basecamp.TodosPage]
-	getTodo            *connectormock.Query[basecamp.GetTodoInput, basecamp.Todo]
-	listAccounts       *connectormock.Query[basecamp.ListAccountsInput, basecamp.AccountsPage]
+	connection          basecamp.Connection
+	createProject       *connectormock.Mutation[basecamp.CreateProjectInput, basecamp.Project]
+	updateProject       *connectormock.Mutation[basecamp.UpdateProjectInput, basecamp.Project]
+	archiveProject      *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
+	unarchiveProject    *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
+	trashProject        *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
+	listProjects        *connectormock.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage]
+	getProject          *connectormock.Query[basecamp.GetProjectInput, basecamp.Project]
+	listPeople          *connectormock.Query[basecamp.ListPeopleInput, basecamp.PeoplePage]
+	listProjectPeople   *connectormock.Query[basecamp.ListProjectPeopleInput, basecamp.PeoplePage]
+	getPerson           *connectormock.Query[basecamp.GetPersonInput, basecamp.Person]
+	grantProjectAccess  *connectormock.Mutation[basecamp.ProjectPersonAccessInput, basecamp.ProjectPersonAccessResult]
+	revokeProjectAccess *connectormock.Mutation[basecamp.ProjectPersonAccessInput, basecamp.ProjectPersonAccessResult]
+	enrollPerson        *connectormock.Mutation[basecamp.EnrollPersonInput, basecamp.EnrollmentResult]
+	listTodoLists       *connectormock.Query[basecamp.ListTodoListsInput, basecamp.TodoListsPage]
+	getTodoList         *connectormock.Query[basecamp.GetTodoListInput, basecamp.TodoList]
+	createTodoList      *connectormock.Mutation[basecamp.CreateTodoListInput, basecamp.TodoList]
+	updateTodoList      *connectormock.Mutation[basecamp.UpdateTodoListInput, basecamp.TodoList]
+	repositionTodoList  *connectormock.Mutation[basecamp.RepositionTodoListInput, basecamp.TodoListActionResult]
+	trashTodoList       *connectormock.Mutation[basecamp.GetTodoListInput, basecamp.TodoListActionResult]
+	createTodo          *connectormock.Mutation[basecamp.CreateTodoInput, basecamp.Todo]
+	updateTodo          *connectormock.Mutation[basecamp.UpdateTodoInput, basecamp.Todo]
+	completeTodo        *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult]
+	uncompleteTodo      *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult]
+	trashTodo           *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult]
+	repositionTodo      *connectormock.Mutation[basecamp.RepositionTodoInput, basecamp.TodoActionResult]
+	listTodos           *connectormock.Query[basecamp.ListTodosInput, basecamp.TodosPage]
+	getTodo             *connectormock.Query[basecamp.GetTodoInput, basecamp.Todo]
+	listAccounts        *connectormock.Query[basecamp.ListAccountsInput, basecamp.AccountsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -47,28 +53,34 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createProject:      connectormock.NewMutation[basecamp.CreateProjectInput, basecamp.Project](t, basecamp.CreateProjectDefinition),
-		updateProject:      connectormock.NewMutation[basecamp.UpdateProjectInput, basecamp.Project](t, basecamp.UpdateProjectDefinition),
-		archiveProject:     connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.ArchiveProjectDefinition),
-		unarchiveProject:   connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.UnarchiveProjectDefinition),
-		trashProject:       connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.TrashProjectDefinition),
-		listProjects:       connectormock.NewQuery[basecamp.ListProjectsInput, basecamp.ProjectsPage](t, basecamp.ListProjectsDefinition),
-		getProject:         connectormock.NewQuery[basecamp.GetProjectInput, basecamp.Project](t, basecamp.GetProjectDefinition),
-		listTodoLists:      connectormock.NewQuery[basecamp.ListTodoListsInput, basecamp.TodoListsPage](t, basecamp.ListTodoListsDefinition),
-		getTodoList:        connectormock.NewQuery[basecamp.GetTodoListInput, basecamp.TodoList](t, basecamp.GetTodoListDefinition),
-		createTodoList:     connectormock.NewMutation[basecamp.CreateTodoListInput, basecamp.TodoList](t, basecamp.CreateTodoListDefinition),
-		updateTodoList:     connectormock.NewMutation[basecamp.UpdateTodoListInput, basecamp.TodoList](t, basecamp.UpdateTodoListDefinition),
-		repositionTodoList: connectormock.NewMutation[basecamp.RepositionTodoListInput, basecamp.TodoListActionResult](t, basecamp.RepositionTodoListDefinition),
-		trashTodoList:      connectormock.NewMutation[basecamp.GetTodoListInput, basecamp.TodoListActionResult](t, basecamp.TrashTodoListDefinition),
-		createTodo:         connectormock.NewMutation[basecamp.CreateTodoInput, basecamp.Todo](t, basecamp.CreateTodoDefinition),
-		updateTodo:         connectormock.NewMutation[basecamp.UpdateTodoInput, basecamp.Todo](t, basecamp.UpdateTodoDefinition),
-		completeTodo:       connectormock.NewMutation[basecamp.GetTodoInput, basecamp.TodoActionResult](t, basecamp.CompleteTodoDefinition),
-		uncompleteTodo:     connectormock.NewMutation[basecamp.GetTodoInput, basecamp.TodoActionResult](t, basecamp.UncompleteTodoDefinition),
-		trashTodo:          connectormock.NewMutation[basecamp.GetTodoInput, basecamp.TodoActionResult](t, basecamp.TrashTodoDefinition),
-		repositionTodo:     connectormock.NewMutation[basecamp.RepositionTodoInput, basecamp.TodoActionResult](t, basecamp.RepositionTodoDefinition),
-		listTodos:          connectormock.NewQuery[basecamp.ListTodosInput, basecamp.TodosPage](t, basecamp.ListTodosDefinition),
-		getTodo:            connectormock.NewQuery[basecamp.GetTodoInput, basecamp.Todo](t, basecamp.GetTodoDefinition),
-		listAccounts:       connectormock.NewQuery[basecamp.ListAccountsInput, basecamp.AccountsPage](t, basecamp.ListAccountsDefinition),
+		createProject:       connectormock.NewMutation[basecamp.CreateProjectInput, basecamp.Project](t, basecamp.CreateProjectDefinition),
+		updateProject:       connectormock.NewMutation[basecamp.UpdateProjectInput, basecamp.Project](t, basecamp.UpdateProjectDefinition),
+		archiveProject:      connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.ArchiveProjectDefinition),
+		unarchiveProject:    connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.UnarchiveProjectDefinition),
+		trashProject:        connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.TrashProjectDefinition),
+		listProjects:        connectormock.NewQuery[basecamp.ListProjectsInput, basecamp.ProjectsPage](t, basecamp.ListProjectsDefinition),
+		getProject:          connectormock.NewQuery[basecamp.GetProjectInput, basecamp.Project](t, basecamp.GetProjectDefinition),
+		listPeople:          connectormock.NewQuery[basecamp.ListPeopleInput, basecamp.PeoplePage](t, basecamp.ListPeopleDefinition),
+		listProjectPeople:   connectormock.NewQuery[basecamp.ListProjectPeopleInput, basecamp.PeoplePage](t, basecamp.ListProjectPeopleDefinition),
+		getPerson:           connectormock.NewQuery[basecamp.GetPersonInput, basecamp.Person](t, basecamp.GetPersonDefinition),
+		grantProjectAccess:  connectormock.NewMutation[basecamp.ProjectPersonAccessInput, basecamp.ProjectPersonAccessResult](t, basecamp.GrantProjectAccessDefinition),
+		revokeProjectAccess: connectormock.NewMutation[basecamp.ProjectPersonAccessInput, basecamp.ProjectPersonAccessResult](t, basecamp.RevokeProjectAccessDefinition),
+		enrollPerson:        connectormock.NewMutation[basecamp.EnrollPersonInput, basecamp.EnrollmentResult](t, basecamp.EnrollPersonDefinition),
+		listTodoLists:       connectormock.NewQuery[basecamp.ListTodoListsInput, basecamp.TodoListsPage](t, basecamp.ListTodoListsDefinition),
+		getTodoList:         connectormock.NewQuery[basecamp.GetTodoListInput, basecamp.TodoList](t, basecamp.GetTodoListDefinition),
+		createTodoList:      connectormock.NewMutation[basecamp.CreateTodoListInput, basecamp.TodoList](t, basecamp.CreateTodoListDefinition),
+		updateTodoList:      connectormock.NewMutation[basecamp.UpdateTodoListInput, basecamp.TodoList](t, basecamp.UpdateTodoListDefinition),
+		repositionTodoList:  connectormock.NewMutation[basecamp.RepositionTodoListInput, basecamp.TodoListActionResult](t, basecamp.RepositionTodoListDefinition),
+		trashTodoList:       connectormock.NewMutation[basecamp.GetTodoListInput, basecamp.TodoListActionResult](t, basecamp.TrashTodoListDefinition),
+		createTodo:          connectormock.NewMutation[basecamp.CreateTodoInput, basecamp.Todo](t, basecamp.CreateTodoDefinition),
+		updateTodo:          connectormock.NewMutation[basecamp.UpdateTodoInput, basecamp.Todo](t, basecamp.UpdateTodoDefinition),
+		completeTodo:        connectormock.NewMutation[basecamp.GetTodoInput, basecamp.TodoActionResult](t, basecamp.CompleteTodoDefinition),
+		uncompleteTodo:      connectormock.NewMutation[basecamp.GetTodoInput, basecamp.TodoActionResult](t, basecamp.UncompleteTodoDefinition),
+		trashTodo:           connectormock.NewMutation[basecamp.GetTodoInput, basecamp.TodoActionResult](t, basecamp.TrashTodoDefinition),
+		repositionTodo:      connectormock.NewMutation[basecamp.RepositionTodoInput, basecamp.TodoActionResult](t, basecamp.RepositionTodoDefinition),
+		listTodos:           connectormock.NewQuery[basecamp.ListTodosInput, basecamp.TodosPage](t, basecamp.ListTodosDefinition),
+		getTodo:             connectormock.NewQuery[basecamp.GetTodoInput, basecamp.Todo](t, basecamp.GetTodoDefinition),
+		listAccounts:        connectormock.NewQuery[basecamp.ListAccountsInput, basecamp.AccountsPage](t, basecamp.ListAccountsDefinition),
 	}
 	mock.createProject.Default(CreateProjectDefault())
 	mock.updateProject.Default(UpdateProjectDefault())
@@ -77,6 +89,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.trashProject.Default(TrashProjectDefault())
 	mock.listProjects.Default(ListProjectsDefault())
 	mock.getProject.Default(GetProjectDefault())
+	mock.listPeople.Default(ListPeopleDefault())
+	mock.listProjectPeople.Default(ListProjectPeopleDefault())
+	mock.getPerson.Default(GetPersonDefault())
+	mock.grantProjectAccess.Default(GrantProjectAccessDefault())
+	mock.revokeProjectAccess.Default(RevokeProjectAccessDefault())
+	mock.enrollPerson.Default(EnrollPersonDefault())
 	mock.listTodoLists.Default(ListTodoListsDefault())
 	mock.getTodoList.Default(GetTodoListDefault())
 	mock.createTodoList.Default(CreateTodoListDefault())
@@ -136,6 +154,36 @@ func (mock *Mock) ListProjects() *connectormock.Query[basecamp.ListProjectsInput
 // GetProject returns the getProject script.
 func (mock *Mock) GetProject() *connectormock.Query[basecamp.GetProjectInput, basecamp.Project] {
 	return mock.getProject
+}
+
+// ListPeople returns the listPeople script.
+func (mock *Mock) ListPeople() *connectormock.Query[basecamp.ListPeopleInput, basecamp.PeoplePage] {
+	return mock.listPeople
+}
+
+// ListProjectPeople returns the listProjectPeople script.
+func (mock *Mock) ListProjectPeople() *connectormock.Query[basecamp.ListProjectPeopleInput, basecamp.PeoplePage] {
+	return mock.listProjectPeople
+}
+
+// GetPerson returns the getPerson script.
+func (mock *Mock) GetPerson() *connectormock.Query[basecamp.GetPersonInput, basecamp.Person] {
+	return mock.getPerson
+}
+
+// GrantProjectAccess returns the grantProjectAccess script.
+func (mock *Mock) GrantProjectAccess() *connectormock.Mutation[basecamp.ProjectPersonAccessInput, basecamp.ProjectPersonAccessResult] {
+	return mock.grantProjectAccess
+}
+
+// RevokeProjectAccess returns the revokeProjectAccess script.
+func (mock *Mock) RevokeProjectAccess() *connectormock.Mutation[basecamp.ProjectPersonAccessInput, basecamp.ProjectPersonAccessResult] {
+	return mock.revokeProjectAccess
+}
+
+// EnrollPerson returns the enrollPerson script.
+func (mock *Mock) EnrollPerson() *connectormock.Mutation[basecamp.EnrollPersonInput, basecamp.EnrollmentResult] {
+	return mock.enrollPerson
 }
 
 // ListTodoLists returns the listTodoLists script.
@@ -235,6 +283,24 @@ func (operations mockOperations) ListProjects() sdkgo.Query[basecamp.ListProject
 }
 func (operations mockOperations) GetProject() sdkgo.Query[basecamp.GetProjectInput, basecamp.Project] {
 	return operations.mock.getProject
+}
+func (operations mockOperations) ListPeople() sdkgo.Query[basecamp.ListPeopleInput, basecamp.PeoplePage] {
+	return operations.mock.listPeople
+}
+func (operations mockOperations) ListProjectPeople() sdkgo.Query[basecamp.ListProjectPeopleInput, basecamp.PeoplePage] {
+	return operations.mock.listProjectPeople
+}
+func (operations mockOperations) GetPerson() sdkgo.Query[basecamp.GetPersonInput, basecamp.Person] {
+	return operations.mock.getPerson
+}
+func (operations mockOperations) GrantProjectAccess() sdkgo.Mutation[basecamp.ProjectPersonAccessInput, basecamp.ProjectPersonAccessResult] {
+	return operations.mock.grantProjectAccess
+}
+func (operations mockOperations) RevokeProjectAccess() sdkgo.Mutation[basecamp.ProjectPersonAccessInput, basecamp.ProjectPersonAccessResult] {
+	return operations.mock.revokeProjectAccess
+}
+func (operations mockOperations) EnrollPerson() sdkgo.Mutation[basecamp.EnrollPersonInput, basecamp.EnrollmentResult] {
+	return operations.mock.enrollPerson
 }
 func (operations mockOperations) ListTodoLists() sdkgo.Query[basecamp.ListTodoListsInput, basecamp.TodoListsPage] {
 	return operations.mock.listTodoLists
@@ -541,6 +607,223 @@ func GetProjectFoundDefault() connectormock.Case[basecamp.Project] {
 
 // GetProjectDefault is the manifest default, foundDefault, which New installs.
 func GetProjectDefault() connectormock.Case[basecamp.Project] { return GetProjectFoundDefault() }
+
+// ListPeopleListed selects the listed branch: Basecamp returned the requested result.
+func ListPeopleListed(value basecamp.PeoplePage, failure *sdkgo.Failure) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Branch(basecamp.ListPeopleBranchListed, value, failure)
+}
+
+// ListPeopleProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func ListPeopleProviderRejected(value basecamp.PeoplePage, failure *sdkgo.Failure) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Branch(basecamp.ListPeopleBranchProviderRejected, value, failure)
+}
+
+// ListPeopleInvalidResponse selects the invalidResponse branch: Basecamp returned invalid person JSON.
+func ListPeopleInvalidResponse(value basecamp.PeoplePage, failure *sdkgo.Failure) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Branch(basecamp.ListPeopleBranchInvalidResponse, value, failure)
+}
+
+// ListPeopleDefect selects the defect branch: Input or credentials are invalid.
+func ListPeopleDefect(value basecamp.PeoplePage, failure *sdkgo.Failure) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Branch(basecamp.ListPeopleBranchDefect, value, failure)
+}
+
+// ListPeopleRetry asks Dex to retry the listPeople Step, after the delay when it is positive.
+func ListPeopleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Retry[basecamp.PeoplePage](failure, after)
+}
+
+// ListPeopleListedDefault is the manifest mock listedDefault: Basecamp returned the requested result.
+func ListPeopleListedDefault() connectormock.Case[basecamp.PeoplePage] {
+	value := connectormock.MustDecodeOutput[basecamp.PeoplePage](`{"people":[{"id":"789","name":"Example Person"}]}`)
+	return connectormock.Branch(basecamp.ListPeopleBranchListed, value, nil)
+}
+
+// ListPeopleDefault is the manifest default, listedDefault, which New installs.
+func ListPeopleDefault() connectormock.Case[basecamp.PeoplePage] { return ListPeopleListedDefault() }
+
+// ListProjectPeopleListed selects the listed branch: Basecamp returned the requested result.
+func ListProjectPeopleListed(value basecamp.PeoplePage, failure *sdkgo.Failure) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Branch(basecamp.ListProjectPeopleBranchListed, value, failure)
+}
+
+// ListProjectPeopleProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func ListProjectPeopleProviderRejected(value basecamp.PeoplePage, failure *sdkgo.Failure) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Branch(basecamp.ListProjectPeopleBranchProviderRejected, value, failure)
+}
+
+// ListProjectPeopleInvalidResponse selects the invalidResponse branch: Basecamp returned invalid person JSON.
+func ListProjectPeopleInvalidResponse(value basecamp.PeoplePage, failure *sdkgo.Failure) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Branch(basecamp.ListProjectPeopleBranchInvalidResponse, value, failure)
+}
+
+// ListProjectPeopleDefect selects the defect branch: Input or credentials are invalid.
+func ListProjectPeopleDefect(value basecamp.PeoplePage, failure *sdkgo.Failure) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Branch(basecamp.ListProjectPeopleBranchDefect, value, failure)
+}
+
+// ListProjectPeopleRetry asks Dex to retry the listProjectPeople Step, after the delay when it is positive.
+func ListProjectPeopleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.PeoplePage] {
+	return connectormock.Retry[basecamp.PeoplePage](failure, after)
+}
+
+// ListProjectPeopleListedDefault is the manifest mock listedDefault: Basecamp returned the requested result.
+func ListProjectPeopleListedDefault() connectormock.Case[basecamp.PeoplePage] {
+	value := connectormock.MustDecodeOutput[basecamp.PeoplePage](`{"people":[{"id":"789","name":"Example Person"}]}`)
+	return connectormock.Branch(basecamp.ListProjectPeopleBranchListed, value, nil)
+}
+
+// ListProjectPeopleDefault is the manifest default, listedDefault, which New installs.
+func ListProjectPeopleDefault() connectormock.Case[basecamp.PeoplePage] {
+	return ListProjectPeopleListedDefault()
+}
+
+// GetPersonFound selects the found branch: Basecamp returned the requested result.
+func GetPersonFound(value basecamp.Person, failure *sdkgo.Failure) connectormock.Case[basecamp.Person] {
+	return connectormock.Branch(basecamp.GetPersonBranchFound, value, failure)
+}
+
+// GetPersonNotFound selects the notFound branch: The requested person or project does not exist.
+func GetPersonNotFound(value basecamp.Person, failure *sdkgo.Failure) connectormock.Case[basecamp.Person] {
+	return connectormock.Branch(basecamp.GetPersonBranchNotFound, value, failure)
+}
+
+// GetPersonProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func GetPersonProviderRejected(value basecamp.Person, failure *sdkgo.Failure) connectormock.Case[basecamp.Person] {
+	return connectormock.Branch(basecamp.GetPersonBranchProviderRejected, value, failure)
+}
+
+// GetPersonInvalidResponse selects the invalidResponse branch: Basecamp returned invalid person JSON.
+func GetPersonInvalidResponse(value basecamp.Person, failure *sdkgo.Failure) connectormock.Case[basecamp.Person] {
+	return connectormock.Branch(basecamp.GetPersonBranchInvalidResponse, value, failure)
+}
+
+// GetPersonDefect selects the defect branch: Input or credentials are invalid.
+func GetPersonDefect(value basecamp.Person, failure *sdkgo.Failure) connectormock.Case[basecamp.Person] {
+	return connectormock.Branch(basecamp.GetPersonBranchDefect, value, failure)
+}
+
+// GetPersonRetry asks Dex to retry the getPerson Step, after the delay when it is positive.
+func GetPersonRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.Person] {
+	return connectormock.Retry[basecamp.Person](failure, after)
+}
+
+// GetPersonFoundDefault is the manifest mock foundDefault: Basecamp returned the requested result.
+func GetPersonFoundDefault() connectormock.Case[basecamp.Person] {
+	value := connectormock.MustDecodeOutput[basecamp.Person](`{"id":"789","name":"Example Person"}`)
+	return connectormock.Branch(basecamp.GetPersonBranchFound, value, nil)
+}
+
+// GetPersonDefault is the manifest default, foundDefault, which New installs.
+func GetPersonDefault() connectormock.Case[basecamp.Person] { return GetPersonFoundDefault() }
+
+// GrantProjectAccessGranted selects the granted branch: Basecamp returned the requested result.
+func GrantProjectAccessGranted(value basecamp.ProjectPersonAccessResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Branch(basecamp.GrantProjectAccessBranchGranted, value, failure)
+}
+
+// GrantProjectAccessNotFound selects the notFound branch: The requested person or project does not exist.
+func GrantProjectAccessNotFound(value basecamp.ProjectPersonAccessResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Branch(basecamp.GrantProjectAccessBranchNotFound, value, failure)
+}
+
+// GrantProjectAccessProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func GrantProjectAccessProviderRejected(value basecamp.ProjectPersonAccessResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Branch(basecamp.GrantProjectAccessBranchProviderRejected, value, failure)
+}
+
+// GrantProjectAccessDefect selects the defect branch: Input or credentials are invalid.
+func GrantProjectAccessDefect(value basecamp.ProjectPersonAccessResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Branch(basecamp.GrantProjectAccessBranchDefect, value, failure)
+}
+
+// GrantProjectAccessRetry asks Dex to retry the grantProjectAccess Step, after the delay when it is positive.
+func GrantProjectAccessRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Retry[basecamp.ProjectPersonAccessResult](failure, after)
+}
+
+// GrantProjectAccessGrantedDefault is the manifest mock grantedDefault: Basecamp returned the requested result.
+func GrantProjectAccessGrantedDefault() connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	value := connectormock.MustDecodeOutput[basecamp.ProjectPersonAccessResult](`{"projectId":"456","personId":"789","access":"granted"}`)
+	return connectormock.Branch(basecamp.GrantProjectAccessBranchGranted, value, nil)
+}
+
+// GrantProjectAccessDefault is the manifest default, grantedDefault, which New installs.
+func GrantProjectAccessDefault() connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return GrantProjectAccessGrantedDefault()
+}
+
+// RevokeProjectAccessRevoked selects the revoked branch: Basecamp returned the requested result.
+func RevokeProjectAccessRevoked(value basecamp.ProjectPersonAccessResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Branch(basecamp.RevokeProjectAccessBranchRevoked, value, failure)
+}
+
+// RevokeProjectAccessNotFound selects the notFound branch: The requested person or project does not exist.
+func RevokeProjectAccessNotFound(value basecamp.ProjectPersonAccessResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Branch(basecamp.RevokeProjectAccessBranchNotFound, value, failure)
+}
+
+// RevokeProjectAccessProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func RevokeProjectAccessProviderRejected(value basecamp.ProjectPersonAccessResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Branch(basecamp.RevokeProjectAccessBranchProviderRejected, value, failure)
+}
+
+// RevokeProjectAccessDefect selects the defect branch: Input or credentials are invalid.
+func RevokeProjectAccessDefect(value basecamp.ProjectPersonAccessResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Branch(basecamp.RevokeProjectAccessBranchDefect, value, failure)
+}
+
+// RevokeProjectAccessRetry asks Dex to retry the revokeProjectAccess Step, after the delay when it is positive.
+func RevokeProjectAccessRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return connectormock.Retry[basecamp.ProjectPersonAccessResult](failure, after)
+}
+
+// RevokeProjectAccessRevokedDefault is the manifest mock revokedDefault: Basecamp returned the requested result.
+func RevokeProjectAccessRevokedDefault() connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	value := connectormock.MustDecodeOutput[basecamp.ProjectPersonAccessResult](`{"projectId":"456","personId":"789","access":"revoked"}`)
+	return connectormock.Branch(basecamp.RevokeProjectAccessBranchRevoked, value, nil)
+}
+
+// RevokeProjectAccessDefault is the manifest default, revokedDefault, which New installs.
+func RevokeProjectAccessDefault() connectormock.Case[basecamp.ProjectPersonAccessResult] {
+	return RevokeProjectAccessRevokedDefault()
+}
+
+// EnrollPersonEnrolled selects the enrolled branch: Basecamp returned the requested result.
+func EnrollPersonEnrolled(value basecamp.EnrollmentResult, failure *sdkgo.Failure) connectormock.Case[basecamp.EnrollmentResult] {
+	return connectormock.Branch(basecamp.EnrollPersonBranchEnrolled, value, failure)
+}
+
+// EnrollPersonProviderRejected selects the providerRejected branch: Basecamp rejected the request.
+func EnrollPersonProviderRejected(value basecamp.EnrollmentResult, failure *sdkgo.Failure) connectormock.Case[basecamp.EnrollmentResult] {
+	return connectormock.Branch(basecamp.EnrollPersonBranchProviderRejected, value, failure)
+}
+
+// EnrollPersonDefect selects the defect branch: Input or credentials are invalid.
+func EnrollPersonDefect(value basecamp.EnrollmentResult, failure *sdkgo.Failure) connectormock.Case[basecamp.EnrollmentResult] {
+	return connectormock.Branch(basecamp.EnrollPersonBranchDefect, value, failure)
+}
+
+// EnrollPersonUncertain returns an uncertain enrollPerson outcome.
+func EnrollPersonUncertain(value basecamp.EnrollmentResult, failure sdkgo.Failure) connectormock.Case[basecamp.EnrollmentResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// EnrollPersonRetry asks Dex to retry the enrollPerson Step, after the delay when it is positive.
+func EnrollPersonRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.EnrollmentResult] {
+	return connectormock.Retry[basecamp.EnrollmentResult](failure, after)
+}
+
+// EnrollPersonEnrolledDefault is the manifest mock enrolledDefault: Basecamp returned the requested result.
+func EnrollPersonEnrolledDefault() connectormock.Case[basecamp.EnrollmentResult] {
+	value := connectormock.MustDecodeOutput[basecamp.EnrollmentResult](`{"person":{"id":"789","name":"Example Person"},"status":"created"}`)
+	return connectormock.Branch(basecamp.EnrollPersonBranchEnrolled, value, nil)
+}
+
+// EnrollPersonDefault is the manifest default, enrolledDefault, which New installs.
+func EnrollPersonDefault() connectormock.Case[basecamp.EnrollmentResult] {
+	return EnrollPersonEnrolledDefault()
+}
 
 // ListTodoListsListed selects the listed branch: Basecamp returned the requested result.
 func ListTodoListsListed(value basecamp.TodoListsPage, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoListsPage] {

@@ -44,6 +44,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
 			return err
 		}},
+		{name: "listPeople/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.PeoplePage](`{"people":[{"id":"789","name":"Example Person"}]}`)
+			return err
+		}},
+		{name: "listProjectPeople/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.PeoplePage](`{"people":[{"id":"789","name":"Example Person"}]}`)
+			return err
+		}},
+		{name: "getPerson/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Person](`{"id":"789","name":"Example Person"}`)
+			return err
+		}},
+		{name: "grantProjectAccess/grantedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectPersonAccessResult](`{"projectId":"456","personId":"789","access":"granted"}`)
+			return err
+		}},
+		{name: "revokeProjectAccess/revokedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectPersonAccessResult](`{"projectId":"456","personId":"789","access":"revoked"}`)
+			return err
+		}},
+		{name: "enrollPerson/enrolledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.EnrollmentResult](`{"person":{"id":"789","name":"Example Person"},"status":"created"}`)
+			return err
+		}},
 		{name: "listTodoLists/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[basecamp.TodoListsPage](`{"todoLists":[{"id":"456","name":"Example List"}]}`)
 			return err
@@ -134,6 +158,24 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
 		t.Errorf("getProject mock has another definition")
+	}
+	if mock.ListPeople().Definition().Operation.OperationID != "listPeople" {
+		t.Errorf("listPeople mock has another definition")
+	}
+	if mock.ListProjectPeople().Definition().Operation.OperationID != "listProjectPeople" {
+		t.Errorf("listProjectPeople mock has another definition")
+	}
+	if mock.GetPerson().Definition().Operation.OperationID != "getPerson" {
+		t.Errorf("getPerson mock has another definition")
+	}
+	if mock.GrantProjectAccess().Definition().Operation.OperationID != "grantProjectAccess" {
+		t.Errorf("grantProjectAccess mock has another definition")
+	}
+	if mock.RevokeProjectAccess().Definition().Operation.OperationID != "revokeProjectAccess" {
+		t.Errorf("revokeProjectAccess mock has another definition")
+	}
+	if mock.EnrollPerson().Definition().Operation.OperationID != "enrollPerson" {
+		t.Errorf("enrollPerson mock has another definition")
 	}
 	if mock.ListTodoLists().Definition().Operation.OperationID != "listTodoLists" {
 		t.Errorf("listTodoLists mock has another definition")

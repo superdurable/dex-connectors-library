@@ -14,7 +14,7 @@ export interface Config {
   apiBaseUrl?: string;
   /** Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for a slow gateway. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large account pages. */
+  /** Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large people or resource pages. */
   maxResponseBytes?: number;
 }
 
