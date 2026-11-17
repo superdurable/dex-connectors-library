@@ -33,6 +33,10 @@ The TypeScript package is [`@superdurable/connector-atlassian-bitbucket`](typesc
 | `DeletePullRequestComment` | `PullRequestCommentIDInput` | `DeletedPullRequestComment` | `deleted` |
 | `ResolvePullRequestComment` | `PullRequestCommentIDInput` | `PullRequestComment` | `resolved` |
 | `UnresolvePullRequestComment` | `PullRequestCommentIDInput` | `PullRequestComment` | `unresolved` |
+| `ListBranches` | `ListBranchesInput` | `BranchPage` | `listed` |
+| `GetBranch` | `BranchRefInput` | `Branch` | `found` |
+| `CreateBranch` | `CreateBranchInput` | `Branch` | `created` |
+| `DeleteBranch` | `BranchRefInput` | `DeletedBranch` | `deleted` |
 
 Operations expose their applicable optional `notFound`, `providerRejected`, `invalidResponse`, `defect`, and `uncertain` branches. Unwired optional branches fail the Flow. Pull request and comment creates use sync durability and a three-send limited tier; other new operations use async durability and the safe tier. Python and TypeScript implement only the two original list operations; the remaining operations are Go-only.
 
@@ -41,6 +45,8 @@ Go repository writes use a stable `workspace/repository` slug path. `CreateRepos
 `CreatePullRequest` sends a title, source branch, and destination branch for the same repository. Bitbucket offers no request idempotency key; after an unknown outcome, the connector caps possible sends at three and selects `uncertain` if it cannot confirm creation. A title and branch pair is not a unique readback key, so an existing matching PR cannot safely prove which request created it. `MergePullRequest` and `DeclinePullRequest` are absolute state transitions; a conflict is read back and accepted only when the PR has the requested state. Find branch names under **Repository > Branches** and the numeric PR ID in the pull request URL. See [Bitbucket pull requests API](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/).
 
 Pull request comments support one-page list, single-comment read, Markdown create and replacement, delete, resolve, and reopen. `CreatePullRequestComment` uses the limited three-send tier because duplicate comments are possible. Comment text is not a unique readback key; a previously existing identical comment cannot prove the write succeeded. All other comment writes use the safe tier. Find a comment ID in the comment URL anchor or API response and supply non-blank Markdown in `raw`; blank text is invalid. Resolve and reopen use Bitbucket's `/resolve` action and confirm conflicts with a comment read.
+
+Branches support one-page list, single-branch read, create at an exact 40-character hex commit hash, and delete. Branch names may contain `/`, but omit the `refs/heads/` prefix. `CreateBranch` uses the safe tier because its name is a stable repository-local key; a 409 is read back and accepted only when the existing branch points to the requested commit. Bitbucket Cloud has no branch update endpoint in the [refs API](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-refs/); change the branch in Git instead. Create and delete need Repositories Write access.
 
 Workspace access tokens require Bitbucket Premium; grant Repositories > Read/Write/Admin/Delete for repository actions and Pull requests > Read/Write for PR actions. [Atlassian explains token creation](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/) and [workspace token permissions](https://support.atlassian.com/bitbucket-cloud/docs/workspace-access-token-permissions/).
 

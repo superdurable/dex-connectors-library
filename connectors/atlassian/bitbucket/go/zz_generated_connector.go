@@ -40,6 +40,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListBranches() sdkgo.Query[ListBranchesInput, BranchPage]
+	GetBranch() sdkgo.Query[BranchRefInput, Branch]
+	CreateBranch() sdkgo.Mutation[CreateBranchInput, Branch]
+	DeleteBranch() sdkgo.Mutation[BranchRefInput, DeletedBranch]
 	ListPullRequestComments() sdkgo.Query[PullRequestActionInput, PullRequestCommentPage]
 	GetPullRequestComment() sdkgo.Query[PullRequestCommentIDInput, PullRequestComment]
 	CreatePullRequestComment() sdkgo.Mutation[CreatePullRequestCommentInput, PullRequestComment]
@@ -62,6 +66,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListBranches() sdkgo.Query[ListBranchesInput, BranchPage] {
+	return operations.client.ListBranches()
+}
+func (operations clientOperations) GetBranch() sdkgo.Query[BranchRefInput, Branch] {
+	return operations.client.GetBranch()
+}
+func (operations clientOperations) CreateBranch() sdkgo.Mutation[CreateBranchInput, Branch] {
+	return operations.client.CreateBranch()
+}
+func (operations clientOperations) DeleteBranch() sdkgo.Mutation[BranchRefInput, DeletedBranch] {
+	return operations.client.DeleteBranch()
+}
 func (operations clientOperations) ListPullRequestComments() sdkgo.Query[PullRequestActionInput, PullRequestCommentPage] {
 	return operations.client.ListPullRequestComments()
 }
@@ -252,6 +268,310 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListBranchesBranchListed sdkgo.BranchID = "listed"
+const ListBranchesBranchNotFound sdkgo.BranchID = "notFound"
+const ListBranchesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBranchesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBranchesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBranchesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBranches"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBranchesBranchListed, Description: "Bitbucket returned the requested branch state."},
+		{ID: ListBranchesBranchNotFound, Description: "The repository or branch was not found.", Optional: true},
+		{ID: ListBranchesBranchProviderRejected, Description: "Bitbucket rejected the branch request.", Optional: true},
+		{ID: ListBranchesBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: ListBranchesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBranchesResult = sdkgo.QueryResult[BranchPage]
+
+type ListBranchesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=bitbucket"`
+	operationID                    struct{}                                      `connector:"operationId=listBranches"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBranchesInput                    `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBranchesResult]              `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListBranchesResult]              `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListBranchesResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBranchesResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBranchesResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BranchPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListBranchesStep[IN any](config ListBranchesStepConfig[IN]) sdkgo.QueryStep[IN, ListBranchesInput, BranchPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBranchesInput, BranchPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBranches(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBranchesResult] {
+			branches := make([]sdkgo.BranchTarget[ListBranchesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBranchesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListBranchesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBranchesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBranchesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBranchesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetBranchBranchFound sdkgo.BranchID = "found"
+const GetBranchBranchNotFound sdkgo.BranchID = "notFound"
+const GetBranchBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetBranchBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetBranchBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetBranchDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getBranch"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetBranchBranchFound, Description: "Bitbucket returned the requested branch state."},
+		{ID: GetBranchBranchNotFound, Description: "The repository or branch was not found.", Optional: true},
+		{ID: GetBranchBranchProviderRejected, Description: "Bitbucket rejected the branch request.", Optional: true},
+		{ID: GetBranchBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: GetBranchBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetBranchResult = sdkgo.QueryResult[Branch]
+
+type GetBranchStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                  `connector:"connectorId=bitbucket"`
+	operationID                    struct{}                                  `connector:"operationId=getBranch"`
+	StepType                       string                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                     `connector:"annotations"`
+	Connection                     Connection                                `connector:"connection"`
+	ConnectionName                 string                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) BranchRefInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetBranchResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetBranchResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetBranchResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetBranchResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetBranchResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Branch]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                          `connector:"stepOptionsOverride"`
+}
+
+func NewGetBranchStep[IN any](config GetBranchStepConfig[IN]) sdkgo.QueryStep[IN, BranchRefInput, Branch] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, BranchRefInput, Branch]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetBranch(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetBranchResult] {
+			branches := make([]sdkgo.BranchTarget[GetBranchResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetBranchBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetBranchBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetBranchBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetBranchBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetBranchBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateBranchBranchCreated sdkgo.BranchID = "created"
+const CreateBranchBranchNotFound sdkgo.BranchID = "notFound"
+const CreateBranchBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateBranchBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateBranchBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateBranchDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createBranch"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateBranchBranchCreated, Description: "Bitbucket returned the requested branch state."},
+		{ID: CreateBranchBranchNotFound, Description: "The repository or branch was not found.", Optional: true},
+		{ID: CreateBranchBranchProviderRejected, Description: "Bitbucket rejected the branch request.", Optional: true},
+		{ID: CreateBranchBranchInvalidResponse, Description: "Bitbucket returned malformed or oversized JSON.", Optional: true},
+		{ID: CreateBranchBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateBranchResult = sdkgo.MutationResult[Branch]
+
+type CreateBranchStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                     `connector:"operationId=createBranch"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateBranchInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateBranchResult]             `connector:"branch=created"`
+	NotFound                          sdkgo.Target[CreateBranchResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateBranchResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateBranchResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateBranchResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Branch]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewCreateBranchStep[IN any](config CreateBranchStepConfig[IN]) sdkgo.MutationStep[IN, CreateBranchInput, Branch] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateBranchInput, Branch]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateBranch(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateBranchResult] {
+			branches := make([]sdkgo.BranchTarget[CreateBranchResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateBranchBranchCreated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateBranchBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateBranchBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateBranchBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateBranchBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteBranchBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteBranchBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteBranchBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteBranchBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteBranchDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteBranch"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteBranchBranchDeleted, Description: "Bitbucket returned the requested branch state."},
+		{ID: DeleteBranchBranchNotFound, Description: "The repository or branch was not found.", Optional: true},
+		{ID: DeleteBranchBranchProviderRejected, Description: "Bitbucket rejected the branch request.", Optional: true},
+		{ID: DeleteBranchBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteBranchResult = sdkgo.MutationResult[DeletedBranch]
+
+type DeleteBranchStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=bitbucket"`
+	operationID                       struct{}                                            `connector:"operationId=deleteBranch"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) BranchRefInput                             `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteBranchResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteBranchResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteBranchResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteBranchResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedBranch]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteBranchStep[IN any](config DeleteBranchStepConfig[IN]) sdkgo.MutationStep[IN, BranchRefInput, DeletedBranch] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("bitbucket connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, BranchRefInput, DeletedBranch]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteBranch(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteBranchResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteBranchResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteBranchBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteBranchBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteBranchBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteBranchBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListPullRequestCommentsBranchListed sdkgo.BranchID = "listed"

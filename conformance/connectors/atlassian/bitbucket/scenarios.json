@@ -2,6 +2,1379 @@
   "connector": "bitbucket",
   "scenarios": [
     {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listBranches-rateLimited",
+      "operation": "listBranches"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listBranches-unavailable",
+      "operation": "listBranches"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "next": "",
+          "page": 0,
+          "pagelen": 0,
+          "values": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listBranches-rejected",
+      "operation": "listBranches"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "next": "",
+          "page": 0,
+          "pagelen": 0,
+          "values": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listBranches-notFound",
+      "operation": "listBranches"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listBranches-transportFailure",
+      "operation": "listBranches"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "next": "",
+          "page": 0,
+          "pagelen": 0,
+          "values": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listBranches-invalidResponse",
+      "operation": "listBranches"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "next": "",
+          "page": 0,
+          "pagelen": 0,
+          "values": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "repository": "api",
+        "workspace": "bad/workspace"
+      },
+      "name": "listBranches-defect",
+      "operation": "listBranches"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getBranch-rateLimited",
+      "operation": "getBranch"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getBranch-unavailable",
+      "operation": "getBranch"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "name": "",
+          "target": {
+            "hash": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getBranch-rejected",
+      "operation": "getBranch"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": "",
+          "target": {
+            "hash": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getBranch-notFound",
+      "operation": "getBranch"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000002",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getBranch-transportFailure",
+      "operation": "getBranch"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": "",
+          "target": {
+            "hash": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getBranch-invalidResponse",
+      "operation": "getBranch"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000002",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": "",
+          "target": {
+            "hash": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "refs/heads/feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getBranch-defect",
+      "operation": "getBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestBody": {
+            "name": "feature/tests",
+            "target": {
+              "hash": "0123456789abcdef0123456789abcdef01234567"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "0123456789abcdef0123456789abcdef01234567",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-rateLimited",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestBody": {
+            "name": "feature/tests",
+            "target": {
+              "hash": "0123456789abcdef0123456789abcdef01234567"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "0123456789abcdef0123456789abcdef01234567",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-unavailable",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestBody": {
+            "name": "feature/tests",
+            "target": {
+              "hash": "0123456789abcdef0123456789abcdef01234567"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": "",
+          "target": {
+            "hash": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "0123456789abcdef0123456789abcdef01234567",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-rejected",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestBody": {
+            "name": "feature/tests",
+            "target": {
+              "hash": "0123456789abcdef0123456789abcdef01234567"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "name": "",
+          "target": {
+            "hash": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "0123456789abcdef0123456789abcdef01234567",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-notFound",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestBody": {
+            "name": "feature/tests",
+            "target": {
+              "hash": "0123456789abcdef0123456789abcdef01234567"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "0123456789abcdef0123456789abcdef01234567",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-transportFailure",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestBody": {
+            "name": "feature/tests",
+            "target": {
+              "hash": "0123456789abcdef0123456789abcdef01234567"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": "",
+          "target": {
+            "hash": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "0123456789abcdef0123456789abcdef01234567",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-invalidResponse",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": "",
+          "target": {
+            "hash": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "bad",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-defect",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteBranch-rateLimited",
+      "operation": "deleteBranch"
+    },
+    {
+      "callId": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteBranch-unavailable",
+      "operation": "deleteBranch"
+    },
+    {
+      "callId": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": "",
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteBranch-rejected",
+      "operation": "deleteBranch"
+    },
+    {
+      "callId": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "name": "",
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteBranch-notFound",
+      "operation": "deleteBranch"
+    },
+    {
+      "callId": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteBranch-transportFailure",
+      "operation": "deleteBranch"
+    },
+    {
+      "callId": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": "",
+          "repository": "",
+          "workspace": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "input": {
+        "name": "refs/heads/feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteBranch-defect",
+      "operation": "deleteBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestBody": {
+            "name": "feature/tests",
+            "target": {
+              "hash": "0123456789abcdef0123456789abcdef01234567"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"name\":\"feature/tests\",\"target\":{\"hash\":\"0123456789abcdef0123456789abcdef01234567\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "name": "feature/tests",
+          "target": {
+            "hash": "0123456789abcdef0123456789abcdef01234567"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "0123456789abcdef0123456789abcdef01234567",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-conflictConfirmed",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestBody": {
+            "name": "feature/tests",
+            "target": {
+              "hash": "0123456789abcdef0123456789abcdef01234567"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"name\":\"feature/tests\",\"target\":{\"hash\":\"1111111111111111111111111111111111111111\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": "",
+          "target": {
+            "hash": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "0123456789abcdef0123456789abcdef01234567",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-conflictRejected",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"values\":[{\"name\":\"feature/tests\",\"target\":{\"hash\":\"0123456789abcdef0123456789abcdef01234567\"}}],\"page\":1,\"pagelen\":10}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "next": "",
+          "page": 1,
+          "pagelen": 10,
+          "values": [
+            {
+              "name": "feature/tests",
+              "target": {
+                "hash": "0123456789abcdef0123456789abcdef01234567"
+              }
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "listBranches-listed",
+      "operation": "listBranches"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"feature/tests\",\"target\":{\"hash\":\"0123456789abcdef0123456789abcdef01234567\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "name": "feature/tests",
+          "target": {
+            "hash": "0123456789abcdef0123456789abcdef01234567"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "getBranch-found",
+      "operation": "getBranch"
+    },
+    {
+      "callId": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"feature/tests\",\"target\":{\"hash\":\"0123456789abcdef0123456789abcdef01234567\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/repositories/meridian/api/refs/branches",
+          "requestBody": {
+            "name": "feature/tests",
+            "target": {
+              "hash": "0123456789abcdef0123456789abcdef01234567"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "name": "feature/tests",
+          "target": {
+            "hash": "0123456789abcdef0123456789abcdef01234567"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f0c78e8a-7ca7-5b3a-805b-763fa9a9a89c",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "targetHash": "0123456789abcdef0123456789abcdef01234567",
+        "workspace": "meridian"
+      },
+      "name": "createBranch-created",
+      "operation": "createBranch"
+    },
+    {
+      "callId": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/repositories/meridian/api/refs/branches/feature/tests",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "feature/tests",
+          "repository": "api",
+          "workspace": "meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa7a933-3db4-57f4-be52-7128d381c4b2",
+      "input": {
+        "name": "feature/tests",
+        "repository": "api",
+        "workspace": "meridian"
+      },
+      "name": "deleteBranch-deleted",
+      "operation": "deleteBranch"
+    },
+    {
       "callId": "053af6d7-f498-531d-b903-52fa00fc52aa",
       "exchanges": [
         {

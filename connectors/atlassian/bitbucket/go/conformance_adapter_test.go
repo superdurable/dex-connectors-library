@@ -38,6 +38,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			fenceContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"listBranches":                newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListBranches(), testConnection),
+		"getBranch":                   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetBranch(), testConnection),
+		"createBranch":                newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateBranch(), testConnection, scenario.CallID),
+		"deleteBranch":                newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteBranch(), testConnection, scenario.CallID),
 		"listPullRequestComments":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPullRequestComments(), testConnection),
 		"getPullRequestComment":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPullRequestComment(), testConnection),
 		"createPullRequestComment":    newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreatePullRequestComment(), testConnection, scenario.CallID),

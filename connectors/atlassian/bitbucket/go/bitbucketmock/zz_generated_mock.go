@@ -18,6 +18,10 @@ import (
 // Mock is a scripted bitbucket connection. Script each operation through its accessor.
 type Mock struct {
 	connection                  bitbucket.Connection
+	listBranches                *connectormock.Query[bitbucket.ListBranchesInput, bitbucket.BranchPage]
+	getBranch                   *connectormock.Query[bitbucket.BranchRefInput, bitbucket.Branch]
+	createBranch                *connectormock.Mutation[bitbucket.CreateBranchInput, bitbucket.Branch]
+	deleteBranch                *connectormock.Mutation[bitbucket.BranchRefInput, bitbucket.DeletedBranch]
 	listPullRequestComments     *connectormock.Query[bitbucket.PullRequestActionInput, bitbucket.PullRequestCommentPage]
 	getPullRequestComment       *connectormock.Query[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment]
 	createPullRequestComment    *connectormock.Mutation[bitbucket.CreatePullRequestCommentInput, bitbucket.PullRequestComment]
@@ -43,6 +47,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listBranches:                connectormock.NewQuery[bitbucket.ListBranchesInput, bitbucket.BranchPage](t, bitbucket.ListBranchesDefinition),
+		getBranch:                   connectormock.NewQuery[bitbucket.BranchRefInput, bitbucket.Branch](t, bitbucket.GetBranchDefinition),
+		createBranch:                connectormock.NewMutation[bitbucket.CreateBranchInput, bitbucket.Branch](t, bitbucket.CreateBranchDefinition),
+		deleteBranch:                connectormock.NewMutation[bitbucket.BranchRefInput, bitbucket.DeletedBranch](t, bitbucket.DeleteBranchDefinition),
 		listPullRequestComments:     connectormock.NewQuery[bitbucket.PullRequestActionInput, bitbucket.PullRequestCommentPage](t, bitbucket.ListPullRequestCommentsDefinition),
 		getPullRequestComment:       connectormock.NewQuery[bitbucket.PullRequestCommentIDInput, bitbucket.PullRequestComment](t, bitbucket.GetPullRequestCommentDefinition),
 		createPullRequestComment:    connectormock.NewMutation[bitbucket.CreatePullRequestCommentInput, bitbucket.PullRequestComment](t, bitbucket.CreatePullRequestCommentDefinition),
@@ -62,6 +70,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		listRepositories:            connectormock.NewQuery[bitbucket.ListRepositoriesInput, bitbucket.RepositoryPage](t, bitbucket.ListRepositoriesDefinition),
 		listPullRequests:            connectormock.NewQuery[bitbucket.ListPullRequestsInput, bitbucket.PullRequestPage](t, bitbucket.ListPullRequestsDefinition),
 	}
+	mock.listBranches.Default(ListBranchesDefault())
+	mock.getBranch.Default(GetBranchDefault())
+	mock.createBranch.Default(CreateBranchDefault())
+	mock.deleteBranch.Default(DeleteBranchDefault())
 	mock.listPullRequestComments.Default(ListPullRequestCommentsDefault())
 	mock.getPullRequestComment.Default(GetPullRequestCommentDefault())
 	mock.createPullRequestComment.Default(CreatePullRequestCommentDefault())
@@ -90,6 +102,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() bitbucket.Connection { return mock.connection }
+
+// ListBranches returns the listBranches script.
+func (mock *Mock) ListBranches() *connectormock.Query[bitbucket.ListBranchesInput, bitbucket.BranchPage] {
+	return mock.listBranches
+}
+
+// GetBranch returns the getBranch script.
+func (mock *Mock) GetBranch() *connectormock.Query[bitbucket.BranchRefInput, bitbucket.Branch] {
+	return mock.getBranch
+}
+
+// CreateBranch returns the createBranch script.
+func (mock *Mock) CreateBranch() *connectormock.Mutation[bitbucket.CreateBranchInput, bitbucket.Branch] {
+	return mock.createBranch
+}
+
+// DeleteBranch returns the deleteBranch script.
+func (mock *Mock) DeleteBranch() *connectormock.Mutation[bitbucket.BranchRefInput, bitbucket.DeletedBranch] {
+	return mock.deleteBranch
+}
 
 // ListPullRequestComments returns the listPullRequestComments script.
 func (mock *Mock) ListPullRequestComments() *connectormock.Query[bitbucket.PullRequestActionInput, bitbucket.PullRequestCommentPage] {
@@ -183,6 +215,18 @@ func (mock *Mock) ListPullRequests() *connectormock.Query[bitbucket.ListPullRequ
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListBranches() sdkgo.Query[bitbucket.ListBranchesInput, bitbucket.BranchPage] {
+	return operations.mock.listBranches
+}
+func (operations mockOperations) GetBranch() sdkgo.Query[bitbucket.BranchRefInput, bitbucket.Branch] {
+	return operations.mock.getBranch
+}
+func (operations mockOperations) CreateBranch() sdkgo.Mutation[bitbucket.CreateBranchInput, bitbucket.Branch] {
+	return operations.mock.createBranch
+}
+func (operations mockOperations) DeleteBranch() sdkgo.Mutation[bitbucket.BranchRefInput, bitbucket.DeletedBranch] {
+	return operations.mock.deleteBranch
+}
 func (operations mockOperations) ListPullRequestComments() sdkgo.Query[bitbucket.PullRequestActionInput, bitbucket.PullRequestCommentPage] {
 	return operations.mock.listPullRequestComments
 }
@@ -236,6 +280,161 @@ func (operations mockOperations) ListRepositories() sdkgo.Query[bitbucket.ListRe
 }
 func (operations mockOperations) ListPullRequests() sdkgo.Query[bitbucket.ListPullRequestsInput, bitbucket.PullRequestPage] {
 	return operations.mock.listPullRequests
+}
+
+// ListBranchesListed selects the listed branch: Bitbucket returned the requested branch state.
+func ListBranchesListed(value bitbucket.BranchPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.BranchPage] {
+	return connectormock.Branch(bitbucket.ListBranchesBranchListed, value, failure)
+}
+
+// ListBranchesNotFound selects the notFound branch: The repository or branch was not found.
+func ListBranchesNotFound(value bitbucket.BranchPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.BranchPage] {
+	return connectormock.Branch(bitbucket.ListBranchesBranchNotFound, value, failure)
+}
+
+// ListBranchesProviderRejected selects the providerRejected branch: Bitbucket rejected the branch request.
+func ListBranchesProviderRejected(value bitbucket.BranchPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.BranchPage] {
+	return connectormock.Branch(bitbucket.ListBranchesBranchProviderRejected, value, failure)
+}
+
+// ListBranchesInvalidResponse selects the invalidResponse branch: Bitbucket returned malformed or oversized JSON.
+func ListBranchesInvalidResponse(value bitbucket.BranchPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.BranchPage] {
+	return connectormock.Branch(bitbucket.ListBranchesBranchInvalidResponse, value, failure)
+}
+
+// ListBranchesDefect selects the defect branch: Local input or credentials are invalid.
+func ListBranchesDefect(value bitbucket.BranchPage, failure *sdkgo.Failure) connectormock.Case[bitbucket.BranchPage] {
+	return connectormock.Branch(bitbucket.ListBranchesBranchDefect, value, failure)
+}
+
+// ListBranchesRetry asks Dex to retry the listBranches Step, after the delay when it is positive.
+func ListBranchesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.BranchPage] {
+	return connectormock.Retry[bitbucket.BranchPage](failure, after)
+}
+
+// ListBranchesListedDefault is the manifest mock listedDefault: A sample branch outcome is returned.
+func ListBranchesListedDefault() connectormock.Case[bitbucket.BranchPage] {
+	value := connectormock.MustDecodeOutput[bitbucket.BranchPage](`{"values":[{"name":"feature/tests","target":{"hash":"0123456789abcdef0123456789abcdef01234567"}}],"page":1,"pagelen":10}`)
+	return connectormock.Branch(bitbucket.ListBranchesBranchListed, value, nil)
+}
+
+// ListBranchesDefault is the manifest default, listedDefault, which New installs.
+func ListBranchesDefault() connectormock.Case[bitbucket.BranchPage] {
+	return ListBranchesListedDefault()
+}
+
+// GetBranchFound selects the found branch: Bitbucket returned the requested branch state.
+func GetBranchFound(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.GetBranchBranchFound, value, failure)
+}
+
+// GetBranchNotFound selects the notFound branch: The repository or branch was not found.
+func GetBranchNotFound(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.GetBranchBranchNotFound, value, failure)
+}
+
+// GetBranchProviderRejected selects the providerRejected branch: Bitbucket rejected the branch request.
+func GetBranchProviderRejected(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.GetBranchBranchProviderRejected, value, failure)
+}
+
+// GetBranchInvalidResponse selects the invalidResponse branch: Bitbucket returned malformed or oversized JSON.
+func GetBranchInvalidResponse(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.GetBranchBranchInvalidResponse, value, failure)
+}
+
+// GetBranchDefect selects the defect branch: Local input or credentials are invalid.
+func GetBranchDefect(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.GetBranchBranchDefect, value, failure)
+}
+
+// GetBranchRetry asks Dex to retry the getBranch Step, after the delay when it is positive.
+func GetBranchRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Retry[bitbucket.Branch](failure, after)
+}
+
+// GetBranchFoundDefault is the manifest mock foundDefault: A sample branch outcome is returned.
+func GetBranchFoundDefault() connectormock.Case[bitbucket.Branch] {
+	value := connectormock.MustDecodeOutput[bitbucket.Branch](`{"name":"feature/tests","target":{"hash":"0123456789abcdef0123456789abcdef01234567"}}`)
+	return connectormock.Branch(bitbucket.GetBranchBranchFound, value, nil)
+}
+
+// GetBranchDefault is the manifest default, foundDefault, which New installs.
+func GetBranchDefault() connectormock.Case[bitbucket.Branch] { return GetBranchFoundDefault() }
+
+// CreateBranchCreated selects the created branch: Bitbucket returned the requested branch state.
+func CreateBranchCreated(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.CreateBranchBranchCreated, value, failure)
+}
+
+// CreateBranchNotFound selects the notFound branch: The repository or branch was not found.
+func CreateBranchNotFound(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.CreateBranchBranchNotFound, value, failure)
+}
+
+// CreateBranchProviderRejected selects the providerRejected branch: Bitbucket rejected the branch request.
+func CreateBranchProviderRejected(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.CreateBranchBranchProviderRejected, value, failure)
+}
+
+// CreateBranchInvalidResponse selects the invalidResponse branch: Bitbucket returned malformed or oversized JSON.
+func CreateBranchInvalidResponse(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.CreateBranchBranchInvalidResponse, value, failure)
+}
+
+// CreateBranchDefect selects the defect branch: Local input or credentials are invalid.
+func CreateBranchDefect(value bitbucket.Branch, failure *sdkgo.Failure) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Branch(bitbucket.CreateBranchBranchDefect, value, failure)
+}
+
+// CreateBranchRetry asks Dex to retry the createBranch Step, after the delay when it is positive.
+func CreateBranchRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.Branch] {
+	return connectormock.Retry[bitbucket.Branch](failure, after)
+}
+
+// CreateBranchCreatedDefault is the manifest mock createdDefault: A sample branch outcome is returned.
+func CreateBranchCreatedDefault() connectormock.Case[bitbucket.Branch] {
+	value := connectormock.MustDecodeOutput[bitbucket.Branch](`{"name":"feature/tests","target":{"hash":"0123456789abcdef0123456789abcdef01234567"}}`)
+	return connectormock.Branch(bitbucket.CreateBranchBranchCreated, value, nil)
+}
+
+// CreateBranchDefault is the manifest default, createdDefault, which New installs.
+func CreateBranchDefault() connectormock.Case[bitbucket.Branch] { return CreateBranchCreatedDefault() }
+
+// DeleteBranchDeleted selects the deleted branch: Bitbucket returned the requested branch state.
+func DeleteBranchDeleted(value bitbucket.DeletedBranch, failure *sdkgo.Failure) connectormock.Case[bitbucket.DeletedBranch] {
+	return connectormock.Branch(bitbucket.DeleteBranchBranchDeleted, value, failure)
+}
+
+// DeleteBranchNotFound selects the notFound branch: The repository or branch was not found.
+func DeleteBranchNotFound(value bitbucket.DeletedBranch, failure *sdkgo.Failure) connectormock.Case[bitbucket.DeletedBranch] {
+	return connectormock.Branch(bitbucket.DeleteBranchBranchNotFound, value, failure)
+}
+
+// DeleteBranchProviderRejected selects the providerRejected branch: Bitbucket rejected the branch request.
+func DeleteBranchProviderRejected(value bitbucket.DeletedBranch, failure *sdkgo.Failure) connectormock.Case[bitbucket.DeletedBranch] {
+	return connectormock.Branch(bitbucket.DeleteBranchBranchProviderRejected, value, failure)
+}
+
+// DeleteBranchDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteBranchDefect(value bitbucket.DeletedBranch, failure *sdkgo.Failure) connectormock.Case[bitbucket.DeletedBranch] {
+	return connectormock.Branch(bitbucket.DeleteBranchBranchDefect, value, failure)
+}
+
+// DeleteBranchRetry asks Dex to retry the deleteBranch Step, after the delay when it is positive.
+func DeleteBranchRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bitbucket.DeletedBranch] {
+	return connectormock.Retry[bitbucket.DeletedBranch](failure, after)
+}
+
+// DeleteBranchDeletedDefault is the manifest mock deletedDefault: A sample branch outcome is returned.
+func DeleteBranchDeletedDefault() connectormock.Case[bitbucket.DeletedBranch] {
+	value := connectormock.MustDecodeOutput[bitbucket.DeletedBranch](`{"workspace":"meridian","repository":"api","name":"feature/tests"}`)
+	return connectormock.Branch(bitbucket.DeleteBranchBranchDeleted, value, nil)
+}
+
+// DeleteBranchDefault is the manifest default, deletedDefault, which New installs.
+func DeleteBranchDefault() connectormock.Case[bitbucket.DeletedBranch] {
+	return DeleteBranchDeletedDefault()
 }
 
 // ListPullRequestCommentsListed selects the listed branch: Bitbucket returned the requested comment state.

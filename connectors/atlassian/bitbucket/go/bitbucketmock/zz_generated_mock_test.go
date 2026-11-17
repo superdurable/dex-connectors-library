@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listBranches/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.BranchPage](`{"values":[{"name":"feature/tests","target":{"hash":"0123456789abcdef0123456789abcdef01234567"}}],"page":1,"pagelen":10}`)
+			return err
+		}},
+		{name: "getBranch/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.Branch](`{"name":"feature/tests","target":{"hash":"0123456789abcdef0123456789abcdef01234567"}}`)
+			return err
+		}},
+		{name: "createBranch/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.Branch](`{"name":"feature/tests","target":{"hash":"0123456789abcdef0123456789abcdef01234567"}}`)
+			return err
+		}},
+		{name: "deleteBranch/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bitbucket.DeletedBranch](`{"workspace":"meridian","repository":"api","name":"feature/tests"}`)
+			return err
+		}},
 		{name: "listPullRequestComments/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[bitbucket.PullRequestCommentPage](`{"values":[{"id":3,"content":{"raw":"Looks good"},"deleted":false}],"page":1,"pagelen":10}`)
 			return err
@@ -98,6 +114,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListBranches().Definition().Operation.OperationID != "listBranches" {
+		t.Errorf("listBranches mock has another definition")
+	}
+	if mock.GetBranch().Definition().Operation.OperationID != "getBranch" {
+		t.Errorf("getBranch mock has another definition")
+	}
+	if mock.CreateBranch().Definition().Operation.OperationID != "createBranch" {
+		t.Errorf("createBranch mock has another definition")
+	}
+	if mock.DeleteBranch().Definition().Operation.OperationID != "deleteBranch" {
+		t.Errorf("deleteBranch mock has another definition")
+	}
 	if mock.ListPullRequestComments().Definition().Operation.OperationID != "listPullRequestComments" {
 		t.Errorf("listPullRequestComments mock has another definition")
 	}
