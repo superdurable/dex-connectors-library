@@ -75,6 +75,26 @@ spec:
           default: true
           description: Sample Buffer idea.
           output: {id: idea-1, title: Sample idea, text: Sample text}
+    - name: listIdeas
+      goName: ListIdeas
+      inputType: ListIdeasInput
+      outputType: IdeasPage
+      kind: query
+      description: List one page of idea IDs, titles, and text in an organization.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Buffer returned one idea page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer rejected idea listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Buffer returned an invalid idea page., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample idea page.
+          output: {ideas: [{id: idea-1, title: Sample idea, text: Sample text}], endCursor: cursor-1, hasNextPage: false}
     - name: listOrganizations
       goName: ListOrganizations
       inputType: ListOrganizationsInput

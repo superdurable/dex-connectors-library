@@ -19,6 +19,7 @@ const (
 	ConnectionName       = "buffer"
 	operationStepType    = "CallGetChannel"
 	organizationStepType = "CallListOrganizations"
+	ideasStepType        = "CallListIdeas"
 )
 
 var channelAttribute = dex.DefineAttribute[buffer.ChannelProfile]("buffer-channel-read")
@@ -54,6 +55,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Buffer", Explanation: "List organizations available to the Buffer API key."},
 			Connection:          flow.connection,
 			MapToOperationInput: mapOrganizationsInput,
+			Listed:              sdkgo.GoTo(listFirstIdeas{}),
+		})),
+		dex.DefineStep(listFirstIdeas{}),
+		dex.DefineStep(buffer.NewListIdeasStep(buffer.ListIdeasStepConfig[buffer.ListIdeasInput]{
+			StepType: ideasStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Buffer", Explanation: "List one page of ideas in the first visible organization."},
+			Connection:          flow.connection,
+			MapToOperationInput: mapIdeasInput,
 			Listed:              sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
@@ -129,14 +138,34 @@ func mapOrganizationsInput(input buffer.ListOrganizationsInput) buffer.ListOrgan
 	return input
 }
 
-// dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow after organization discovery."
-type completeResult struct {
+// dex:group group-id:provider group-label:"Buffer"
+// dex:explanation text:"Discover ideas in the first available organization."
+type listFirstIdeas struct {
 	dex.StepDefaultsNoWaitFor[buffer.ListOrganizationsResult]
 }
 
+func (listFirstIdeas) GetStepType() string { return "ListFirstIdeas" }
+func (listFirstIdeas) Execute(ctx dex.Context, result buffer.ListOrganizationsResult) (*dex.StepDecision, error) {
+	if len(result.Value.Organizations) == 0 {
+		channel, err := channelAttribute.Get(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return dex.GracefulComplete(channel), nil
+	}
+	return dex.GoTo(sdkgo.StepRef[buffer.ListIdeasInput](ideasStepType), buffer.ListIdeasInput{OrganizationID: result.Value.Organizations[0].ID}), nil
+}
+
+func mapIdeasInput(input buffer.ListIdeasInput) buffer.ListIdeasInput { return input }
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete after reading the first organization's ideas."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[buffer.ListIdeasResult]
+}
+
 func (completeResult) GetStepType() string { return "CompleteGetChannel" }
-func (completeResult) Execute(ctx dex.Context, _ buffer.ListOrganizationsResult) (*dex.StepDecision, error) {
+func (completeResult) Execute(ctx dex.Context, _ buffer.ListIdeasResult) (*dex.StepDecision, error) {
 	channel, err := channelAttribute.Get(ctx)
 	if err != nil {
 		return nil, err

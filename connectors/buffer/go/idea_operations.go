@@ -24,7 +24,7 @@ type CreateIdeaInput struct {
 	Text string `json:"text"`
 }
 
-// IdeaProfile contains the created idea's identity and text content.
+// IdeaProfile contains an idea's identity and text content.
 type IdeaProfile struct {
 	// ID is Buffer's idea identifier.
 	ID string `json:"id"`
@@ -34,14 +34,43 @@ type IdeaProfile struct {
 	Text string `json:"text"`
 }
 
+// ListIdeasInput selects one page of ideas in an organization.
+type ListIdeasInput struct {
+	// OrganizationID is returned by ListOrganizations.
+	OrganizationID string `json:"organizationId"`
+	// First is the page size from 1 to 100; zero uses 20.
+	First int `json:"first"`
+	// After is an opaque cursor; blank begins at the first page.
+	After string `json:"after,omitempty"`
+}
+
+// IdeasPage contains one page of ideas and its next-page cursor.
+type IdeasPage struct {
+	// Ideas are the selected idea identities and text.
+	Ideas []IdeaProfile `json:"ideas"`
+	// EndCursor is passed as After when HasNextPage is true.
+	EndCursor string `json:"endCursor,omitempty"`
+	// HasNextPage reports whether another page exists.
+	HasNextPage bool `json:"hasNextPage"`
+}
+
 // CreateIdeaOperation creates an idea with bounded sends.
 type CreateIdeaOperation struct{ client *Client }
+
+// ListIdeasOperation reads one page of ideas.
+type ListIdeasOperation struct{ client *Client }
 
 // CreateIdea binds idea creation to this client.
 func (client *Client) CreateIdea() CreateIdeaOperation { return CreateIdeaOperation{client: client} }
 
+// ListIdeas binds idea pagination to this client.
+func (client *Client) ListIdeas() ListIdeasOperation { return ListIdeasOperation{client: client} }
+
 // Definition returns the generated idea creation contract.
 func (CreateIdeaOperation) Definition() sdkgo.MutationDefinition { return CreateIdeaDefinition }
+
+// Definition returns the generated idea page contract.
+func (ListIdeasOperation) Definition() sdkgo.QueryDefinition { return ListIdeasDefinition }
 
 // IdempotencyKey preserves the identity of bounded idea creation attempts.
 func (CreateIdeaOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateIdeaInput) sdkgo.IdempotencyKey {
@@ -49,6 +78,54 @@ func (CreateIdeaOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateIdeaInput
 }
 
 const createIdeaGraphQL = "mutation CreateIdea($input: CreateIdeaInput!) { createIdea(input: $input) { ... on Idea { id content { title text } } } }"
+const listIdeasGraphQL = "query ListIdeas($input: IdeasInput!, $first: Int, $after: String) { ideas(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id content { title text } } } } }"
+
+// Invoke reads one page of idea identities and text.
+func (operation ListIdeasOperation) Invoke(call sdkgo.Call, input ListIdeasInput) sdkgo.QueryAttempt[IdeasPage] {
+	const name = "listIdeas"
+	if !validGraphQLID(input.OrganizationID) || input.First < 0 || input.First > 100 || len(input.After) > 512 {
+		return bufferQueryBranch(ListIdeasBranchDefect, IdeasPage{}, name, sdkgo.FailureValidation, "organization, page size, or cursor is invalid")
+	}
+	if input.First == 0 {
+		input.First = 20
+	}
+	variables := map[string]any{"input": map[string]any{"organizationId": input.OrganizationID}, "first": input.First, "after": input.After}
+	return invokeBufferQuery(call, operation.client, name, listIdeasGraphQL, variables, ListIdeasBranchListed, "", ListIdeasBranchProviderRejected, ListIdeasBranchInvalidResponse, ListIdeasBranchDefect, func(body []byte) (IdeasPage, bool, error) {
+		var wire struct {
+			Data *struct {
+				Ideas *struct {
+					PageInfo struct {
+						EndCursor string `json:"endCursor"`
+						HasNextPage bool `json:"hasNextPage"`
+					} `json:"pageInfo"`
+					Edges []struct {
+						Node struct {
+							ID string `json:"id"`
+							Content struct {
+								Title string `json:"title"`
+								Text string `json:"text"`
+							} `json:"content"`
+						} `json:"node"`
+					} `json:"edges"`
+				} `json:"ideas"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(body, &wire); err != nil || wire.Data == nil || wire.Data.Ideas == nil || wire.Data.Ideas.Edges == nil {
+			return IdeasPage{}, false, errors.New("invalid ideas page")
+		}
+		ideas := make([]IdeaProfile, 0, len(wire.Data.Ideas.Edges))
+		for _, edge := range wire.Data.Ideas.Edges {
+			if edge.Node.ID == "" {
+				return IdeasPage{}, false, errors.New("idea ID missing")
+			}
+			ideas = append(ideas, IdeaProfile{ID: edge.Node.ID, Title: edge.Node.Content.Title, Text: edge.Node.Content.Text})
+		}
+		if wire.Data.Ideas.PageInfo.HasNextPage && wire.Data.Ideas.PageInfo.EndCursor == "" {
+			return IdeasPage{}, false, errors.New("next idea cursor missing")
+		}
+		return IdeasPage{Ideas: ideas, EndCursor: wire.Data.Ideas.PageInfo.EndCursor, HasNextPage: wire.Data.Ideas.PageInfo.HasNextPage}, false, nil
+	})
+}
 
 // Invoke creates one text idea and reports an unknown outcome at the send cap.
 func (operation CreateIdeaOperation) Invoke(call sdkgo.Call, input CreateIdeaInput) sdkgo.MutationAttempt[IdeaProfile] {

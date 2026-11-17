@@ -41,6 +41,7 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	CreateIdea() sdkgo.Mutation[CreateIdeaInput, IdeaProfile]
+	ListIdeas() sdkgo.Query[ListIdeasInput, IdeasPage]
 	ListOrganizations() sdkgo.Query[ListOrganizationsInput, OrganizationsList]
 	ListChannels() sdkgo.Query[ListChannelsInput, ChannelsList]
 	GetPost() sdkgo.Query[GetPostInput, PostProfile]
@@ -57,6 +58,9 @@ type clientOperations struct{ client *Client }
 
 func (operations clientOperations) CreateIdea() sdkgo.Mutation[CreateIdeaInput, IdeaProfile] {
 	return operations.client.CreateIdea()
+}
+func (operations clientOperations) ListIdeas() sdkgo.Query[ListIdeasInput, IdeasPage] {
+	return operations.client.ListIdeas()
 }
 func (operations clientOperations) ListOrganizations() sdkgo.Query[ListOrganizationsInput, OrganizationsList] {
 	return operations.client.ListOrganizations()
@@ -299,6 +303,77 @@ func NewCreateIdeaStep[IN any](config CreateIdeaStepConfig[IN]) sdkgo.MutationSt
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListIdeasBranchListed sdkgo.BranchID = "listed"
+const ListIdeasBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListIdeasBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListIdeasBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListIdeasDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listIdeas"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListIdeasBranchListed, Description: "Buffer returned one idea page."},
+		{ID: ListIdeasBranchProviderRejected, Description: "Buffer rejected idea listing.", Optional: true},
+		{ID: ListIdeasBranchInvalidResponse, Description: "Buffer returned an invalid idea page.", Optional: true},
+		{ID: ListIdeasBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListIdeasResult = sdkgo.QueryResult[IdeasPage]
+
+type ListIdeasStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=buffer"`
+	operationID                    struct{}                                     `connector:"operationId=listIdeas"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListIdeasInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListIdeasResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListIdeasResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListIdeasResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListIdeasResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[IdeasPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListIdeasStep[IN any](config ListIdeasStepConfig[IN]) sdkgo.QueryStep[IN, ListIdeasInput, IdeasPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("buffer connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListIdeasInput, IdeasPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListIdeas(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListIdeasResult] {
+			branches := make([]sdkgo.BranchTarget[ListIdeasResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListIdeasBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListIdeasBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListIdeasBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListIdeasBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }
 

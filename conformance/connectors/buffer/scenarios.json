@@ -4702,6 +4702,366 @@
           "state": "claimed"
         }
       }
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"ideas\":{\"edges\":[{\"node\":{\"id\":\"idea-1\",\"content\":{\"title\":\"Draft thought\",\"text\":\"Hello\"}}}],\"pageInfo\":{\"endCursor\":\"cursor-2\",\"hasNextPage\":true}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListIdeas($input: IdeasInput!, $first: Int, $after: String) { ideas(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id content { title text } } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "endCursor": "cursor-2",
+          "hasNextPage": true,
+          "ideas": [
+            {
+              "id": "idea-1",
+              "text": "Hello",
+              "title": "Draft thought"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listIdeas-success",
+      "operation": "listIdeas"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListIdeas($input: IdeasInput!, $first: Int, $after: String) { ideas(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id content { title text } } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasNextPage": false,
+          "ideas": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listIdeas-providerRejected",
+      "operation": "listIdeas"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListIdeas($input: IdeasInput!, $first: Int, $after: String) { ideas(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id content { title text } } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasNextPage": false,
+          "ideas": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listIdeas-invalidResponse",
+      "operation": "listIdeas"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListIdeas($input: IdeasInput!, $first: Int, $after: String) { ideas(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id content { title text } } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listIdeas-429",
+      "operation": "listIdeas"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListIdeas($input: IdeasInput!, $first: Int, $after: String) { ideas(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id content { title text } } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listIdeas-503",
+      "operation": "listIdeas"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListIdeas($input: IdeasInput!, $first: Int, $after: String) { ideas(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id content { title text } } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listIdeas-500",
+      "operation": "listIdeas"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query ListIdeas($input: IdeasInput!, $first: Int, $after: String) { ideas(input: $input, first: $first, after: $after) { pageInfo { endCursor hasNextPage } edges { node { id content { title text } } } } }",
+            "variables": {
+              "after": "cursor-1",
+              "first": 10,
+              "input": {
+                "organizationId": "org-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "first": 10,
+        "organizationId": "org-1"
+      },
+      "name": "listIdeas-transportFailure",
+      "operation": "listIdeas"
     }
   ],
   "schemaVersion": 1

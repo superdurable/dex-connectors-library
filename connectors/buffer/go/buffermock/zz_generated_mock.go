@@ -19,6 +19,7 @@ import (
 type Mock struct {
 	connection          buffer.Connection
 	createIdea          *connectormock.Mutation[buffer.CreateIdeaInput, buffer.IdeaProfile]
+	listIdeas           *connectormock.Query[buffer.ListIdeasInput, buffer.IdeasPage]
 	listOrganizations   *connectormock.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList]
 	listChannels        *connectormock.Query[buffer.ListChannelsInput, buffer.ChannelsList]
 	getPost             *connectormock.Query[buffer.GetPostInput, buffer.PostProfile]
@@ -37,6 +38,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
 		createIdea:          connectormock.NewMutation[buffer.CreateIdeaInput, buffer.IdeaProfile](t, buffer.CreateIdeaDefinition),
+		listIdeas:           connectormock.NewQuery[buffer.ListIdeasInput, buffer.IdeasPage](t, buffer.ListIdeasDefinition),
 		listOrganizations:   connectormock.NewQuery[buffer.ListOrganizationsInput, buffer.OrganizationsList](t, buffer.ListOrganizationsDefinition),
 		listChannels:        connectormock.NewQuery[buffer.ListChannelsInput, buffer.ChannelsList](t, buffer.ListChannelsDefinition),
 		getPost:             connectormock.NewQuery[buffer.GetPostInput, buffer.PostProfile](t, buffer.GetPostDefinition),
@@ -49,6 +51,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		getChannel:          connectormock.NewQuery[buffer.GetChannelInput, buffer.ChannelProfile](t, buffer.GetChannelDefinition),
 	}
 	mock.createIdea.Default(CreateIdeaDefault())
+	mock.listIdeas.Default(ListIdeasDefault())
 	mock.listOrganizations.Default(ListOrganizationsDefault())
 	mock.listChannels.Default(ListChannelsDefault())
 	mock.getPost.Default(GetPostDefault())
@@ -73,6 +76,11 @@ func (mock *Mock) Connection() buffer.Connection { return mock.connection }
 // CreateIdea returns the createIdea script.
 func (mock *Mock) CreateIdea() *connectormock.Mutation[buffer.CreateIdeaInput, buffer.IdeaProfile] {
 	return mock.createIdea
+}
+
+// ListIdeas returns the listIdeas script.
+func (mock *Mock) ListIdeas() *connectormock.Query[buffer.ListIdeasInput, buffer.IdeasPage] {
+	return mock.listIdeas
 }
 
 // ListOrganizations returns the listOrganizations script.
@@ -129,6 +137,9 @@ type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateIdea() sdkgo.Mutation[buffer.CreateIdeaInput, buffer.IdeaProfile] {
 	return operations.mock.createIdea
+}
+func (operations mockOperations) ListIdeas() sdkgo.Query[buffer.ListIdeasInput, buffer.IdeasPage] {
+	return operations.mock.listIdeas
 }
 func (operations mockOperations) ListOrganizations() sdkgo.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList] {
 	return operations.mock.listOrganizations
@@ -194,6 +205,40 @@ func CreateIdeaCreatedDefault() connectormock.Case[buffer.IdeaProfile] {
 
 // CreateIdeaDefault is the manifest default, createdDefault, which New installs.
 func CreateIdeaDefault() connectormock.Case[buffer.IdeaProfile] { return CreateIdeaCreatedDefault() }
+
+// ListIdeasListed selects the listed branch: Buffer returned one idea page.
+func ListIdeasListed(value buffer.IdeasPage, failure *sdkgo.Failure) connectormock.Case[buffer.IdeasPage] {
+	return connectormock.Branch(buffer.ListIdeasBranchListed, value, failure)
+}
+
+// ListIdeasProviderRejected selects the providerRejected branch: Buffer rejected idea listing.
+func ListIdeasProviderRejected(value buffer.IdeasPage, failure *sdkgo.Failure) connectormock.Case[buffer.IdeasPage] {
+	return connectormock.Branch(buffer.ListIdeasBranchProviderRejected, value, failure)
+}
+
+// ListIdeasInvalidResponse selects the invalidResponse branch: Buffer returned an invalid idea page.
+func ListIdeasInvalidResponse(value buffer.IdeasPage, failure *sdkgo.Failure) connectormock.Case[buffer.IdeasPage] {
+	return connectormock.Branch(buffer.ListIdeasBranchInvalidResponse, value, failure)
+}
+
+// ListIdeasDefect selects the defect branch: Local input or credentials are invalid.
+func ListIdeasDefect(value buffer.IdeasPage, failure *sdkgo.Failure) connectormock.Case[buffer.IdeasPage] {
+	return connectormock.Branch(buffer.ListIdeasBranchDefect, value, failure)
+}
+
+// ListIdeasRetry asks Dex to retry the listIdeas Step, after the delay when it is positive.
+func ListIdeasRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.IdeasPage] {
+	return connectormock.Retry[buffer.IdeasPage](failure, after)
+}
+
+// ListIdeasListedDefault is the manifest mock listedDefault: Sample idea page.
+func ListIdeasListedDefault() connectormock.Case[buffer.IdeasPage] {
+	value := connectormock.MustDecodeOutput[buffer.IdeasPage](`{"ideas":[{"id":"idea-1","title":"Sample idea","text":"Sample text"}],"endCursor":"cursor-1","hasNextPage":false}`)
+	return connectormock.Branch(buffer.ListIdeasBranchListed, value, nil)
+}
+
+// ListIdeasDefault is the manifest default, listedDefault, which New installs.
+func ListIdeasDefault() connectormock.Case[buffer.IdeasPage] { return ListIdeasListedDefault() }
 
 // ListOrganizationsListed selects the listed branch: Buffer completed the operation.
 func ListOrganizationsListed(value buffer.OrganizationsList, failure *sdkgo.Failure) connectormock.Case[buffer.OrganizationsList] {
