@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCampaigns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.CampaignPage](`{"rows":[{"campaign":{"resourceName":"customers/1234567890/campaigns/7","id":"7","name":"Example campaign","status":"PAUSED"}}]}`)
+			return err
+		}},
+		{name: "getCampaign/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.CampaignRow](`{"campaign":{"resourceName":"customers/1234567890/campaigns/7","id":"7","name":"Example campaign","status":"PAUSED"}}`)
+			return err
+		}},
+		{name: "createCampaign/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.CampaignMutationResult](`{"resourceName":"customers/1234567890/campaigns/7"}`)
+			return err
+		}},
+		{name: "updateCampaignStatus/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.CampaignMutationResult](`{"resourceName":"customers/1234567890/campaigns/7"}`)
+			return err
+		}},
+		{name: "removeCampaign/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.CampaignMutationResult](`{"resourceName":"customers/1234567890/campaigns/7"}`)
+			return err
+		}},
 		{name: "listAccessibleCustomers/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ads.AccessibleCustomers](`{"resourceNames":["customers/1234567890"]}`)
 			return err
@@ -30,6 +50,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
+		t.Errorf("listCampaigns mock has another definition")
+	}
+	if mock.GetCampaign().Definition().Operation.OperationID != "getCampaign" {
+		t.Errorf("getCampaign mock has another definition")
+	}
+	if mock.CreateCampaign().Definition().Operation.OperationID != "createCampaign" {
+		t.Errorf("createCampaign mock has another definition")
+	}
+	if mock.UpdateCampaignStatus().Definition().Operation.OperationID != "updateCampaignStatus" {
+		t.Errorf("updateCampaignStatus mock has another definition")
+	}
+	if mock.RemoveCampaign().Definition().Operation.OperationID != "removeCampaign" {
+		t.Errorf("removeCampaign mock has another definition")
+	}
 	if mock.ListAccessibleCustomers().Definition().Operation.OperationID != "listAccessibleCustomers" {
 		t.Errorf("listAccessibleCustomers mock has another definition")
 	}

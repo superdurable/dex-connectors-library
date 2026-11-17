@@ -298,6 +298,2193 @@
       ],
       "name": "listAccessibleCustomers-retryThenListed",
       "operation": "listAccessibleCustomers"
+    },
+    {
+      "callId": "a32cd705-c3c1-43c7-8d5d-3a89e5e42b02",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"campaign\":{\"resourceName\":\"customers/1234567890/campaigns/7\",\"id\":\"7\",\"name\":\"Example campaign\",\"status\":\"PAUSED\"},\"metrics\":{\"impressions\":\"100\",\"clicks\":\"5\",\"costMicros\":\"3000000\"}}],\"nextPageToken\":\"later\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "pageToken": "next",
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id \u003e 0 AND campaign.status = PAUSED AND segments.date DURING LAST_7_DAYS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "later",
+          "rows": [
+            {
+              "campaign": {
+                "id": "7",
+                "name": "Example campaign",
+                "resourceName": "customers/1234567890/campaigns/7",
+                "status": "PAUSED"
+              },
+              "metrics": {
+                "clicks": "5",
+                "costMicros": "3000000",
+                "impressions": "100"
+              }
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "1234567890",
+        "dateRange": "LAST_7_DAYS",
+        "managerCustomerId": "9998887777",
+        "pageToken": "next",
+        "status": "PAUSED"
+      },
+      "name": "listCampaigns-listed",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "a32cd705-c3c1-43c7-8d5d-3a89e5e42b02",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "pageToken": "next",
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id \u003e 0 AND campaign.status = PAUSED AND segments.date DURING LAST_7_DAYS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "1234567890",
+        "dateRange": "LAST_7_DAYS",
+        "managerCustomerId": "9998887777",
+        "pageToken": "next",
+        "status": "PAUSED"
+      },
+      "name": "listCampaigns-providerRejected",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "a32cd705-c3c1-43c7-8d5d-3a89e5e42b02",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "pageToken": "next",
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id \u003e 0 AND campaign.status = PAUSED AND segments.date DURING LAST_7_DAYS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "1234567890",
+        "dateRange": "LAST_7_DAYS",
+        "managerCustomerId": "9998887777",
+        "pageToken": "next",
+        "status": "PAUSED"
+      },
+      "name": "listCampaigns-invalidResponse",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "a32cd705-c3c1-43c7-8d5d-3a89e5e42b02",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "",
+        "dateRange": "LAST_7_DAYS",
+        "managerCustomerId": "9998887777",
+        "pageToken": "next",
+        "status": "PAUSED"
+      },
+      "name": "listCampaigns-defect",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "a32cd705-c3c1-43c7-8d5d-3a89e5e42b02",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "pageToken": "next",
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id \u003e 0 AND campaign.status = PAUSED AND segments.date DURING LAST_7_DAYS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "1234567890",
+        "dateRange": "LAST_7_DAYS",
+        "managerCustomerId": "9998887777",
+        "pageToken": "next",
+        "status": "PAUSED"
+      },
+      "name": "listCampaigns-rateLimit",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "a32cd705-c3c1-43c7-8d5d-3a89e5e42b02",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "pageToken": "next",
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id \u003e 0 AND campaign.status = PAUSED AND segments.date DURING LAST_7_DAYS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "1234567890",
+        "dateRange": "LAST_7_DAYS",
+        "managerCustomerId": "9998887777",
+        "pageToken": "next",
+        "status": "PAUSED"
+      },
+      "name": "listCampaigns-serviceUnavailable",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "a32cd705-c3c1-43c7-8d5d-3a89e5e42b02",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "pageToken": "next",
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id \u003e 0 AND campaign.status = PAUSED AND segments.date DURING LAST_7_DAYS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "1234567890",
+        "dateRange": "LAST_7_DAYS",
+        "managerCustomerId": "9998887777",
+        "pageToken": "next",
+        "status": "PAUSED"
+      },
+      "name": "listCampaigns-serverError",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "a32cd705-c3c1-43c7-8d5d-3a89e5e42b02",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "pageToken": "next",
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id \u003e 0 AND campaign.status = PAUSED AND segments.date DURING LAST_7_DAYS"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "1234567890",
+        "dateRange": "LAST_7_DAYS",
+        "managerCustomerId": "9998887777",
+        "pageToken": "next",
+        "status": "PAUSED"
+      },
+      "name": "listCampaigns-transportFailure",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "f9d28821-4d71-418b-a75a-9d1294bd75ea",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"campaign\":{\"resourceName\":\"customers/1234567890/campaigns/7\",\"id\":\"7\",\"name\":\"Example campaign\",\"status\":\"PAUSED\"},\"metrics\":{\"impressions\":\"100\",\"clicks\":\"5\",\"costMicros\":\"3000000\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id = 7"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "id": "7",
+            "name": "Example campaign",
+            "resourceName": "customers/1234567890/campaigns/7",
+            "status": "PAUSED"
+          },
+          "metrics": {
+            "clicks": "5",
+            "costMicros": "3000000",
+            "impressions": "100"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "getCampaign-found",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "f9d28821-4d71-418b-a75a-9d1294bd75ea",
+      "exchanges": [
+        {
+          "body": "{\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id = 7"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "campaign": {
+            "id": "",
+            "name": "",
+            "resourceName": "",
+            "status": ""
+          },
+          "metrics": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "getCampaign-notFound",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "f9d28821-4d71-418b-a75a-9d1294bd75ea",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id = 7"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaign": {
+            "id": "",
+            "name": "",
+            "resourceName": "",
+            "status": ""
+          },
+          "metrics": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "getCampaign-providerRejected",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "f9d28821-4d71-418b-a75a-9d1294bd75ea",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id = 7"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaign": {
+            "id": "",
+            "name": "",
+            "resourceName": "",
+            "status": ""
+          },
+          "metrics": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "getCampaign-invalidResponse",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "f9d28821-4d71-418b-a75a-9d1294bd75ea",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaign": {
+            "id": "",
+            "name": "",
+            "resourceName": "",
+            "status": ""
+          },
+          "metrics": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "7",
+        "customerId": "",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "getCampaign-defect",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "f9d28821-4d71-418b-a75a-9d1294bd75ea",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id = 7"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "getCampaign-rateLimit",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "f9d28821-4d71-418b-a75a-9d1294bd75ea",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id = 7"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "getCampaign-serviceUnavailable",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "f9d28821-4d71-418b-a75a-9d1294bd75ea",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id = 7"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "getCampaign-serverError",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "f9d28821-4d71-418b-a75a-9d1294bd75ea",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/googleAds:search",
+          "requestBody": {
+            "query": "SELECT campaign.resource_name, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.campaign_budget, metrics.impressions, metrics.clicks, metrics.cost_micros FROM campaign WHERE campaign.id = 7"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "getCampaign-transportFailure",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"resourceName\":\"customers/1234567890/campaigns/7\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "providerId": "customers/1234567890/campaigns/7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "resourceName": "customers/1234567890/campaigns/7"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "name": "createCampaign-created",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "name": "createCampaign-providerRejected",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "name": "createCampaign-defect",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "name": "createCampaign-rateLimit",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "name": "createCampaign-serviceUnavailable",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "name": "createCampaign-serverError",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "name": "createCampaign-transportFailure",
+      "operation": "createCampaign"
+    },
+    {
+      "attempts": 3,
+      "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "create": {
+                  "advertisingChannelType": "SEARCH",
+                  "campaignBudget": "customers/1234567890/campaignBudgets/11",
+                  "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+                  "manualCpc": {},
+                  "name": "Example campaign",
+                  "status": "PAUSED"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+      "input": {
+        "campaignBudget": "customers/1234567890/campaignBudgets/11",
+        "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "name": "Example campaign"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "14d3218e-adf8-51ce-9c36-e8caf3d67cdd",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCampaign-uncertainAfterCap",
+      "operation": "createCampaign"
+    },
+    {
+      "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"resourceName\":\"customers/1234567890/campaigns/7\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "update": {
+                  "resourceName": "customers/1234567890/campaigns/7",
+                  "status": "PAUSED"
+                },
+                "updateMask": "status"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "resourceName": "customers/1234567890/campaigns/7"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "status": "PAUSED"
+      },
+      "name": "updateCampaignStatus-updated",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "update": {
+                  "resourceName": "customers/1234567890/campaigns/7",
+                  "status": "PAUSED"
+                },
+                "updateMask": "status"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "status": "PAUSED"
+      },
+      "name": "updateCampaignStatus-providerRejected",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "update": {
+                  "resourceName": "customers/1234567890/campaigns/7",
+                  "status": "PAUSED"
+                },
+                "updateMask": "status"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "status": "PAUSED"
+      },
+      "name": "updateCampaignStatus-invalidResponse",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "input": {
+        "campaignId": "7",
+        "customerId": "",
+        "managerCustomerId": "9998887777",
+        "status": "PAUSED"
+      },
+      "name": "updateCampaignStatus-defect",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "update": {
+                  "resourceName": "customers/1234567890/campaigns/7",
+                  "status": "PAUSED"
+                },
+                "updateMask": "status"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "status": "PAUSED"
+      },
+      "name": "updateCampaignStatus-rateLimit",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "update": {
+                  "resourceName": "customers/1234567890/campaigns/7",
+                  "status": "PAUSED"
+                },
+                "updateMask": "status"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "status": "PAUSED"
+      },
+      "name": "updateCampaignStatus-serviceUnavailable",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "update": {
+                  "resourceName": "customers/1234567890/campaigns/7",
+                  "status": "PAUSED"
+                },
+                "updateMask": "status"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "status": "PAUSED"
+      },
+      "name": "updateCampaignStatus-serverError",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "update": {
+                  "resourceName": "customers/1234567890/campaigns/7",
+                  "status": "PAUSED"
+                },
+                "updateMask": "status"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2ea3230a-8ba1-5e02-b831-a2bf0ceb4cd5",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777",
+        "status": "PAUSED"
+      },
+      "name": "updateCampaignStatus-transportFailure",
+      "operation": "updateCampaignStatus"
+    },
+    {
+      "callId": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"resourceName\":\"customers/1234567890/campaigns/7\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "remove": "customers/1234567890/campaigns/7"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "resourceName": "customers/1234567890/campaigns/7"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "removeCampaign-removed",
+      "operation": "removeCampaign"
+    },
+    {
+      "callId": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "remove": "customers/1234567890/campaigns/7"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "removeCampaign-providerRejected",
+      "operation": "removeCampaign"
+    },
+    {
+      "callId": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "remove": "customers/1234567890/campaigns/7"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "removeCampaign-invalidResponse",
+      "operation": "removeCampaign"
+    },
+    {
+      "callId": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "resourceName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "input": {
+        "campaignId": "7",
+        "customerId": "",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "removeCampaign-defect",
+      "operation": "removeCampaign"
+    },
+    {
+      "callId": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "remove": "customers/1234567890/campaigns/7"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "removeCampaign-rateLimit",
+      "operation": "removeCampaign"
+    },
+    {
+      "callId": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "remove": "customers/1234567890/campaigns/7"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "removeCampaign-serviceUnavailable",
+      "operation": "removeCampaign"
+    },
+    {
+      "callId": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "remove": "customers/1234567890/campaigns/7"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "removeCampaign-serverError",
+      "operation": "removeCampaign"
+    },
+    {
+      "callId": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v26/customers/1234567890/campaigns:mutate",
+          "requestBody": {
+            "operations": [
+              {
+                "remove": "customers/1234567890/campaigns/7"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-ads-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Login-Customer-Id": [
+              "9998887777"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "794b936d-535c-5aea-912e-03a7c1f4ef14",
+      "input": {
+        "campaignId": "7",
+        "customerId": "1234567890",
+        "managerCustomerId": "9998887777"
+      },
+      "name": "removeCampaign-transportFailure",
+      "operation": "removeCampaign"
     }
   ],
   "schemaVersion": 1

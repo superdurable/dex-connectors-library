@@ -8,7 +8,8 @@ import { EventbriteClient } from '../src/client.js';
 import { GetAttendeeInputSchema, ListEventsInputSchema, ListOrganizationsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/eventbrite/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/eventbrite/scenarios.json', import.meta.url))
+  .filter(scenario => ['listOrganizations', 'listEvents', 'getAttendee'].includes(scenario.operation));
 const connection = { provider: 'eventbrite', name: 'eventbrite' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeEventbrite, '/v3'));
 

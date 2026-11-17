@@ -1,6 +1,6 @@
 {
   "connectorId": "google-firestore",
-  "releaseTag": "connectors/google/firestore/go/v0.1.0",
+  "releaseTag": "connectors/google/firestore/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-firestore",

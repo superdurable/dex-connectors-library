@@ -16,6 +16,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listDocumentDetails/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[firestore.DocumentDetailsPage](`{"documents":[{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getDocument/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[firestore.FirestoreDocument](`{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}`)
+			return err
+		}},
+		{name: "createDocument/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[firestore.FirestoreDocument](`{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}`)
+			return err
+		}},
+		{name: "putDocument/writtenDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[firestore.FirestoreDocument](`{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}`)
+			return err
+		}},
+		{name: "deleteDocument/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[firestore.FirestoreDocument](`{"name":"projects/sample-project/databases/(default)/documents/events/sample-event"}`)
+			return err
+		}},
+		{name: "runDocumentQuery/queriedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[firestore.QueriedDocuments](`{"documents":[{"name":"projects/sample-project/databases/(default)/documents/events/sample-event","fieldsJson":"{\"title\":{\"stringValue\":\"Hello\"}}"}]}`)
+			return err
+		}},
+		{name: "listRootCollections/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[firestore.CollectionsPage](`{"collectionIds":["events"],"nextPageToken":""}`)
+			return err
+		}},
 		{name: "listDocuments/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[firestore.DocumentsPage](`{"documents":[{"name":"projects/sample-project/databases/(default)/documents/events/sample-event"}],"nextPageToken":""}`)
 			return err
@@ -30,6 +58,27 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListDocumentDetails().Definition().Operation.OperationID != "listDocumentDetails" {
+		t.Errorf("listDocumentDetails mock has another definition")
+	}
+	if mock.GetDocument().Definition().Operation.OperationID != "getDocument" {
+		t.Errorf("getDocument mock has another definition")
+	}
+	if mock.CreateDocument().Definition().Operation.OperationID != "createDocument" {
+		t.Errorf("createDocument mock has another definition")
+	}
+	if mock.PutDocument().Definition().Operation.OperationID != "putDocument" {
+		t.Errorf("putDocument mock has another definition")
+	}
+	if mock.DeleteDocument().Definition().Operation.OperationID != "deleteDocument" {
+		t.Errorf("deleteDocument mock has another definition")
+	}
+	if mock.RunDocumentQuery().Definition().Operation.OperationID != "runDocumentQuery" {
+		t.Errorf("runDocumentQuery mock has another definition")
+	}
+	if mock.ListRootCollections().Definition().Operation.OperationID != "listRootCollections" {
+		t.Errorf("listRootCollections mock has another definition")
+	}
 	if mock.ListDocuments().Definition().Operation.OperationID != "listDocuments" {
 		t.Errorf("listDocuments mock has another definition")
 	}

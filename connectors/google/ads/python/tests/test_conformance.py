@@ -14,7 +14,7 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/google/ads/scenarios.json")
+SCENARIOS = [scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/google/ads/scenarios.json") if scenario["operation"] == "listAccessibleCustomers"]
 CONNECTION = sdk.ConnectionRef("google-ads", "google-ads")
 ADAPTER = conformance.PythonOperationAdapter(
     "google-ads",

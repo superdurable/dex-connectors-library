@@ -8,7 +8,7 @@ import { answerRecordedRequest, invokeProductionMutation, loadScenarios, replay,
 import { CloudStorageClient } from '../src/client.js';
 import { UploadObjectInputSchema, DownloadObjectInputSchema, ListObjectsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/cloud-storage/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/cloud-storage/scenarios.json', import.meta.url)).filter(scenario => ['listObjects', 'downloadObject', 'uploadObject'].includes(scenario.operation));
 const connection = { provider: 'google-cloud-storage', name: 'google-cloud-storage' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeStorage));
 

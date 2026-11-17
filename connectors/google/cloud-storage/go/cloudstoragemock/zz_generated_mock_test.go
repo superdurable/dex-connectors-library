@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listBuckets/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudstorage.BucketsPage](`{"buckets":[{"name":"example-bucket","location":"US"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "getBucket/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudstorage.Bucket](`{"name":"example-bucket","location":"US"}`)
+			return err
+		}},
+		{name: "createBucket/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudstorage.Bucket](`{"name":"example-bucket","location":"US","projectNumber":"123456789"}`)
+			return err
+		}},
+		{name: "updateBucketLabels/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudstorage.Bucket](`{"name":"example-bucket","location":"US"}`)
+			return err
+		}},
+		{name: "deleteBucket/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudstorage.DeletedBucket](`{"name":"example-bucket"}`)
+			return err
+		}},
 		{name: "listObjects/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[cloudstorage.ObjectsPage](`{"objects":[{"name":"example.txt","generation":"123"}],"nextPageToken":""}`)
 			return err
@@ -28,6 +48,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[cloudstorage.Object](`{"name":"example.txt","generation":"123"}`)
 			return err
 		}},
+		{name: "updateObjectMetadata/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudstorage.Object](`{"name":"example.txt","generation":"123"}`)
+			return err
+		}},
+		{name: "deleteObject/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudstorage.DeletedObject](`{"bucket":"example-bucket","name":"example.txt"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -38,6 +66,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListBuckets().Definition().Operation.OperationID != "listBuckets" {
+		t.Errorf("listBuckets mock has another definition")
+	}
+	if mock.GetBucket().Definition().Operation.OperationID != "getBucket" {
+		t.Errorf("getBucket mock has another definition")
+	}
+	if mock.CreateBucket().Definition().Operation.OperationID != "createBucket" {
+		t.Errorf("createBucket mock has another definition")
+	}
+	if mock.UpdateBucketLabels().Definition().Operation.OperationID != "updateBucketLabels" {
+		t.Errorf("updateBucketLabels mock has another definition")
+	}
+	if mock.DeleteBucket().Definition().Operation.OperationID != "deleteBucket" {
+		t.Errorf("deleteBucket mock has another definition")
+	}
 	if mock.ListObjects().Definition().Operation.OperationID != "listObjects" {
 		t.Errorf("listObjects mock has another definition")
 	}
@@ -46,5 +89,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UploadObject().Definition().Operation.OperationID != "uploadObject" {
 		t.Errorf("uploadObject mock has another definition")
+	}
+	if mock.UpdateObjectMetadata().Definition().Operation.OperationID != "updateObjectMetadata" {
+		t.Errorf("updateObjectMetadata mock has another definition")
+	}
+	if mock.DeleteObject().Definition().Operation.OperationID != "deleteObject" {
+		t.Errorf("deleteObject mock has another definition")
 	}
 }

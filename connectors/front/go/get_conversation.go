@@ -155,26 +155,31 @@ func (client *Client) decodeMessagePage(body []byte, conversationID string, outp
 		return errors.New("the message page is not a message list")
 	}
 	for _, wire := range page.Results {
-		if !messageIDPattern.MatchString(wire.ID) {
-			return errors.New("a message lacks a valid ID")
-		}
-		author, err := convertTeammate(wire.Author)
+		message, err := decodeMessage(wire)
 		if err != nil {
 			return err
-		}
-		message := Message{
-			ID: wire.ID, Type: wire.Type, IsInbound: wire.IsInbound, IsDraft: wire.DraftMode != nil && *wire.DraftMode != "",
-			Subject: wire.Subject, Blurb: wire.Blurb, Author: author, CreatedAt: wire.CreatedAt.instant,
-		}
-		message.Body, message.IsBodyTruncated = truncateUTF8(wire.Body, MaxBodyBytes)
-		for _, recipient := range wire.Recipients {
-			message.Recipients = append(message.Recipients, convertRecipient(recipient))
 		}
 		output.Messages = append(output.Messages, message)
 	}
 	token, err := client.nextPageToken(page.Pagination.Next, "/conversations/"+conversationID+"/messages")
 	output.HasOlderMessages = token != ""
 	return err
+}
+
+func decodeMessage(wire frontMessageWire) (Message, error) {
+	if !messageIDPattern.MatchString(wire.ID) {
+		return Message{}, errors.New("a message lacks a valid ID")
+	}
+	author, err := convertTeammate(wire.Author)
+	if err != nil {
+		return Message{}, err
+	}
+	message := Message{ID: wire.ID, Type: wire.Type, IsInbound: wire.IsInbound, IsDraft: wire.DraftMode != nil && *wire.DraftMode != "", Subject: wire.Subject, Blurb: wire.Blurb, Author: author, CreatedAt: wire.CreatedAt.instant}
+	message.Body, message.IsBodyTruncated = truncateUTF8(wire.Body, MaxBodyBytes)
+	for _, recipient := range wire.Recipients {
+		message.Recipients = append(message.Recipients, convertRecipient(recipient))
+	}
+	return message, nil
 }
 
 // decodeComments keeps the newest limit comments; Front lists every comment, newest first.
@@ -188,18 +193,26 @@ func decodeComments(body []byte, limit int, output *ConversationDetails) error {
 			output.HasOlderComments = true
 			break
 		}
-		if !commentIDPattern.MatchString(wire.ID) {
-			return errors.New("a comment lacks a valid ID")
-		}
-		author, err := convertTeammate(wire.Author)
+		comment, err := decodeComment(wire)
 		if err != nil {
 			return err
 		}
-		comment := Comment{ID: wire.ID, Author: author, IsPinned: wire.IsPinned, PostedAt: wire.PostedAt.instant}
-		comment.Body, comment.IsBodyTruncated = truncateUTF8(wire.Body, MaxBodyBytes)
 		output.Comments = append(output.Comments, comment)
 	}
 	return nil
+}
+
+func decodeComment(wire frontCommentWire) (Comment, error) {
+	if !commentIDPattern.MatchString(wire.ID) {
+		return Comment{}, errors.New("a comment lacks a valid ID")
+	}
+	author, err := convertTeammate(wire.Author)
+	if err != nil {
+		return Comment{}, err
+	}
+	comment := Comment{ID: wire.ID, Author: author, IsPinned: wire.IsPinned, PostedAt: wire.PostedAt.instant}
+	comment.Body, comment.IsBodyTruncated = truncateUTF8(wire.Body, MaxBodyBytes)
+	return comment, nil
 }
 
 func validateGetConversationInput(input GetConversationInput) error {

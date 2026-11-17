@@ -1,6 +1,6 @@
 {
   "connectorId": "google-bigquery",
-  "releaseTag": "connectors/google/bigquery/go/v0.1.0",
+  "releaseTag": "connectors/google/bigquery/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-bigquery",

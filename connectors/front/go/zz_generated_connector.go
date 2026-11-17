@@ -51,6 +51,15 @@ type Operations interface {
 	ReplyToConversation() sdkgo.Mutation[ReplyToConversationInput, ConversationReply]
 	UpdateConversation() sdkgo.Mutation[UpdateConversationInput, UpdateConversationOutput]
 	FindContactByEmail() sdkgo.Query[FindContactByEmailInput, FindContactByEmailOutput]
+	GetContact() sdkgo.Query[GetContactInput, Contact]
+	ListContacts() sdkgo.Query[ListContactsInput, ContactsPage]
+	ListInboxes() sdkgo.Query[ListInboxesInput, DirectoryPage]
+	ListTags() sdkgo.Query[ListTagsInput, DirectoryPage]
+	ListTeammates() sdkgo.Query[ListTeammatesInput, DirectoryPage]
+	GetMessage() sdkgo.Query[GetMessageInput, Message]
+	ListConversationMessages() sdkgo.Query[ListConversationMessagesInput, MessagesPage]
+	ListConversationComments() sdkgo.Query[ListConversationCommentsInput, CommentsPage]
+	SendNewMessage() sdkgo.Mutation[SendNewMessageInput, SentMessage]
 }
 
 type clientOperations struct{ client *Client }
@@ -69,6 +78,33 @@ func (operations clientOperations) UpdateConversation() sdkgo.Mutation[UpdateCon
 }
 func (operations clientOperations) FindContactByEmail() sdkgo.Query[FindContactByEmailInput, FindContactByEmailOutput] {
 	return operations.client.FindContactByEmail()
+}
+func (operations clientOperations) GetContact() sdkgo.Query[GetContactInput, Contact] {
+	return operations.client.GetContact()
+}
+func (operations clientOperations) ListContacts() sdkgo.Query[ListContactsInput, ContactsPage] {
+	return operations.client.ListContacts()
+}
+func (operations clientOperations) ListInboxes() sdkgo.Query[ListInboxesInput, DirectoryPage] {
+	return operations.client.ListInboxes()
+}
+func (operations clientOperations) ListTags() sdkgo.Query[ListTagsInput, DirectoryPage] {
+	return operations.client.ListTags()
+}
+func (operations clientOperations) ListTeammates() sdkgo.Query[ListTeammatesInput, DirectoryPage] {
+	return operations.client.ListTeammates()
+}
+func (operations clientOperations) GetMessage() sdkgo.Query[GetMessageInput, Message] {
+	return operations.client.GetMessage()
+}
+func (operations clientOperations) ListConversationMessages() sdkgo.Query[ListConversationMessagesInput, MessagesPage] {
+	return operations.client.ListConversationMessages()
+}
+func (operations clientOperations) ListConversationComments() sdkgo.Query[ListConversationCommentsInput, CommentsPage] {
+	return operations.client.ListConversationComments()
+}
+func (operations clientOperations) SendNewMessage() sdkgo.Mutation[SendNewMessageInput, SentMessage] {
+	return operations.client.SendNewMessage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -369,6 +405,8 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ReplyToConversationResult = sdkgo.MutationResult[ConversationReply]
@@ -390,6 +428,8 @@ type ReplyToConversationStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplyToConversationResult]                 `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ConversationReply]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]) sdkgo.MutationStep[IN, ReplyToConversationInput, ConversationReply] {
@@ -425,6 +465,7 @@ func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -448,6 +489,8 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UpdateConversationResult = sdkgo.MutationResult[UpdateConversationOutput]
@@ -469,6 +512,8 @@ type UpdateConversationStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateConversationResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateConversationOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateConversationStep[IN any](config UpdateConversationStepConfig[IN]) sdkgo.MutationStep[IN, UpdateConversationInput, UpdateConversationOutput] {
@@ -504,6 +549,7 @@ func NewUpdateConversationStep[IN any](config UpdateConversationStepConfig[IN]) 
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -583,5 +629,691 @@ func NewFindContactByEmailStep[IN any](config FindContactByEmailStepConfig[IN]) 
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetContactBranchFound sdkgo.BranchID = "found"
+const GetContactBranchNotFound sdkgo.BranchID = "notFound"
+const GetContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetContactDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetContactBranchFound, Description: "Front returned the requested contact."},
+		{ID: GetContactBranchNotFound, Description: "Front could not find the contact.", Optional: true},
+		{ID: GetContactBranchProviderRejected, Description: "Front denied contact read access.", Optional: true},
+		{ID: GetContactBranchInvalidResponse, Description: "Front returned an invalid contact.", Optional: true},
+		{ID: GetContactBranchDefect, Description: "Contact ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetContactResult = sdkgo.QueryResult[Contact]
+
+type GetContactStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=front"`
+	operationID                    struct{}                                   `connector:"operationId=getContact"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI             `connector:"configurationUI"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetContactInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetContactResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetContactResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetContactResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetContactResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetContactResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Contact]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetContactStep[IN any](config GetContactStepConfig[IN]) sdkgo.QueryStep[IN, GetContactInput, Contact] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("front connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetContactInput, Contact]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetContactResult] {
+			branches := make([]sdkgo.BranchTarget[GetContactResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetContactBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContactsBranchListed sdkgo.BranchID = "listed"
+const ListContactsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContacts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactsBranchListed, Description: "Front returned one contact page, possibly empty."},
+		{ID: ListContactsBranchProviderRejected, Description: "Front denied contact listing.", Optional: true},
+		{ID: ListContactsBranchInvalidResponse, Description: "Front returned an invalid contact page.", Optional: true},
+		{ID: ListContactsBranchDefect, Description: "Page input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactsResult = sdkgo.QueryResult[ContactsPage]
+
+type ListContactsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=front"`
+	operationID                    struct{}                                        `connector:"operationId=listContacts"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                  `connector:"configurationUI"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContactsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContactsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListContactsStep[IN any](config ListContactsStepConfig[IN]) sdkgo.QueryStep[IN, ListContactsInput, ContactsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("front connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactsInput, ContactsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListContacts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListInboxesBranchListed sdkgo.BranchID = "listed"
+const ListInboxesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInboxesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInboxesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInboxesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInboxes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInboxesBranchListed, Description: "Front returned the accessible resource list."},
+		{ID: ListInboxesBranchProviderRejected, Description: "Front denied the resource read.", Optional: true},
+		{ID: ListInboxesBranchInvalidResponse, Description: "Front returned an invalid resource list.", Optional: true},
+		{ID: ListInboxesBranchDefect, Description: "Input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInboxesResult = sdkgo.QueryResult[DirectoryPage]
+
+type ListInboxesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=front"`
+	operationID                    struct{}                                         `connector:"operationId=listInboxes"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                   `connector:"configurationUI"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInboxesInput                        `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInboxesResult]                  `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListInboxesResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInboxesResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInboxesResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DirectoryPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListInboxesStep[IN any](config ListInboxesStepConfig[IN]) sdkgo.QueryStep[IN, ListInboxesInput, DirectoryPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("front connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInboxesInput, DirectoryPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListInboxes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInboxesResult] {
+			branches := make([]sdkgo.BranchTarget[ListInboxesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInboxesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInboxesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInboxesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInboxesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTagsBranchListed sdkgo.BranchID = "listed"
+const ListTagsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTagsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTagsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTagsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTags"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTagsBranchListed, Description: "Front returned the accessible resource list."},
+		{ID: ListTagsBranchProviderRejected, Description: "Front denied the resource read.", Optional: true},
+		{ID: ListTagsBranchInvalidResponse, Description: "Front returned an invalid resource list.", Optional: true},
+		{ID: ListTagsBranchDefect, Description: "Input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTagsResult = sdkgo.QueryResult[DirectoryPage]
+
+type ListTagsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=front"`
+	operationID                    struct{}                                         `connector:"operationId=listTags"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                   `connector:"configurationUI"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTagsInput                           `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTagsResult]                     `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTagsResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTagsResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTagsResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DirectoryPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListTagsStep[IN any](config ListTagsStepConfig[IN]) sdkgo.QueryStep[IN, ListTagsInput, DirectoryPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("front connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTagsInput, DirectoryPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListTags(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTagsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTagsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTagsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTagsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTagsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTagsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTeammatesBranchListed sdkgo.BranchID = "listed"
+const ListTeammatesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTeammatesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTeammatesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTeammatesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTeammates"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTeammatesBranchListed, Description: "Front returned the accessible resource list."},
+		{ID: ListTeammatesBranchProviderRejected, Description: "Front denied the resource read.", Optional: true},
+		{ID: ListTeammatesBranchInvalidResponse, Description: "Front returned an invalid resource list.", Optional: true},
+		{ID: ListTeammatesBranchDefect, Description: "Input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTeammatesResult = sdkgo.QueryResult[DirectoryPage]
+
+type ListTeammatesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=front"`
+	operationID                    struct{}                                         `connector:"operationId=listTeammates"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                   `connector:"configurationUI"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTeammatesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTeammatesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTeammatesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTeammatesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTeammatesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DirectoryPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListTeammatesStep[IN any](config ListTeammatesStepConfig[IN]) sdkgo.QueryStep[IN, ListTeammatesInput, DirectoryPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("front connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTeammatesInput, DirectoryPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListTeammates(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTeammatesResult] {
+			branches := make([]sdkgo.BranchTarget[ListTeammatesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTeammatesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTeammatesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTeammatesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTeammatesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetMessageBranchFound sdkgo.BranchID = "found"
+const GetMessageBranchNotFound sdkgo.BranchID = "notFound"
+const GetMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetMessageDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetMessageBranchFound, Description: "Front returned the requested message."},
+		{ID: GetMessageBranchNotFound, Description: "Front could not find the message.", Optional: true},
+		{ID: GetMessageBranchProviderRejected, Description: "Front denied message read access.", Optional: true},
+		{ID: GetMessageBranchInvalidResponse, Description: "Front returned an invalid message.", Optional: true},
+		{ID: GetMessageBranchDefect, Description: "Message ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetMessageResult = sdkgo.QueryResult[Message]
+
+type GetMessageStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=front"`
+	operationID                    struct{}                                   `connector:"operationId=getMessage"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI             `connector:"configurationUI"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetMessageInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetMessageResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetMessageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetMessageResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetMessageResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetMessageResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Message]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[IN, GetMessageInput, Message] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("front connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetMessageResult] {
+			branches := make([]sdkgo.BranchTarget[GetMessageResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetMessageBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListConversationMessagesBranchListed sdkgo.BranchID = "listed"
+const ListConversationMessagesBranchNotFound sdkgo.BranchID = "notFound"
+const ListConversationMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListConversationMessagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListConversationMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListConversationMessagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listConversationMessages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListConversationMessagesBranchListed, Description: "Front returned one message page, possibly empty."},
+		{ID: ListConversationMessagesBranchNotFound, Description: "Front could not find the conversation.", Optional: true},
+		{ID: ListConversationMessagesBranchProviderRejected, Description: "Front denied message listing.", Optional: true},
+		{ID: ListConversationMessagesBranchInvalidResponse, Description: "Front returned an invalid message page.", Optional: true},
+		{ID: ListConversationMessagesBranchDefect, Description: "Conversation ID, page input, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListConversationMessagesResult = sdkgo.QueryResult[MessagesPage]
+
+type ListConversationMessagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=front"`
+	operationID                    struct{}                                        `connector:"operationId=listConversationMessages"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                  `connector:"configurationUI"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListConversationMessagesInput          `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListConversationMessagesResult]    `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListConversationMessagesResult]    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListConversationMessagesResult]    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListConversationMessagesResult]    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListConversationMessagesResult]    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MessagesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListConversationMessagesStep[IN any](config ListConversationMessagesStepConfig[IN]) sdkgo.QueryStep[IN, ListConversationMessagesInput, MessagesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("front connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListConversationMessagesInput, MessagesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListConversationMessages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListConversationMessagesResult] {
+			branches := make([]sdkgo.BranchTarget[ListConversationMessagesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListConversationMessagesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListConversationMessagesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListConversationMessagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListConversationMessagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListConversationMessagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListConversationCommentsBranchListed sdkgo.BranchID = "listed"
+const ListConversationCommentsBranchNotFound sdkgo.BranchID = "notFound"
+const ListConversationCommentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListConversationCommentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListConversationCommentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListConversationCommentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listConversationComments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListConversationCommentsBranchListed, Description: "Front returned the internal comments, possibly empty."},
+		{ID: ListConversationCommentsBranchNotFound, Description: "Front could not find the conversation.", Optional: true},
+		{ID: ListConversationCommentsBranchProviderRejected, Description: "Front denied comment listing.", Optional: true},
+		{ID: ListConversationCommentsBranchInvalidResponse, Description: "Front returned an invalid comment list.", Optional: true},
+		{ID: ListConversationCommentsBranchDefect, Description: "Conversation ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListConversationCommentsResult = sdkgo.QueryResult[CommentsPage]
+
+type ListConversationCommentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=front"`
+	operationID                    struct{}                                        `connector:"operationId=listConversationComments"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                  `connector:"configurationUI"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListConversationCommentsInput          `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListConversationCommentsResult]    `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListConversationCommentsResult]    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListConversationCommentsResult]    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListConversationCommentsResult]    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListConversationCommentsResult]    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CommentsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListConversationCommentsStep[IN any](config ListConversationCommentsStepConfig[IN]) sdkgo.QueryStep[IN, ListConversationCommentsInput, CommentsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("front connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListConversationCommentsInput, CommentsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListConversationComments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListConversationCommentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListConversationCommentsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListConversationCommentsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListConversationCommentsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListConversationCommentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListConversationCommentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListConversationCommentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendNewMessageBranchSent sdkgo.BranchID = "sent"
+const SendNewMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendNewMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendNewMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendNewMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendNewMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendNewMessageBranchSent, Description: "Front accepted the message and returned its message UID."},
+		{ID: SendNewMessageBranchProviderRejected, Description: "Front conclusively rejected the first send.", Optional: true},
+		{ID: SendNewMessageBranchUncertain, Description: "The message may exist, but read-back cannot confirm it after the send cap or a lost provider ID.", Optional: true},
+		{ID: SendNewMessageBranchDefect, Description: "The channel address, recipient, text, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendNewMessageResult = sdkgo.MutationResult[SentMessage]
+
+type SendNewMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=front"`
+	operationID                       struct{}                                          `connector:"operationId=sendNewMessage"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                    `connector:"configurationUI"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendNewMessageInput                      `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendNewMessageResult]                `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendNewMessageResult]                `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendNewMessageResult]                `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendNewMessageResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendNewMessageStep[IN any](config SendNewMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendNewMessageInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("front connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendNewMessageInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.SendNewMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendNewMessageResult] {
+			branches := make([]sdkgo.BranchTarget[SendNewMessageResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendNewMessageBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendNewMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendNewMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendNewMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

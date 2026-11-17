@@ -8,7 +8,7 @@ import { Analytics4Client } from '../src/client.js';
 import { GetPropertyInputSchema, ListAudiencesInputSchema, RunReportInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/analytics/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/analytics/scenarios.json', import.meta.url)).filter(scenario => ['runReport', 'getProperty', 'listAudiences'].includes(scenario.operation));
 const connection = { provider: 'google-analytics-4', name: 'google-analytics-4' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAnalytics4));
 

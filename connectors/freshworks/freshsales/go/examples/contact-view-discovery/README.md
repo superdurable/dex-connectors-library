@@ -1,6 +1,8 @@
 # Freshsales contact-view-discovery Flow
 
-This runnable Flow calls `listContactViews` with the static `freshsales` connection. Its happy-path contact views are saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only contact view IDs and names enter the Flow result; the API Key does not.
+This runnable Flow calls `listContactViews`, then `listContacts` for the first visible view, then `listAccountViews`, then `listDealViews`, then `listAppointments` with the `open` filter, then `listSalesActivities`, using the static `freshsales` connection. Its happy-path contact views are saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only contact view IDs and names enter the Flow result; the API Key does not.
+
+The same Worker registers `FreshsalesNoteCreation`, which creates a note only when explicitly started with `CreateNoteInput` containing `description`, `targetType` (`Contact`, `SalesAccount`, or `Deal`), and the numeric `targetId`. The Flow completes with the created note ID and description. The provider does not offer a direct note read endpoint, so an unconfirmed create can select `uncertain` after the bounded send cap.
 
 ## Strict FDG 2.0 generation
 

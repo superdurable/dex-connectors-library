@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: front
   displayName: Front
-  description: "Search, read, reply to, comment on, and update Front conversations and find contacts by email, keeping Front's own conversation statuses, ticket status IDs, and tag and teammate IDs."
+  description: "Search, read, reply to, comment on, and update Front conversations, and find, get, or list contacts, keeping Front's own conversation statuses, ticket status IDs, and tag and teammate IDs."
   company: Front
   categories: [customer-support, communication]
-  version: v0.23.0
+  version: v0.24.0
 spec:
   languages:
     typescript:
@@ -278,3 +278,147 @@ spec:
           branch: invalidResponse
           description: "The jane@acme.example.com contact exceeds maxResponseBytes."
           failure: {kind: RESPONSE_TOO_LARGE, message: "The Front response exceeds maxResponseBytes."}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: Contact
+      kind: query
+      description: "Read one Front contact by ID."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: "Front returned the requested contact."}
+        - {id: notFound, goName: NotFound, description: "Front could not find the contact.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied contact read access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid contact.", optional: true}
+        - {id: defect, goName: Defect, description: "Contact ID or connection is invalid.", optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: "Example contact by ID.", output: {id: crd_100, name: Jane Smith, handles: [{handle: "jane@acme.example.com", source: email}]}}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: "List one bounded page of company contacts with an opaque next-page token."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: "Front returned one contact page, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied contact listing.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid contact page.", optional: true}
+        - {id: defect, goName: Defect, description: "Page input or connection is invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: "Example contact page.", output: {contacts: [{id: crd_100, name: Jane Smith, handles: [{handle: "jane@acme.example.com", source: email}]}]}}
+    - name: listInboxes
+      goName: ListInboxes
+      inputType: ListInboxesInput
+      outputType: DirectoryPage
+      kind: query
+      description: "Read accessible Front inbox IDs and names."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: "Front returned the accessible resource list."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied the resource read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid resource list.", optional: true}
+        - {id: defect, goName: Defect, description: "Input or connection is invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: "Example listInboxes result.", output: {records: [{id: inb_100, name: Support}]}}
+    - name: listTags
+      goName: ListTags
+      inputType: ListTagsInput
+      outputType: DirectoryPage
+      kind: query
+      description: "Read one bounded page of Front tags."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: "Front returned the accessible resource list."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied the resource read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid resource list.", optional: true}
+        - {id: defect, goName: Defect, description: "Input or connection is invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: "Example listTags result.", output: {records: [{id: tag_100, name: triaged}]}}
+    - name: listTeammates
+      goName: ListTeammates
+      inputType: ListTeammatesInput
+      outputType: DirectoryPage
+      kind: query
+      description: "Read accessible teammate IDs and names."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: "Front returned the accessible resource list."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied the resource read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid resource list.", optional: true}
+        - {id: defect, goName: Defect, description: "Input or connection is invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: "Example listTeammates result.", output: {records: [{id: tea_100, name: Leela}]}}
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: Message
+      kind: query
+      description: "Read one Front message by ID."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: "Front returned the requested message."}
+        - {id: notFound, goName: NotFound, description: "Front could not find the message.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied message read access.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid message.", optional: true}
+        - {id: defect, goName: Defect, description: "Message ID or connection is invalid.", optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: "Example message by ID.", output: {id: msg_100, type: email, isInbound: true, body: "Any update on my refund?", createdAt: "2026-01-02T03:04:05Z"}}
+    - name: listConversationMessages
+      goName: ListConversationMessages
+      inputType: ListConversationMessagesInput
+      outputType: MessagesPage
+      kind: query
+      description: "Read one bounded message page of a conversation with an opaque continuation token."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: "Front returned one message page, possibly empty."}
+        - {id: notFound, goName: NotFound, description: "Front could not find the conversation.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied message listing.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid message page.", optional: true}
+        - {id: defect, goName: Defect, description: "Conversation ID, page input, or connection is invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: "Example conversation message page.", output: {messages: [{id: msg_100, type: email, isInbound: true, body: "Any update on my refund?", createdAt: "2026-01-02T03:04:05Z"}]}}
+    - name: listConversationComments
+      goName: ListConversationComments
+      inputType: ListConversationCommentsInput
+      outputType: CommentsPage
+      kind: query
+      description: "Read internal comments on one conversation; Front returns one unpaginated list."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: "Front returned the internal comments, possibly empty."}
+        - {id: notFound, goName: NotFound, description: "Front could not find the conversation.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied comment listing.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid comment list.", optional: true}
+        - {id: defect, goName: Defect, description: "Conversation ID or connection is invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: "Example conversation comment list.", output: {comments: [{id: com_100, body: "Checking refund status", postedAt: "2026-01-02T03:04:05Z"}]}}
+    - name: sendNewMessage
+      goName: SendNewMessage
+      inputType: SendNewMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: "Send a new message from a channel address, creating a conversation. Front has no idempotency key; the fenced limited write can resend after an unknown outcome while fewer than three sends are possible."
+      idempotency: required
+      branches:
+        - {id: sent, goName: Sent, description: "Front accepted the message and returned its message UID."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the first send.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The message may exist, but read-back cannot confirm it after the send cap or a lost provider ID.", optional: true}
+        - {id: defect, goName: Defect, description: "The channel address, recipient, text, or connection is invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+        repeatOnUnknown: limited
+        maxSends: 3
+      mocks:
+        - {name: sentDefault, branch: sent, default: true, description: "Front accepted one new message.", output: {messageUid: abc123}}

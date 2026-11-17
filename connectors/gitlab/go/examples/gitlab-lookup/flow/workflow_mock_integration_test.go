@@ -24,7 +24,8 @@ import (
 func TestLookupUsesMockDefaultWithRealDex(t *testing.T) {
 	mock := gitlabmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	issueFlow := NewIssueFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, issueFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -66,4 +67,18 @@ func TestLookupUsesMockDefaultWithRealDex(t *testing.T) {
 	require.Equal(t, request, calls[0].Input)
 	require.Equal(t, gitlab.GetProjectBranchFound, calls[0].Branch)
 	require.Equal(t, flowID, calls[0].FlowID)
+	issueRequest := gitlab.GetIssueInput{ProjectID: "meridian/web", IssueIID: 7}
+	issueFlowID := "gitlab-issue-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(contextWithDeadline, issueFlow, issueFlowID, issueRequest, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	issueResult, err := client.WaitForFlow(contextWithDeadline, issueFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, issueResult.Status, issueResult.ErrorMessage)
+	var issueOutput gitlab.Issue
+	require.NoError(t, issueResult.DecodeSingleOutput(&issueOutput))
+	require.Equal(t, int64(7), issueOutput.IID)
+	issueCalls := mock.GetIssue().Calls()
+	require.Len(t, issueCalls, 1)
+	require.Equal(t, issueRequest, issueCalls[0].Input)
+	require.Equal(t, gitlab.GetIssueBranchFound, issueCalls[0].Branch)
 }
