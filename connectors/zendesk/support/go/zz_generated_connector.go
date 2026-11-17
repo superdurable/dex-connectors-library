@@ -390,15 +390,13 @@ func NewGetTicketStep[IN any](config GetTicketStepConfig[IN]) sdkgo.QueryStep[IN
 
 const CreateTicketBranchCreated sdkgo.BranchID = "created"
 const CreateTicketBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const CreateTicketBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const CreateTicketBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTicket"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTicketBranchCreated, Description: "The ticket exists; a repeated attempt returns the ticket the first attempt created."},
-		{ID: CreateTicketBranchProviderRejected, Description: "Zendesk conclusively rejected the ticket, such as an invalid requester, group, or assignee; no ticket was created.", Optional: true},
-		{ID: CreateTicketBranchInvalidResponse, Description: "Zendesk accepted the request but returned an invalid or oversized ticket, so the ticket may exist.", Optional: true},
+		{ID: CreateTicketBranchProviderRejected, Description: "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -422,7 +420,6 @@ type CreateTicketStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) CreateTicketInput                               `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateTicketResult]                         `connector:"branch=created"`
 	ProviderRejected                  sdkgo.Target[CreateTicketResult]                         `connector:"branch=providerRejected,optional"`
-	InvalidResponse                   sdkgo.Target[CreateTicketResult]                         `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[CreateTicketResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateTicketOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
@@ -440,15 +437,12 @@ func NewCreateTicketStep[IN any](config CreateTicketStepConfig[IN]) sdkgo.Mutati
 		Operation: config.Connection.operations.CreateTicket(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateTicketResult] {
-			branches := make([]sdkgo.BranchTarget[CreateTicketResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[CreateTicketResult], 0, 3)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateTicketBranchCreated))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTicketBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(CreateTicketBranchInvalidResponse))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateTicketBranchDefect))
@@ -465,22 +459,24 @@ const UpdateTicketBranchNotFound sdkgo.BranchID = "notFound"
 const UpdateTicketBranchConflict sdkgo.BranchID = "conflict"
 const UpdateTicketBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const UpdateTicketBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTicketBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const UpdateTicketBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var UpdateTicketDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTicket"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateTicketBranchUpdated, Description: "The ticket holds the requested change; a repeated attempt finds its own earlier change instead of adding a second comment."},
-		{ID: UpdateTicketBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's agent.", Optional: true},
-		{ID: UpdateTicketBranchConflict, Description: "The ticket changed after expectedUpdatedAt, so nothing was written.", Optional: true},
-		{ID: UpdateTicketBranchProviderRejected, Description: "Zendesk conclusively rejected the change, such as updating a closed ticket or assigning an unknown agent.", Optional: true},
-		{ID: UpdateTicketBranchInvalidResponse, Description: "Zendesk returned an invalid or oversized ticket or audit response, so the change may have been applied.", Optional: true},
+		{ID: UpdateTicketBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's agent, and no earlier attempt of this Step may have written it.", Optional: true},
+		{ID: UpdateTicketBranchConflict, Description: "The ticket read before the first write changed after expectedUpdatedAt, so nothing was written.", Optional: true},
+		{ID: UpdateTicketBranchProviderRejected, Description: "Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as updating a closed ticket or assigning an unknown agent; nothing was written.", Optional: true},
+		{ID: UpdateTicketBranchInvalidResponse, Description: "Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written.", Optional: true},
+		{ID: UpdateTicketBranchUncertain, Description: "The send cap is reached, or Zendesk refused or contradicted the request after an earlier send whose outcome could not be confirmed, and the latest audit page shows no change by this Step, so the change and its comment may still appear. Below the cap, an unconfirmed write is read back and then resent.", Optional: true},
 		{ID: UpdateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(300000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
 	MaxSends:        3,
@@ -502,6 +498,7 @@ type UpdateTicketStepConfig[IN any] struct {
 	Conflict                          sdkgo.Target[UpdateTicketResult]                         `connector:"branch=conflict,optional"`
 	ProviderRejected                  sdkgo.Target[UpdateTicketResult]                         `connector:"branch=providerRejected,optional"`
 	InvalidResponse                   sdkgo.Target[UpdateTicketResult]                         `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[UpdateTicketResult]                         `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[UpdateTicketResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateTicketOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
@@ -521,7 +518,7 @@ func NewUpdateTicketStep[IN any](config UpdateTicketStepConfig[IN]) sdkgo.Mutati
 		Operation: config.Connection.operations.UpdateTicket(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateTicketResult] {
-			branches := make([]sdkgo.BranchTarget[UpdateTicketResult], 0, 6)
+			branches := make([]sdkgo.BranchTarget[UpdateTicketResult], 0, 7)
 			if config.Updated.HasStep() {
 				branches = append(branches, config.Updated.BranchTarget(UpdateTicketBranchUpdated))
 			}
@@ -536,6 +533,9 @@ func NewUpdateTicketStep[IN any](config UpdateTicketStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.InvalidResponse.HasStep() {
 				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTicketBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UpdateTicketBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UpdateTicketBranchDefect))

@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-zendesk-support",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Zendesk Support ticket operations for Dex TypeScript applications",
   "repository": {
     "type": "git",
