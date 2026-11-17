@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: smartsheet
   displayName: Smartsheet
-  description: Read Smartsheet records with a connection-owned API key.
+  description: Read and change Smartsheet sheets, rows, columns, folders, and workspaces with a connection-owned API key.
   company: Smartsheet
   categories: [project-management, productivity]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: smartsheet
   languages:
@@ -109,3 +109,70 @@ spec:
           branch: providerRejected
           description: "The connection token is invalid."
           failure: {kind: AUTHENTICATION, message: "Smartsheet rejected the token."}
+    - name: getRow
+      goName: GetRow
+      inputType: GetRowInput
+      outputType: SheetRow
+      kind: query
+      description: Read one row and its cells from a sheet.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Smartsheet returned the row.}
+        - {id: notFound, goName: NotFound, description: Smartsheet did not find the row., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Smartsheet returned malformed row JSON., optional: true}
+        - {id: defect, goName: Defect, description: Row ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One sample row is returned., output: {id: 3001, cells: ['{"columnId":2001,"value":"Planning"}']}}
+    - name: addRow
+      goName: AddRow
+      inputType: AddRowInput
+      outputType: SheetRow
+      kind: mutation
+      description: Append one text-cell row to a sheet.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: added, goName: Added, description: Smartsheet added the row.}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet rejected the row., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The row create outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Row input or credentials are invalid., optional: true}
+      mocks:
+        - {name: addedDefault, branch: added, default: true, description: One sample row is added., output: {id: 3001, cells: ['{"columnId":2001,"value":"Planning"}']}}
+    - name: updateRow
+      goName: UpdateRow
+      inputType: UpdateRowInput
+      outputType: SheetRow
+      kind: mutation
+      description: Replace text values in one row's cells.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Smartsheet updated the row.}
+        - {id: notFound, goName: NotFound, description: Smartsheet did not find the row., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Smartsheet returned malformed row JSON., optional: true}
+        - {id: defect, goName: Defect, description: Row input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One sample row is updated., output: {id: 3001, cells: ['{"columnId":2001,"value":"Planning"}']}}
+    - name: deleteRow
+      goName: DeleteRow
+      inputType: DeleteRowInput
+      outputType: DeleteRowOutput
+      kind: mutation
+      description: Remove one row from a sheet.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Smartsheet deleted the row.}
+        - {id: notFound, goName: NotFound, description: Smartsheet did not find the row., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet rejected the delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Smartsheet returned malformed delete confirmation., optional: true}
+        - {id: defect, goName: Defect, description: Row ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One sample row is deleted., output: {rowId: 3001}}

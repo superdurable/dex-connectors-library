@@ -597,6 +597,1322 @@
       },
       "name": "getSheet-transport",
       "operation": "getSheet"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":3001,\"cells\":[{\"columnId\":2001,\"value\":\"Planning\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/rows/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "cells": [
+            {
+              "columnId": 2001,
+              "value": "Planning"
+            }
+          ],
+          "id": 3001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "getRow-found",
+      "operation": "getRow"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/rows/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "cells": [],
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "getRow-notFound",
+      "operation": "getRow"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/rows/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "cells": [],
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "getRow-providerRejected",
+      "operation": "getRow"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/rows/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cells": [],
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "getRow-invalidResponse",
+      "operation": "getRow"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/rows/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "getRow-rateLimited",
+      "operation": "getRow"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/rows/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "getRow-serverUnavailable",
+      "operation": "getRow"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/rows/3001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "getRow-transport",
+      "operation": "getRow"
+    },
+    {
+      "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "exchanges": [
+        {
+          "body": "{\"resultCode\":0,\"result\":[{\"id\":3001,\"cells\":[{\"columnId\":2001,\"value\":\"Planning\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+          "providerId": "3001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "cells": [
+            {
+              "columnId": 2001,
+              "value": "Planning"
+            }
+          ],
+          "id": 3001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "sheetId": 1001
+      },
+      "name": "addRow-added",
+      "operation": "addRow"
+    },
+    {
+      "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "cells": [],
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "sheetId": 1001
+      },
+      "name": "addRow-providerRejected",
+      "operation": "addRow"
+    },
+    {
+      "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "sheetId": 1001
+      },
+      "name": "addRow-rateLimited",
+      "operation": "addRow"
+    },
+    {
+      "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "sheetId": 1001
+      },
+      "name": "addRow-serverUnavailable",
+      "operation": "addRow"
+    },
+    {
+      "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "sheetId": 1001
+      },
+      "name": "addRow-transport",
+      "operation": "addRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "{\"resultCode\":0,\"result\":[{\"id\":3001,\"cells\":[{\"columnId\":2001,\"value\":\"Planning\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "cells": [
+            {
+              "columnId": 2001,
+              "value": "Planning"
+            }
+          ],
+          "id": 3001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-updated",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "cells": [],
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-notFound",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "cells": [],
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-providerRejected",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cells": [],
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-invalidResponse",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-rateLimited",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-serverUnavailable",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/rows",
+          "requestBody": [
+            {
+              "cells": [
+                {
+                  "columnId": 2001,
+                  "value": "Planning"
+                }
+              ],
+              "id": 3001
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3ea240d-b1bf-5a64-a666-32c340957faa",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "updateRow-transport",
+      "operation": "updateRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "{\"resultCode\":0,\"message\":\"SUCCESS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "rowId": 3001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-deleted",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "rowId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-notFound",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "rowId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-providerRejected",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rowId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-invalidResponse",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-rateLimited",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-serverUnavailable",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/rows",
+          "query": {
+            "ids": [
+              "3001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55fc69e3-d453-5f49-ae42-7423e37ba8c5",
+      "input": {
+        "rowId": 3001,
+        "sheetId": 1001
+      },
+      "name": "deleteRow-transport",
+      "operation": "deleteRow"
+    },
+    {
+      "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "cells": [],
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+      "input": {
+        "cells": [
+          {
+            "columnId": 2001,
+            "value": "Planning"
+          }
+        ],
+        "sheetId": 1001
+      },
+      "name": "addRow-uncertain",
+      "operation": "addRow",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "ff1d5f4b-cfd2-50f2-8596-36d334b34613",
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

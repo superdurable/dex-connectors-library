@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/smartsheet/go"
 	"github.com/superdurable/dex-connectors-library/connectors/smartsheet/go/smartsheetmock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -62,4 +63,43 @@ func TestMockAnswersWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Len(t, mock.ListSheets().Calls(), 1)
 	require.Len(t, mock.GetSheet().Calls(), 1)
+}
+
+func TestRowLookupMockWithRealDex(t *testing.T) {
+	mock := smartsheetmock.New(t, ConnectionName)
+	flow := NewRowLookupFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, cache.Close()) }()
+	server := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if server == "" {
+		server = "127.0.0.1:9580"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: server})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult))
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: server})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, client.Close()) }()
+	flowID := "smartsheet-row-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, flow, flowID, smartsheet.GetRowInput{SheetID: 1001, RowID: 3001}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var row smartsheet.SheetRow
+	require.NoError(t, result.DecodeSingleOutput(&row))
+	require.Equal(t, int64(3001), row.ID)
+	require.Len(t, mock.GetRow().Calls(), 1)
 }

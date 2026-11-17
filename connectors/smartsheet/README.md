@@ -1,10 +1,10 @@
 # Smartsheet connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/smartsheet/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/smartsheet/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/smartsheet`.
 
-`github.com/superdurable/dex-connectors-library/connectors/smartsheet/go` exposes read-only Dex Query Steps against Smartsheet's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
+`github.com/superdurable/dex-connectors-library/connectors/smartsheet/go` exposes Dex Query and Mutation Steps against Smartsheet's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
 
 ## Connection
 
@@ -19,8 +19,12 @@ The Python package is [`dex-connector-smartsheet`](python/README.md), imported a
 | --- | --- |
 | `listSheets` | [Smartsheet listSheets](https://developers.smartsheet.com/api/smartsheet/openapi/sheets/list-sheets) |
 | `getSheet` | [Smartsheet getSheet](https://developers.smartsheet.com/api/smartsheet/openapi/sheets/getsheet) |
+| `getRow` | [Smartsheet get row](https://developers.smartsheet.com/api/smartsheet/openapi/rows/get-row) |
+| `addRow` | [Smartsheet add rows](https://developers.smartsheet.com/api/smartsheet/openapi/rows/rows-addtosheet) |
+| `updateRow` | [Smartsheet update rows](https://developers.smartsheet.com/api/smartsheet/openapi/rows/update-rows) |
+| `deleteRow` | [Smartsheet delete rows](https://developers.smartsheet.com/api/smartsheet/openapi/rows/delete-rows) |
 
-Each operation returns a bounded, typed response. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
+Each operation returns a bounded, typed response. `addRow` accepts text cells and limits possibly effective sends to three; a fully exhausted cap selects `uncertain`. Absolute `updateRow` and `deleteRow` can safely retry. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse` for reads and safe writes. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
 
 ## Mocks
 

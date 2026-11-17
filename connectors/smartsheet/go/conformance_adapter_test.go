@@ -4,6 +4,7 @@
 package smartsheet
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -16,13 +17,51 @@ const conformanceFixturePathPrefix = ""
 
 var conformanceConnection = sdkgo.ConnectionRef{Provider: "smartsheet", Name: "smartsheet"}
 
+type smartsheetConformanceContext struct {
+	queryContext
+	attempt  int32
+	prior    json.RawMessage
+	recorded json.RawMessage
+}
+
+func (context *smartsheetConformanceContext) Attempt() int32 { return context.attempt }
+func (context *smartsheetConformanceContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.recorded = encoded
+	return nil
+}
+func (context *smartsheetConformanceContext) GetLastHeartbeatValue(value any) (bool, error) {
+	if len(context.prior) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.prior, value)
+}
+
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
 		conformanceConnection: {APIKey: sdkgo.NewSecretString(testAPIKey)},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listSheets": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSheets(), conformanceConnection),
-		"getSheet":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSheet(), conformanceConnection),
+	context := &smartsheetConformanceContext{attempt: 1}
+	if len(scenario.PriorHeartbeat) > 0 {
+		context.prior = append(json.RawMessage(nil), scenario.PriorHeartbeat...)
+		context.attempt = conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { context.prior = value }) + 1
+	}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			context.prior = append(json.RawMessage(nil), context.recorded...)
+			context.recorded = nil
+			context.attempt = int32(attempt)
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"listSheets": newConformanceQueryInvocation(t, scenario.Input, context, client.ListSheets(), conformanceConnection),
+		"getSheet":   newConformanceQueryInvocation(t, scenario.Input, context, client.GetSheet(), conformanceConnection),
+		"getRow":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetRow(), conformanceConnection),
+		"addRow":     newConformanceMutationInvocation(t, scenario.Input, context, client.AddRow(), conformanceConnection, scenario.CallID),
+		"updateRow":  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateRow(), conformanceConnection, scenario.CallID),
+		"deleteRow":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteRow(), conformanceConnection, scenario.CallID),
 	}}
 }

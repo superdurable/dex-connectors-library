@@ -38,7 +38,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{smartsheetlookup.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{smartsheetlookup.NewFlow(connection), smartsheetlookup.NewRowLookupFlow(connection)})
 	if err != nil {
 		return err
 	}

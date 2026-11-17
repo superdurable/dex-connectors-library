@@ -24,6 +24,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[smartsheet.Sheet](`{"id":1001,"name":"Meridian Planning","columns":[{"id":2001,"title":"Task"}],"rows":[]}`)
 			return err
 		}},
+		{name: "getRow/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetRow](`{"id":3001,"cells":["{\"columnId\":2001,\"value\":\"Planning\"}"]}`)
+			return err
+		}},
+		{name: "addRow/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetRow](`{"id":3001,"cells":["{\"columnId\":2001,\"value\":\"Planning\"}"]}`)
+			return err
+		}},
+		{name: "updateRow/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetRow](`{"id":3001,"cells":["{\"columnId\":2001,\"value\":\"Planning\"}"]}`)
+			return err
+		}},
+		{name: "deleteRow/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteRowOutput](`{"rowId":3001}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +55,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetSheet().Definition().Operation.OperationID != "getSheet" {
 		t.Errorf("getSheet mock has another definition")
+	}
+	if mock.GetRow().Definition().Operation.OperationID != "getRow" {
+		t.Errorf("getRow mock has another definition")
+	}
+	if mock.AddRow().Definition().Operation.OperationID != "addRow" {
+		t.Errorf("addRow mock has another definition")
+	}
+	if mock.UpdateRow().Definition().Operation.OperationID != "updateRow" {
+		t.Errorf("updateRow mock has another definition")
+	}
+	if mock.DeleteRow().Definition().Operation.OperationID != "deleteRow" {
+		t.Errorf("deleteRow mock has another definition")
 	}
 }
