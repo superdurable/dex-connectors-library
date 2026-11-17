@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: klaviyo
   displayName: Klaviyo
-  description: Retrieve profiles and create deduplicated profile events.
+  description: Retrieve and list profiles, and create deduplicated profile events.
   company: Klaviyo
   categories: [marketing, ecommerce]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: klaviyo
   languages:
@@ -95,3 +95,23 @@ spec:
           description: Meridian member's signup event was accepted.
           default: true
           output: {accepted: true}
+    - name: listProfiles
+      goName: ListProfiles
+      inputType: ListProfilesInput
+      outputType: ProfilesPage
+      kind: query
+      description: List one cursor page of profile IDs and email addresses, optionally filtered by exact email.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Klaviyo returned a profile page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Klaviyo conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Klaviyo returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample profile is returned.
+          output: {profiles: [{id: "profile-meridian-1", email: "member@meridian.co"}], nextCursor: ""}

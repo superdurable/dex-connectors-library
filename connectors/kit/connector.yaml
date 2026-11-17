@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: kit
   displayName: Kit
-  description: List and inspect subscriber metadata through the Kit API v4.
+  description: Read subscribers and tags, upsert subscribers, and manage tag membership through Kit API v4.
   company: Kit
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: kit
   languages:
@@ -96,3 +96,332 @@ spec:
           default: true
           description: Metadata for one sample subscriber.
           output: {id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}
+    - name: upsertSubscriber
+      goName: UpsertSubscriber
+      inputType: UpsertSubscriberInput
+      outputType: SubscriberMetadata
+      kind: mutation
+      description: Create or update a subscriber by email address.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: upserted, goName: Upserted, description: Kit returned the created or updated subscriber.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the subscriber., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: upsertedDefault
+          branch: upserted
+          default: true
+          description: A sample subscriber was accepted.
+          output: {id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}
+    - name: listTags
+      goName: ListTags
+      inputType: ListTagsInput
+      outputType: TagsPage
+      kind: query
+      description: List one cursor page of tag IDs and names.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a tag page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample tag was returned.
+          output: {tags: [{id: 12, name: Welcome}], nextCursor: ''}
+    - name: createTag
+      goName: CreateTag
+      inputType: CreateTagInput
+      outputType: TagMetadata
+      kind: mutation
+      description: Create a tag, reusing a case-insensitive name match.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Kit returned the created or matching tag.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the tag., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample tag was returned.
+          output: {id: 12, name: Welcome}
+    - name: tagSubscriber
+      goName: TagSubscriber
+      inputType: TagSubscriberInput
+      outputType: SubscriberMetadata
+      kind: mutation
+      description: Attach an existing tag to an existing subscriber.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: tagged, goName: Tagged, description: Kit returned the tagged subscriber.}
+        - {id: notFound, goName: NotFound, description: The tag or subscriber does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the tag application., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: taggedDefault
+          branch: tagged
+          default: true
+          description: A sample subscriber was tagged.
+          output: {id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}
+    - name: removeTagFromSubscriber
+      goName: RemoveTagFromSubscriber
+      inputType: TagSubscriberInput
+      outputType: TagRemoval
+      kind: mutation
+      description: Remove one tag from a subscriber.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: Kit removed the tag association.}
+        - {id: notFound, goName: NotFound, description: The tag or subscriber does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the tag removal., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned an oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: A sample tag association was removed.
+          output: {tagId: 12, subscriberId: 204, removed: true}
+    - name: listCustomFields
+      goName: ListCustomFields
+      inputType: ListCustomFieldsInput
+      outputType: CustomFieldsPage
+      kind: query
+      description: List one cursor page of subscriber custom fields.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a custom-field page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid custom-field JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample custom-field page is returned.
+          output: {customFields: [{id: 8, name: ck_field_8_interests, key: interests, label: Interests}], nextCursor: ''}
+    - name: createCustomField
+      goName: CreateCustomField
+      inputType: CreateCustomFieldInput
+      outputType: CustomFieldMetadata
+      kind: mutation
+      description: Create or reuse a custom field by unique label.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Kit created or reused the field.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the label., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid custom-field JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample custom field is returned.
+          output: {id: 8, name: ck_field_8_interests, key: interests, label: Interests}
+    - name: updateCustomField
+      goName: UpdateCustomField
+      inputType: UpdateCustomFieldInput
+      outputType: CustomFieldMetadata
+      kind: mutation
+      description: Replace a custom field's label.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Kit updated the field label.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the field., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the label., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid custom-field JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample updated field is returned.
+          output: {id: 8, name: ck_field_8_interests, key: interests, label: Interests}
+    - name: deleteCustomField
+      goName: DeleteCustomField
+      inputType: CustomFieldIDInput
+      outputType: CustomFieldDeletion
+      kind: mutation
+      description: Delete a custom field and its subscriber values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Kit deleted the field.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the field., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned unexpected deletion data., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample field was deleted.
+          output: {customFieldId: 8, deleted: true}
+    - name: listForms
+      goName: ListForms
+      inputType: ListFormsInput
+      outputType: FormsPage
+      kind: query
+      description: List one cursor page of Kit forms and landing pages.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a form page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid form JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample form page is returned.
+          output: {forms: [{id: 53, name: Sign up, type: embed}], nextCursor: ''}
+    - name: listFormSubscribers
+      goName: ListFormSubscribers
+      inputType: ListFormSubscribersInput
+      outputType: SubscribersPage
+      kind: query
+      description: List one cursor page of a form's subscribers.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a subscriber page.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the form., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid subscriber JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample form subscriber page is returned.
+          output: {subscribers: [{id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}], hasNextPage: false, nextCursor: '', perPage: 20}
+    - name: addSubscriberToForm
+      goName: AddSubscriberToForm
+      inputType: AddSubscriberToFormInput
+      outputType: SubscriberMetadata
+      kind: mutation
+      description: Add an existing subscriber to a form with a referrer URL.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: added, goName: Added, description: Kit added or found the form subscription.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the form or subscriber., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the form subscription., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid subscriber JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: addedDefault
+          branch: added
+          default: true
+          description: A sample form subscriber is returned.
+          output: {id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}
+    - name: listSequences
+      goName: ListSequences
+      inputType: ListSequencesInput
+      outputType: SequencesPage
+      kind: query
+      description: List one cursor page of Kit email sequences.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a sequence page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid sequence JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample sequence page is returned.
+          output: {sequences: [{id: 61, name: Welcome series, active: true, repeat: false}], nextCursor: ''}
+    - name: listSequenceSubscribers
+      goName: ListSequenceSubscribers
+      inputType: ListSequenceSubscribersInput
+      outputType: SubscribersPage
+      kind: query
+      description: List one cursor page of a sequence's subscribers.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a subscriber page.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the sequence., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid subscriber JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample sequence subscriber page is returned.
+          output: {subscribers: [{id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}], hasNextPage: false, nextCursor: '', perPage: 20}
+    - name: addSubscriberToSequence
+      goName: AddSubscriberToSequence
+      inputType: AddSubscriberToSequenceInput
+      outputType: SubscriberMetadata
+      kind: mutation
+      description: Add an existing subscriber to a sequence with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: added, goName: Added, description: Kit added or found the sequence membership.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the sequence or subscriber., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the sequence membership., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The sequence-add outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: addedDefault
+          branch: added
+          default: true
+          description: A sample sequence subscriber is returned.
+          output: {id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}
+    - name: listTagSubscribers
+      goName: ListTagSubscribers
+      inputType: ListTagSubscribersInput
+      outputType: SubscribersPage
+      kind: query
+      description: List one cursor page of subscribers who have a tag.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a subscriber page.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the tag., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid subscriber JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample tagged-subscriber page is returned.
+          output: {subscribers: [{id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}], hasNextPage: false, nextCursor: '', perPage: 20}

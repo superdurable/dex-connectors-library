@@ -57,4 +57,5 @@ func TestUserInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "user@example.com", output.Email)
 	require.Equal(t, "example-user-id", output.UserID)
 	require.Len(t, mock.GetUser().Calls(), 1)
+	require.Len(t, mock.GetUserByID().Calls(), 1)
 }

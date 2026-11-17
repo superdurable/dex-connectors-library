@@ -1,6 +1,6 @@
 {
   "connectorId": "klaviyo",
-  "releaseTag": "connectors/klaviyo/go/v0.2.0",
+  "releaseTag": "connectors/klaviyo/go/v0.3.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-klaviyo",
