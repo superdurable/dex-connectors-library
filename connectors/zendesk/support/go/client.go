@@ -15,21 +15,25 @@ package support
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/http/httptrace"
 	"net/mail"
 	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -121,6 +125,16 @@ type zendeskRequest struct {
 	query          url.Values
 	payload        any
 	idempotencyKey sdkgo.IdempotencyKey
+	// requestContext replaces the call context, such as the fence's write window; nil keeps the call context.
+	requestContext context.Context
+	// isFencedWrite disables transparent replay and reports a traced pre-connection failure as exchangeNotSent.
+	isFencedWrite bool
+}
+
+// dispatchObservation records whether a failed request ever obtained a connection.
+type dispatchObservation struct {
+	hasObtainedConnection     atomic.Bool
+	hasFailedBeforeConnection atomic.Bool
 }
 
 type zendeskResponse struct {
@@ -137,6 +151,8 @@ const (
 	exchangeSucceeded exchangeOutcome = iota + 1
 	exchangeNotFound
 	exchangeRetryable
+	// exchangeNotSent is a fenced write whose connection failed before any request byte reached Zendesk.
+	exchangeNotSent
 	exchangeRejected
 	exchangeInvalid
 	exchangeDefect
@@ -232,19 +248,35 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	return credentials, nil
 }
 
-// exchange sends one authenticated request and classifies its response; every operation's retry is duplicate-safe.
+// exchange sends one authenticated request and classifies its response without choosing a branch.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request zendeskRequest) zendeskExchange {
-	return client.exchangeWithContext(call.Context, credentials, operation, request)
+	requestContext := context.Context(call.Context)
+	if request.requestContext != nil {
+		requestContext = request.requestContext
+	}
+	return client.exchangeWithContext(requestContext, credentials, operation, request)
 }
 
 // exchangeWithContext is exchange under ctx; Trigger pollers pass their own ctx because their calls have no Dex Step context.
 func (client *Client) exchangeWithContext(ctx context.Context, credentials Credentials, operation string, request zendeskRequest) zendeskExchange {
+	observation := &dispatchObservation{}
+	if request.isFencedWrite {
+		ctx = httptrace.WithClientTrace(ctx, observation.clientTrace())
+	}
 	httpRequest, err := client.buildRequest(ctx, credentials, request)
 	if err != nil {
 		return zendeskExchange{outcome: exchangeDefect, failure: zendeskFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
+	if request.isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return zendeskExchange{outcome: exchangeDefect, failure: zendeskFailure(sdkgo.FailureLocalDefect, operation, "Zendesk write request could not be prepared")}
+		}
+	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
+		if request.isFencedWrite && observation.hasFailedBeforeConnection.Load() && !observation.hasObtainedConnection.Load() {
+			return zendeskExchange{outcome: exchangeNotSent, failure: zendeskFailure(sdkgo.FailureTransport, operation, "Zendesk could not be reached; no request was sent")}
+		}
 		return zendeskExchange{outcome: exchangeRetryable, failure: zendeskFailure(sdkgo.FailureTransport, operation, "Zendesk request failed before a response arrived")}
 	}
 	body, readErr := providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)
@@ -426,6 +458,28 @@ func validateResolvedCredentials(credentials Credentials) error {
 func isBareEmailAddress(value string) bool {
 	address, err := mail.ParseAddress(value)
 	return err == nil && address.Name == "" && address.Address == value && !strings.ContainsAny(value, " \"'()<>,;")
+}
+
+// clientTrace proves a write unsent only when DNS, connect, or TLS failed and no connection was obtained.
+func (observation *dispatchObservation) clientTrace() *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{
+		GotConn: func(httptrace.GotConnInfo) { observation.hasObtainedConnection.Store(true) },
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			if info.Err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+		ConnectDone: func(_ string, _ string, err error) {
+			if err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
+			if err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+	}
 }
 
 func zendeskFailure(kind sdkgo.FailureKind, operation string, message string) sdkgo.Failure {

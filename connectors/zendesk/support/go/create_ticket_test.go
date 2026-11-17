@@ -77,8 +77,11 @@ func TestCreateTicketReportsAReplayedResponseAndInternalFirstComments(t *testing
 	require.NotContains(t, body.Ticket, "tags")
 }
 
-func TestCreateTicketRetriesEveryDispatchFailureUnderTheSameKey(t *testing.T) {
-	for _, status := range []int{http.StatusConflict, http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusServiceUnavailable} {
+func TestCreateTicketRetriesEveryUnknownOutcomeUnderTheSameKey(t *testing.T) {
+	for _, status := range []int{
+		http.StatusFound, http.StatusRequestTimeout, http.StatusConflict, http.StatusGone, http.StatusTeapot,
+		http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusServiceUnavailable,
+	} {
 		provider := newRecordingZendesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 			writeJSON(t, response, status, `{"error":"SENTINEL"}`)
 		})
@@ -89,7 +92,25 @@ func TestCreateTicketRetriesEveryDispatchFailureUnderTheSameKey(t *testing.T) {
 	}
 }
 
-func TestCreateTicketRejectionsAndInvalidResponses(t *testing.T) {
+func TestCreateTicketRetriesAnUnusableCreatedResponse(t *testing.T) {
+	for name, body := range map[string]string{
+		"created ticket missing": `{"audit":{"id":1}}`,
+		"reflects credential":    `{"ticket":{"id":35436,"subject":"` + testAPIToken + `"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingZendesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, http.StatusCreated, body)
+			})
+			_, err := sdkgo.RunMutation(newZendeskDexContext("create-unusable"), newZendeskClient(t, provider.URL).CreateTicket(), zendeskConnection, validCreateTicketInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the next attempt repeats the keyed request")
+			require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+			require.NotContains(t, retry.Failure.Message, testAPIToken)
+		})
+	}
+}
+
+func TestCreateTicketRejections(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		status  int
@@ -111,9 +132,9 @@ func TestCreateTicketRejectionsAndInvalidResponses(t *testing.T) {
 			message: "Zendesk rejected the request (HTTP 422) [RecordInvalid; details: requester=InvalidValue]",
 		},
 		{
-			name: "created ticket missing", status: http.StatusCreated, body: `{"audit":{"id":1}}`,
-			branch: support.CreateTicketBranchInvalidResponse, kind: sdkgo.FailureProtocol,
-			message: "Zendesk returned an invalid created ticket: ticket response has no ticket",
+			name: "missing permission", status: http.StatusForbidden, body: `{"error":"Forbidden"}`,
+			branch: support.CreateTicketBranchProviderRejected, kind: sdkgo.FailureAuthorization,
+			message: "Zendesk rejected the request (HTTP 403) [Forbidden]",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -47,7 +47,6 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 			MapToOperationInput: func(string) support.CreateTicketInput { return validCreateTicketInput() },
 			Created:             sdkgo.GoTo(completeTarget[support.CreateTicketResult]{}),
 			ProviderRejected:    sdkgo.GoTo(completeTarget[support.CreateTicketResult]{}),
-			InvalidResponse:     sdkgo.GoTo(completeTarget[support.CreateTicketResult]{}),
 			Defect:              sdkgo.GoTo(completeTarget[support.CreateTicketResult]{}),
 		})
 		support.NewUpdateTicketStep(support.UpdateTicketStepConfig[int64]{
@@ -74,20 +73,23 @@ func TestFactoriesRequireOnlyTheHappyPathBranch(t *testing.T) {
 	}, "the static ConnectionName must match the runtime connection")
 }
 
-func TestDefinitionsDeclareOptionalBranchesAndAsyncDurability(t *testing.T) {
+func TestDefinitionsDeclareOptionalBranchesAndDurability(t *testing.T) {
 	require.Equal(t, map[sdkgo.BranchID]bool{"searched": false, "providerRejected": true, "invalidResponse": true, "defect": true},
 		branchOptionality(support.SearchTicketsDefinition.Branches))
 	require.Equal(t, map[sdkgo.BranchID]bool{"found": false, "notFound": true, "providerRejected": true, "invalidResponse": true, "defect": true},
 		branchOptionality(support.GetTicketDefinition.Branches))
-	require.Equal(t, map[sdkgo.BranchID]bool{"created": false, "providerRejected": true, "invalidResponse": true, "defect": true},
-		branchOptionality(support.CreateTicketDefinition.Branches), "the Idempotency-Key makes every dispatch failure retryable, so there is no uncertain branch")
-	require.Equal(t, map[sdkgo.BranchID]bool{"updated": false, "notFound": true, "conflict": true, "providerRejected": true, "invalidResponse": true, "defect": true},
+	require.Equal(t, map[sdkgo.BranchID]bool{"created": false, "providerRejected": true, "defect": true},
+		branchOptionality(support.CreateTicketDefinition.Branches), "the Idempotency-Key makes every unknown outcome retryable, so there is no uncertain or invalidResponse branch")
+	require.Equal(t, sdkgo.RepeatOnUnknownSafe, support.CreateTicketDefinition.RepeatOnUnknown)
+	require.Equal(t, map[sdkgo.BranchID]bool{"updated": false, "notFound": true, "conflict": true, "providerRejected": true, "invalidResponse": true, "uncertain": true, "defect": true},
 		branchOptionality(support.UpdateTicketDefinition.Branches))
+	require.Equal(t, sdkgo.RepeatOnUnknownLimited, support.UpdateTicketDefinition.RepeatOnUnknown)
+	require.Equal(t, int32(3), support.UpdateTicketDefinition.MaxSends)
+	require.Equal(t, dex.StepDurabilitySync, support.UpdateTicketDefinition.StepDefaults.ExecuteDurability, "the single-dispatch fence needs sync heartbeats")
 	for _, defaults := range []sdkgo.StepDefaults{
 		support.SearchTicketsDefinition.StepDefaults, support.GetTicketDefinition.StepDefaults,
 		support.CreateTicketDefinition.StepDefaults, support.UpdateTicketDefinition.StepDefaults,
 	} {
-		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability)
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout, "three 9-second requests of updateTicket fit inside it")
 		require.Greater(t, defaults.ExecuteRetry.TotalDuration, time.Minute, "a one-minute Zendesk Retry-After must fit in the window")
 		require.Less(t, defaults.ExecuteRetry.TotalDuration, 2*time.Hour, "Zendesk keeps an Idempotency-Key for two hours")

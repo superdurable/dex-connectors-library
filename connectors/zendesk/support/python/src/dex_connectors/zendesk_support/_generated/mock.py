@@ -9,7 +9,7 @@ from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
 from ..models import CreateTicketInput, CreateTicketOutput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, Ticket, TicketChangedEvent, TicketChangedTriggerConfiguration, TicketComment, TicketCommentInput, TicketDetails, TicketRequesterInput, TicketUser, UpdateTicketInput, UpdateTicketOutput
-from .definitions import CONNECTOR_ID, PROVIDER, CONFLICT, CREATED, CREATE_TICKET_DEFINITION, DEFECT, FOUND, GET_TICKET_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEARCHED, SEARCH_TICKETS_DEFINITION, UPDATED, UPDATE_TICKET_DEFINITION
+from .definitions import CONNECTOR_ID, PROVIDER, CONFLICT, CREATED, CREATE_TICKET_DEFINITION, DEFECT, FOUND, GET_TICKET_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEARCHED, SEARCH_TICKETS_DEFINITION, UNCERTAIN, UPDATED, UPDATE_TICKET_DEFINITION
 
 def search_tickets_searched(value: SearchTicketsOutput, failure: Failure | None = None) -> Case[SearchTicketsOutput]:
     return Case.branch_result(SEARCHED, value, failure)
@@ -101,11 +101,6 @@ def create_ticket_provider_rejected(value: CreateTicketOutput, failure: Failure 
 
 setattr(create_ticket_provider_rejected, '__module__', "dex_connectors.zendesk_support.supportmock")
 
-def create_ticket_invalid_response(value: CreateTicketOutput, failure: Failure | None = None) -> Case[CreateTicketOutput]:
-    return Case.branch_result(INVALID_RESPONSE, value, failure)
-
-setattr(create_ticket_invalid_response, '__module__', "dex_connectors.zendesk_support.supportmock")
-
 def create_ticket_defect(value: CreateTicketOutput, failure: Failure | None = None) -> Case[CreateTicketOutput]:
     return Case.branch_result(DEFECT, value, failure)
 
@@ -150,6 +145,11 @@ def update_ticket_invalid_response(value: UpdateTicketOutput, failure: Failure |
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(update_ticket_invalid_response, '__module__', "dex_connectors.zendesk_support.supportmock")
+
+def update_ticket_uncertain(value: UpdateTicketOutput, failure: Failure) -> Case[UpdateTicketOutput]:
+    return Case.uncertain(value, failure)
+
+setattr(update_ticket_uncertain, '__module__', "dex_connectors.zendesk_support.supportmock")
 
 def update_ticket_defect(value: UpdateTicketOutput, failure: Failure | None = None) -> Case[UpdateTicketOutput]:
     return Case.branch_result(DEFECT, value, failure)
@@ -226,7 +226,6 @@ __all__ = [
     "get_ticket_access_denied",
     "create_ticket_created",
     "create_ticket_provider_rejected",
-    "create_ticket_invalid_response",
     "create_ticket_defect",
     "create_ticket_retry",
     "create_ticket_opened_customer_issue",
@@ -236,6 +235,7 @@ __all__ = [
     "update_ticket_conflict",
     "update_ticket_provider_rejected",
     "update_ticket_invalid_response",
+    "update_ticket_uncertain",
     "update_ticket_defect",
     "update_ticket_retry",
     "update_ticket_followed_up_customer_issue",

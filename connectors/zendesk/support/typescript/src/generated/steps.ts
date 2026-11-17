@@ -74,22 +74,19 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   connectionName: string;
   /** The ticket exists; a repeated attempt returns the ticket the first attempt created. */
   created: StepTarget<MutationResult<OperationOutput>>;
-  /** Zendesk conclusively rejected the ticket, such as an invalid requester, group, or assignee; no ticket was created. */
+  /** Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Zendesk accepted the request but returned an invalid or oversized ticket, so the ticket may exist. */
-  invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
 /** Build the createTicket Step from a named connection. */
 export function newCreateTicketStep<StepInput, OperationInput = CreateTicketInput, OperationOutput = CreateTicketOutput>(configuration: CreateTicketStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, created, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  const { connection, connectionName, created, providerRejected, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createTicket(), connection: connection.reference, branches: [
     goToBranch("created", created),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
-    ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });
 }
@@ -102,21 +99,23 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   connectionName: string;
   /** The ticket holds the requested change; a repeated attempt finds its own earlier change instead of adding a second comment. */
   updated: StepTarget<MutationResult<OperationOutput>>;
-  /** The ticket does not exist or is not visible to the connection's agent. */
+  /** The ticket does not exist or is not visible to the connection's agent, and no earlier attempt of this Step may have written it. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** The ticket changed after expectedUpdatedAt, so nothing was written. */
+  /** The ticket read before the first write changed after expectedUpdatedAt, so nothing was written. */
   conflict?: StepTarget<MutationResult<OperationOutput>>;
-  /** Zendesk conclusively rejected the change, such as updating a closed ticket or assigning an unknown agent. */
+  /** Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as updating a closed ticket or assigning an unknown agent; nothing was written. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Zendesk returned an invalid or oversized ticket or audit response, so the change may have been applied. */
+  /** Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
+  /** The send cap is reached, or Zendesk refused or contradicted the request after an earlier send whose outcome could not be confirmed, and the latest audit page shows no change by this Step, so the change and its comment may still appear. Below the cap, an unconfirmed write is read back and then resent. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
 /** Build the updateTicket Step from a named connection. */
 export function newUpdateTicketStep<StepInput, OperationInput = UpdateTicketInput, OperationOutput = UpdateTicketOutput>(configuration: UpdateTicketStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, conflict, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  const { connection, connectionName, updated, notFound, conflict, providerRejected, invalidResponse, uncertain, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateTicket(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -124,6 +123,7 @@ export function newUpdateTicketStep<StepInput, OperationInput = UpdateTicketInpu
     ...(conflict ? [goToBranch("conflict", conflict)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });
 }
