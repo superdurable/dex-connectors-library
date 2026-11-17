@@ -45,7 +45,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	t.Helper()
 	reference := sdkgo.ConnectionRef{Provider: "freshsales", Name: "freshsales"}
 	credentials := Credentials{APIKey: sdkgo.NewSecretString("test-token")}
-	if scenario.Name == "listContactViews-defect" || scenario.Name == "listAccountViews-defect" {
+	if scenario.Name == "listContactViews-defect" || scenario.Name == "listAccountViews-defect" || scenario.Name == "listDealViews-defect" {
 		credentials = Credentials{}
 	}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
@@ -65,5 +65,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createAccount":    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateAccount(), reference, scenario.CallID),
 		"updateAccount":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateAccount(), reference, scenario.CallID),
 		"deleteAccount":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteAccount(), reference, scenario.CallID),
+		"listDealViews":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListDealViews(), reference),
+		"getDeal":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetDeal(), reference),
+		"listDeals":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListDeals(), reference),
+		"createDeal":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateDeal(), reference, scenario.CallID),
+		"updateDeal":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateDeal(), reference, scenario.CallID),
+		"deleteDeal":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteDeal(), reference, scenario.CallID),
 	}}
 }

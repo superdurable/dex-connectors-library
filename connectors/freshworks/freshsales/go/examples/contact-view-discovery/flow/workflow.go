@@ -21,6 +21,7 @@ const (
 	operationStepType    = "CallListContactViews"
 	contactsStepType     = "CallListContacts"
 	accountViewsStepType = "CallListAccountViews"
+	dealViewsStepType    = "CallListDealViews"
 )
 
 var contactViewsAttribute = dex.DefineAttribute[freshsales.ContactViews]("freshsales-contact-views")
@@ -62,6 +63,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: accountViewsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Freshsales", Explanation: "Discover available sales account views."},
 			Connection:  flow.connection, MapToOperationInput: MapToAccountViewsInput,
+			Listed: sdkgo.GoTo(afterAccountViews{}),
+		})),
+		dex.DefineStep(afterAccountViews{}),
+		dex.DefineStep(freshsales.NewListDealViewsStep(freshsales.ListDealViewsStepConfig[freshsales.ListDealViewsInput]{
+			StepType: dealViewsStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Freshsales", Explanation: "Discover available deal views."},
+			Connection:  flow.connection, MapToOperationInput: MapToDealViewsInput,
 			Listed: sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
@@ -117,6 +125,11 @@ func MapToAccountViewsInput(input freshsales.ListAccountViewsInput) freshsales.L
 	return input
 }
 
+// MapToDealViewsInput preserves the empty deal view query input.
+func MapToDealViewsInput(input freshsales.ListDealViewsInput) freshsales.ListDealViewsInput {
+	return input
+}
+
 // dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Pass the typed start input to the provider Step."
 type startRequest struct{ dex.StepDefaults }
@@ -157,14 +170,25 @@ func (afterContacts) Execute(_ dex.Context, _ freshsales.ListContactsResult) (*d
 	return dex.GoTo(sdkgo.StepRef[freshsales.ListAccountViewsInput](accountViewsStepType), freshsales.ListAccountViewsInput{}), nil
 }
 
-// dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow with the provider's typed result."
-type completeResult struct {
+// dex:group group-id:provider group-label:"Freshsales"
+// dex:explanation text:"Discover deal views after listing account views."
+type afterAccountViews struct {
 	dex.StepDefaultsNoWaitFor[freshsales.ListAccountViewsResult]
 }
 
+func (afterAccountViews) GetStepType() string { return "AfterAccountViews" }
+func (afterAccountViews) Execute(_ dex.Context, _ freshsales.ListAccountViewsResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[freshsales.ListDealViewsInput](dealViewsStepType), freshsales.ListDealViewsInput{}), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete the Flow with the provider's typed result."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[freshsales.ListDealViewsResult]
+}
+
 func (completeResult) GetStepType() string { return "CompleteListContactViews" }
-func (completeResult) Execute(ctx dex.Context, _ freshsales.ListAccountViewsResult) (*dex.StepDecision, error) {
+func (completeResult) Execute(ctx dex.Context, _ freshsales.ListDealViewsResult) (*dex.StepDecision, error) {
 	views, err := contactViewsAttribute.Get(ctx)
 	if err != nil {
 		return nil, err

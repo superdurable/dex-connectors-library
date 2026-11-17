@@ -64,6 +64,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":301,"deleted":true}`)
 			return err
 		}},
+		{name: "listDealViews/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMViews](`{"views":[{"id":1,"name":"All Deals"}]}`)
+			return err
+		}},
+		{name: "getDeal/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordMetadata](`{"id":401,"name":"Expansion Deal"}`)
+			return err
+		}},
+		{name: "listDeals/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordsPage](`{"records":[{"id":401,"name":"Expansion Deal"}],"page":1,"total":1}`)
+			return err
+		}},
+		{name: "createDeal/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordMetadata](`{"id":401,"name":"Expansion Deal"}`)
+			return err
+		}},
+		{name: "updateDeal/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordMetadata](`{"id":401,"name":"Updated Deal"}`)
+			return err
+		}},
+		{name: "deleteDeal/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":401,"deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -109,5 +133,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteAccount().Definition().Operation.OperationID != "deleteAccount" {
 		t.Errorf("deleteAccount mock has another definition")
+	}
+	if mock.ListDealViews().Definition().Operation.OperationID != "listDealViews" {
+		t.Errorf("listDealViews mock has another definition")
+	}
+	if mock.GetDeal().Definition().Operation.OperationID != "getDeal" {
+		t.Errorf("getDeal mock has another definition")
+	}
+	if mock.ListDeals().Definition().Operation.OperationID != "listDeals" {
+		t.Errorf("listDeals mock has another definition")
+	}
+	if mock.CreateDeal().Definition().Operation.OperationID != "createDeal" {
+		t.Errorf("createDeal mock has another definition")
+	}
+	if mock.UpdateDeal().Definition().Operation.OperationID != "updateDeal" {
+		t.Errorf("updateDeal mock has another definition")
+	}
+	if mock.DeleteDeal().Definition().Operation.OperationID != "deleteDeal" {
+		t.Errorf("deleteDeal mock has another definition")
 	}
 }

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: freshsales
   displayName: Freshsales
-  description: Discover contact views and list, read, create, update, and delete Freshsales contacts.
+  description: Discover views and list, read, create, update, and delete Freshsales contacts, accounts, and deals.
   company: Freshworks
   categories: [crm-sales]
   version: v0.2.0
@@ -258,3 +258,101 @@ spec:
         - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Example deleteAccount result., output: {id: 301, deleted: true}}
+    - name: listDealViews
+      goName: ListDealViews
+      inputType: ListDealViewsInput
+      outputType: CRMViews
+      kind: query
+      description: List available deal views.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Freshsales confirmed the listDealViews outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example listDealViews result., output: {views: [{id: 1, name: All Deals}]}}
+    - name: getDeal
+      goName: GetDeal
+      inputType: GetDealInput
+      outputType: CRMRecordMetadata
+      kind: query
+      description: Read one deal identity and name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Freshsales confirmed the getDeal outcome.}
+        - {id: notFound, goName: NotFound, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example getDeal result., output: {id: 401, name: Expansion Deal}}
+    - name: listDeals
+      goName: ListDeals
+      inputType: ListDealsInput
+      outputType: CRMRecordsPage
+      kind: query
+      description: List one page of deals from a view.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Freshsales confirmed the listDeals outcome.}
+        - {id: notFound, goName: NotFound, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example listDeals result., output: {records: [{id: 401, name: Expansion Deal}], page: 1, total: 1}}
+    - name: createDeal
+      goName: CreateDeal
+      inputType: CreateDealInput
+      outputType: CRMRecordMetadata
+      kind: mutation
+      description: Create a deal with amount and sales account, with bounded duplicate sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Freshsales confirmed the createDeal outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create may have succeeded without a confirmed ID., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example createDeal result., output: {id: 401, name: Expansion Deal}}
+    - name: updateDeal
+      goName: UpdateDeal
+      inputType: UpdateDealInput
+      outputType: CRMRecordMetadata
+      kind: mutation
+      description: Replace one deal name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Freshsales confirmed the updateDeal outcome.}
+        - {id: notFound, goName: NotFound, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example updateDeal result., output: {id: 401, name: Updated Deal}}
+    - name: deleteDeal
+      goName: DeleteDeal
+      inputType: DeleteDealInput
+      outputType: DeletedCRMRecord
+      kind: mutation
+      description: Delete one deal by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Freshsales confirmed the deleteDeal outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example deleteDeal result., output: {id: 401, deleted: true}}

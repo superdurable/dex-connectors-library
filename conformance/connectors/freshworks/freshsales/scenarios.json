@@ -4629,6 +4629,2350 @@
       "input": {},
       "name": "listAccountViews-defect",
       "operation": "listAccountViews"
+    },
+    {
+      "callId": "c0000070-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"filters\":[{\"id\":1,\"name\":\"All Deals\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "views": [
+            {
+              "id": 1,
+              "name": "All Deals"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDealViews-success",
+      "operation": "listDealViews"
+    },
+    {
+      "callId": "c0000070-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "views": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDealViews-providerRejected",
+      "operation": "listDealViews"
+    },
+    {
+      "callId": "c0000070-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "views": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDealViews-invalidResponse",
+      "operation": "listDealViews"
+    },
+    {
+      "callId": "c0000070-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDealViews-rateLimited",
+      "operation": "listDealViews"
+    },
+    {
+      "callId": "c0000070-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDealViews-serverUnavailable",
+      "operation": "listDealViews"
+    },
+    {
+      "callId": "c0000070-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDealViews-serviceUnavailable",
+      "operation": "listDealViews"
+    },
+    {
+      "callId": "c0000070-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDealViews-transportFailure",
+      "operation": "listDealViews"
+    },
+    {
+      "callId": "c0000070-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "views": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDealViews-defect",
+      "operation": "listDealViews"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"deal\":{\"id\":401,\"name\":\"Expansion Deal\",\"amount\":\"1500.00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 401,
+          "name": "Expansion Deal"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "401"
+      },
+      "name": "getDeal-success",
+      "operation": "getDeal"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "401"
+      },
+      "name": "getDeal-notFound",
+      "operation": "getDeal"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "401"
+      },
+      "name": "getDeal-providerRejected",
+      "operation": "getDeal"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "401"
+      },
+      "name": "getDeal-invalidResponse",
+      "operation": "getDeal"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "401"
+      },
+      "name": "getDeal-rateLimited",
+      "operation": "getDeal"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "401"
+      },
+      "name": "getDeal-serverUnavailable",
+      "operation": "getDeal"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "401"
+      },
+      "name": "getDeal-serviceUnavailable",
+      "operation": "getDeal"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "401"
+      },
+      "name": "getDeal-transportFailure",
+      "operation": "getDeal"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dealId": "bad"
+      },
+      "name": "getDeal-defect",
+      "operation": "getDeal"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"deals\":[{\"id\":401,\"name\":\"Expansion Deal\",\"amount\":\"1500.00\"}],\"meta\":{\"total\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/view/1",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 2,
+          "records": [
+            {
+              "id": 401,
+              "name": "Expansion Deal"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "viewId": "1"
+      },
+      "name": "listDeals-success",
+      "operation": "listDeals"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/view/1",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "page": 0,
+          "records": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "viewId": "1"
+      },
+      "name": "listDeals-notFound",
+      "operation": "listDeals"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/view/1",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "records": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "viewId": "1"
+      },
+      "name": "listDeals-providerRejected",
+      "operation": "listDeals"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/view/1",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "records": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "viewId": "1"
+      },
+      "name": "listDeals-invalidResponse",
+      "operation": "listDeals"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/view/1",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "viewId": "1"
+      },
+      "name": "listDeals-rateLimited",
+      "operation": "listDeals"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/view/1",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "viewId": "1"
+      },
+      "name": "listDeals-serverUnavailable",
+      "operation": "listDeals"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/view/1",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "viewId": "1"
+      },
+      "name": "listDeals-serviceUnavailable",
+      "operation": "listDeals"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/view/1",
+          "query": {
+            "page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "viewId": "1"
+      },
+      "name": "listDeals-transportFailure",
+      "operation": "listDeals"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "records": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "viewId": "1"
+      },
+      "name": "listDeals-defect",
+      "operation": "listDeals"
+    },
+    {
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [
+        {
+          "body": "{\"deal\":{\"id\":401,\"name\":\"Expansion Deal\",\"amount\":\"1500.00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+          "providerId": "401",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 401,
+          "name": "Expansion Deal"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "1500.00",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "name": "createDeal-success",
+      "operation": "createDeal"
+    },
+    {
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "1500.00",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "name": "createDeal-providerRejected",
+      "operation": "createDeal"
+    },
+    {
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "1500.00",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "name": "createDeal-acceptedMalformed",
+      "operation": "createDeal"
+    },
+    {
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "1500.00",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "name": "createDeal-rateLimited",
+      "operation": "createDeal"
+    },
+    {
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "1500.00",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "name": "createDeal-serverUnavailable",
+      "operation": "createDeal"
+    },
+    {
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "1500.00",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "name": "createDeal-serviceUnavailable",
+      "operation": "createDeal"
+    },
+    {
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "1500.00",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "name": "createDeal-transportFailure",
+      "operation": "createDeal"
+    },
+    {
+      "attempts": 3,
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/deals",
+          "requestBody": {
+            "deal": {
+              "amount": 1500,
+              "name": "Expansion Deal",
+              "sales_account_id": 301
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "1500.00",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDeal-sendCap",
+      "operation": "createDeal"
+    },
+    {
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "bad",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "name": "createDeal-defect",
+      "operation": "createDeal"
+    },
+    {
+      "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "exchanges": [
+        {
+          "body": "{\"deal\":{\"id\":401,\"name\":\"Expansion Deal\",\"amount\":\"1500.00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": 401,
+          "name": "Expansion Deal"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+      "input": {
+        "amount": "1500.00",
+        "name": "Expansion Deal",
+        "salesAccountId": "301"
+      },
+      "name": "createDeal-readBack",
+      "operation": "createDeal",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "1a0db953-106e-5174-8ca4-ebbcfe39f306",
+          "providerId": "401",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "exchanges": [
+        {
+          "body": "{\"deal\":{\"id\":401,\"name\":\"Updated Deal\",\"amount\":\"1500.00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/401",
+          "requestBody": {
+            "deal": {
+              "name": "Updated Deal"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"deal\":{\"id\":401,\"name\":\"Updated Deal\",\"amount\":\"1500.00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 401,
+          "name": "Updated Deal"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "input": {
+        "dealId": "401",
+        "name": "Updated Deal"
+      },
+      "name": "updateDeal-success",
+      "operation": "updateDeal"
+    },
+    {
+      "callId": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/401",
+          "requestBody": {
+            "deal": {
+              "name": "Updated Deal"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "input": {
+        "dealId": "401",
+        "name": "Updated Deal"
+      },
+      "name": "updateDeal-notFound",
+      "operation": "updateDeal"
+    },
+    {
+      "callId": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/401",
+          "requestBody": {
+            "deal": {
+              "name": "Updated Deal"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "input": {
+        "dealId": "401",
+        "name": "Updated Deal"
+      },
+      "name": "updateDeal-providerRejected",
+      "operation": "updateDeal"
+    },
+    {
+      "callId": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/401",
+          "requestBody": {
+            "deal": {
+              "name": "Updated Deal"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "input": {
+        "dealId": "401",
+        "name": "Updated Deal"
+      },
+      "name": "updateDeal-invalidResponse",
+      "operation": "updateDeal"
+    },
+    {
+      "callId": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/401",
+          "requestBody": {
+            "deal": {
+              "name": "Updated Deal"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "input": {
+        "dealId": "401",
+        "name": "Updated Deal"
+      },
+      "name": "updateDeal-rateLimited",
+      "operation": "updateDeal"
+    },
+    {
+      "callId": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/401",
+          "requestBody": {
+            "deal": {
+              "name": "Updated Deal"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "input": {
+        "dealId": "401",
+        "name": "Updated Deal"
+      },
+      "name": "updateDeal-serverUnavailable",
+      "operation": "updateDeal"
+    },
+    {
+      "callId": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/401",
+          "requestBody": {
+            "deal": {
+              "name": "Updated Deal"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "input": {
+        "dealId": "401",
+        "name": "Updated Deal"
+      },
+      "name": "updateDeal-serviceUnavailable",
+      "operation": "updateDeal"
+    },
+    {
+      "callId": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/deals/401",
+          "requestBody": {
+            "deal": {
+              "name": "Updated Deal"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "input": {
+        "dealId": "401",
+        "name": "Updated Deal"
+      },
+      "name": "updateDeal-transportFailure",
+      "operation": "updateDeal"
+    },
+    {
+      "callId": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed84d67d-5026-54d5-b128-56c95bd83810",
+      "input": {
+        "dealId": "bad",
+        "name": "Updated Deal"
+      },
+      "name": "updateDeal-defect",
+      "operation": "updateDeal"
+    },
+    {
+      "callId": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 401
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "input": {
+        "dealId": "401"
+      },
+      "name": "deleteDeal-success",
+      "operation": "deleteDeal"
+    },
+    {
+      "callId": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 401
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "input": {
+        "dealId": "401"
+      },
+      "name": "deleteDeal-alreadyMissing",
+      "operation": "deleteDeal"
+    },
+    {
+      "callId": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "input": {
+        "dealId": "401"
+      },
+      "name": "deleteDeal-providerRejected",
+      "operation": "deleteDeal"
+    },
+    {
+      "callId": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "input": {
+        "dealId": "401"
+      },
+      "name": "deleteDeal-rateLimited",
+      "operation": "deleteDeal"
+    },
+    {
+      "callId": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "input": {
+        "dealId": "401"
+      },
+      "name": "deleteDeal-serverUnavailable",
+      "operation": "deleteDeal"
+    },
+    {
+      "callId": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "input": {
+        "dealId": "401"
+      },
+      "name": "deleteDeal-serviceUnavailable",
+      "operation": "deleteDeal"
+    },
+    {
+      "callId": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/deals/401",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "input": {
+        "dealId": "401"
+      },
+      "name": "deleteDeal-transportFailure",
+      "operation": "deleteDeal"
+    },
+    {
+      "callId": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6a59b448-9108-5a71-9254-4c6c166d6b74",
+      "input": {
+        "dealId": "bad"
+      },
+      "name": "deleteDeal-defect",
+      "operation": "deleteDeal"
     }
   ],
   "schemaVersion": 1

@@ -58,4 +58,5 @@ func TestContactViewDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, mock.ListContactViews().Calls(), 1)
 	require.Len(t, mock.ListContacts().Calls(), 1)
 	require.Len(t, mock.ListAccountViews().Calls(), 1)
+	require.Len(t, mock.ListDealViews().Calls(), 1)
 }
