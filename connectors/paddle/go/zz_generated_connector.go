@@ -60,6 +60,10 @@ type Operations interface {
 	CreatePrice() sdkgo.Mutation[CreatePriceInput, PaddlePrice]
 	UpdatePrice() sdkgo.Mutation[UpdatePriceInput, PaddlePrice]
 	ArchivePrice() sdkgo.Mutation[PriceIDInput, PaddlePrice]
+	ListTransactions() sdkgo.Query[ListTransactionsInput, TransactionPage]
+	CreateTransaction() sdkgo.Mutation[CreateTransactionInput, TransactionStatus]
+	UpdateTransaction() sdkgo.Mutation[UpdateTransactionInput, TransactionStatus]
+	CancelTransaction() sdkgo.Mutation[GetTransactionInput, TransactionStatus]
 	GetTransaction() sdkgo.Query[GetTransactionInput, TransactionStatus]
 }
 
@@ -124,6 +128,18 @@ func (operations clientOperations) UpdatePrice() sdkgo.Mutation[UpdatePriceInput
 }
 func (operations clientOperations) ArchivePrice() sdkgo.Mutation[PriceIDInput, PaddlePrice] {
 	return operations.client.ArchivePrice()
+}
+func (operations clientOperations) ListTransactions() sdkgo.Query[ListTransactionsInput, TransactionPage] {
+	return operations.client.ListTransactions()
+}
+func (operations clientOperations) CreateTransaction() sdkgo.Mutation[CreateTransactionInput, TransactionStatus] {
+	return operations.client.CreateTransaction()
+}
+func (operations clientOperations) UpdateTransaction() sdkgo.Mutation[UpdateTransactionInput, TransactionStatus] {
+	return operations.client.UpdateTransaction()
+}
+func (operations clientOperations) CancelTransaction() sdkgo.Mutation[GetTransactionInput, TransactionStatus] {
+	return operations.client.CancelTransaction()
 }
 func (operations clientOperations) GetTransaction() sdkgo.Query[GetTransactionInput, TransactionStatus] {
 	return operations.client.GetTransaction()
@@ -1754,6 +1770,303 @@ func NewArchivePriceStep[IN any](config ArchivePriceStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ArchivePriceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTransactionsBranchListed sdkgo.BranchID = "listed"
+const ListTransactionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTransactionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTransactionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTransactionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTransactions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTransactionsBranchListed, Description: "Paddle returned the listTransactions."},
+		{ID: ListTransactionsBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: ListTransactionsBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: ListTransactionsBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTransactionsResult = sdkgo.QueryResult[TransactionPage]
+
+type ListTransactionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=paddle"`
+	operationID                    struct{}                                           `connector:"operationId=listTransactions"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTransactionsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTransactionsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTransactionsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTransactionsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTransactionsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TransactionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListTransactionsStep[IN any](config ListTransactionsStepConfig[IN]) sdkgo.QueryStep[IN, ListTransactionsInput, TransactionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTransactionsInput, TransactionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTransactions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTransactionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTransactionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTransactionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTransactionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTransactionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTransactionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTransactionBranchCreated sdkgo.BranchID = "created"
+const CreateTransactionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTransactionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTransactionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTransaction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTransactionBranchCreated, Description: "Paddle returned the createTransaction."},
+		{ID: CreateTransactionBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: CreateTransactionBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateTransactionResult = sdkgo.MutationResult[TransactionStatus]
+
+type CreateTransactionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=paddle"`
+	operationID                       struct{}                                                `connector:"operationId=createTransaction"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTransactionInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTransactionResult]                   `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTransactionResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateTransactionResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransactionStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateTransactionStep[IN any](config CreateTransactionStepConfig[IN]) sdkgo.MutationStep[IN, CreateTransactionInput, TransactionStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTransactionInput, TransactionStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTransaction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTransactionResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTransactionResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTransactionBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTransactionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTransactionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateTransactionBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTransactionBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTransactionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTransactionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTransactionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTransactionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTransaction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTransactionBranchUpdated, Description: "Paddle returned the updateTransaction."},
+		{ID: UpdateTransactionBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: UpdateTransactionBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: UpdateTransactionBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: UpdateTransactionBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTransactionResult = sdkgo.MutationResult[TransactionStatus]
+
+type UpdateTransactionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=paddle"`
+	operationID                       struct{}                                                `connector:"operationId=updateTransaction"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTransactionInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTransactionResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransactionStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTransactionStep[IN any](config UpdateTransactionStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTransactionInput, TransactionStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTransactionInput, TransactionStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTransaction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTransactionResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTransactionResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTransactionBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTransactionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTransactionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTransactionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTransactionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelTransactionBranchCanceled sdkgo.BranchID = "canceled"
+const CancelTransactionBranchNotFound sdkgo.BranchID = "notFound"
+const CancelTransactionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelTransactionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelTransactionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelTransactionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelTransaction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelTransactionBranchCanceled, Description: "Paddle returned the cancelTransaction."},
+		{ID: CancelTransactionBranchNotFound, Description: "notFound outcome.", Optional: true},
+		{ID: CancelTransactionBranchProviderRejected, Description: "providerRejected outcome.", Optional: true},
+		{ID: CancelTransactionBranchInvalidResponse, Description: "invalidResponse outcome.", Optional: true},
+		{ID: CancelTransactionBranchDefect, Description: "defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CancelTransactionResult = sdkgo.MutationResult[TransactionStatus]
+
+type CancelTransactionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=paddle"`
+	operationID                       struct{}                                                `connector:"operationId=cancelTransaction"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetTransactionInput                            `connector:"mapToOperationInput"`
+	Canceled                          sdkgo.Target[CancelTransactionResult]                   `connector:"branch=canceled"`
+	NotFound                          sdkgo.Target[CancelTransactionResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelTransactionResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelTransactionResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelTransactionResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransactionStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewCancelTransactionStep[IN any](config CancelTransactionStepConfig[IN]) sdkgo.MutationStep[IN, GetTransactionInput, TransactionStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paddle connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetTransactionInput, TransactionStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelTransaction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelTransactionResult] {
+			branches := make([]sdkgo.BranchTarget[CancelTransactionResult], 0, 5)
+			if config.Canceled.HasStep() {
+				branches = append(branches, config.Canceled.BranchTarget(CancelTransactionBranchCanceled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelTransactionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelTransactionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelTransactionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelTransactionBranchDefect))
 			}
 			return branches
 		}(),

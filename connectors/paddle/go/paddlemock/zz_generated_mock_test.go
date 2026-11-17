@@ -96,6 +96,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[paddle.PaddlePrice](`{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"archived","billingInterval":"month","billingFrequency":1}`)
 			return err
 		}},
+		{name: "listTransactions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.TransactionPage](`{"items":[{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "createTransaction/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"draft","currencyCode":"USD"}`)
+			return err
+		}},
+		{name: "updateTransaction/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"ready","currencyCode":"USD"}`)
+			return err
+		}},
+		{name: "cancelTransaction/canceledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"canceled","currencyCode":"USD"}`)
+			return err
+		}},
 		{name: "getTransaction/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}`)
 			return err
@@ -169,6 +185,18 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ArchivePrice().Definition().Operation.OperationID != "archivePrice" {
 		t.Errorf("archivePrice mock has another definition")
+	}
+	if mock.ListTransactions().Definition().Operation.OperationID != "listTransactions" {
+		t.Errorf("listTransactions mock has another definition")
+	}
+	if mock.CreateTransaction().Definition().Operation.OperationID != "createTransaction" {
+		t.Errorf("createTransaction mock has another definition")
+	}
+	if mock.UpdateTransaction().Definition().Operation.OperationID != "updateTransaction" {
+		t.Errorf("updateTransaction mock has another definition")
+	}
+	if mock.CancelTransaction().Definition().Operation.OperationID != "cancelTransaction" {
+		t.Errorf("cancelTransaction mock has another definition")
 	}
 	if mock.GetTransaction().Definition().Operation.OperationID != "getTransaction" {
 		t.Errorf("getTransaction mock has another definition")

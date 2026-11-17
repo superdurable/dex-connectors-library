@@ -8280,6 +8280,1491 @@
       },
       "name": "archivePrice-defect",
       "operation": "archivePrice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000401",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"txn_01hv8wptq8987qeep44cyrewp9\",\"currency_code\":\"USD\",\"status\":\"completed\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/transactions",
+          "query": {
+            "after": [
+              "txn_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "items": [
+            {
+              "currencyCode": "USD",
+              "id": "txn_01hv8wptq8987qeep44cyrewp9",
+              "status": "completed"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "txn_01hv8wptq8987qeep44cyrewp9",
+        "perPage": 2,
+        "status": "completed"
+      },
+      "name": "listTransactions-listed",
+      "operation": "listTransactions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000402",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/transactions",
+          "query": {
+            "after": [
+              "txn_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "txn_01hv8wptq8987qeep44cyrewp9",
+        "perPage": 2,
+        "status": "completed"
+      },
+      "name": "listTransactions-provider-rejected",
+      "operation": "listTransactions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000403",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/transactions",
+          "query": {
+            "after": [
+              "txn_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "txn_01hv8wptq8987qeep44cyrewp9",
+        "perPage": 2,
+        "status": "completed"
+      },
+      "name": "listTransactions-invalid-response",
+      "operation": "listTransactions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000404",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/transactions",
+          "query": {
+            "after": [
+              "txn_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "txn_01hv8wptq8987qeep44cyrewp9",
+        "perPage": 2,
+        "status": "completed"
+      },
+      "name": "listTransactions-rate-limit",
+      "operation": "listTransactions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000405",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/transactions",
+          "query": {
+            "after": [
+              "txn_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "txn_01hv8wptq8987qeep44cyrewp9",
+        "perPage": 2,
+        "status": "completed"
+      },
+      "name": "listTransactions-service-unavailable",
+      "operation": "listTransactions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000406",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/transactions",
+          "query": {
+            "after": [
+              "txn_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "txn_01hv8wptq8987qeep44cyrewp9",
+        "perPage": 2,
+        "status": "completed"
+      },
+      "name": "listTransactions-server-error",
+      "operation": "listTransactions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000407",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/transactions",
+          "query": {
+            "after": [
+              "txn_01hv8wptq8987qeep44cyrewp9"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "txn_01hv8wptq8987qeep44cyrewp9",
+        "perPage": 2,
+        "status": "completed"
+      },
+      "name": "listTransactions-transport",
+      "operation": "listTransactions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000408",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "txn_01hv8wptq8987qeep44cyrewp9",
+        "perPage": 0,
+        "status": "completed"
+      },
+      "name": "listTransactions-defect",
+      "operation": "listTransactions"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"txn_01hv8wptq8987qeep44cyrewp9\",\"currency_code\":\"USD\",\"status\":\"draft\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+          "providerId": "txn_01hv8wptq8987qeep44cyrewp9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "currencyCode": "USD",
+          "id": "txn_01hv8wptq8987qeep44cyrewp9",
+          "status": "draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-created",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-provider-rejected",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-rate-limit",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-service-unavailable",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-server-error",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-transport",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 0
+      },
+      "name": "createTransaction-defect",
+      "operation": "createTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"txn_01hv8wptq8987qeep44cyrewp9\",\"currency_code\":\"USD\",\"status\":\"ready\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "currencyCode": "USD",
+          "id": "txn_01hv8wptq8987qeep44cyrewp9",
+          "status": "ready"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-updated",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-not-found",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-provider-rejected",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-invalid-response",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-rate-limit",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-service-unavailable",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-server-error",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "address_id": "add_01gzkce0amtjsqv8xxd1rv3dna",
+            "customer_id": "ctm_01hv8wptq8987qeep44cyrewp9"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "updateTransaction-transport",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce17fe0-931c-5e6b-bbf6-95a7abe85bdc",
+      "input": {
+        "addressId": "add_01gzkce0amtjsqv8xxd1rv3dna",
+        "customerId": "ctm_01hv8wptq8987qeep44cyrewp9",
+        "transactionId": "bad"
+      },
+      "name": "updateTransaction-defect",
+      "operation": "updateTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"txn_01hv8wptq8987qeep44cyrewp9\",\"currency_code\":\"USD\",\"status\":\"canceled\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "currencyCode": "USD",
+          "id": "txn_01hv8wptq8987qeep44cyrewp9",
+          "status": "canceled"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-canceled",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-not-found",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-provider-rejected",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-invalid-response",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-rate-limit",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-service-unavailable",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-server-error",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/transactions/txn_01hv8wptq8987qeep44cyrewp9",
+          "requestBody": {
+            "status": "canceled"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "txn_01hv8wptq8987qeep44cyrewp9"
+      },
+      "name": "cancelTransaction-transport",
+      "operation": "cancelTransaction"
+    },
+    {
+      "callId": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2430b42b-9895-50bc-9ba4-84adbf6b1d63",
+      "input": {
+        "transactionId": "bad"
+      },
+      "name": "cancelTransaction-defect",
+      "operation": "cancelTransaction"
     }
   ],
   "schemaVersion": 1

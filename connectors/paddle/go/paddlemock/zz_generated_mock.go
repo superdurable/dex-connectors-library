@@ -17,28 +17,32 @@ import (
 
 // Mock is a scripted paddle connection. Script each operation through its accessor.
 type Mock struct {
-	connection      paddle.Connection
-	listCustomers   *connectormock.Query[paddle.ListCustomersInput, paddle.CustomerPage]
-	getCustomer     *connectormock.Query[paddle.CustomerIDInput, paddle.PaddleCustomer]
-	createCustomer  *connectormock.Mutation[paddle.CreateCustomerInput, paddle.PaddleCustomer]
-	updateCustomer  *connectormock.Mutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer]
-	archiveCustomer *connectormock.Mutation[paddle.CustomerIDInput, paddle.PaddleCustomer]
-	listDiscounts   *connectormock.Query[paddle.ListDiscountsInput, paddle.DiscountPage]
-	getDiscount     *connectormock.Query[paddle.DiscountIDInput, paddle.PaddleDiscount]
-	createDiscount  *connectormock.Mutation[paddle.CreateDiscountInput, paddle.PaddleDiscount]
-	updateDiscount  *connectormock.Mutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount]
-	archiveDiscount *connectormock.Mutation[paddle.DiscountIDInput, paddle.PaddleDiscount]
-	listProducts    *connectormock.Query[paddle.ListProductsInput, paddle.ProductPage]
-	getProduct      *connectormock.Query[paddle.ProductIDInput, paddle.PaddleProduct]
-	createProduct   *connectormock.Mutation[paddle.CreateProductInput, paddle.PaddleProduct]
-	updateProduct   *connectormock.Mutation[paddle.UpdateProductInput, paddle.PaddleProduct]
-	archiveProduct  *connectormock.Mutation[paddle.ProductIDInput, paddle.PaddleProduct]
-	listPrices      *connectormock.Query[paddle.ListPricesInput, paddle.PricePage]
-	getPrice        *connectormock.Query[paddle.PriceIDInput, paddle.PaddlePrice]
-	createPrice     *connectormock.Mutation[paddle.CreatePriceInput, paddle.PaddlePrice]
-	updatePrice     *connectormock.Mutation[paddle.UpdatePriceInput, paddle.PaddlePrice]
-	archivePrice    *connectormock.Mutation[paddle.PriceIDInput, paddle.PaddlePrice]
-	getTransaction  *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus]
+	connection        paddle.Connection
+	listCustomers     *connectormock.Query[paddle.ListCustomersInput, paddle.CustomerPage]
+	getCustomer       *connectormock.Query[paddle.CustomerIDInput, paddle.PaddleCustomer]
+	createCustomer    *connectormock.Mutation[paddle.CreateCustomerInput, paddle.PaddleCustomer]
+	updateCustomer    *connectormock.Mutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer]
+	archiveCustomer   *connectormock.Mutation[paddle.CustomerIDInput, paddle.PaddleCustomer]
+	listDiscounts     *connectormock.Query[paddle.ListDiscountsInput, paddle.DiscountPage]
+	getDiscount       *connectormock.Query[paddle.DiscountIDInput, paddle.PaddleDiscount]
+	createDiscount    *connectormock.Mutation[paddle.CreateDiscountInput, paddle.PaddleDiscount]
+	updateDiscount    *connectormock.Mutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount]
+	archiveDiscount   *connectormock.Mutation[paddle.DiscountIDInput, paddle.PaddleDiscount]
+	listProducts      *connectormock.Query[paddle.ListProductsInput, paddle.ProductPage]
+	getProduct        *connectormock.Query[paddle.ProductIDInput, paddle.PaddleProduct]
+	createProduct     *connectormock.Mutation[paddle.CreateProductInput, paddle.PaddleProduct]
+	updateProduct     *connectormock.Mutation[paddle.UpdateProductInput, paddle.PaddleProduct]
+	archiveProduct    *connectormock.Mutation[paddle.ProductIDInput, paddle.PaddleProduct]
+	listPrices        *connectormock.Query[paddle.ListPricesInput, paddle.PricePage]
+	getPrice          *connectormock.Query[paddle.PriceIDInput, paddle.PaddlePrice]
+	createPrice       *connectormock.Mutation[paddle.CreatePriceInput, paddle.PaddlePrice]
+	updatePrice       *connectormock.Mutation[paddle.UpdatePriceInput, paddle.PaddlePrice]
+	archivePrice      *connectormock.Mutation[paddle.PriceIDInput, paddle.PaddlePrice]
+	listTransactions  *connectormock.Query[paddle.ListTransactionsInput, paddle.TransactionPage]
+	createTransaction *connectormock.Mutation[paddle.CreateTransactionInput, paddle.TransactionStatus]
+	updateTransaction *connectormock.Mutation[paddle.UpdateTransactionInput, paddle.TransactionStatus]
+	cancelTransaction *connectormock.Mutation[paddle.GetTransactionInput, paddle.TransactionStatus]
+	getTransaction    *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -46,27 +50,31 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listCustomers:   connectormock.NewQuery[paddle.ListCustomersInput, paddle.CustomerPage](t, paddle.ListCustomersDefinition),
-		getCustomer:     connectormock.NewQuery[paddle.CustomerIDInput, paddle.PaddleCustomer](t, paddle.GetCustomerDefinition),
-		createCustomer:  connectormock.NewMutation[paddle.CreateCustomerInput, paddle.PaddleCustomer](t, paddle.CreateCustomerDefinition),
-		updateCustomer:  connectormock.NewMutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer](t, paddle.UpdateCustomerDefinition),
-		archiveCustomer: connectormock.NewMutation[paddle.CustomerIDInput, paddle.PaddleCustomer](t, paddle.ArchiveCustomerDefinition),
-		listDiscounts:   connectormock.NewQuery[paddle.ListDiscountsInput, paddle.DiscountPage](t, paddle.ListDiscountsDefinition),
-		getDiscount:     connectormock.NewQuery[paddle.DiscountIDInput, paddle.PaddleDiscount](t, paddle.GetDiscountDefinition),
-		createDiscount:  connectormock.NewMutation[paddle.CreateDiscountInput, paddle.PaddleDiscount](t, paddle.CreateDiscountDefinition),
-		updateDiscount:  connectormock.NewMutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount](t, paddle.UpdateDiscountDefinition),
-		archiveDiscount: connectormock.NewMutation[paddle.DiscountIDInput, paddle.PaddleDiscount](t, paddle.ArchiveDiscountDefinition),
-		listProducts:    connectormock.NewQuery[paddle.ListProductsInput, paddle.ProductPage](t, paddle.ListProductsDefinition),
-		getProduct:      connectormock.NewQuery[paddle.ProductIDInput, paddle.PaddleProduct](t, paddle.GetProductDefinition),
-		createProduct:   connectormock.NewMutation[paddle.CreateProductInput, paddle.PaddleProduct](t, paddle.CreateProductDefinition),
-		updateProduct:   connectormock.NewMutation[paddle.UpdateProductInput, paddle.PaddleProduct](t, paddle.UpdateProductDefinition),
-		archiveProduct:  connectormock.NewMutation[paddle.ProductIDInput, paddle.PaddleProduct](t, paddle.ArchiveProductDefinition),
-		listPrices:      connectormock.NewQuery[paddle.ListPricesInput, paddle.PricePage](t, paddle.ListPricesDefinition),
-		getPrice:        connectormock.NewQuery[paddle.PriceIDInput, paddle.PaddlePrice](t, paddle.GetPriceDefinition),
-		createPrice:     connectormock.NewMutation[paddle.CreatePriceInput, paddle.PaddlePrice](t, paddle.CreatePriceDefinition),
-		updatePrice:     connectormock.NewMutation[paddle.UpdatePriceInput, paddle.PaddlePrice](t, paddle.UpdatePriceDefinition),
-		archivePrice:    connectormock.NewMutation[paddle.PriceIDInput, paddle.PaddlePrice](t, paddle.ArchivePriceDefinition),
-		getTransaction:  connectormock.NewQuery[paddle.GetTransactionInput, paddle.TransactionStatus](t, paddle.GetTransactionDefinition),
+		listCustomers:     connectormock.NewQuery[paddle.ListCustomersInput, paddle.CustomerPage](t, paddle.ListCustomersDefinition),
+		getCustomer:       connectormock.NewQuery[paddle.CustomerIDInput, paddle.PaddleCustomer](t, paddle.GetCustomerDefinition),
+		createCustomer:    connectormock.NewMutation[paddle.CreateCustomerInput, paddle.PaddleCustomer](t, paddle.CreateCustomerDefinition),
+		updateCustomer:    connectormock.NewMutation[paddle.UpdateCustomerInput, paddle.PaddleCustomer](t, paddle.UpdateCustomerDefinition),
+		archiveCustomer:   connectormock.NewMutation[paddle.CustomerIDInput, paddle.PaddleCustomer](t, paddle.ArchiveCustomerDefinition),
+		listDiscounts:     connectormock.NewQuery[paddle.ListDiscountsInput, paddle.DiscountPage](t, paddle.ListDiscountsDefinition),
+		getDiscount:       connectormock.NewQuery[paddle.DiscountIDInput, paddle.PaddleDiscount](t, paddle.GetDiscountDefinition),
+		createDiscount:    connectormock.NewMutation[paddle.CreateDiscountInput, paddle.PaddleDiscount](t, paddle.CreateDiscountDefinition),
+		updateDiscount:    connectormock.NewMutation[paddle.UpdateDiscountInput, paddle.PaddleDiscount](t, paddle.UpdateDiscountDefinition),
+		archiveDiscount:   connectormock.NewMutation[paddle.DiscountIDInput, paddle.PaddleDiscount](t, paddle.ArchiveDiscountDefinition),
+		listProducts:      connectormock.NewQuery[paddle.ListProductsInput, paddle.ProductPage](t, paddle.ListProductsDefinition),
+		getProduct:        connectormock.NewQuery[paddle.ProductIDInput, paddle.PaddleProduct](t, paddle.GetProductDefinition),
+		createProduct:     connectormock.NewMutation[paddle.CreateProductInput, paddle.PaddleProduct](t, paddle.CreateProductDefinition),
+		updateProduct:     connectormock.NewMutation[paddle.UpdateProductInput, paddle.PaddleProduct](t, paddle.UpdateProductDefinition),
+		archiveProduct:    connectormock.NewMutation[paddle.ProductIDInput, paddle.PaddleProduct](t, paddle.ArchiveProductDefinition),
+		listPrices:        connectormock.NewQuery[paddle.ListPricesInput, paddle.PricePage](t, paddle.ListPricesDefinition),
+		getPrice:          connectormock.NewQuery[paddle.PriceIDInput, paddle.PaddlePrice](t, paddle.GetPriceDefinition),
+		createPrice:       connectormock.NewMutation[paddle.CreatePriceInput, paddle.PaddlePrice](t, paddle.CreatePriceDefinition),
+		updatePrice:       connectormock.NewMutation[paddle.UpdatePriceInput, paddle.PaddlePrice](t, paddle.UpdatePriceDefinition),
+		archivePrice:      connectormock.NewMutation[paddle.PriceIDInput, paddle.PaddlePrice](t, paddle.ArchivePriceDefinition),
+		listTransactions:  connectormock.NewQuery[paddle.ListTransactionsInput, paddle.TransactionPage](t, paddle.ListTransactionsDefinition),
+		createTransaction: connectormock.NewMutation[paddle.CreateTransactionInput, paddle.TransactionStatus](t, paddle.CreateTransactionDefinition),
+		updateTransaction: connectormock.NewMutation[paddle.UpdateTransactionInput, paddle.TransactionStatus](t, paddle.UpdateTransactionDefinition),
+		cancelTransaction: connectormock.NewMutation[paddle.GetTransactionInput, paddle.TransactionStatus](t, paddle.CancelTransactionDefinition),
+		getTransaction:    connectormock.NewQuery[paddle.GetTransactionInput, paddle.TransactionStatus](t, paddle.GetTransactionDefinition),
 	}
 	mock.listCustomers.Default(ListCustomersDefault())
 	mock.getCustomer.Default(GetCustomerDefault())
@@ -88,6 +96,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createPrice.Default(CreatePriceDefault())
 	mock.updatePrice.Default(UpdatePriceDefault())
 	mock.archivePrice.Default(ArchivePriceDefault())
+	mock.listTransactions.Default(ListTransactionsDefault())
+	mock.createTransaction.Default(CreateTransactionDefault())
+	mock.updateTransaction.Default(UpdateTransactionDefault())
+	mock.cancelTransaction.Default(CancelTransactionDefault())
 	mock.getTransaction.Default(GetTransactionDefault())
 	connection, err := paddle.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "paddle", Name: connectionName})
 	if err != nil {
@@ -200,6 +212,26 @@ func (mock *Mock) ArchivePrice() *connectormock.Mutation[paddle.PriceIDInput, pa
 	return mock.archivePrice
 }
 
+// ListTransactions returns the listTransactions script.
+func (mock *Mock) ListTransactions() *connectormock.Query[paddle.ListTransactionsInput, paddle.TransactionPage] {
+	return mock.listTransactions
+}
+
+// CreateTransaction returns the createTransaction script.
+func (mock *Mock) CreateTransaction() *connectormock.Mutation[paddle.CreateTransactionInput, paddle.TransactionStatus] {
+	return mock.createTransaction
+}
+
+// UpdateTransaction returns the updateTransaction script.
+func (mock *Mock) UpdateTransaction() *connectormock.Mutation[paddle.UpdateTransactionInput, paddle.TransactionStatus] {
+	return mock.updateTransaction
+}
+
+// CancelTransaction returns the cancelTransaction script.
+func (mock *Mock) CancelTransaction() *connectormock.Mutation[paddle.GetTransactionInput, paddle.TransactionStatus] {
+	return mock.cancelTransaction
+}
+
 // GetTransaction returns the getTransaction script.
 func (mock *Mock) GetTransaction() *connectormock.Query[paddle.GetTransactionInput, paddle.TransactionStatus] {
 	return mock.getTransaction
@@ -266,6 +298,18 @@ func (operations mockOperations) UpdatePrice() sdkgo.Mutation[paddle.UpdatePrice
 }
 func (operations mockOperations) ArchivePrice() sdkgo.Mutation[paddle.PriceIDInput, paddle.PaddlePrice] {
 	return operations.mock.archivePrice
+}
+func (operations mockOperations) ListTransactions() sdkgo.Query[paddle.ListTransactionsInput, paddle.TransactionPage] {
+	return operations.mock.listTransactions
+}
+func (operations mockOperations) CreateTransaction() sdkgo.Mutation[paddle.CreateTransactionInput, paddle.TransactionStatus] {
+	return operations.mock.createTransaction
+}
+func (operations mockOperations) UpdateTransaction() sdkgo.Mutation[paddle.UpdateTransactionInput, paddle.TransactionStatus] {
+	return operations.mock.updateTransaction
+}
+func (operations mockOperations) CancelTransaction() sdkgo.Mutation[paddle.GetTransactionInput, paddle.TransactionStatus] {
+	return operations.mock.cancelTransaction
 }
 func (operations mockOperations) GetTransaction() sdkgo.Query[paddle.GetTransactionInput, paddle.TransactionStatus] {
 	return operations.mock.getTransaction
@@ -1013,6 +1057,155 @@ func ArchivePriceArchivedDefault() connectormock.Case[paddle.PaddlePrice] {
 // ArchivePriceDefault is the manifest default, archivedDefault, which New installs.
 func ArchivePriceDefault() connectormock.Case[paddle.PaddlePrice] {
 	return ArchivePriceArchivedDefault()
+}
+
+// ListTransactionsListed selects the listed branch: Paddle returned the listTransactions.
+func ListTransactionsListed(value paddle.TransactionPage, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionPage] {
+	return connectormock.Branch(paddle.ListTransactionsBranchListed, value, failure)
+}
+
+// ListTransactionsProviderRejected selects the providerRejected branch: providerRejected outcome.
+func ListTransactionsProviderRejected(value paddle.TransactionPage, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionPage] {
+	return connectormock.Branch(paddle.ListTransactionsBranchProviderRejected, value, failure)
+}
+
+// ListTransactionsInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func ListTransactionsInvalidResponse(value paddle.TransactionPage, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionPage] {
+	return connectormock.Branch(paddle.ListTransactionsBranchInvalidResponse, value, failure)
+}
+
+// ListTransactionsDefect selects the defect branch: defect outcome.
+func ListTransactionsDefect(value paddle.TransactionPage, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionPage] {
+	return connectormock.Branch(paddle.ListTransactionsBranchDefect, value, failure)
+}
+
+// ListTransactionsRetry asks Dex to retry the listTransactions Step, after the delay when it is positive.
+func ListTransactionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.TransactionPage] {
+	return connectormock.Retry[paddle.TransactionPage](failure, after)
+}
+
+// ListTransactionsListedDefault is the manifest mock listedDefault: A sample transaction is returned.
+func ListTransactionsListedDefault() connectormock.Case[paddle.TransactionPage] {
+	value := connectormock.MustDecodeOutput[paddle.TransactionPage](`{"items":[{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}],"hasMore":false,"nextCursor":""}`)
+	return connectormock.Branch(paddle.ListTransactionsBranchListed, value, nil)
+}
+
+// ListTransactionsDefault is the manifest default, listedDefault, which New installs.
+func ListTransactionsDefault() connectormock.Case[paddle.TransactionPage] {
+	return ListTransactionsListedDefault()
+}
+
+// CreateTransactionCreated selects the created branch: Paddle returned the createTransaction.
+func CreateTransactionCreated(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.CreateTransactionBranchCreated, value, failure)
+}
+
+// CreateTransactionProviderRejected selects the providerRejected branch: providerRejected outcome.
+func CreateTransactionProviderRejected(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.CreateTransactionBranchProviderRejected, value, failure)
+}
+
+// CreateTransactionDefect selects the defect branch: defect outcome.
+func CreateTransactionDefect(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.CreateTransactionBranchDefect, value, failure)
+}
+
+// CreateTransactionRetry asks Dex to retry the createTransaction Step, after the delay when it is positive.
+func CreateTransactionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Retry[paddle.TransactionStatus](failure, after)
+}
+
+// CreateTransactionCreatedDefault is the manifest mock createdDefault: A sample transaction is returned.
+func CreateTransactionCreatedDefault() connectormock.Case[paddle.TransactionStatus] {
+	value := connectormock.MustDecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"draft","currencyCode":"USD"}`)
+	return connectormock.Branch(paddle.CreateTransactionBranchCreated, value, nil)
+}
+
+// CreateTransactionDefault is the manifest default, createdDefault, which New installs.
+func CreateTransactionDefault() connectormock.Case[paddle.TransactionStatus] {
+	return CreateTransactionCreatedDefault()
+}
+
+// UpdateTransactionUpdated selects the updated branch: Paddle returned the updateTransaction.
+func UpdateTransactionUpdated(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.UpdateTransactionBranchUpdated, value, failure)
+}
+
+// UpdateTransactionNotFound selects the notFound branch: notFound outcome.
+func UpdateTransactionNotFound(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.UpdateTransactionBranchNotFound, value, failure)
+}
+
+// UpdateTransactionProviderRejected selects the providerRejected branch: providerRejected outcome.
+func UpdateTransactionProviderRejected(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.UpdateTransactionBranchProviderRejected, value, failure)
+}
+
+// UpdateTransactionInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func UpdateTransactionInvalidResponse(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.UpdateTransactionBranchInvalidResponse, value, failure)
+}
+
+// UpdateTransactionDefect selects the defect branch: defect outcome.
+func UpdateTransactionDefect(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.UpdateTransactionBranchDefect, value, failure)
+}
+
+// UpdateTransactionRetry asks Dex to retry the updateTransaction Step, after the delay when it is positive.
+func UpdateTransactionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Retry[paddle.TransactionStatus](failure, after)
+}
+
+// UpdateTransactionUpdatedDefault is the manifest mock updatedDefault: A sample transaction is returned.
+func UpdateTransactionUpdatedDefault() connectormock.Case[paddle.TransactionStatus] {
+	value := connectormock.MustDecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"ready","currencyCode":"USD"}`)
+	return connectormock.Branch(paddle.UpdateTransactionBranchUpdated, value, nil)
+}
+
+// UpdateTransactionDefault is the manifest default, updatedDefault, which New installs.
+func UpdateTransactionDefault() connectormock.Case[paddle.TransactionStatus] {
+	return UpdateTransactionUpdatedDefault()
+}
+
+// CancelTransactionCanceled selects the canceled branch: Paddle returned the cancelTransaction.
+func CancelTransactionCanceled(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.CancelTransactionBranchCanceled, value, failure)
+}
+
+// CancelTransactionNotFound selects the notFound branch: notFound outcome.
+func CancelTransactionNotFound(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.CancelTransactionBranchNotFound, value, failure)
+}
+
+// CancelTransactionProviderRejected selects the providerRejected branch: providerRejected outcome.
+func CancelTransactionProviderRejected(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.CancelTransactionBranchProviderRejected, value, failure)
+}
+
+// CancelTransactionInvalidResponse selects the invalidResponse branch: invalidResponse outcome.
+func CancelTransactionInvalidResponse(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.CancelTransactionBranchInvalidResponse, value, failure)
+}
+
+// CancelTransactionDefect selects the defect branch: defect outcome.
+func CancelTransactionDefect(value paddle.TransactionStatus, failure *sdkgo.Failure) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Branch(paddle.CancelTransactionBranchDefect, value, failure)
+}
+
+// CancelTransactionRetry asks Dex to retry the cancelTransaction Step, after the delay when it is positive.
+func CancelTransactionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[paddle.TransactionStatus] {
+	return connectormock.Retry[paddle.TransactionStatus](failure, after)
+}
+
+// CancelTransactionCanceledDefault is the manifest mock canceledDefault: A sample transaction is returned.
+func CancelTransactionCanceledDefault() connectormock.Case[paddle.TransactionStatus] {
+	value := connectormock.MustDecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"canceled","currencyCode":"USD"}`)
+	return connectormock.Branch(paddle.CancelTransactionBranchCanceled, value, nil)
+}
+
+// CancelTransactionDefault is the manifest default, canceledDefault, which New installs.
+func CancelTransactionDefault() connectormock.Case[paddle.TransactionStatus] {
+	return CancelTransactionCanceledDefault()
 }
 
 // GetTransactionFound selects the found branch: Paddle returned the transaction.
