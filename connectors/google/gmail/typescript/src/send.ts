@@ -273,7 +273,7 @@ export class GmailSender {
           if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, receipt);
         } catch { /* A conclusive current refusal still selects its branch. */ }
       }
-      return rejectRefusedSend(fence, operation.providerRejectedBranch, receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
+      return rejectRefusedSend(fence, status, operation.providerRejectedBranch, receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
     }
     if (!sentResponse) {
       const lookup = await this.#pollSentMessage(call, budget, credentials, message);
@@ -383,10 +383,11 @@ function rejectUnlessEarlierSendIsUnconfirmed(fence: Fence, branch: string, rece
 
 /**
  * Classify a definite Gmail refusal of this attempt's POST. With no earlier possible send, canResend
- * proves nothing was sent, so agent hosts report failure instead of an unknown outcome.
+ * proves nothing was sent, so agent hosts report failure instead of an unknown outcome. A 409 does not
+ * prove Gmail sent nothing, so it keeps the claim.
  */
-async function rejectRefusedSend(fence: Fence, branch: string, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<SendMessageOutput>> {
-  if ((fence.decide().priorSendUpperBound ?? 0) === 0) await recordSafeResend(fence);
+async function rejectRefusedSend(fence: Fence, status: number, branch: string, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<SendMessageOutput>> {
+  if (status !== 409 && (fence.decide().priorSendUpperBound ?? 0) === 0) await recordSafeResend(fence);
   return rejectUnlessEarlierSendIsUnconfirmed(fence, branch, receipt, rejection);
 }
 

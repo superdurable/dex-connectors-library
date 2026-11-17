@@ -389,6 +389,60 @@
     },
     {
       "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":409,\"message\":\"Conflict\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/messages/send",
+          "requestBody": {
+            "$rawMime": "From: owner@example.com\r\nTo: \u003ccustomer@example.com\u003e\r\nSubject: Progress\r\nMessage-ID: \u003cfbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev\u003e\r\nX-Dex-Call-ID: 9d2167f5-ff7c-53fa-b238-886c4dcac6e9\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\nContent-Transfer-Encoding: 8bit\r\n\r\nUpdate"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "",
+          "recipients": [],
+          "sender": "",
+          "threadId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "input": {
+        "subject": "Progress",
+        "textBody": "Update",
+        "to": [
+          "customer@example.com"
+        ]
+      },
+      "name": "sendMessage-conflict-keeps-claim",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
       "exchanges": [],
       "expected": {
         "branch": "defect",

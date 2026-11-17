@@ -325,6 +325,21 @@ describe('Gmail send and reply classification', () => {
     expect(replyCheckpoint.value).toMatchObject({ state: 'canResend', attempt: 1 });
   });
 
+  it('keeps the claim after a 409 on a first send', async () => {
+    const operation = sender(async request => {
+      if (request.url.includes('/source-1?')) return response(200, { id: 'source-1', threadId: 'thread-1', internalDate: '1767312000000', payload: { headers: [{ name: 'From', value: 'ada@example.com' }, { name: 'Message-ID', value: '<source-1@example.com>' }] } });
+      return request.method === 'GET' ? response(200, { messages: [] }) : response(409, {});
+    });
+    const sendCheckpoint: { value?: unknown } = {};
+    expect(await operation.sendMessage(operationCall('sendMessage', 1, sendCheckpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+    expect(sendCheckpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
+    const replyCheckpoint: { value?: unknown } = {};
+    expect(await operation.replyToMessage(operationCall('replyToMessage', 1, replyCheckpoint), replyInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+    expect(replyCheckpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
+  });
+
   it('records canResend for a rejected send after an earlier proven unsent attempt', async () => {
     const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'canResend', sendCount: 0 } };
     let posts = 0;

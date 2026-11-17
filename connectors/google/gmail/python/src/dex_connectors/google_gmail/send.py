@@ -464,6 +464,7 @@ class SendService:
         self,
         execution: SendExecution,
         outcome: _SendOutcome,
+        status: int,
         kind: FailureKind,
         message: str,
         receipt: Receipt,
@@ -471,9 +472,10 @@ class SendService:
         """Classify a definite Gmail refusal of this attempt's POST.
 
         With no earlier possible send, canResend proves nothing was sent, so
-        agent hosts report failure instead of an unknown outcome.
+        agent hosts report failure instead of an unknown outcome. A 409 does
+        not prove Gmail sent nothing, so it keeps the claim.
         """
-        if execution.fence is not None and (
+        if status != 409 and execution.fence is not None and (
             await execution.fence.decide()
         ).prior_send_upper_bound == 0:
             try:
@@ -654,6 +656,7 @@ class SendService:
             return await self._reject_refused_send(
                 execution,
                 outcome,
+                status,
                 _status_kind(status),
                 outcome.rejection_message,
                 receipt,

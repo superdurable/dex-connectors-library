@@ -169,7 +169,7 @@ uses that header for Sent Mail read-back:
   operations have no `uncertain` branch. A definite 4xx on a send with no
   earlier possible send selects `providerRejected` and is never resent; it
   first records `canResend`, so Dex Agents report a failure, not an unknown
-  outcome. After an
+  outcome. A 409 does not prove nothing was sent, so it keeps the claim. After an
   earlier possible send, a definite 4xx on the resend, or a reply source read
   that is rejected or unusable, returns Retry instead, because the earlier send
   may still be delivered; the claim stays, so later attempts read back and the

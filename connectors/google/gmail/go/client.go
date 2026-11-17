@@ -420,7 +420,7 @@ func (client *Client) sendAndConfirm(
 				return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 			}
 		}
-		return rejectRefusedSend(fence, decision, operation.providerRejectedBranch,
+		return rejectRefusedSend(fence, decision, response.StatusCode, operation.providerRejectedBranch,
 			gmailOperationFailure(operation.operationID, statusFailureKind(response.StatusCode), operation.rejectionMessage), receipt)
 	}
 	content, err := readAndCloseGmailResponse(response, client.maxResponseBytes)
@@ -494,10 +494,12 @@ func rejectUnlessEarlierSendIsUnconfirmed(
 
 // rejectRefusedSend classifies a definite Gmail refusal of this attempt's POST. With no earlier
 // possible send, canResend proves nothing was sent, so agent hosts report failure, not unknown.
+// A 409 does not prove Gmail sent nothing, so it keeps the claim.
 func rejectRefusedSend(
-	fence *singledispatch.Fence, decision singledispatch.Decision, branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt,
+	fence *singledispatch.Fence, decision singledispatch.Decision, statusCode int,
+	branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
-	if decision.MaximumPriorSends == 0 {
+	if decision.MaximumPriorSends == 0 && statusCode != http.StatusConflict {
 		_ = fence.RecordCanResend() // A failed checkpoint leaves the claim, so the outcome stays unknown.
 	}
 	return rejectUnlessEarlierSendIsUnconfirmed(decision, branch, failure, receipt)
