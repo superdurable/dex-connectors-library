@@ -485,7 +485,7 @@ func (client *Client) classifyWrite(operationID string, subject string, result e
 		return writeClassification{outcome: writeNotApplied, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Confluence rate limited the "+subject+" before writing it")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
-	case isConclusiveRejectionStatus(response.statusCode):
+	case isDefiniteWriteRefusalStatus(response.statusCode):
 		return writeClassification{outcome: writeRejected, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	default:
 		return writeClassification{outcome: writeAmbiguous, retryAfter: client.retryAfter(response),
@@ -536,9 +536,16 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408 and 429: Confluence refused before changing anything.
-func isConclusiveRejectionStatus(statusCode int) bool {
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout && statusCode != http.StatusTooManyRequests
+// isDefiniteWriteRefusalStatus reports a status proving Confluence refused a write; others leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 // hasConfluenceScope recognizes classic and granular Confluence scopes, such as read:page:confluence.

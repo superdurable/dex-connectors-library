@@ -1,6 +1,6 @@
 # Atlassian Confluence connector for Python
 
-`dex-connector-atlassian-confluence==0.2.0` implements `searchPages`, `getPage`, `createPage`, `updatePage`, and `addComment` for Dex Python Flows, and from 0.2.0 the `pageChanged` poll Trigger, which starts a Flow when a page is created or updated. The package requires `dex-connectors-sdk>=0.12.0`, whose poll Trigger kit the Trigger is built on, and `dex-python-sdk>=1.28.0`.
+`dex-connector-atlassian-confluence==0.2.1` implements `searchPages`, `getPage`, `createPage`, `updatePage`, and `addComment` for Dex Python Flows, and from 0.2.0 the `pageChanged` poll Trigger, which starts a Flow when a page is created or updated. The package requires `dex-connectors-sdk>=0.12.0`, whose poll Trigger kit the Trigger is built on, and `dex-python-sdk>=1.28.0`.
 
 ## Connection
 

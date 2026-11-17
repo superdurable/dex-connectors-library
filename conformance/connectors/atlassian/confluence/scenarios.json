@@ -1091,7 +1091,11 @@
         "branch": "added",
         "failureKind": "",
         "heartbeat": {
-          "dispatchedAtUnixMilli": 1792918800000
+          "attempt": 1,
+          "callId": "337ce5ab-5af4-5790-98f8-9def5ed59b32",
+          "providerId": "700001",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "commentId": "700001",
@@ -1148,7 +1152,9 @@
         "branch": "",
         "failureKind": "RATE_LIMIT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "84974bad-a648-5bc0-92e9-42068ae0f2c5",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -1198,7 +1204,10 @@
         "branch": "",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "dispatchedAtUnixMilli": 1792918800000
+          "attempt": 1,
+          "callId": "16847211-0fef-5a2d-9a47-b392c4c3f176",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
         "retry": true,
@@ -1246,7 +1255,9 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "2decee69-70a6-503b-a3df-a5dd4f16e7af",
+          "state": "canResend"
         },
         "requestCount": 0,
         "retry": true,
@@ -2134,7 +2145,9 @@
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
         "heartbeat": {
-          "dispatchedAtUnixMilli": 1792918800000
+          "attempt": 1,
+          "callId": "00e666fc-0525-540f-8952-5aa361baebaf",
+          "state": "canResend"
         },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
@@ -2188,7 +2201,9 @@
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
         "heartbeat": {
-          "dispatchedAtUnixMilli": 1792918800000
+          "attempt": 1,
+          "callId": "8fc3f6d1-5cc3-5bd9-864b-7cab54b151b7",
+          "state": "canResend"
         },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
@@ -2212,6 +2227,33 @@
       "attempts": 2,
       "callId": "1d4a9b66-087a-52c9-aee1-005513d3b6ac",
       "exchanges": [
+        {
+          "body": "{\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002/footer-comments",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "25"
+            ],
+            "sort": [
+              "-created-date"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        },
         {
           "body": "{\"error\":\"unavailable\"}",
           "headers": {},
@@ -2273,7 +2315,7 @@
           "createdAt": "0001-01-01T00:00:00Z",
           "pageId": "600002"
         },
-        "requestCount": 2,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -2286,16 +2328,25 @@
       },
       "intermediate": [
         {
-          "exchangeCount": 1,
+          "exchangeCount": 2,
           "failureKind": "AVAILABILITY",
           "heartbeat": {
-            "dispatchedAtUnixMilli": 1792918800000
+            "attempt": 3,
+            "callId": "1d4a9b66-087a-52c9-aee1-005513d3b6ac",
+            "sendCount": 3,
+            "state": "claimed"
           },
           "retryAfterMs": 5000
         }
       ],
       "name": "addComment-uncertain",
-      "operation": "addComment"
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "1d4a9b66-087a-52c9-aee1-005513d3b6ac",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "b279b6ee-d442-5f65-b7c7-74727246d6f7",
@@ -2480,9 +2531,9 @@
       "operation": "addComment",
       "priorHeartbeat": {
         "attempt": 1,
-        "value": {
-          "dispatchedAtUnixMilli": 1792918800000
-        }
+        "callId": "9a94169e-c193-5974-b142-e8e5583feaab",
+        "sendCount": 1,
+        "state": "claimed"
       }
     }
   ],

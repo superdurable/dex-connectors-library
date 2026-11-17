@@ -47,6 +47,10 @@ _DEFAULT_ENDPOINT = "https://api.atlassian.com"
 _MINIMUM_POLL_INTERVAL_SECONDS = 10
 
 
+DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses proving Confluence refused a write; any other status leaves its outcome unknown."""
+
+
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Build a secret-safe connector failure."""
     return Failure(kind, "confluence", operation, message)
@@ -482,7 +486,7 @@ class Client:
                 "notFound",
                 failure(operation, FailureKind.NOT_FOUND, f"Confluence rejected the {subject} with HTTP 404"),
             )
-        if 400 <= status < 500 and status != 408:
+        if status in DEFINITE_WRITE_REFUSAL_STATUSES:
             return Classification(
                 "rejected",
                 failure(

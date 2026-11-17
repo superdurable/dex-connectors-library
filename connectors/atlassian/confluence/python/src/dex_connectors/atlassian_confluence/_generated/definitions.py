@@ -110,7 +110,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "The comment is on the page, including one an earlier attempt of this Step execution sent.", False),
         BranchDefinition(NOT_FOUND, "The page does not exist or the connection cannot view it; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "An earlier attempt sent the comment and the page's comments do not confirm it; Confluence has no idempotency key, so it is never sent again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

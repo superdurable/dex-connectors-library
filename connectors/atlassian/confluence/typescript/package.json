@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-atlassian-confluence",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Atlassian Confluence pages and the pageChanged poll Trigger for Dex Flows",
   "repository": {
     "type": "git",

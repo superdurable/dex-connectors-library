@@ -94,13 +94,54 @@ func TestCommentAfterAnEarlierDispatchWithoutAMatchIsUncertain(t *testing.T) {
 	})
 	client := newConfluenceClient(t, provider.URL)
 	dexContext := newTestDexContext("comment-uncertain")
-	require.NoError(t, dexContext.RecordHeartbeat(map[string]any{"dispatchedAtUnixMilli": time.Now().UnixMilli()}))
+	// Without a checkpoint, each earlier attempt counts as a possible send, so this attempt is at the cap.
+	dexContext.attempt = confluence.AddCommentDefinition.MaxSends + 1
 
 	result, err := sdkgo.RunMutation(dexContext, client.AddComment(), confluenceConnection, validAddCommentInput())
 	require.NoError(t, err)
 	require.Equal(t, confluence.AddCommentBranchUncertain, result.Branch, "the same text written an hour ago is another comment")
 	require.Empty(t, result.Value.CommentID)
 	require.Equal(t, testPolicyPageID, result.Value.PageID)
+}
+
+func TestCommentReadsBackThenResendsBelowTheSendCap(t *testing.T) {
+	provider := newRecordingConfluence(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"results":[]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusInternalServerError, `{}`)
+	})
+	client := newConfluenceClient(t, provider.URL)
+	dexContext := newTestDexContext("comment-resend")
+	for attempt := int32(1); attempt < confluence.AddCommentDefinition.MaxSends; attempt++ {
+		dexContext.attempt = attempt
+		_, err := sdkgo.RunMutation(dexContext, client.AddComment(), confluenceConnection, validAddCommentInput())
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		require.Equal(t, int(attempt), provider.countRequests(http.MethodPost, testContentPath+"/footer-comments"))
+	}
+	require.Equal(t, 1, provider.countRequests(http.MethodGet, testContentPath+"/pages/"+testPolicyPageID+"/footer-comments"), "the resend read back first")
+	dexContext.attempt = confluence.AddCommentDefinition.MaxSends + 1
+	result, err := sdkgo.RunMutation(dexContext, client.AddComment(), confluenceConnection, validAddCommentInput())
+	require.NoError(t, err)
+	require.Equal(t, confluence.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, int(confluence.AddCommentDefinition.MaxSends)-1, provider.countRequests(http.MethodPost, testContentPath+"/footer-comments"))
+}
+
+func TestCommentRefusalOfAResendIsUncertain(t *testing.T) {
+	provider := newRecordingConfluence(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"results":[]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusBadRequest, `{"errors":[{"title":"SENTINEL nope"}]}`)
+	})
+	dexContext := newTestDexContext("comment-resend-refused")
+	dexContext.attempt = 2
+	result, err := sdkgo.RunMutation(dexContext, newConfluenceClient(t, provider.URL).AddComment(), confluenceConnection, validAddCommentInput())
+	require.NoError(t, err)
+	require.Equal(t, confluence.AddCommentBranchUncertain, result.Branch, "the earlier attempt may have added the comment")
+	require.Equal(t, 1, provider.countRequests(http.MethodPost, testContentPath+"/footer-comments"))
 }
 
 func TestCommentRejectionsAndRateLimits(t *testing.T) {
@@ -126,7 +167,7 @@ func TestCommentRejectionsAndRateLimits(t *testing.T) {
 	dexContext := newTestDexContext("comment-rate-limited")
 	_, err := sdkgo.RunMutation(dexContext, newConfluenceClient(t, provider.URL).AddComment(), confluenceConnection, validAddCommentInput())
 	requireRetry(t, err, sdkgo.FailureRateLimit)
-	require.False(t, dexContext.hasHeartbeat(), "a 429 added nothing, so the next attempt may send")
+	require.Contains(t, string(dexContext.heartbeat), `"state":"canResend"`, "a 429 added nothing, so the next attempt may send")
 }
 
 func TestCommentWithoutARecordedCheckpointSendsNothing(t *testing.T) {

@@ -4,7 +4,9 @@
 package confluence
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -75,63 +78,118 @@ type commentCreation struct {
 func (AddCommentOperation) Definition() sdkgo.MutationDefinition { return AddCommentDefinition }
 
 // IdempotencyKey derives the key recorded in the Receipt from the stable call ID.
-// Confluence accepts no idempotency key; a Dex heartbeat checkpoint keeps the comment to one send.
+// Confluence accepts no idempotency key; a Dex heartbeat checkpoint counts each send of the comment.
 func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends the comment at most once per Step execution. It records a dispatch checkpoint first; an
-// attempt that finds the checkpoint never sends, and reports the earlier comment when the page's newest
-// footer comments hold one with the same text, or selects uncertain. Only a 429 or a connection that
-// never opened clears the checkpoint for a resend.
+// Invoke sends the comment behind the shared single-dispatch fence. An attempt after a possible earlier
+// send first reads the page's newest footer comments and reports one with the same text; otherwise it
+// resends while possible sends stay within the send cap, and selects uncertain at the cap.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	client := operation.client
 	creation, err := buildCommentCreation(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, creation.requested, failurePointer(addCommentOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
+	fence, err := singledispatch.NewFence(call, AddCommentDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return sdkgo.NewMutationBranch(AddCommentBranchDefect, creation.requested, failurePointer(addCommentOperationID, sdkgo.FailureLocalDefect, "Confluence dispatch fence could not be constructed"), sdkgo.Receipt{})
+	}
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "the comment checkpoint is unreadable, so nothing was sent in this attempt"), 0)
+	}
+	// An earlier send of this call may have taken effect, so a refusal or defect proves nothing.
+	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	session, cancel, sessionErr := client.startSession(call, addCommentOperationID)
 	if sessionErr != nil {
+		// notSent after a possible earlier send would hide it, so only a first-send decision records it.
+		if decision.Kind == singledispatch.SendAllowed {
+			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
+				return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Confluence setup failed and the not-sent checkpoint could not be recorded"), sessionErr.retryAfter)
+			}
+		}
 		if sessionErr.isRetryable {
 			return sdkgo.NewMutationRetry[AddCommentOutput](sessionErr.failure, sessionErr.retryAfter)
 		}
-		return sdkgo.NewMutationBranch(AddCommentBranchDefect, creation.requested, sessionErr.pointer(), sdkgo.Receipt{})
+		return commentRefusalOrUncertain(hasPossibleEarlierSend, AddCommentBranchDefect, creation.requested, sessionErr.failure, sdkgo.Receipt{})
 	}
 	defer cancel()
 	earliestSendAt := earliestDispatchTime(call, client.now())
-	if dispatchedAt, hasCheckpoint := readDispatchCheckpoint(call); hasCheckpoint {
-		return operation.reconcileEarlierDispatch(session, creation, earlierTime(earliestSendAt, dispatchedAt))
+	switch {
+	case decision.Kind == singledispatch.ReadBackRequired, decision.Marker.ProviderID != "":
+		attempt, isMissing, readReceipt := operation.readBackEarlierComment(session, creation, earliestSendAt)
+		if isMissing {
+			return sdkgo.NewMutationUncertain(creation.requested, newFailure(addCommentOperationID, sdkgo.FailureTransport,
+				"earlier attempts of this Step sent the comment up to the send cap, and the page shows no matching comment, so it is not sent again"), readReceipt)
+		}
+		return attempt
+	case decision.Kind == singledispatch.ReadBackThenResendAllowed:
+		if attempt, isMissing, _ := operation.readBackEarlierComment(session, creation, earliestSendAt); !isMissing {
+			return attempt
+		}
 	}
-	if err := recordDispatchCheckpoint(call, earliestSendAt); err != nil {
-		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "the comment checkpoint could not be recorded, so nothing was sent to Confluence"), 0)
+	var result exchangeResult
+	err = fence.Dispatch(func(requestContext context.Context) error {
+		fencedSession := *session
+		fencedSession.context = requestContext
+		result = client.exchange(&fencedSession, confluenceRequest{method: http.MethodPost, api: contentAPI, path: "/footer-comments", payload: creation.body})
+		return nil
+	})
+	switch {
+	case errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime):
+		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "the comment checkpoint or request budget is unavailable, so nothing was sent to Confluence"), 0)
+	case err != nil:
+		return commentRefusalOrUncertain(hasPossibleEarlierSend, AddCommentBranchDefect, creation.requested, newFailure(addCommentOperationID, sdkgo.FailureLocalDefect, "Confluence dispatch was not allowed"), sdkgo.Receipt{})
 	}
-	result := client.exchange(session, confluenceRequest{method: http.MethodPost, api: contentAPI, path: "/footer-comments", payload: creation.body})
 	classification := client.classifyWrite(addCommentOperationID, addCommentFailureSubject, result)
 	receipt := client.receipt(session, result.response, "")
 	switch classification.outcome {
 	case writeAccepted:
 		var comment footerCommentResource
 		if json.Unmarshal(result.response.body, &comment) == nil && contentIDPattern.MatchString(comment.ID) {
+			// The accepted comment ID keeps a replayed attempt from resending; a lost checkpoint keeps the claim.
+			_ = fence.RecordProviderID(comment.ID)
 			return sdkgo.NewMutationBranch(AddCommentBranchAdded, creation.addedOutput(comment, false), nil, client.receipt(session, result.response, comment.ID))
 		}
 		classification.failure = newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Confluence accepted the comment but returned an unusable comment")
 	case writeNotApplied:
-		clearDispatchCheckpoint(call)
+		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+			return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Confluence retry checkpoint could not be recorded"), classification.retryAfter)
+		}
 		return sdkgo.NewMutationRetry[AddCommentOutput](classification.failure, classification.retryAfter)
-	case writeNotFound:
-		return sdkgo.NewMutationBranch(AddCommentBranchNotFound, creation.requested, &classification.failure, receipt)
-	case writeRejected:
-		return sdkgo.NewMutationBranch(AddCommentBranchProviderRejected, creation.requested, &classification.failure, receipt)
+	case writeNotFound, writeRejected:
+		branch := AddCommentBranchProviderRejected
+		if classification.outcome == writeNotFound {
+			branch = AddCommentBranchNotFound
+		}
+		if !hasPossibleEarlierSend {
+			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+				return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Confluence rejection checkpoint could not be recorded"), 0)
+			}
+		}
+		return commentRefusalOrUncertain(hasPossibleEarlierSend, branch, creation.requested, classification.failure, receipt)
 	case writeDefect:
-		clearDispatchCheckpoint(call)
-		return sdkgo.NewMutationBranch(AddCommentBranchDefect, creation.requested, &classification.failure, receipt)
+		// The request was never built, so nothing was sent; a lost checkpoint only keeps the claim.
+		_ = fence.RecordCanResend()
+		return commentRefusalOrUncertain(hasPossibleEarlierSend, AddCommentBranchDefect, creation.requested, classification.failure, receipt)
 	}
-	// The checkpoint stays, so the next attempt reads the page's comments instead of sending again.
+	// The claim stays, so the next attempt reads the page's comments, then resends within the cap or selects uncertain.
 	return sdkgo.NewMutationRetry[AddCommentOutput](classification.failure, max(classification.retryAfter, ambiguousWriteSettleDelay))
 }
 
-// reconcileEarlierDispatch never sends: it reports an earlier attempt's comment found on the page, or uncertain.
-func (operation AddCommentOperation) reconcileEarlierDispatch(session *operationSession, creation commentCreation, earliestSendAt time.Time) sdkgo.MutationAttempt[AddCommentOutput] {
+// commentRefusalOrUncertain selects a definite branch only when no earlier send may have added the comment.
+func commentRefusalOrUncertain(hasPossibleEarlierSend bool, branch sdkgo.BranchID, requested AddCommentOutput, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {
+	if hasPossibleEarlierSend {
+		return sdkgo.NewMutationUncertain(requested, failure, receipt)
+	}
+	return sdkgo.NewMutationBranch(branch, requested, &failure, receipt)
+}
+
+// readBackEarlierComment never sends: it reports an earlier attempt's comment found on the page, a Retry
+// for a transient read, or a missing page. isMissing means read-back could not confirm the comment.
+func (operation AddCommentOperation) readBackEarlierComment(session *operationSession, creation commentCreation, earliestSendAt time.Time) (sdkgo.MutationAttempt[AddCommentOutput], bool, sdkgo.Receipt) {
 	client := operation.client
 	result := client.exchange(session, confluenceRequest{
 		method: http.MethodGet, api: contentAPI, path: pagePath(creation.body.PageID) + "/footer-comments",
@@ -142,25 +200,22 @@ func (operation AddCommentOperation) reconcileEarlierDispatch(session *operation
 	switch classification.outcome {
 	case readSucceeded:
 	case readRetry:
-		return sdkgo.NewMutationRetry[AddCommentOutput](classification.failure, classification.retryAfter)
+		return sdkgo.NewMutationRetry[AddCommentOutput](classification.failure, classification.retryAfter), false, receipt
 	case readNotFound:
-		return sdkgo.NewMutationBranch(AddCommentBranchNotFound, creation.requested, &classification.failure, receipt)
+		return sdkgo.NewMutationBranch(AddCommentBranchNotFound, creation.requested, &classification.failure, receipt), false, receipt
 	default:
-		return sdkgo.NewMutationUncertain(creation.requested, newFailure(addCommentOperationID, classification.failure.Kind,
-			"an earlier attempt of this Step sent the comment, and the page's comments could not be read back: "+classification.failure.Message), receipt)
+		return sdkgo.MutationAttempt[AddCommentOutput]{}, true, receipt
 	}
 	var list footerCommentListResource
 	if err := json.Unmarshal(result.response.body, &list); err != nil {
-		return sdkgo.NewMutationUncertain(creation.requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol,
-			"an earlier attempt of this Step sent the comment, and the page's comments read back are invalid"), receipt)
+		return sdkgo.MutationAttempt[AddCommentOutput]{}, true, receipt
 	}
 	for _, comment := range list.Results {
 		if creation.isSentByThisStep(comment, earliestSendAt) {
-			return sdkgo.NewMutationBranch(AddCommentBranchAdded, creation.addedOutput(comment, true), nil, client.receipt(session, result.response, comment.ID))
+			return sdkgo.NewMutationBranch(AddCommentBranchAdded, creation.addedOutput(comment, true), nil, client.receipt(session, result.response, comment.ID)), false, receipt
 		}
 	}
-	return sdkgo.NewMutationUncertain(creation.requested, newFailure(addCommentOperationID, sdkgo.FailureTransport,
-		"an earlier attempt of this Step sent the comment without a confirmed outcome, and the page shows no matching comment, so it is not sent again"), receipt)
+	return sdkgo.MutationAttempt[AddCommentOutput]{}, true, receipt
 }
 
 func buildCommentCreation(input AddCommentInput) (commentCreation, error) {

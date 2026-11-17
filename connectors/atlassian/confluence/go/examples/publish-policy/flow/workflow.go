@@ -263,7 +263,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: addPublicationCommentStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "confluence", GroupLabel: "Confluence",
-				Explanation: "Add the publication comment once; an unknown outcome fails the Flow without resending.",
+				Explanation: "Add the publication comment; an unknown outcome is read back, then resent up to the send cap.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
 			Added: sdkgo.GoTo(completePublication{}),

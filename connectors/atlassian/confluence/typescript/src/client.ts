@@ -185,7 +185,7 @@ export class ConfluenceClient {
     }
     if (response.status === 429) return classified('notApplied', confluenceFailure(operation, 'RATE_LIMIT', `Confluence rate limited the ${subject} before writing it`), this.retryAfter(response));
     if (response.status === 404) return classified('notFound', confluenceFailure(operation, 'NOT_FOUND', `Confluence rejected the ${subject} with HTTP 404`));
-    if (response.status >= 400 && response.status < 500 && response.status !== 408) return classified('rejected', confluenceFailure(operation, statusFailureKind(response.status), `Confluence rejected the ${subject} with HTTP ${response.status}`));
+    if (definiteWriteRefusalStatuses.has(response.status)) return classified('rejected', confluenceFailure(operation, statusFailureKind(response.status), `Confluence rejected the ${subject} with HTTP ${response.status}`));
     return classified('ambiguous', confluenceFailure(operation, 'AVAILABILITY', `Confluence ${subject} outcome is unknown after HTTP ${response.status}`), this.retryAfter(response));
   }
 
@@ -207,6 +207,9 @@ export class ConfluenceClient {
 
 function classified(outcome: ConfluenceClassification['outcome'], failure?: Failure, retryAfterMs = 0): ConfluenceClassification { return { outcome, ...(failure ? { failure } : {}), retryAfterMs }; }
 /** Build a connector failure without reflecting provider payloads or credentials. */
+/** Statuses proving Confluence refused a write; any other status leaves its outcome unknown. */
+const definiteWriteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
 export function confluenceFailure(operation: string, kind: FailureKind, message: string): Failure { return { provider: 'confluence', operation, kind, message }; }
 function statusFailureKind(status: number): FailureKind { return status === 400 ? 'VALIDATION' : status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 404 ? 'NOT_FOUND' : status === 409 ? 'CONFLICT' : status === 429 ? 'RATE_LIMIT' : 'PROVIDER_REJECTION'; }
 function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
