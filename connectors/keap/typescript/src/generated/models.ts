@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Keap CRM API root. Blank uses the displayed production root; override only for a trusted test gateway. Do not append /rest/v2/contacts or credentials. */
   baseUrl?: string;
-  /** Maximum duration of one contact lookup as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
+  /** Maximum duration of one CRM call as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete contact JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses. */
+  /** Maximum complete CRM JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses. */
   maxResponseBytes?: number;
 }
 

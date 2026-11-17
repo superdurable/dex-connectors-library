@@ -17,8 +17,11 @@ import (
 
 // Mock is a scripted keap connection. Script each operation through its accessor.
 type Mock struct {
-	connection keap.Connection
-	getContact *connectormock.Query[keap.GetContactInput, keap.ContactProfile]
+	connection    keap.Connection
+	getContact    *connectormock.Query[keap.GetContactInput, keap.ContactProfile]
+	listContacts  *connectormock.Query[keap.ListContactsInput, keap.ContactsPage]
+	upsertContact *connectormock.Mutation[keap.UpsertContactInput, keap.ContactProfile]
+	deleteContact *connectormock.Mutation[keap.GetContactInput, keap.ContactDeletion]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +29,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getContact: connectormock.NewQuery[keap.GetContactInput, keap.ContactProfile](t, keap.GetContactDefinition),
+		getContact:    connectormock.NewQuery[keap.GetContactInput, keap.ContactProfile](t, keap.GetContactDefinition),
+		listContacts:  connectormock.NewQuery[keap.ListContactsInput, keap.ContactsPage](t, keap.ListContactsDefinition),
+		upsertContact: connectormock.NewMutation[keap.UpsertContactInput, keap.ContactProfile](t, keap.UpsertContactDefinition),
+		deleteContact: connectormock.NewMutation[keap.GetContactInput, keap.ContactDeletion](t, keap.DeleteContactDefinition),
 	}
 	mock.getContact.Default(GetContactDefault())
+	mock.listContacts.Default(ListContactsDefault())
+	mock.upsertContact.Default(UpsertContactDefault())
+	mock.deleteContact.Default(DeleteContactDefault())
 	connection, err := keap.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "keap", Name: connectionName})
 	if err != nil {
 		t.Fatalf("keap mock connection: %v", err)
@@ -45,10 +54,34 @@ func (mock *Mock) GetContact() *connectormock.Query[keap.GetContactInput, keap.C
 	return mock.getContact
 }
 
+// ListContacts returns the listContacts script.
+func (mock *Mock) ListContacts() *connectormock.Query[keap.ListContactsInput, keap.ContactsPage] {
+	return mock.listContacts
+}
+
+// UpsertContact returns the upsertContact script.
+func (mock *Mock) UpsertContact() *connectormock.Mutation[keap.UpsertContactInput, keap.ContactProfile] {
+	return mock.upsertContact
+}
+
+// DeleteContact returns the deleteContact script.
+func (mock *Mock) DeleteContact() *connectormock.Mutation[keap.GetContactInput, keap.ContactDeletion] {
+	return mock.deleteContact
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetContact() sdkgo.Query[keap.GetContactInput, keap.ContactProfile] {
 	return operations.mock.getContact
+}
+func (operations mockOperations) ListContacts() sdkgo.Query[keap.ListContactsInput, keap.ContactsPage] {
+	return operations.mock.listContacts
+}
+func (operations mockOperations) UpsertContact() sdkgo.Mutation[keap.UpsertContactInput, keap.ContactProfile] {
+	return operations.mock.upsertContact
+}
+func (operations mockOperations) DeleteContact() sdkgo.Mutation[keap.GetContactInput, keap.ContactDeletion] {
+	return operations.mock.deleteContact
 }
 
 // GetContactFound selects the found branch: Keap returned the contact.
@@ -89,3 +122,114 @@ func GetContactFoundDefault() connectormock.Case[keap.ContactProfile] {
 
 // GetContactDefault is the manifest default, foundDefault, which New installs.
 func GetContactDefault() connectormock.Case[keap.ContactProfile] { return GetContactFoundDefault() }
+
+// ListContactsListed selects the listed branch: Keap returned a contact page.
+func ListContactsListed(value keap.ContactsPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactsPage] {
+	return connectormock.Branch(keap.ListContactsBranchListed, value, failure)
+}
+
+// ListContactsProviderRejected selects the providerRejected branch: Keap conclusively rejected the list request.
+func ListContactsProviderRejected(value keap.ContactsPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactsPage] {
+	return connectormock.Branch(keap.ListContactsBranchProviderRejected, value, failure)
+}
+
+// ListContactsInvalidResponse selects the invalidResponse branch: Keap returned malformed or oversized JSON.
+func ListContactsInvalidResponse(value keap.ContactsPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactsPage] {
+	return connectormock.Branch(keap.ListContactsBranchInvalidResponse, value, failure)
+}
+
+// ListContactsDefect selects the defect branch: Local input or credentials are invalid.
+func ListContactsDefect(value keap.ContactsPage, failure *sdkgo.Failure) connectormock.Case[keap.ContactsPage] {
+	return connectormock.Branch(keap.ListContactsBranchDefect, value, failure)
+}
+
+// ListContactsRetry asks Dex to retry the listContacts Step, after the delay when it is positive.
+func ListContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactsPage] {
+	return connectormock.Retry[keap.ContactsPage](failure, after)
+}
+
+// ListContactsListedDefault is the manifest mock listedDefault: A sample contact page is returned.
+func ListContactsListedDefault() connectormock.Case[keap.ContactsPage] {
+	value := connectormock.MustDecodeOutput[keap.ContactsPage](`{"contacts":[{"id":"123","givenName":"Example","familyName":"Contact"}],"nextPageToken":""}`)
+	return connectormock.Branch(keap.ListContactsBranchListed, value, nil)
+}
+
+// ListContactsDefault is the manifest default, listedDefault, which New installs.
+func ListContactsDefault() connectormock.Case[keap.ContactsPage] { return ListContactsListedDefault() }
+
+// UpsertContactUpserted selects the upserted branch: Keap returned the created or updated contact.
+func UpsertContactUpserted(value keap.ContactProfile, failure *sdkgo.Failure) connectormock.Case[keap.ContactProfile] {
+	return connectormock.Branch(keap.UpsertContactBranchUpserted, value, failure)
+}
+
+// UpsertContactProviderRejected selects the providerRejected branch: Keap conclusively rejected the contact.
+func UpsertContactProviderRejected(value keap.ContactProfile, failure *sdkgo.Failure) connectormock.Case[keap.ContactProfile] {
+	return connectormock.Branch(keap.UpsertContactBranchProviderRejected, value, failure)
+}
+
+// UpsertContactInvalidResponse selects the invalidResponse branch: Keap returned malformed or oversized JSON.
+func UpsertContactInvalidResponse(value keap.ContactProfile, failure *sdkgo.Failure) connectormock.Case[keap.ContactProfile] {
+	return connectormock.Branch(keap.UpsertContactBranchInvalidResponse, value, failure)
+}
+
+// UpsertContactDefect selects the defect branch: Local input or credentials are invalid.
+func UpsertContactDefect(value keap.ContactProfile, failure *sdkgo.Failure) connectormock.Case[keap.ContactProfile] {
+	return connectormock.Branch(keap.UpsertContactBranchDefect, value, failure)
+}
+
+// UpsertContactRetry asks Dex to retry the upsertContact Step, after the delay when it is positive.
+func UpsertContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactProfile] {
+	return connectormock.Retry[keap.ContactProfile](failure, after)
+}
+
+// UpsertContactUpsertedDefault is the manifest mock upsertedDefault: A sample contact is accepted.
+func UpsertContactUpsertedDefault() connectormock.Case[keap.ContactProfile] {
+	value := connectormock.MustDecodeOutput[keap.ContactProfile](`{"id":"123","givenName":"Example","familyName":"Contact"}`)
+	return connectormock.Branch(keap.UpsertContactBranchUpserted, value, nil)
+}
+
+// UpsertContactDefault is the manifest default, upsertedDefault, which New installs.
+func UpsertContactDefault() connectormock.Case[keap.ContactProfile] {
+	return UpsertContactUpsertedDefault()
+}
+
+// DeleteContactDeleted selects the deleted branch: Keap accepted the deletion.
+func DeleteContactDeleted(value keap.ContactDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactDeletion] {
+	return connectormock.Branch(keap.DeleteContactBranchDeleted, value, failure)
+}
+
+// DeleteContactNotFound selects the notFound branch: Keap did not find the contact.
+func DeleteContactNotFound(value keap.ContactDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactDeletion] {
+	return connectormock.Branch(keap.DeleteContactBranchNotFound, value, failure)
+}
+
+// DeleteContactProviderRejected selects the providerRejected branch: Keap conclusively rejected the deletion.
+func DeleteContactProviderRejected(value keap.ContactDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactDeletion] {
+	return connectormock.Branch(keap.DeleteContactBranchProviderRejected, value, failure)
+}
+
+// DeleteContactInvalidResponse selects the invalidResponse branch: Keap returned malformed or oversized JSON.
+func DeleteContactInvalidResponse(value keap.ContactDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactDeletion] {
+	return connectormock.Branch(keap.DeleteContactBranchInvalidResponse, value, failure)
+}
+
+// DeleteContactDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteContactDefect(value keap.ContactDeletion, failure *sdkgo.Failure) connectormock.Case[keap.ContactDeletion] {
+	return connectormock.Branch(keap.DeleteContactBranchDefect, value, failure)
+}
+
+// DeleteContactRetry asks Dex to retry the deleteContact Step, after the delay when it is positive.
+func DeleteContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[keap.ContactDeletion] {
+	return connectormock.Retry[keap.ContactDeletion](failure, after)
+}
+
+// DeleteContactDeletedDefault is the manifest mock deletedDefault: A sample contact deletion is accepted.
+func DeleteContactDeletedDefault() connectormock.Case[keap.ContactDeletion] {
+	value := connectormock.MustDecodeOutput[keap.ContactDeletion](`{"contactId":"123","deleted":true}`)
+	return connectormock.Branch(keap.DeleteContactBranchDeleted, value, nil)
+}
+
+// DeleteContactDefault is the manifest default, deletedDefault, which New installs.
+func DeleteContactDefault() connectormock.Case[keap.ContactDeletion] {
+	return DeleteContactDeletedDefault()
+}

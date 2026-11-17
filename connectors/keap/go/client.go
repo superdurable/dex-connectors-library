@@ -5,6 +5,7 @@
 package keap
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -67,6 +68,10 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, input GetContactInput) providerResponse {
+	return client.request(call, http.MethodGet, "/rest/v2/contacts/"+input.ContactID+"?fields=id%2Cgiven_name%2Cfamily_name", nil)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string, body []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -75,11 +80,14 @@ func (client *Client) get(call sdkgo.Call, input GetContactInput) providerRespon
 	if !providerhttp.IsHeaderSafeCredential(token) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+"/rest/v2/contacts/"+input.ContactID+"?fields=id%2Cgiven_name%2Cfamily_name", nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("Authorization", "Bearer "+token)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -87,6 +95,6 @@ func (client *Client) get(call sdkgo.Call, input GetContactInput) providerRespon
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	return providerResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

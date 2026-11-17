@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: keap
   displayName: Keap
-  description: Read one Keap CRM v2 contact by ID.
+  description: Read, list, upsert, and delete Keap CRM v2 contacts.
   company: Keap
   categories: [crm-sales, marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: keap
   languages:
@@ -33,12 +33,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one contact lookup as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        description: Maximum duration of one CRM call as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete contact JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
+        description: Maximum complete CRM JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
         default: 1048576
   auth:
     type: apiKey
@@ -76,3 +76,64 @@ spec:
           default: true
           description: One sample contact is returned.
           output: {id: '123', givenName: Example, familyName: Contact}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: List one bounded page of Keap CRM v2 contacts.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Keap returned a contact page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample contact page is returned.
+          output: {contacts: [{id: '123', givenName: Example, familyName: Contact}], nextPageToken: ''}
+    - name: upsertContact
+      goName: UpsertContact
+      inputType: UpsertContactInput
+      outputType: ContactProfile
+      kind: mutation
+      description: Create or update a contact by email using Keap duplicate matching.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: upserted, goName: Upserted, description: Keap returned the created or updated contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap conclusively rejected the contact., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: upsertedDefault
+          branch: upserted
+          default: true
+          description: A sample contact is accepted.
+          output: {id: '123', givenName: Example, familyName: Contact}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: GetContactInput
+      outputType: ContactDeletion
+      kind: mutation
+      description: Delete one Keap CRM v2 contact by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Keap accepted the deletion.}
+        - {id: notFound, goName: NotFound, description: Keap did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample contact deletion is accepted.
+          output: {contactId: '123', deleted: true}

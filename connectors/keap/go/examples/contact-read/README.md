@@ -1,13 +1,13 @@
 # Keap contact lookup Flow
 
-This runnable Flow reads one Keap contact with `getContact` through the static `keap` connection and persists its profile. Configure secret `personalAccessToken` in Dex Web Connections using the [connection guide](../../../README.md). Optional branches are unwired and fail the Flow when selected.
+This runnable Worker registers `KeapContactRead` and `KeapContactDirectory` through the static `keap` connection. The first reads one contact; the second lists one page of contacts. Configure secret `personalAccessToken` in Dex Web Connections using the [connection guide](../../../README.md). Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
 From `connectors/keap/go`, run:
 
 ```bash
-dexcli visualize ./examples/contact-read/flow/workflow.go --schema-version 2.0 --json --out /tmp/keap-contact-read-fdg
+dexcli visualize ./examples/contact-read/flow/directory_workflow.go --schema-version 2.0 --lint app --json --out /tmp/keap-directory-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -22,6 +22,6 @@ With the project's `DEX_PROJECT_*` environment set, run from `connectors/keap/go
 GOWORK=off go run ./examples/contact-read
 ```
 
-Start `KeapContactRead` with a unique Flow ID and input `{"contactId":"123"}`. Replace the sample ID with the ID of a contact in your Keap CRM. The Worker connects to Dex Server without an inbound listener.
+Start `KeapContactRead` with a unique Flow ID and input `{"contactId":"123"}`. Replace the sample ID with the ID of a contact in your Keap CRM. Start `KeapContactDirectory` with `{"pageSize":20}`; pass a returned `nextPageToken` as `pageToken` to continue. The Worker connects to Dex Server without an inbound listener.
 
-CI runs the fixture-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Keap authorization and lookup remain unverified.
+CI runs the fixture-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Keap authorization and provider behavior remain unverified.

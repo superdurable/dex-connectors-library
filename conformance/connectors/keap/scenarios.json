@@ -313,6 +313,987 @@
       },
       "name": "getContact-transportFailure",
       "operation": "getContact"
+    },
+    {
+      "callId": "80fa9da4-f2f6-5310-9cc8-3569e1a64e03",
+      "exchanges": [
+        {
+          "body": "{\"contacts\":[{\"id\":\"123\",\"given_name\":\"Example\",\"family_name\":\"Contact\"}],\"next_page_token\":\"cursor-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "fields": [
+              "id,given_name,family_name"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "familyName": "Contact",
+              "givenName": "Example",
+              "id": "123"
+            }
+          ],
+          "nextPageToken": "cursor-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContacts-happy",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "80fa9da4-f2f6-5310-9cc8-3569e1a64e03",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "fields": [
+              "id,given_name,family_name"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contacts": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContacts-rejected",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "80fa9da4-f2f6-5310-9cc8-3569e1a64e03",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "fields": [
+              "id,given_name,family_name"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contacts": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContacts-invalidResponse",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "80fa9da4-f2f6-5310-9cc8-3569e1a64e03",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contacts": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": -1,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContacts-defect",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "80fa9da4-f2f6-5310-9cc8-3569e1a64e03",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "fields": [
+              "id,given_name,family_name"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContacts-rateLimit",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "80fa9da4-f2f6-5310-9cc8-3569e1a64e03",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "fields": [
+              "id,given_name,family_name"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContacts-unavailable",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "80fa9da4-f2f6-5310-9cc8-3569e1a64e03",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "fields": [
+              "id,given_name,family_name"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "page_token": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 20,
+        "pageToken": "cursor-1"
+      },
+      "name": "listContacts-transportFailure",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123\",\"given_name\":\"Example\",\"family_name\":\"Contact\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "duplicate_option": [
+              "Email"
+            ],
+            "fields": [
+              "id,given_name,family_name"
+            ]
+          },
+          "requestBody": {
+            "email_addresses": [
+              {
+                "email": "example@example.com",
+                "field": "EMAIL1"
+              }
+            ],
+            "family_name": "Contact",
+            "given_name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "familyName": "Contact",
+          "givenName": "Example",
+          "id": "123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "input": {
+        "email": "example@example.com",
+        "familyName": "Contact",
+        "givenName": "Example"
+      },
+      "name": "upsertContact-happy",
+      "operation": "upsertContact"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "duplicate_option": [
+              "Email"
+            ],
+            "fields": [
+              "id,given_name,family_name"
+            ]
+          },
+          "requestBody": {
+            "email_addresses": [
+              {
+                "email": "example@example.com",
+                "field": "EMAIL1"
+              }
+            ],
+            "family_name": "Contact",
+            "given_name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "familyName": "",
+          "givenName": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "input": {
+        "email": "example@example.com",
+        "familyName": "Contact",
+        "givenName": "Example"
+      },
+      "name": "upsertContact-rejected",
+      "operation": "upsertContact"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "duplicate_option": [
+              "Email"
+            ],
+            "fields": [
+              "id,given_name,family_name"
+            ]
+          },
+          "requestBody": {
+            "email_addresses": [
+              {
+                "email": "example@example.com",
+                "field": "EMAIL1"
+              }
+            ],
+            "family_name": "Contact",
+            "given_name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "familyName": "",
+          "givenName": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "input": {
+        "email": "example@example.com",
+        "familyName": "Contact",
+        "givenName": "Example"
+      },
+      "name": "upsertContact-invalidResponse",
+      "operation": "upsertContact"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "familyName": "",
+          "givenName": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "input": {
+        "email": "bad",
+        "familyName": "Contact",
+        "givenName": "Example"
+      },
+      "name": "upsertContact-defect",
+      "operation": "upsertContact"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "duplicate_option": [
+              "Email"
+            ],
+            "fields": [
+              "id,given_name,family_name"
+            ]
+          },
+          "requestBody": {
+            "email_addresses": [
+              {
+                "email": "example@example.com",
+                "field": "EMAIL1"
+              }
+            ],
+            "family_name": "Contact",
+            "given_name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "input": {
+        "email": "example@example.com",
+        "familyName": "Contact",
+        "givenName": "Example"
+      },
+      "name": "upsertContact-rateLimit",
+      "operation": "upsertContact"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "duplicate_option": [
+              "Email"
+            ],
+            "fields": [
+              "id,given_name,family_name"
+            ]
+          },
+          "requestBody": {
+            "email_addresses": [
+              {
+                "email": "example@example.com",
+                "field": "EMAIL1"
+              }
+            ],
+            "family_name": "Contact",
+            "given_name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "input": {
+        "email": "example@example.com",
+        "familyName": "Contact",
+        "givenName": "Example"
+      },
+      "name": "upsertContact-unavailable",
+      "operation": "upsertContact"
+    },
+    {
+      "callId": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/contacts",
+          "query": {
+            "duplicate_option": [
+              "Email"
+            ],
+            "fields": [
+              "id,given_name,family_name"
+            ]
+          },
+          "requestBody": {
+            "email_addresses": [
+              {
+                "email": "example@example.com",
+                "field": "EMAIL1"
+              }
+            ],
+            "family_name": "Contact",
+            "given_name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb3539c7-95ea-5ab3-a366-09cc40b3150e",
+      "input": {
+        "email": "example@example.com",
+        "familyName": "Contact",
+        "givenName": "Example"
+      },
+      "name": "upsertContact-transportFailure",
+      "operation": "upsertContact"
+    },
+    {
+      "callId": "d80b0739-1722-5c2e-9779-f62853902635",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "contactId": "123",
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d80b0739-1722-5c2e-9779-f62853902635",
+      "input": {
+        "contactId": "123"
+      },
+      "name": "deleteContact-happy",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "d80b0739-1722-5c2e-9779-f62853902635",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d80b0739-1722-5c2e-9779-f62853902635",
+      "input": {
+        "contactId": "123"
+      },
+      "name": "deleteContact-rejected",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "d80b0739-1722-5c2e-9779-f62853902635",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d80b0739-1722-5c2e-9779-f62853902635",
+      "input": {
+        "contactId": "123"
+      },
+      "name": "deleteContact-invalidResponse",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "d80b0739-1722-5c2e-9779-f62853902635",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d80b0739-1722-5c2e-9779-f62853902635",
+      "input": {
+        "contactId": "bad id"
+      },
+      "name": "deleteContact-defect",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "d80b0739-1722-5c2e-9779-f62853902635",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d80b0739-1722-5c2e-9779-f62853902635",
+      "input": {
+        "contactId": "123"
+      },
+      "name": "deleteContact-rateLimit",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "d80b0739-1722-5c2e-9779-f62853902635",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d80b0739-1722-5c2e-9779-f62853902635",
+      "input": {
+        "contactId": "123"
+      },
+      "name": "deleteContact-unavailable",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "d80b0739-1722-5c2e-9779-f62853902635",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d80b0739-1722-5c2e-9779-f62853902635",
+      "input": {
+        "contactId": "123"
+      },
+      "name": "deleteContact-transportFailure",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "d80b0739-1722-5c2e-9779-f62853902635",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/rest/v2/contacts/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d80b0739-1722-5c2e-9779-f62853902635",
+      "input": {
+        "contactId": "123"
+      },
+      "name": "deleteContact-notFound",
+      "operation": "deleteContact"
     }
   ],
   "schemaVersion": 1

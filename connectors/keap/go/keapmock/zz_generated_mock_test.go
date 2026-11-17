@@ -20,6 +20,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[keap.ContactProfile](`{"id":"123","givenName":"Example","familyName":"Contact"}`)
 			return err
 		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactsPage](`{"contacts":[{"id":"123","givenName":"Example","familyName":"Contact"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "upsertContact/upsertedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactProfile](`{"id":"123","givenName":"Example","familyName":"Contact"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[keap.ContactDeletion](`{"contactId":"123","deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +44,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.UpsertContact().Definition().Operation.OperationID != "upsertContact" {
+		t.Errorf("upsertContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
 	}
 }

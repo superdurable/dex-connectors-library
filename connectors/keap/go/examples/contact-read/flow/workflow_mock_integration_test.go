@@ -24,7 +24,7 @@ import (
 func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := keapmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewDirectoryFlow(mock.Connection())})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +57,16 @@ func TestContactReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "123", output.ID)
 	require.Equal(t, "Example", output.GivenName)
 	require.Len(t, mock.GetContact().Calls(), 1)
+	directoryFlow := NewDirectoryFlow(mock.Connection())
+	directoryID := "keap-directory-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, directoryFlow, directoryID, keap.ListContactsInput{PageSize: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	directoryResult, err := client.WaitForFlow(ctx, directoryID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, directoryResult.Status, directoryResult.ErrorMessage)
+	var page keap.ContactsPage
+	require.NoError(t, directoryResult.DecodeSingleOutput(&page))
+	require.Len(t, page.Contacts, 1)
+	require.Equal(t, "123", page.Contacts[0].ID)
+	require.Len(t, mock.ListContacts().Calls(), 1)
 }
