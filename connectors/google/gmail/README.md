@@ -168,17 +168,18 @@ uses that header for Sent Mail read-back:
   another POST, and the Flow fails when the retry budget runs out; the
   operations have no `uncertain` branch. A POST status of 400, 401, 403, 404,
   411, 413, 414, 415, or 422 proves Gmail refused the POST before processing
-  it. With no earlier possible send, it records `canResend` and selects
-  `providerRejected`, and is never resent. Any other 4xx except 429, such as
-  408 or 409, leaves the outcome unknown: it returns Retry and keeps the claim,
+  it, unless its body names a Gmail message. With no earlier possible send, it
+  records `canResend` and selects `providerRejected`, and is never resent. Any
+  other 4xx except 429, such as 408 or 409, an allowlisted status whose body is
+  unreadable or names a message, or an unreadable or untrusted checkpoint,
+  leaves the outcome unknown: it returns Retry and keeps the claim,
   so the next attempt reads back Sent Mail and resends below the cap. After an
   earlier possible send, an allowlisted 4xx on the resend, or a reply source read
   that is rejected or unusable, returns Retry instead, because the earlier send
   may still be delivered; the claim stays, so later attempts read back and the
-  cap still bounds sends. A transient credential failure after an earlier
-  possible send also returns Retry without a `notSent` checkpoint; a failure
-  that needs reconnection, or invalid credential material, selects `defect`,
-  which agent hosts classify as unknown. Gmail does not deduplicate by
+  cap still bounds sends. After an earlier possible send, `defect` is never
+  selected: a credential failure, even one that needs reconnection, and invalid
+  input also return Retry without a `notSent` checkpoint. Gmail does not deduplicate by
   `Message-ID`, so an unknown outcome can deliver up to three copies when Sent
   Mail indexing lags an accepted send. An application changes one Step's cap
   with the factory's `MaxSends` field, from 1 (never resend) to 10.
@@ -243,7 +244,8 @@ then retry read-back until the Flow fails.
 Live provider authorization and indexing latency remain unverified.
 
 Every operation uses `defect` for invalid local input, connection configuration,
-or Connector contract violations. A conclusive Gmail API refusal uses
+or Connector contract violations; a send or reply uses it only when no earlier
+send is possible. A conclusive Gmail API refusal uses
 `providerRejected`; message reads that return malformed or oversized data use
 `invalidResponse`. Safe query transport, rate-limit, and availability failures
 retry instead of producing a branch.

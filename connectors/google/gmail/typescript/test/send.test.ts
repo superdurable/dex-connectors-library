@@ -295,19 +295,54 @@ describe('Gmail send and reply classification', () => {
         .toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION', message: 'Gmail credentials are temporarily unavailable; an earlier send may still be delivered' } });
       // No notSent: the claim stays, so the next attempt still reads back.
       expect(transientCheckpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
+      // Even a failure that needs reconnection never selects defect after a possible send.
       expect(await invoke(failingSender(new ReauthorizationRequiredError()), operationCall(operationId, 2, claimed())))
-        .toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
+        .toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION', message: 'Gmail credentials need reconnection; an earlier send may still be delivered' } });
       expect(await invoke(failingSender(new Error('store unavailable')), operationCall(operationId)))
         .toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
     }
     expect(requests).toBe(0);
   });
 
-  it('selects defect for invalid resolved credential material even after a possible send', async () => {
+  it('retries invalid resolved credential material after a possible send', async () => {
     const http = new GmailHTTPClient({ endpoint: 'http://127.0.0.1:8080' }, new StaticCredentialProvider([[connection, { accessToken: new SecretString('access-token'), primaryEmail: 'not an address' }]]), driver, async () => response(200, {}));
     const checkpoint = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'claimed', sendCount: 1 } as unknown };
     expect(await new GmailSender(http, new GmailProvider(http)).sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000)))
-      .toMatchObject({ kind: 'branch', branch: 'defect' });
+      .toMatchObject({ kind: 'retry', failure: { message: expect.stringContaining('an earlier send may still be delivered') as unknown } });
+  });
+
+  it('retries an unreadable or foreign checkpoint instead of selecting defect', async () => {
+    let requests = 0;
+    const operation = sender(async () => { requests++; return response(200, { messages: [] }); });
+    const foreign: { value?: unknown } = { value: { callId: 'foreign-call', attempt: 1, state: 'claimed', sendCount: 1 } };
+    expect(await operation.sendMessage(operationCall('sendMessage', 2, foreign), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'retry', failure: { message: 'Dex send checkpoint is unreadable or untrusted; an earlier send may still be delivered' } });
+    const unreadable = { ...operationCall('replyToMessage', 2), context: { ...operationCall('replyToMessage', 2).context, hasLastHeartbeatValue: () => true, getLastHeartbeatValue: () => { throw new Error('heartbeat unavailable'); } } } as Call;
+    expect(await operation.replyToMessage(unreadable, replyInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'retry', failure: { message: 'Dex send checkpoint is unreadable or untrusted; an earlier send may still be delivered' } });
+    expect(requests).toBe(0);
+  });
+
+  it('retries invalid input after a possible send instead of selecting defect', async () => {
+    let posts = 0;
+    const operation = sender(async request => {
+      if (request.method === 'POST') posts++;
+      return response(200, { messages: [] });
+    });
+    const claimed = () => ({ value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'claimed', sendCount: 1 } as unknown });
+    expect(await operation.sendMessage(operationCall('sendMessage', 2, claimed()), { to: [], subject: '', textBody: '' }, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'retry', failure: { kind: 'VALIDATION', message: expect.stringContaining('an earlier send may still be delivered') as unknown } });
+    expect(await operation.replyToMessage(operationCall('replyToMessage', 2, claimed()), { messageId: '', textBody: '' }, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'retry', failure: { kind: 'VALIDATION', message: expect.stringContaining('an earlier send may still be delivered') as unknown } });
+    expect(posts).toBe(0);
+  });
+
+  it('retries an allowlisted refusal whose body names a message', async () => {
+    const checkpoint: { value?: unknown } = {};
+    const operation = sender(async request => request.method === 'GET' ? response(200, { messages: [] }) : response(400, { id: 'sent-1', threadId: 'thread-1' }));
+    expect(await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'retry', failure: { message: 'Gmail rejected the message; Gmail may still have processed the request' } });
+    expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
   });
 
   it('keeps a definite rejection of a first send as providerRejected and proves nothing was sent', async () => {
@@ -455,10 +490,11 @@ describe('Gmail send and reply classification', () => {
         return response(status, { id: 'not-a-message' });
       });
       const first = await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000));
-      expect(first).toMatchObject(status === 500 ? { kind: 'retry' } : { branch: 'providerRejected' });
+      // A 400 body naming a message contradicts the refusal, so it repeats like a 500.
+      expect(first).toMatchObject({ kind: 'retry' });
       expect(checkpoint.value).not.toHaveProperty('providerId');
+      expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
       if (status === 500) {
-        expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
         expect(await operation.sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000)))
           .toMatchObject({ kind: 'retry' });
         expect(posts).toBe(2);

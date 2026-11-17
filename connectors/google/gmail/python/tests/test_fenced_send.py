@@ -104,7 +104,8 @@ class FailingCredentialProvider:
 
 
 async def _invoke(
-    call: Call, response: httpx.MockTransport, credential_error: Exception | None = None
+    call: Call, response: httpx.MockTransport, credential_error: Exception | None = None,
+    message_input: SendMessageInput | ReplyToMessageInput | None = None,
 ) -> tuple[MutationAttempt[SendMessageOutput], list[httpx.Request]]:
     requests: list[httpx.Request] = []
 
@@ -123,15 +124,14 @@ async def _invoke(
         provider = GmailProvider(
             Config(endpoint="http://localhost/gmail/v1"), credentials, http_client=http_client
         )
-        attempt = (
-            await SendMessageOperation(provider).invoke(
-                call, SendMessageInput(["ada@example.com"], "Progress", "Update")
-            )
-            if call.operation.operation_id == "sendMessage"
-            else await ReplyToMessageOperation(provider).invoke(
-                call, ReplyToMessageInput("source-1", "Answer")
-            )
-        )
+        if call.operation.operation_id == "sendMessage":
+            send_input = message_input or SendMessageInput(["ada@example.com"], "Progress", "Update")
+            assert isinstance(send_input, SendMessageInput)
+            attempt = await SendMessageOperation(provider).invoke(call, send_input)
+        else:
+            reply_input = message_input or ReplyToMessageInput("source-1", "Answer")
+            assert isinstance(reply_input, ReplyToMessageInput)
+            attempt = await ReplyToMessageOperation(provider).invoke(call, reply_input)
     return attempt, requests
 
 
@@ -433,12 +433,13 @@ async def test_service_unavailable_keeps_the_claim_after_sent_mail_miss() -> Non
 
 @pytest.mark.asyncio
 async def test_foreign_checkpoint_fails_before_any_provider_request() -> None:
-    """A foreign heartbeat fails closed and cannot reach Gmail."""
+    """A foreign heartbeat fails closed, retries, and cannot reach Gmail."""
     context = HeartbeatContext(2)
     call = _call(context)
     context.previous = Marker(CallID(str(uuid4())), 1, State.NOT_SENT)
     attempt, requests = await _invoke(call, httpx.MockTransport(lambda _: httpx.Response(200)))
-    assert attempt.branch == "defect"
+    assert attempt.kind == "retry" and attempt.failure is not None
+    assert "an earlier send may still be delivered" in attempt.failure.message
     assert requests == []
 
 
@@ -462,16 +463,55 @@ async def test_transient_credential_failure_after_possible_send_retries(operatio
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 @pytest.mark.parametrize("error", [ReauthorizationRequiredError(), GmailCredentialMaterialError("invalid")])
-async def test_permanent_credential_failure_after_possible_send_is_defect(
+async def test_permanent_credential_failure_after_possible_send_retries(
     operation_id: str, error: Exception
 ) -> None:
-    """Reauthorization or invalid credential material still selects defect."""
+    """Reauthorization or invalid material after a possible send never selects defect."""
     context = HeartbeatContext(2)
     call = _call(context, operation_id=operation_id)
     context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
     attempt, _ = await _invoke(call, httpx.MockTransport(lambda _: httpx.Response(200)), error)
-    assert attempt.branch == "defect"
+    assert attempt.kind == "retry" and attempt.failure is not None
+    assert "an earlier send may still be delivered" in attempt.failure.message
     assert context.heartbeats == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_invalid_input_after_possible_send_retries(operation_id: str) -> None:
+    """Invalid input after a possible send retries instead of selecting defect."""
+    context = HeartbeatContext(2)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
+    invalid_input = (
+        SendMessageInput(to=[], subject="", text_body="")
+        if operation_id == "sendMessage"
+        else ReplyToMessageInput(message_id="", text_body="")
+    )
+    attempt, requests = await _invoke(
+        call,
+        httpx.MockTransport(lambda _: httpx.Response(200, json={"messages": []})),
+        message_input=invalid_input,
+    )
+    assert attempt.kind == "retry" and attempt.failure is not None
+    assert "an earlier send may still be delivered" in attempt.failure.message
+    assert "POST" not in [request.method for request in requests]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_allowlisted_refusal_with_message_id_retries(operation_id: str) -> None:
+    """A 400 body that names a Gmail message contradicts the refusal, so the claim stays."""
+    context = HeartbeatContext()
+    attempt, _ = await _invoke(
+        _call(context, operation_id=operation_id),
+        httpx.MockTransport(_gmail(
+            httpx.Response(200, json={"messages": []}), httpx.Response(400, json={"id": "sent-1"}),
+        )),
+    )
+    assert attempt.kind == "retry" and attempt.failure is not None
+    assert "Gmail may still have processed the request" in attempt.failure.message
+    assert context.heartbeats[-1].state == State.CLAIMED
 
 
 @pytest.mark.asyncio

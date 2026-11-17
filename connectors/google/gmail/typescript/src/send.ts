@@ -127,7 +127,7 @@ export class GmailSender {
     const messageIdAddress = this.#messageID(call);
     if (!messageIdAddress) return defect('sendMessage', 'LOCAL_DEFECT', MissingRunIDMessage);
     const fence = newFence(call, SendMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: definitionMaxSends(SendMessageDefinition) });
-    if (fence.decide().kind === 'failClosed') return defect('sendMessage', 'LOCAL_DEFECT', 'Dex send checkpoint is unreadable');
+    if (fence.decide().kind === 'failClosed') return failClosedCheckpointRetry('sendMessage');
     const budget = new GmailSendAttemptBudget(call.context.cancellationSignal, dexDeadline);
     if (!budget.sendSignal()) {
       await recordPreSendRetry(fence);
@@ -141,13 +141,13 @@ export class GmailSender {
       if (!SendMessageInputSchema.safeParse(input).success) throw new TypeError();
       recipients = validateSendInput(input, credentials.primaryEmail);
     } catch (error) {
-      return defect('sendMessage', 'VALIDATION', error instanceof TypeError && error.message ? error.message : 'sender, recipients, subject, and text body are required');
+      return defectBeforeAnySend(fence, 'sendMessage', 'VALIDATION', error instanceof TypeError && error.message ? error.message : 'sender, recipients, subject, and text body are required');
     }
     let raw: Uint8Array;
     try {
       raw = buildMIMEMessage(call.id, call.idempotencyKey ?? call.id, messageIdAddress, credentials.primaryEmail, recipients, input.subject, input.textBody, input.htmlBody);
-    } catch { return defect('sendMessage', 'VALIDATION', 'message could not be encoded'); }
-    if (raw.length > this.#http.settings().maxMessageBytes) return defect('sendMessage', 'VALIDATION', 'message exceeds configured size limit');
+    } catch { return defectBeforeAnySend(fence, 'sendMessage', 'VALIDATION', 'message could not be encoded'); }
+    if (raw.length > this.#http.settings().maxMessageBytes) return defectBeforeAnySend(fence, 'sendMessage', 'VALIDATION', 'message exceeds configured size limit');
     return this.#sendAndConfirm(call, fence, budget, credentials, SendMessageOutcomes, { raw, recipients, requestedThreadId: '', hasPreSendSearch: false, messageIdAddress });
   }
 
@@ -157,7 +157,7 @@ export class GmailSender {
     const messageIdAddress = this.#messageID(call);
     if (!messageIdAddress) return defect('replyToMessage', 'LOCAL_DEFECT', MissingRunIDMessage);
     const fence = newFence(call, ReplyToMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: definitionMaxSends(ReplyToMessageDefinition) });
-    if (fence.decide().kind === 'failClosed') return defect('replyToMessage', 'LOCAL_DEFECT', 'Dex send checkpoint is unreadable');
+    if (fence.decide().kind === 'failClosed') return failClosedCheckpointRetry('replyToMessage');
     const budget = new GmailSendAttemptBudget(call.context.cancellationSignal, dexDeadline);
     if (!budget.sendSignal()) {
       await recordPreSendRetry(fence);
@@ -166,7 +166,7 @@ export class GmailSender {
     let credentials: Credentials;
     try { credentials = await this.#http.resolveCredentials(call, budget.attemptSignal()); }
     catch (error) { return unavailableCredentials(fence, 'replyToMessage', error); }
-    if (!ReplyToMessageInputSchema.safeParse(input).success || !input.messageId.trim() || !input.textBody.trim()) return defect('replyToMessage', 'VALIDATION', 'message ID and text body are required');
+    if (!ReplyToMessageInputSchema.safeParse(input).success || !input.messageId.trim() || !input.textBody.trim()) return defectBeforeAnySend(fence, 'replyToMessage', 'VALIDATION', 'message ID and text body are required');
     const priorProviderId = fence.decide().marker?.providerId;
     if (isReadBackDecision(fence) && priorProviderId) {
       return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes,
@@ -189,7 +189,7 @@ export class GmailSender {
     let source;
     try { source = await this.#provider.readMessage(call, credentials, input.messageId, 'metadata', budget.preSendSignal()); }
     catch (error) {
-      if (error instanceof GmailCredentialError) return defect('replyToMessage', 'AUTHENTICATION', 'connection credentials are unavailable');
+      if (error instanceof GmailCredentialError) return defectBeforeAnySend(fence, 'replyToMessage', 'AUTHENTICATION', 'connection credentials are unavailable');
       const status = error instanceof BodyTooLargeError ? error.status ?? 0 : 0;
       const headers = error instanceof BodyTooLargeError ? error.headers ?? {} : {};
       const result = classifySourceFailure(fence, status, headers, this.#receipt(call));
@@ -212,8 +212,8 @@ export class GmailSender {
     if (/[\r\n]/.test(message.subject + message.rfcMessageId + (message.references ?? ''))) return rejectUnlessEarlierSendIsUnconfirmed(fence, ReplyToMessageBranch.InvalidResponse, this.#receipt(call, gmailRequestID(source.response.headers), input.messageId), failure('replyToMessage', 'PROTOCOL', 'Gmail returned invalid source reply headers'));
     let raw: Uint8Array;
     try { raw = buildReplyMIMEMessage(call.id, call.idempotencyKey ?? call.id, messageIdAddress, credentials.primaryEmail, message, input); }
-    catch { return defect('replyToMessage', 'VALIDATION', 'reply could not be encoded within the configured limit'); }
-    if (raw.length > this.#http.settings().maxMessageBytes) return defect('replyToMessage', 'VALIDATION', 'reply could not be encoded within the configured limit');
+    catch { return defectBeforeAnySend(fence, 'replyToMessage', 'VALIDATION', 'reply could not be encoded within the configured limit'); }
+    if (raw.length > this.#http.settings().maxMessageBytes) return defectBeforeAnySend(fence, 'replyToMessage', 'VALIDATION', 'reply could not be encoded within the configured limit');
     return this.#sendAndConfirm(call, fence, budget, credentials, ReplyToMessageOutcomes, { raw, recipients: [recipient], requestedThreadId: message.threadId, hasPreSendSearch: call.context.attempt > 1, messageIdAddress });
   }
 
@@ -244,17 +244,19 @@ export class GmailSender {
         await recordSafeResend(fence);
         return newMutationRetry(failure(operation.operationId, 'TRANSPORT', `Gmail ${operation.requestName} request was not dispatched`));
       }
-      if (error instanceof BodyTooLargeError && error.status) return this.#classifySendStatus(call, fence, budget, credentials, operation, message, error.status, error.headers ?? {}, undefined);
+      if (error instanceof BodyTooLargeError && error.status) return this.#classifySendStatus(call, fence, budget, credentials, operation, message, error.status, error.headers ?? {}, false, undefined);
       return this.#confirmPossiblySent(call, fence, budget, credentials, operation, message, 'TRANSPORT', `Gmail ${operation.requestName} outcome is unknown`, this.#receipt(call));
     }
     const receipt = this.#receipt(call, gmailRequestID(response.response.headers));
     const isAccepted = response.response.status >= 200 && response.response.status < 300;
     const sentResponse = isAccepted ? parseSentResponse(response.response) : undefined;
     if (sentResponse?.id) await recordProviderIdentity(fence, sentResponse.id);
-    return this.#classifySendStatus(call, fence, budget, response.credentials, operation, message, response.response.status, response.response.headers, sentResponse, receipt);
+    // A refusal body that still names a message contradicts its status.
+    const isRefusalBodyClean = !isAccepted && parseSentResponse(response.response) === undefined;
+    return this.#classifySendStatus(call, fence, budget, response.credentials, operation, message, response.response.status, response.response.headers, isRefusalBodyClean, sentResponse, receipt);
   }
 
-  async #classifySendStatus(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, status: number, headers: Record<string, string | string[] | undefined>, sentResponse?: SentMessageIdentity, receipt: ReceiptDraft = this.#receipt(call)): Promise<MutationAttempt<SendMessageOutput>> {
+  async #classifySendStatus(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, status: number, headers: Record<string, string | string[] | undefined>, isRefusalBodyClean: boolean, sentResponse?: SentMessageIdentity, receipt: ReceiptDraft = this.#receipt(call)): Promise<MutationAttempt<SendMessageOutput>> {
     if (status === 429) {
       await recordSafeResend(fence);
       return retryAfterRefusal(operation.operationId, 'RATE_LIMIT', `Gmail temporarily rejected the ${operation.requestName}`, headers);
@@ -273,7 +275,7 @@ export class GmailSender {
           if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, receipt);
         } catch { /* A conclusive current refusal still selects its branch. */ }
       }
-      return rejectRefusedSend(fence, status, operation.providerRejectedBranch, receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
+      return rejectRefusedSend(fence, refusedBeforeProcessingStatuses.has(status) && isRefusalBodyClean, operation.providerRejectedBranch, receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
     }
     if (!sentResponse) {
       const lookup = await this.#pollSentMessage(call, budget, credentials, message);
@@ -368,8 +370,23 @@ function retryAfterRefusal(operation: string, kind: Failure['kind'], message: st
  */
 function unavailableCredentials(fence: Fence, operation: 'sendMessage' | 'replyToMessage', error: unknown): MutationAttempt<SendMessageOutput> {
   const isPermanent = !(error instanceof GmailCredentialError) || error.isPermanent;
-  if (!isPermanent && (fence.decide().priorSendUpperBound ?? 0) > 0) return newMutationRetry(failure(operation, 'AUTHENTICATION', 'Gmail credentials are temporarily unavailable; an earlier send may still be delivered'));
+  if (isEarlierSendPossible(fence)) return newMutationRetry(failure(operation, 'AUTHENTICATION', `Gmail credentials ${isPermanent ? 'need reconnection' : 'are temporarily unavailable'}; an earlier send may still be delivered`));
   return defect(operation, 'AUTHENTICATION', 'connection credentials are unavailable');
+}
+
+/** Select defect only when no earlier attempt may have sent; otherwise Retry keeps the claim for read-back. */
+function defectBeforeAnySend(fence: Fence, operation: 'sendMessage' | 'replyToMessage', kind: Failure['kind'], message: string): MutationAttempt<SendMessageOutput> {
+  if (isEarlierSendPossible(fence)) return newMutationRetry(failure(operation, kind, `${message}; an earlier send may still be delivered`));
+  return defect(operation, kind, message);
+}
+
+// An unreadable or untrusted checkpoint may hide an earlier send, so the outcome repeats.
+function failClosedCheckpointRetry(operation: 'sendMessage' | 'replyToMessage'): MutationAttempt<SendMessageOutput> {
+  return newMutationRetry(failure(operation, 'LOCAL_DEFECT', 'Dex send checkpoint is unreadable or untrusted; an earlier send may still be delivered'));
+}
+
+function isEarlierSendPossible(fence: Fence): boolean {
+  return (fence.decide().priorSendUpperBound ?? 0) > 0;
 }
 
 /**
@@ -387,11 +404,11 @@ const refusedBeforeProcessingStatuses: ReadonlySet<number> = new Set([400, 401, 
 /**
  * Classify a definite Gmail refusal of this attempt's POST. With no earlier possible send, canResend
  * proves nothing was sent, so agent hosts report failure instead of an unknown outcome. Only a status in
- * `refusedBeforeProcessingStatuses` proves that. Any other, such as 408 or 409, leaves the outcome unknown:
- * Retry keeps the claim, so the next attempt reads back Sent Mail before any resend.
+ * `refusedBeforeProcessingStatuses` with a readable body naming no message proves that. Any other refusal,
+ * such as 408 or 409, leaves the outcome unknown: Retry keeps the claim, so the next attempt reads back.
  */
-async function rejectRefusedSend(fence: Fence, status: number, branch: string, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<SendMessageOutput>> {
-  if (!refusedBeforeProcessingStatuses.has(status)) return newMutationRetry({ ...rejection, message: `${rejection.message}; Gmail may still have processed the request` });
+async function rejectRefusedSend(fence: Fence, isDefiniteRefusal: boolean, branch: string, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<SendMessageOutput>> {
+  if (!isDefiniteRefusal) return newMutationRetry({ ...rejection, message: `${rejection.message}; Gmail may still have processed the request` });
   if ((fence.decide().priorSendUpperBound ?? 0) === 0) await recordSafeResend(fence);
   return rejectUnlessEarlierSendIsUnconfirmed(fence, branch, receipt, rejection);
 }

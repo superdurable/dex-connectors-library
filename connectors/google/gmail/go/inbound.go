@@ -150,7 +150,7 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	}
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, emptySendMessageOutput(), gmailOperationFailurePointer("replyToMessage", sdkgo.FailureLocalDefect, "Gmail reply checkpoint is invalid"), sdkgo.Receipt{})
+		return failClosedCheckpointAttempt("replyToMessage")
 	}
 	budget := newSendAttemptBudget(call.Context, ReplyToMessageDefinition.StepDefaults.ExecuteMethodTimeout)
 	defer budget.cancel()
@@ -159,7 +159,7 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 		return unavailableCredentialsAttempt(decision, ReplyToMessageBranchDefect, "replyToMessage", err)
 	}
 	if strings.TrimSpace(input.MessageID) == "" || strings.TrimSpace(input.TextBody) == "" {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, emptySendMessageOutput(), gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"), sdkgo.Receipt{})
+		return defectBeforeAnySend(decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"))
 	}
 	if attempt, isDecided := operation.client.reconcileEarlierSends(call, fence, decision, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{}); isDecided {
 		return attempt
@@ -194,11 +194,11 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	}
 	raw, err := buildReplyMIMEMessage(call, credentials.PrimaryEmail, recipient, message, input)
 	if err != nil || int64(len(raw)) > operation.client.maxMessageBytes {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, emptySendMessageOutput(), gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "reply could not be encoded within the configured limit"), sdkgo.Receipt{})
+		return defectBeforeAnySend(decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "reply could not be encoded within the configured limit"))
 	}
 	payload, err := json.Marshal(map[string]string{"raw": base64.RawURLEncoding.EncodeToString(raw), "threadId": message.ThreadID})
 	if err != nil {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, emptySendMessageOutput(), gmailOperationFailurePointer("replyToMessage", sdkgo.FailureLocalDefect, "reply request could not be encoded"), sdkgo.Receipt{})
+		return defectBeforeAnySend(decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureLocalDefect, "reply request could not be encoded"))
 	}
 	return operation.client.sendAndConfirm(call, fence, decision, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{
 		payload: payload, recipients: []string{recipient}, requestedThreadID: message.ThreadID,

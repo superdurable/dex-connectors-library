@@ -152,10 +152,14 @@ source read, selects its
 branch only when no earlier send is possible; otherwise it returns Retry,
 because the earlier send may still be delivered. A POST status of 400, 401,
 403, 404, 411, 413, 414, 415, or 422 with no earlier possible send proves Gmail
-refused it before processing, so it records `canResend` and selects
-`providerRejected`. Any other 4xx except 429, such as 408 or 409, leaves the
-outcome unknown: it returns Retry and keeps the claim, so the next attempt
-reads back Sent Mail and resends below the cap. A 503 is treated like any other 5xx. A definite 429 refusal, or a
+refused it before processing, unless its body is unreadable or names a Gmail
+message, so it records `canResend` and selects `providerRejected`. Any other
+4xx except 429, such as 408 or 409, a contradictory refusal body, or an
+unreadable or untrusted checkpoint, leaves the outcome unknown: it returns
+Retry and keeps the claim, so the next attempt reads back Sent Mail and resends
+below the cap. After an earlier possible send, `defect` is never selected: a
+credential failure, even one that needs reconnection, and invalid input also
+return Retry. A 503 is treated like any other 5xx. A definite 429 refusal, or a
 transport failure proven to precede dispatch, permits a later send. The
 manifest limits sends and replies to seven attempts within five minutes;
 `max_sends_override` on the generated Step factory changes one Step's cap.
