@@ -3143,6 +3143,820 @@
       },
       "name": "getValues-numeric-cells",
       "operation": "getValues"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"spreadsheetId\":\"sheet-id\",\"properties\":{\"title\":\"Contacts\"},\"sheets\":[{\"properties\":{\"sheetId\":1,\"title\":\"Contacts\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "sheets": [
+            {
+              "sheetId": 1,
+              "title": "Contacts"
+            }
+          ],
+          "spreadsheetId": "sheet-id",
+          "title": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-success",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-providerRejected",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-final429",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-final503",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-transportFailure",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "bad/"
+      },
+      "name": "getSpreadsheet-defect",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-notFound",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "sheets-getSpreadsheet",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "getSpreadsheet-invalidResponse",
+      "operation": "getSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"spreadsheetId\":\"sheet-id\",\"properties\":{\"title\":\"Contacts\"},\"sheets\":[{\"properties\":{\"sheetId\":1,\"title\":\"Contacts\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "providerId": "sheet-id",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "sheets": [
+            {
+              "sheetId": 1,
+              "title": "Contacts"
+            }
+          ],
+          "spreadsheetId": "sheet-id",
+          "title": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-success",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-providerRejected",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-final429",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-final503",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-transportFailure",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": ""
+      },
+      "name": "createSpreadsheet-defect",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-invalidResponse",
+      "operation": "createSpreadsheet"
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-uncertain",
+      "operation": "createSpreadsheet",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "spreadsheetId": "sheet-id"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-success",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "spreadsheetId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-providerRejected",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-final429",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-final503",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-transportFailure",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "spreadsheetId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "bad/"
+      },
+      "name": "deleteSpreadsheet-defect",
+      "operation": "deleteSpreadsheet"
+    },
+    {
+      "callId": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drive/v3/files/sheet-id",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "spreadsheetId": "sheet-id"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60ba837f-40fe-56f8-8c25-217fd803036f",
+      "input": {
+        "spreadsheetId": "sheet-id"
+      },
+      "name": "deleteSpreadsheet-alreadyAbsent",
+      "operation": "deleteSpreadsheet"
     }
   ],
   "schemaVersion": 1

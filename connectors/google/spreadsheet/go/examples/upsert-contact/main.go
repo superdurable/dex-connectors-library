@@ -40,7 +40,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{upsertcontact.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{upsertcontact.NewFlow(connection), upsertcontact.NewSpreadsheetDetailFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Google Sheets contact Flow: %w", err)
 	}

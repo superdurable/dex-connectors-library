@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-sheets
   displayName: Google Sheets
-  description: Read ranges, find stable keyed rows, idempotently upsert rows, and start Flows when rows are added in Google Sheets.
+  description: Manage spreadsheets, sheets, rows, and ranges, and start Flows when rows are added in Google Sheets.
   company: Google
   categories: [productivity]
-  version: v0.26.0
+  version: v0.27.0
 spec:
   provider: google
   languages:
@@ -25,6 +25,11 @@ spec:
       package: spreadsheet
   configuration:
     fields:
+      - name: driveBaseUrl
+        goName: DriveBaseURL
+        type: url
+        description: Google Drive API HTTPS origin for deleting a spreadsheet file. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
+        default: https://www.googleapis.com
       - name: endpoint
         goName: Endpoint
         type: url
@@ -161,6 +166,54 @@ spec:
       configurationType: RowAddedTriggerConfiguration
       description: Receive each row appended below the last processed row of one picked spreadsheet tab.
   operations:
+    - name: getSpreadsheet
+      goName: GetSpreadsheet
+      inputType: GetSpreadsheetInput
+      outputType: SpreadsheetInfo
+      kind: query
+      description: Read spreadsheet title and sheet tabs without grid data.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned spreadsheet metadata.}
+        - {id: notFound, goName: NotFound, description: The spreadsheet is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local spreadsheet ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: A Contacts spreadsheet is accessible., output: {spreadsheetId: sample-spreadsheet, title: Contacts, sheets: [{sheetId: 1, title: Contacts}]}}
+    - name: createSpreadsheet
+      goName: CreateSpreadsheet
+      inputType: CreateSpreadsheetInput
+      outputType: SpreadsheetInfo
+      kind: mutation
+      description: Create a spreadsheet with a title; duplicate creation is bounded by a send cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Google created the spreadsheet.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the create., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without a returned spreadsheet ID., optional: true}
+        - {id: defect, goName: Defect, description: Local title or credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Google created a Contacts spreadsheet., output: {spreadsheetId: sample-spreadsheet, title: Contacts, sheets: [{sheetId: 1, title: Sheet1}]}}
+    - name: deleteSpreadsheet
+      goName: DeleteSpreadsheet
+      inputType: DeleteSpreadsheetInput
+      outputType: DeletedSpreadsheet
+      kind: mutation
+      description: Permanently delete an app-accessible spreadsheet file through Google Drive.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Google deleted the spreadsheet or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: Local spreadsheet ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Google deleted the sample spreadsheet., output: {spreadsheetId: sample-spreadsheet}}
     - name: getValues
       goName: GetValues
       inputType: GetValuesInput

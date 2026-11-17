@@ -8,6 +8,8 @@ import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk'
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
+  /** Google Drive API HTTPS origin for deleting a spreadsheet file. Blank uses the displayed Google endpoint; override only for a trusted test gateway. */
+  driveBaseUrl?: string;
   /** Google Sheets API base URL; leave blank for Google's public v4 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway. */
   endpoint?: string;
   /** Maximum complete Google API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
@@ -22,6 +24,7 @@ export interface Config {
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
+  "driveBaseUrl": z.string().optional(),
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
   "maxRows": z.number().int().optional(),

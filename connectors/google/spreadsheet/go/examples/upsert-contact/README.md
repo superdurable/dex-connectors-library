@@ -6,6 +6,8 @@ This example runs one operation-only Flow from Dex Web **Start Flow**:
 2. `UpsertContactRow` calls `spreadsheet.NewUpsertRowStep` using email as the key;
 3. `CompleteContactUpsert` persists the provider result and completes the Flow.
 
+It also registers `GoogleSheetsSpreadsheetDetail`, which calls `getSpreadsheet` for a `GetSpreadsheetInput{SpreadsheetID: "sample-spreadsheet"}` and returns the title and tabs. The mock-backed integration test runs both Flows through a real Dex Worker and Client.
+
 Generate strict FDG 2.0 from `connectors/google/spreadsheet`:
 
 ```bash

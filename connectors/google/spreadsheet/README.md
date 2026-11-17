@@ -9,12 +9,18 @@ The Google Sheets Connector exposes operation-specific Dex Step factories:
 - `spreadsheet.NewGetValuesStep`
 - `spreadsheet.NewFindRowStep`
 - `spreadsheet.NewUpsertRowStep`
+- `spreadsheet.NewGetSpreadsheetStep`
+- `spreadsheet.NewCreateSpreadsheetStep`
+- `spreadsheet.NewDeleteSpreadsheetStep`
 
 | Name | Kind | What it does | Happy branch | Languages |
 | --- | --- | --- | --- | --- |
 | `getValues` | Query | Reads one bounded A1 range as formatted values | `read` | Go, Python, TypeScript |
 | `findRow` | Query | Finds the one row whose key column holds a stable key | `found` | Go, Python, TypeScript |
 | `upsertRow` | Mutation | Replaces the row with a stable key, or appends it when absent | `upserted` | Go, Python, TypeScript |
+| `getSpreadsheet` | Query | Reads spreadsheet title and tab IDs | `found` | Go |
+| `createSpreadsheet` | Mutation | Creates a titled spreadsheet with a bounded three-send budget | `created` | Go |
+| `deleteSpreadsheet` | Mutation | Permanently deletes an app-accessible spreadsheet through Drive | `deleted` | Go |
 | `rowAdded` | Trigger | Each row appended below the last processed row of one picked tab | | Go, Python, TypeScript |
 
 It uses a separate `google-sheets-oauth` Connection with the least-privilege
@@ -27,6 +33,8 @@ connection admits one refresh per credential generation across application
 replicas and stores the complete replacement before the call uses it. Google
 refresh-token rotation replaces the previous token only when Google returns a
 new one, and terminal `invalid_grant` responses require reauthorization.
+
+`getSpreadsheet` uses the [Sheets get API](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/get). `createSpreadsheet` uses the [Sheets create API](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/create); Google does not offer a deduplication key, so a possibly accepted create can repeat up to three sends and becomes `uncertain` at the cap without a returned ID. `deleteSpreadsheet` uses [Drive files.delete](https://developers.google.com/workspace/drive/api/reference/rest/v3/files/delete) and permanently removes the file. The existing `drive.file` scope covers app-created or Picker-granted files, and both Sheets API and Drive API must be enabled in the Google Cloud project.
 
 `UpsertRow` first reads the target sheet and matches a stable key column. It
 [replaces values at an absolute range](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update)

@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getSpreadsheet/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spreadsheet.SpreadsheetInfo](`{"spreadsheetId":"sample-spreadsheet","title":"Contacts","sheets":[{"sheetId":1,"title":"Contacts"}]}`)
+			return err
+		}},
+		{name: "createSpreadsheet/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spreadsheet.SpreadsheetInfo](`{"spreadsheetId":"sample-spreadsheet","title":"Contacts","sheets":[{"sheetId":1,"title":"Sheet1"}]}`)
+			return err
+		}},
+		{name: "deleteSpreadsheet/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spreadsheet.DeletedSpreadsheet](`{"spreadsheetId":"sample-spreadsheet"}`)
+			return err
+		}},
 		{name: "getValues/contactsRange/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[spreadsheet.GetValuesOutput](`{"range":"Contacts!A1:C3","majorDimension":"ROWS","values":[["email","name","status"],["ada@example.test","Ada Lovelace","active"],["grace@example.test","Grace Hopper","pending"]]}`)
 			return err
@@ -43,6 +55,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetSpreadsheet().Definition().Operation.OperationID != "getSpreadsheet" {
+		t.Errorf("getSpreadsheet mock has another definition")
+	}
+	if mock.CreateSpreadsheet().Definition().Operation.OperationID != "createSpreadsheet" {
+		t.Errorf("createSpreadsheet mock has another definition")
+	}
+	if mock.DeleteSpreadsheet().Definition().Operation.OperationID != "deleteSpreadsheet" {
+		t.Errorf("deleteSpreadsheet mock has another definition")
+	}
 	if mock.GetValues().Definition().Operation.OperationID != "getValues" {
 		t.Errorf("getValues mock has another definition")
 	}

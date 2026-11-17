@@ -14,7 +14,7 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/google/spreadsheet/scenarios.json")
+SCENARIOS = [scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/google/spreadsheet/scenarios.json") if scenario["operation"] in {"getValues", "findRow", "upsertRow"}]
 CONNECTION = sdk.ConnectionRef("google", "customer-sheet")
 ADAPTER = conformance.PythonOperationAdapter(
     "google-sheets",

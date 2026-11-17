@@ -10,6 +10,7 @@ from dex_connectors.sdk import SecretString
 @dataclass(frozen=True, slots=True)
 class Config:
 
+    drive_base_url: str = "https://www.googleapis.com"
     endpoint: str = "https://sheets.googleapis.com/v4"
     max_response_bytes: int = 4194304
     max_rows: int = 10000

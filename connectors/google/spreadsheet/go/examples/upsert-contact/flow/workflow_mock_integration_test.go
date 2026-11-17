@@ -24,7 +24,8 @@ import (
 func TestUpsertContactExampleRunsOnSpreadsheetMockWithRealDex(t *testing.T) {
 	mock := spreadsheetmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	detailFlow := NewSpreadsheetDetailFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, detailFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -73,6 +74,16 @@ func TestUpsertContactExampleRunsOnSpreadsheetMockWithRealDex(t *testing.T) {
 	calls := mock.UpsertRow().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
+	detailFlowID := "google-sheets-detail-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, detailFlow, detailFlowID, spreadsheet.GetSpreadsheetInput{SpreadsheetID: "sample-spreadsheet"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	detailResult, err := client.WaitForFlow(ctx, detailFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, detailResult.Status, detailResult.ErrorMessage)
+	var detail spreadsheet.SpreadsheetInfo
+	require.NoError(t, detailResult.DecodeSingleOutput(&detail))
+	require.Equal(t, "Contacts", detail.Title)
+	require.Len(t, mock.GetSpreadsheet().Calls(), 1)
 	require.Equal(t, spreadsheet.UpsertRowInput{
 		SpreadsheetID: "1A2B3C4D5E6F7G8H9I0JkLmNoPqRsTuVwXyZ", SheetName: "Contacts",
 		KeyColumn: "email", KeyValue: "ada@example.test",

@@ -30,6 +30,7 @@ const (
 )
 
 type Config struct {
+	DriveBaseURL     string        `json:"driveBaseUrl,omitempty" yaml:"driveBaseUrl,omitempty"`
 	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
 	MaxRows          int64         `json:"maxRows,omitempty" yaml:"maxRows,omitempty"`
@@ -56,6 +57,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetSpreadsheet() sdkgo.Query[GetSpreadsheetInput, SpreadsheetInfo]
+	CreateSpreadsheet() sdkgo.Mutation[CreateSpreadsheetInput, SpreadsheetInfo]
+	DeleteSpreadsheet() sdkgo.Mutation[DeleteSpreadsheetInput, DeletedSpreadsheet]
 	GetValues() sdkgo.Query[GetValuesInput, GetValuesOutput]
 	FindRow() sdkgo.Query[FindRowInput, FindRowOutput]
 	UpsertRow() sdkgo.Mutation[UpsertRowInput, UpsertRowOutput]
@@ -63,6 +67,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetSpreadsheet() sdkgo.Query[GetSpreadsheetInput, SpreadsheetInfo] {
+	return operations.client.GetSpreadsheet()
+}
+func (operations clientOperations) CreateSpreadsheet() sdkgo.Mutation[CreateSpreadsheetInput, SpreadsheetInfo] {
+	return operations.client.CreateSpreadsheet()
+}
+func (operations clientOperations) DeleteSpreadsheet() sdkgo.Mutation[DeleteSpreadsheetInput, DeletedSpreadsheet] {
+	return operations.client.DeleteSpreadsheet()
+}
 func (operations clientOperations) GetValues() sdkgo.Query[GetValuesInput, GetValuesOutput] {
 	return operations.client.GetValues()
 }
@@ -210,6 +223,7 @@ func (Connection) GoString() string { return "spreadsheet.Connection{[REDACTED]}
 
 func DefaultConfig() Config {
 	return Config{
+		DriveBaseURL:     "https://www.googleapis.com",
 		Endpoint:         "https://sheets.googleapis.com/v4",
 		MaxResponseBytes: 4194304,
 		MaxRows:          10000,
@@ -220,6 +234,9 @@ func DefaultConfig() Config {
 
 func withConfigDefaults(config Config) Config {
 	defaults := DefaultConfig()
+	if config.DriveBaseURL == "" {
+		config.DriveBaseURL = defaults.DriveBaseURL
+	}
 	if config.Endpoint == "" {
 		config.Endpoint = defaults.Endpoint
 	}
@@ -239,6 +256,12 @@ func withConfigDefaults(config Config) Config {
 }
 
 func (config Config) Validate() error {
+	if config.DriveBaseURL != "" {
+		parsed, err := url.Parse(config.DriveBaseURL)
+		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
+			return fmt.Errorf("configuration driveBaseUrl must be an absolute URL")
+		}
+	}
 	if config.Endpoint != "" {
 		parsed, err := url.Parse(config.Endpoint)
 		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
@@ -330,6 +353,231 @@ func NewRowAddedTrigger(config RowAddedTriggerConfig) sdkgo.TriggerRunner {
 	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[RowAddedEvent]{
 		Definition: RowAddedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.rowAddedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+const GetSpreadsheetBranchFound sdkgo.BranchID = "found"
+const GetSpreadsheetBranchNotFound sdkgo.BranchID = "notFound"
+const GetSpreadsheetBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSpreadsheetBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSpreadsheetBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSpreadsheetDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSpreadsheet"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSpreadsheetBranchFound, Description: "Google returned spreadsheet metadata."},
+		{ID: GetSpreadsheetBranchNotFound, Description: "The spreadsheet is unavailable.", Optional: true},
+		{ID: GetSpreadsheetBranchProviderRejected, Description: "Google conclusively rejected the read.", Optional: true},
+		{ID: GetSpreadsheetBranchInvalidResponse, Description: "Google returned malformed metadata.", Optional: true},
+		{ID: GetSpreadsheetBranchDefect, Description: "Local spreadsheet ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSpreadsheetResult = sdkgo.QueryResult[SpreadsheetInfo]
+
+type GetSpreadsheetStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=google-sheets"`
+	operationID                    struct{}                                           `connector:"operationId=getSpreadsheet"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSpreadsheetInput                       `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSpreadsheetResult]                 `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSpreadsheetResult]                 `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSpreadsheetResult]                 `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSpreadsheetResult]                 `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSpreadsheetResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SpreadsheetInfo]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetSpreadsheetStep[IN any](config GetSpreadsheetStepConfig[IN]) sdkgo.QueryStep[IN, GetSpreadsheetInput, SpreadsheetInfo] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSpreadsheetInput, SpreadsheetInfo]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetSpreadsheet(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSpreadsheetResult] {
+			branches := make([]sdkgo.BranchTarget[GetSpreadsheetResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSpreadsheetBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSpreadsheetBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSpreadsheetBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSpreadsheetBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSpreadsheetBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateSpreadsheetBranchCreated sdkgo.BranchID = "created"
+const CreateSpreadsheetBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSpreadsheetBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateSpreadsheetBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateSpreadsheetDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSpreadsheet"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSpreadsheetBranchCreated, Description: "Google created the spreadsheet."},
+		{ID: CreateSpreadsheetBranchProviderRejected, Description: "Google conclusively rejected the create.", Optional: true},
+		{ID: CreateSpreadsheetBranchUncertain, Description: "The send cap was reached without a returned spreadsheet ID.", Optional: true},
+		{ID: CreateSpreadsheetBranchDefect, Description: "Local title or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateSpreadsheetResult = sdkgo.MutationResult[SpreadsheetInfo]
+
+type CreateSpreadsheetStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=google-sheets"`
+	operationID                       struct{}                                              `connector:"operationId=createSpreadsheet"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSpreadsheetInput                       `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSpreadsheetResult]                 `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateSpreadsheetResult]                 `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateSpreadsheetResult]                 `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateSpreadsheetResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SpreadsheetInfo]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateSpreadsheetStep[IN any](config CreateSpreadsheetStepConfig[IN]) sdkgo.MutationStep[IN, CreateSpreadsheetInput, SpreadsheetInfo] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSpreadsheetInput, SpreadsheetInfo]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateSpreadsheet(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSpreadsheetResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSpreadsheetResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSpreadsheetBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSpreadsheetBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateSpreadsheetBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSpreadsheetBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const DeleteSpreadsheetBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSpreadsheetBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSpreadsheetBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSpreadsheetDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSpreadsheet"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSpreadsheetBranchDeleted, Description: "Google deleted the spreadsheet or it was already absent."},
+		{ID: DeleteSpreadsheetBranchProviderRejected, Description: "Google conclusively rejected the delete.", Optional: true},
+		{ID: DeleteSpreadsheetBranchDefect, Description: "Local spreadsheet ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteSpreadsheetResult = sdkgo.MutationResult[DeletedSpreadsheet]
+
+type DeleteSpreadsheetStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=google-sheets"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteSpreadsheet"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                           `connector:"configurationUI"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSpreadsheetInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSpreadsheetResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteSpreadsheetResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteSpreadsheetResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedSpreadsheet]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSpreadsheetStep[IN any](config DeleteSpreadsheetStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSpreadsheetInput, DeletedSpreadsheet] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-sheets connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSpreadsheetInput, DeletedSpreadsheet]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteSpreadsheet(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSpreadsheetResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSpreadsheetResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSpreadsheetBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSpreadsheetBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSpreadsheetBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }
 
