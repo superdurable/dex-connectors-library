@@ -339,7 +339,7 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 			if !ok {
 				return sdkgo.NewMutationUncertain(PaddleCustomer{}, *customerFailure(name, sdkgo.FailureProtocol, "customer read-back is invalid"), sdkgo.Receipt{})
 			}
-			if len(page.Items) == 1 && page.Items[0].Email == input.Email && page.Items[0].Name == input.Name {
+			if len(page.Items) == 1 && page.Items[0].Email == input.Email && page.Items[0].Name == input.Name && readBackContainsCallID(readBack.body, call.ID) {
 				return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, page.Items[0], nil, sdkgo.Receipt{ProviderObjectID: page.Items[0].ID})
 			}
 			if len(page.Items) != 0 {
@@ -356,7 +356,7 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 	}
 	var exchange paddleExchange
 	err = fence.Dispatch(func(ctx context.Context) error {
-		exchange = operation.client.exchange(call, ctx, http.MethodPost, "/customers", map[string]string{"email": input.Email, "name": input.Name})
+		exchange = operation.client.exchange(call, ctx, http.MethodPost, "/customers", map[string]any{"email": input.Email, "name": input.Name, "custom_data": map[string]string{"dex_connector_call_id": string(call.ID)}})
 		return nil
 	})
 	if err != nil {

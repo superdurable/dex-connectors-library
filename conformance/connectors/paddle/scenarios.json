@@ -979,6 +979,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -1035,6 +1038,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -1090,6 +1096,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -1138,6 +1147,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -1186,6 +1198,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -1233,6 +1248,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -2082,6 +2100,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -2099,7 +2120,7 @@
           "status": 500
         },
         {
-          "body": "{\"data\":[{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "body": "{\"data\":[{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\",\"custom_data\":{\"dex_connector_call_id\":\"7ef41e77-93fc-5668-b5d6-df58922f1b71\"}}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2169,6 +2190,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -2216,6 +2240,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -2263,6 +2290,9 @@
           "method": "POST",
           "path": "/customers",
           "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
             "email": "customer@example.com",
             "name": "Sample Customer"
           },
@@ -2305,8 +2335,8 @@
         }
       ],
       "expected": {
-        "branch": "defect",
-        "failureKind": "LOCAL_DEFECT",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
           "email": "",
           "id": "",
@@ -2316,7 +2346,7 @@
         "requestCount": 6,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
       "input": {
@@ -3075,6 +3105,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -3136,6 +3169,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -3196,6 +3232,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -3247,6 +3286,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -3298,6 +3340,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -3348,6 +3393,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -4223,6 +4271,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -4240,7 +4291,7 @@
           "status": 500
         },
         {
-          "body": "{\"data\":[{\"id\":\"dsc_01gtgztp8fpchantd5g1wrksa3\",\"code\":\"SAVE10\",\"description\":\"Sample discount\",\"type\":\"percentage\",\"amount\":\"10\",\"status\":\"active\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "body": "{\"data\":[{\"id\":\"dsc_01gtgztp8fpchantd5g1wrksa3\",\"code\":\"SAVE10\",\"description\":\"Sample discount\",\"type\":\"percentage\",\"amount\":\"10\",\"status\":\"active\",\"custom_data\":{\"dex_connector_call_id\":\"ff614be2-9b63-5864-b0d8-3d5004477087\"}}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4315,6 +4366,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -4364,6 +4418,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -4413,6 +4470,9 @@
           "requestBody": {
             "amount": "10",
             "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
             "description": "Sample discount",
             "type": "percentage"
           },
@@ -4455,8 +4515,8 @@
         }
       ],
       "expected": {
-        "branch": "defect",
-        "failureKind": "LOCAL_DEFECT",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
           "amount": "",
           "code": "",
@@ -4468,7 +4528,7 @@
         "requestCount": 6,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
       "input": {
@@ -9765,6 +9825,1392 @@
       },
       "name": "cancelTransaction-defect",
       "operation": "cancelTransaction"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"sub_01hv8y5ehszzq0yv20ttx3166y\",\"status\":\"active\",\"next_billed_at\":\"2030-05-12T10:37:59Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "sub_01hv8y5ehszzq0yv20ttx3166y",
+          "nextBilledAt": "2030-05-12T10:37:59Z",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "getSubscription-found",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "a1361226-b65b-52cd-81c9-423cc323222b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "nextBilledAt": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "getSubscription-notFound",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "d410c6a4-ee02-5101-a323-a2380562a585",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "nextBilledAt": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "getSubscription-providerRejected",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "27398a3d-ff91-5c77-b3bf-8082eeddb75d",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"sub_01hv8y5ehszzq0yv20ttx3166y\",\"status\":\"active\",\"next_billed_at\":\"2030-05-12T10:37:59Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "sub_01hv8y5ehszzq0yv20ttx3166y",
+          "nextBilledAt": "2030-05-12T10:37:59Z",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "getSubscription-invalidResponse",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "a6a73395-6808-5afe-9970-a95a5ce8b6a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "nextBilledAt": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "bad"
+      },
+      "name": "getSubscription-defect",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "c400fb80-ea62-5a9b-8758-ad00c036837a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "getSubscription-rateLimit",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "323e41bb-18e1-56b0-8499-8fc575952b9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "getSubscription-serverUnavailable",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "2091cba2-6eb8-550c-8d19-81eb661fad9c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "getSubscription-transportFailure",
+      "operation": "getSubscription"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000401",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"sub_01hv8y5ehszzq0yv20ttx3166y\",\"status\":\"active\",\"next_billed_at\":\"2030-05-12T10:37:59Z\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "after": [
+              "sub_01hv8y5ehszzq0yv20ttx3166y"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "items": [
+            {
+              "id": "sub_01hv8y5ehszzq0yv20ttx3166y",
+              "nextBilledAt": "2030-05-12T10:37:59Z",
+              "status": "active"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "sub_01hv8y5ehszzq0yv20ttx3166y",
+        "perPage": 2
+      },
+      "name": "listSubscriptions-listed",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000402",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "after": [
+              "sub_01hv8y5ehszzq0yv20ttx3166y"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "sub_01hv8y5ehszzq0yv20ttx3166y",
+        "perPage": 2
+      },
+      "name": "listSubscriptions-provider-rejected",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000403",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"sub_01hv8y5ehszzq0yv20ttx3166y\",\"status\":\"active\",\"next_billed_at\":\"2030-05-12T10:37:59Z\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "after": [
+              "sub_01hv8y5ehszzq0yv20ttx3166y"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "items": [
+            {
+              "id": "sub_01hv8y5ehszzq0yv20ttx3166y",
+              "nextBilledAt": "2030-05-12T10:37:59Z",
+              "status": "active"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "sub_01hv8y5ehszzq0yv20ttx3166y",
+        "perPage": 2
+      },
+      "name": "listSubscriptions-invalid-response",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000404",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "after": [
+              "sub_01hv8y5ehszzq0yv20ttx3166y"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "sub_01hv8y5ehszzq0yv20ttx3166y",
+        "perPage": 2
+      },
+      "name": "listSubscriptions-rate-limit",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000405",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "after": [
+              "sub_01hv8y5ehszzq0yv20ttx3166y"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "sub_01hv8y5ehszzq0yv20ttx3166y",
+        "perPage": 2
+      },
+      "name": "listSubscriptions-service-unavailable",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000406",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "after": [
+              "sub_01hv8y5ehszzq0yv20ttx3166y"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "sub_01hv8y5ehszzq0yv20ttx3166y",
+        "perPage": 2
+      },
+      "name": "listSubscriptions-server-error",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000407",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/subscriptions",
+          "query": {
+            "after": [
+              "sub_01hv8y5ehszzq0yv20ttx3166y"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "sub_01hv8y5ehszzq0yv20ttx3166y",
+        "perPage": 2
+      },
+      "name": "listSubscriptions-transport",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000408",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "sub_01hv8y5ehszzq0yv20ttx3166y",
+        "perPage": 0
+      },
+      "name": "listSubscriptions-defect",
+      "operation": "listSubscriptions"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"sub_01hv8y5ehszzq0yv20ttx3166y\",\"status\":\"active\",\"next_billed_at\":\"2030-06-12T10:37:59Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "sub_01hv8y5ehszzq0yv20ttx3166y",
+          "nextBilledAt": "2030-06-12T10:37:59Z",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-updated",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "nextBilledAt": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-not-found",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "nextBilledAt": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-provider-rejected",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"sub_01hv8y5ehszzq0yv20ttx3166y\",\"status\":\"active\",\"next_billed_at\":\"2030-06-12T10:37:59Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "sub_01hv8y5ehszzq0yv20ttx3166y",
+          "nextBilledAt": "2030-06-12T10:37:59Z",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-invalid-response",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-rate-limit",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-service-unavailable",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-server-error",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/subscriptions/sub_01hv8y5ehszzq0yv20ttx3166y",
+          "requestBody": {
+            "next_billed_at": "2030-06-12T10:37:59Z",
+            "proration_billing_mode": "do_not_bill"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "sub_01hv8y5ehszzq0yv20ttx3166y"
+      },
+      "name": "setNextBillingDate-transport",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "callId": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "nextBilledAt": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "41a89241-8772-50cd-aee8-cbf857da352d",
+      "input": {
+        "nextBilledAt": "2030-06-12T10:37:59Z",
+        "subscriptionId": "bad"
+      },
+      "name": "setNextBillingDate-defect",
+      "operation": "setNextBillingDate"
+    },
+    {
+      "attempts": 2,
+      "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "custom_data": {
+              "dex_connector_call_id": "7ef41e77-93fc-5668-b5d6-df58922f1b71"
+            },
+            "email": "customer@example.com",
+            "name": "Sample Customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"ctm_01hv8wptq8987qeep44cyrewp9\",\"email\":\"customer@example.com\",\"name\":\"Sample Customer\",\"status\":\"active\",\"custom_data\":{\"dex_connector_call_id\":\"other-call-id\"}}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "email": [
+              "customer@example.com"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+      "input": {
+        "email": "customer@example.com",
+        "name": "Sample Customer"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7ef41e77-93fc-5668-b5d6-df58922f1b71",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCustomer-read-back-other-call",
+      "operation": "createCustomer"
+    },
+    {
+      "attempts": 2,
+      "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/discounts",
+          "requestBody": {
+            "amount": "10",
+            "code": "SAVE10",
+            "custom_data": {
+              "dex_connector_call_id": "ff614be2-9b63-5864-b0d8-3d5004477087"
+            },
+            "description": "Sample discount",
+            "type": "percentage"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"dsc_01gtgztp8fpchantd5g1wrksa3\",\"code\":\"SAVE10\",\"description\":\"Sample discount\",\"type\":\"percentage\",\"amount\":\"10\",\"status\":\"active\",\"custom_data\":{\"dex_connector_call_id\":\"other-call-id\"}}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/discounts",
+          "query": {
+            "code": [
+              "SAVE10"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": "",
+          "code": "",
+          "description": "",
+          "id": "",
+          "status": "",
+          "type": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ff614be2-9b63-5864-b0d8-3d5004477087",
+      "input": {
+        "amount": "10",
+        "code": "SAVE10",
+        "description": "Sample discount"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ff614be2-9b63-5864-b0d8-3d5004477087",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDiscount-read-back-other-call",
+      "operation": "createDiscount"
+    },
+    {
+      "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products",
+          "requestBody": {
+            "description": "Sample",
+            "name": "Sample Product",
+            "tax_category": "standard"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "26872cb1-e8ec-55df-8485-a283f42686b6",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": "",
+          "taxCategory": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "26872cb1-e8ec-55df-8485-a283f42686b6",
+      "input": {
+        "description": "Sample",
+        "name": "Sample Product",
+        "taxCategory": "standard"
+      },
+      "name": "createProduct-accepted-malformed",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-accepted-malformed",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/transactions",
+          "requestBody": {
+            "items": [
+              {
+                "price_id": "pri_01hv0vax6rv18t4tamj848ne4d",
+                "quantity": 2
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c315d92-8967-561a-b01f-0672bda4dad7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2c315d92-8967-561a-b01f-0672bda4dad7",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "quantity": 2
+      },
+      "name": "createTransaction-accepted-malformed",
+      "operation": "createTransaction"
     }
   ],
   "schemaVersion": 1

@@ -296,7 +296,7 @@ func (operation CreateDiscountOperation) Invoke(call sdkgo.Call, input CreateDis
 			if !ok {
 				return sdkgo.NewMutationUncertain(PaddleDiscount{}, *discountFailure(name, sdkgo.FailureProtocol, "discount read-back is invalid"), sdkgo.Receipt{})
 			}
-			if len(page.Items) == 1 && strings.EqualFold(page.Items[0].Code, input.Code) && page.Items[0].Description == input.Description && page.Items[0].Amount == input.Amount {
+			if len(page.Items) == 1 && strings.EqualFold(page.Items[0].Code, input.Code) && page.Items[0].Description == input.Description && page.Items[0].Amount == input.Amount && readBackContainsCallID(readBack.body, call.ID) {
 				return sdkgo.NewMutationBranch(CreateDiscountBranchCreated, page.Items[0], nil, sdkgo.Receipt{ProviderObjectID: page.Items[0].ID})
 			}
 			if len(page.Items) != 0 {
@@ -313,7 +313,7 @@ func (operation CreateDiscountOperation) Invoke(call sdkgo.Call, input CreateDis
 	}
 	var exchange paddleExchange
 	err = fence.Dispatch(func(ctx context.Context) error {
-		exchange = operation.client.exchange(call, ctx, http.MethodPost, "/discounts", map[string]string{"code": input.Code, "description": input.Description, "type": "percentage", "amount": input.Amount})
+		exchange = operation.client.exchange(call, ctx, http.MethodPost, "/discounts", map[string]any{"code": input.Code, "description": input.Description, "type": "percentage", "amount": input.Amount, "custom_data": map[string]string{"dex_connector_call_id": string(call.ID)}})
 		return nil
 	})
 	if err != nil {

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: paddle
   displayName: Paddle
-  description: Manage transactions, customers, discounts, products, and prices through the Paddle Billing API.
+  description: Manage transactions, subscriptions, customers, discounts, products, and prices through the Paddle Billing API.
   company: Paddle
   categories: [finance-payments]
   version: v0.2.0
@@ -48,11 +48,11 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read/write plus customer.read/write, discount.read/write, product.read/write, and price.read/write for Go management operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
+        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read/write, subscription.read/write, customer.read/write, discount.read/write, product.read/write, and price.read/write for Go management operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
     guide:
       startURL: https://sandbox-vendors.paddle.com
       steps:
-        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read and, for Go management operations, transaction.write, customer.read, customer.write, discount.read, discount.write, product.read, product.write, price.read, and price.write; set an expiry and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
+        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read and, for Go management operations, transaction.write, subscription.read, subscription.write, customer.read, customer.write, discount.read, discount.write, product.read, product.write, price.read, and price.write; set an expiry and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
         - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find non-secret txn_, ctm_, dsc_, pro_, and pri_ IDs on the Paddle Transactions, Customers, Catalog > Discounts, Catalog > Products, and product Prices pages or in API responses. Use a unique customer email for createCustomer, a unique alphanumeric code and percentage for createDiscount, a product name plus enabled tax category for createProduct, and a product ID plus private description and minor-unit amount for createPrice; blank required values are invalid.
   operations:
     - name: listCustomers
@@ -107,6 +107,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Paddle created the customer.}
+        - {id: uncertain, goName: Uncertain, description: Customer creation may have succeeded but cannot be confirmed., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected creation., optional: true}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
@@ -209,6 +210,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Paddle returned the createDiscount.}
+        - {id: uncertain, goName: Uncertain, description: Discount creation may have succeeded but cannot be confirmed., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
         - {id: defect, goName: Defect, description: defect outcome., optional: true}
       mocks:
@@ -311,6 +313,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Paddle returned the createProduct.}
+        - {id: uncertain, goName: Uncertain, description: Product creation may have succeeded but cannot be confirmed., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
         - {id: defect, goName: Defect, description: defect outcome., optional: true}
       mocks:
@@ -413,6 +416,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Paddle returned the createPrice.}
+        - {id: uncertain, goName: Uncertain, description: Price creation may have succeeded but cannot be confirmed., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
         - {id: defect, goName: Defect, description: defect outcome., optional: true}
       mocks:
@@ -494,6 +498,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Paddle returned the createTransaction.}
+        - {id: uncertain, goName: Uncertain, description: Draft transaction creation may have succeeded but cannot be confirmed., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
         - {id: defect, goName: Defect, description: defect outcome., optional: true}
       mocks:
@@ -544,6 +549,68 @@ spec:
           default: true
           description: A sample transaction is returned.
           output: {id: txn_01hv8wptq8987qeep44cyrewp9, status: canceled, currencyCode: USD}
+    - name: listSubscriptions
+      goName: ListSubscriptions
+      inputType: ListSubscriptionsInput
+      outputType: SubscriptionPage
+      kind: query
+      description: List Paddle Billing subscriptions with cursor pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned subscriptions.}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample subscription is returned.
+          output: {items: [{id: sub_01hv8y5ehszzq0yv20ttx3166y, status: active, nextBilledAt: '2030-05-12T10:37:59Z'}], hasMore: false, nextCursor: ''}
+    - name: getSubscription
+      goName: GetSubscription
+      inputType: SubscriptionIDInput
+      outputType: PaddleSubscription
+      kind: query
+      description: Read one Paddle Billing subscription.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the subscription.}
+        - {id: notFound, goName: NotFound, description: Paddle did not find the subscription., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample subscription is returned.
+          output: {id: sub_01hv8y5ehszzq0yv20ttx3166y, status: active, nextBilledAt: '2030-05-12T10:37:59Z'}
+    - name: setNextBillingDate
+      goName: SetNextBillingDate
+      inputType: SetNextBillingDateInput
+      outputType: PaddleSubscription
+      kind: mutation
+      description: Move the next subscription renewal without immediate collection.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle moved the next renewal.}
+        - {id: notFound, goName: NotFound, description: Paddle did not find the subscription., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected the date change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample next renewal is returned.
+          output: {id: sub_01hv8y5ehszzq0yv20ttx3166y, status: active, nextBilledAt: '2030-06-12T10:37:59Z'}
     - name: getTransaction
       goName: GetTransaction
       inputType: GetTransactionInput

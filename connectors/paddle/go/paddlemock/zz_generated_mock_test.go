@@ -112,6 +112,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"canceled","currencyCode":"USD"}`)
 			return err
 		}},
+		{name: "listSubscriptions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.SubscriptionPage](`{"items":[{"id":"sub_01hv8y5ehszzq0yv20ttx3166y","status":"active","nextBilledAt":"2030-05-12T10:37:59Z"}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getSubscription/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleSubscription](`{"id":"sub_01hv8y5ehszzq0yv20ttx3166y","status":"active","nextBilledAt":"2030-05-12T10:37:59Z"}`)
+			return err
+		}},
+		{name: "setNextBillingDate/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddleSubscription](`{"id":"sub_01hv8y5ehszzq0yv20ttx3166y","status":"active","nextBilledAt":"2030-06-12T10:37:59Z"}`)
+			return err
+		}},
 		{name: "getTransaction/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}`)
 			return err
@@ -197,6 +209,15 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CancelTransaction().Definition().Operation.OperationID != "cancelTransaction" {
 		t.Errorf("cancelTransaction mock has another definition")
+	}
+	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
+		t.Errorf("listSubscriptions mock has another definition")
+	}
+	if mock.GetSubscription().Definition().Operation.OperationID != "getSubscription" {
+		t.Errorf("getSubscription mock has another definition")
+	}
+	if mock.SetNextBillingDate().Definition().Operation.OperationID != "setNextBillingDate" {
+		t.Errorf("setNextBillingDate mock has another definition")
 	}
 	if mock.GetTransaction().Definition().Operation.OperationID != "getTransaction" {
 		t.Errorf("getTransaction mock has another definition")
