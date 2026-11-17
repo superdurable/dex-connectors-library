@@ -55,7 +55,7 @@ func (operation GetStatementResultOperation) Invoke(call sdkgo.Call, input GetSt
 	if err != nil {
 		return statementBranch(GetStatementResultBranchDefect, sdkgo.FailureValidation, "Redshift request could not be encoded")
 	}
-	response := operation.client.getStatementResult(call, payload)
+	response := operation.client.send(call, "GetStatementResult", payload)
 	if errors.Is(response.err, errCredential) {
 		return statementBranch(GetStatementResultBranchDefect, sdkgo.FailureAuthentication, "Redshift credentials are unavailable or invalid")
 	}

@@ -693,6 +693,1295 @@
       },
       "name": "saveObject-defect",
       "operation": "saveObject"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"objectID\":\"product-1\",\"name\":\"Meridian notebook\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "name": "Meridian notebook",
+          "objectID": "product-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "getObject-found",
+      "operation": "getObject"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "objectID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "getObject-missing",
+      "operation": "getObject"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "objectID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "getObject-providerRejected",
+      "operation": "getObject"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "objectID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "getObject-invalidResponse",
+      "operation": "getObject"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "objectID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "../bad",
+        "objectID": "product-1"
+      },
+      "name": "getObject-defect",
+      "operation": "getObject"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "getObject-429",
+      "operation": "getObject"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "getObject-503",
+      "operation": "getObject"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "getObject-transport",
+      "operation": "getObject"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"name\":\"products\",\"entries\":42}],\"nbPages\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes",
+          "query": {
+            "hitsPerPage": [
+              "5"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "items": [
+            {
+              "entries": 42,
+              "name": "products"
+            }
+          ],
+          "nbPages": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 5,
+        "page": 1
+      },
+      "name": "listIndices-listed",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes",
+          "query": {
+            "hitsPerPage": [
+              "5"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "items": [],
+          "nbPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 5,
+        "page": 1
+      },
+      "name": "listIndices-providerRejected",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes",
+          "query": {
+            "hitsPerPage": [
+              "5"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "items": [],
+          "nbPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 5,
+        "page": 1
+      },
+      "name": "listIndices-invalidResponse",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "items": [],
+          "nbPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 5,
+        "page": -1
+      },
+      "name": "listIndices-defect",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes",
+          "query": {
+            "hitsPerPage": [
+              "5"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 5,
+        "page": 1
+      },
+      "name": "listIndices-429",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes",
+          "query": {
+            "hitsPerPage": [
+              "5"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 5,
+        "page": 1
+      },
+      "name": "listIndices-503",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "20000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/indexes",
+          "query": {
+            "hitsPerPage": [
+              "5"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 5,
+        "page": 1
+      },
+      "name": "listIndices-transport",
+      "operation": "listIndices"
+    },
+    {
+      "callId": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "exchanges": [
+        {
+          "body": "{\"objectID\":\"product-1\",\"taskID\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/product-1/partial",
+          "query": {
+            "createIfNotExists": [
+              "false"
+            ]
+          },
+          "requestBody": {
+            "name": "Updated notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "objectID": "product-1",
+          "taskID": 123
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "input": {
+        "attributes": {
+          "name": "Updated notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "partialUpdateObject-updated",
+      "operation": "partialUpdateObject"
+    },
+    {
+      "callId": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/product-1/partial",
+          "query": {
+            "createIfNotExists": [
+              "false"
+            ]
+          },
+          "requestBody": {
+            "name": "Updated notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "objectID": "",
+          "taskID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "input": {
+        "attributes": {
+          "name": "Updated notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "partialUpdateObject-providerRejected",
+      "operation": "partialUpdateObject"
+    },
+    {
+      "callId": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/product-1/partial",
+          "query": {
+            "createIfNotExists": [
+              "false"
+            ]
+          },
+          "requestBody": {
+            "name": "Updated notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "objectID": "",
+          "taskID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "input": {
+        "attributes": {
+          "name": "Updated notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "partialUpdateObject-invalidResponse",
+      "operation": "partialUpdateObject"
+    },
+    {
+      "callId": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "objectID": "",
+          "taskID": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "input": {
+        "attributes": {
+          "objectID": "wrong"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "partialUpdateObject-defect",
+      "operation": "partialUpdateObject"
+    },
+    {
+      "callId": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/product-1/partial",
+          "query": {
+            "createIfNotExists": [
+              "false"
+            ]
+          },
+          "requestBody": {
+            "name": "Updated notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "input": {
+        "attributes": {
+          "name": "Updated notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "partialUpdateObject-429",
+      "operation": "partialUpdateObject"
+    },
+    {
+      "callId": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/product-1/partial",
+          "query": {
+            "createIfNotExists": [
+              "false"
+            ]
+          },
+          "requestBody": {
+            "name": "Updated notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "input": {
+        "attributes": {
+          "name": "Updated notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "partialUpdateObject-503",
+      "operation": "partialUpdateObject"
+    },
+    {
+      "callId": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/product-1/partial",
+          "query": {
+            "createIfNotExists": [
+              "false"
+            ]
+          },
+          "requestBody": {
+            "name": "Updated notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59aaad50-2125-5c14-95fa-854bca947c5c",
+      "input": {
+        "attributes": {
+          "name": "Updated notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "partialUpdateObject-transport",
+      "operation": "partialUpdateObject"
+    },
+    {
+      "callId": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "exchanges": [
+        {
+          "body": "{\"objectID\":\"product-1\",\"taskID\":124}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "objectID": "product-1",
+          "taskID": 124
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "deleteObject-deleted",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "objectID": "",
+          "taskID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "deleteObject-providerRejected",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "objectID": "",
+          "taskID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "deleteObject-invalidResponse",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "objectID": "",
+          "taskID": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "input": {
+        "indexName": "../bad",
+        "objectID": "product-1"
+      },
+      "name": "deleteObject-defect",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "deleteObject-429",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "deleteObject-503",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/indexes/products/product-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
+      "input": {
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "deleteObject-transport",
+      "operation": "deleteObject"
     }
   ],
   "schemaVersion": 1

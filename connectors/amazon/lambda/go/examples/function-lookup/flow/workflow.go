@@ -42,7 +42,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStartStep(startRequest{}),
 		dex.DefineStep(lambda.NewGetFunctionStep(lambda.GetFunctionStepConfig[lambda.GetFunctionInput]{
 			StepType: operationStepType, ConnectionName: ConnectionName,
-			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Amazon Lambda", Explanation: "List one page of Amazon Lambda functions."},
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Amazon Lambda", Explanation: "Read one Amazon Lambda function."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
 			Found:               sdkgo.GoTo(completeResult{}),

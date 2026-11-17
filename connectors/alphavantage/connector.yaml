@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: alphavantage
   displayName: Alpha Vantage
-  description: Read a global equity quote and compact daily time series.
+  description: Read equity quotes, daily prices, symbol matches, exchange rates, and market activity.
   company: Alpha Vantage
   categories: [data-search, finance-payments]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: alphavantage
   languages:
@@ -54,6 +54,87 @@ spec:
         - Navigate to Alpha Vantage > Support > Claim your Free API Key; create or select a key with permission for the listed read or generation operations, and copy its provider-issued string.
         - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+    - name: searchSymbols
+      goName: SearchSymbols
+      inputType: SymbolSearchInput
+      outputType: SymbolSearchOutput
+      kind: query
+      description: Find stock, ETF, and fund symbols matching keywords.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Alpha Vantage returned matching symbols, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example equity symbol matches.
+          output: {matches: [{symbol: IBM, name: International Business Machines, region: United States}]}
+    - name: getCurrencyExchangeRate
+      goName: GetCurrencyExchangeRate
+      inputType: CurrencyPairInput
+      outputType: CurrencyExchangeRateOutput
+      kind: query
+      description: Read the latest exchange rate for a fiat or crypto currency pair.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Alpha Vantage returned an exchange rate.}
+        - {id: notFound, goName: NotFound, description: No exchange rate exists for the currency pair., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example USD to JPY rate is available.
+          output: {fromCurrency: USD, toCurrency: JPY, rate: "159.17723289", lastRefreshed: "2026-11-17 04:29:14"}
+    - name: getMarketStatus
+      goName: GetMarketStatus
+      inputType: MarketStatusInput
+      outputType: MarketStatusOutput
+      kind: query
+      description: Read the open or closed state of major global trading venues.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Alpha Vantage returned trading venue statuses.}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example US equities venue is closed.
+          output: {markets: [{marketType: Equity, region: United States, primaryExchanges: NYSE, currentStatus: closed}]}
+    - name: getTopGainersLosers
+      goName: GetTopGainersLosers
+      inputType: MarketMoversInput
+      outputType: MarketMoversOutput
+      kind: query
+      description: Read US top gainers, top losers, and most actively traded tickers.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Alpha Vantage returned market mover lists.}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example ticker appears in each market list.
+          output: {lastUpdated: "2026-11-16 16:16:00 US/Eastern", topGainers: [{ticker: IBM, price: "255.25"}], topLosers: [{ticker: XYZ, price: "2.15"}], mostActivelyTraded: [{ticker: ABC, price: "9.11"}]}
     - name: getGlobalQuote
       goName: GetGlobalQuote
       inputType: StockInput

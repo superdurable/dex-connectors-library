@@ -24,7 +24,8 @@ import (
 func TestDemoUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := alphavantagemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	marketFlow := NewMarketStatusFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, marketFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,11 @@ func TestDemoUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "IBM", output.Symbol)
 	require.Len(t, mock.GetGlobalQuote().Calls(), 1)
+	marketFlowID := "alphavantage-market-status-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, marketFlow, marketFlowID, alphavantage.MarketStatusInput{Region: "United States"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	marketResult, err := client.WaitForFlow(ctx, marketFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, marketResult.Status, marketResult.ErrorMessage)
+	require.Len(t, mock.GetMarketStatus().Calls(), 1)
 }

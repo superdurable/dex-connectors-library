@@ -463,6 +463,1468 @@
       },
       "name": "getStatementResult-transportFailure",
       "operation": "getStatementResult"
+    },
+    {
+      "callId": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "exchanges": [
+        {
+          "body": "{\"Id\":\"123e4567-e89b-12d3-a456-426614174000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ClientToken": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+            "Database": "dev",
+            "ResultFormat": "JSON",
+            "Sql": "SELECT 1",
+            "WorkgroupName": "example-workgroup"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=74ea0cfe4cdfef8338dda8a1663c465cbc9530c44a2e3cb0e95b0dbc0ea7fd53"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ExecuteStatement"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "submitted",
+        "failureKind": "",
+        "output": {
+          "id": "123e4567-e89b-12d3-a456-426614174000"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "input": {
+        "database": "dev",
+        "sql": "SELECT 1",
+        "workgroupName": "example-workgroup"
+      },
+      "name": "executeStatement-submitted",
+      "operation": "executeStatement"
+    },
+    {
+      "callId": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ClientToken": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+            "Database": "dev",
+            "ResultFormat": "JSON",
+            "Sql": "SELECT 1",
+            "WorkgroupName": "example-workgroup"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=74ea0cfe4cdfef8338dda8a1663c465cbc9530c44a2e3cb0e95b0dbc0ea7fd53"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ExecuteStatement"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "input": {
+        "database": "dev",
+        "sql": "SELECT 1",
+        "workgroupName": "example-workgroup"
+      },
+      "name": "executeStatement-providerRejected",
+      "operation": "executeStatement"
+    },
+    {
+      "callId": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "exchanges": [
+        {
+          "body": "{\"Id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ClientToken": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+            "Database": "dev",
+            "ResultFormat": "JSON",
+            "Sql": "SELECT 1",
+            "WorkgroupName": "example-workgroup"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=74ea0cfe4cdfef8338dda8a1663c465cbc9530c44a2e3cb0e95b0dbc0ea7fd53"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ExecuteStatement"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "input": {
+        "database": "dev",
+        "sql": "SELECT 1",
+        "workgroupName": "example-workgroup"
+      },
+      "name": "executeStatement-invalidResponse",
+      "operation": "executeStatement"
+    },
+    {
+      "callId": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "input": {
+        "database": "dev",
+        "sql": "SELECT 1",
+        "workgroupName": "Bad!"
+      },
+      "name": "executeStatement-defect",
+      "operation": "executeStatement"
+    },
+    {
+      "callId": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ClientToken": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+            "Database": "dev",
+            "ResultFormat": "JSON",
+            "Sql": "SELECT 1",
+            "WorkgroupName": "example-workgroup"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=74ea0cfe4cdfef8338dda8a1663c465cbc9530c44a2e3cb0e95b0dbc0ea7fd53"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ExecuteStatement"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "input": {
+        "database": "dev",
+        "sql": "SELECT 1",
+        "workgroupName": "example-workgroup"
+      },
+      "name": "executeStatement-rateLimit",
+      "operation": "executeStatement"
+    },
+    {
+      "callId": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ClientToken": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+            "Database": "dev",
+            "ResultFormat": "JSON",
+            "Sql": "SELECT 1",
+            "WorkgroupName": "example-workgroup"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=74ea0cfe4cdfef8338dda8a1663c465cbc9530c44a2e3cb0e95b0dbc0ea7fd53"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ExecuteStatement"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "input": {
+        "database": "dev",
+        "sql": "SELECT 1",
+        "workgroupName": "example-workgroup"
+      },
+      "name": "executeStatement-unavailable",
+      "operation": "executeStatement"
+    },
+    {
+      "callId": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ClientToken": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+            "Database": "dev",
+            "ResultFormat": "JSON",
+            "Sql": "SELECT 1",
+            "WorkgroupName": "example-workgroup"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=74ea0cfe4cdfef8338dda8a1663c465cbc9530c44a2e3cb0e95b0dbc0ea7fd53"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ExecuteStatement"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c41f76a7-2fcd-58a6-b2ea-b0582dc131bb",
+      "input": {
+        "database": "dev",
+        "sql": "SELECT 1",
+        "workgroupName": "example-workgroup"
+      },
+      "name": "executeStatement-transportFailure",
+      "operation": "executeStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"Id\":\"123e4567-e89b-12d3-a456-426614174000\",\"Status\":\"FINISHED\",\"HasResultSet\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=827060f862b0d524ece5a1e6e236bb44221ea06617bf5ced742cf45ddc6b695f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.DescribeStatement"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "described",
+        "failureKind": "",
+        "output": {
+          "hasResultSet": true,
+          "id": "123e4567-e89b-12d3-a456-426614174000",
+          "status": "FINISHED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "describeStatement-described",
+      "operation": "describeStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"com.amazonaws.redshiftdata#ResourceNotFoundException\",\"message\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=827060f862b0d524ece5a1e6e236bb44221ea06617bf5ced742cf45ddc6b695f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.DescribeStatement"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "hasResultSet": false,
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "describeStatement-missing",
+      "operation": "describeStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=827060f862b0d524ece5a1e6e236bb44221ea06617bf5ced742cf45ddc6b695f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.DescribeStatement"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasResultSet": false,
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "describeStatement-providerRejected",
+      "operation": "describeStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{\"Id\":\"bad\",\"Status\":\"FINISHED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=827060f862b0d524ece5a1e6e236bb44221ea06617bf5ced742cf45ddc6b695f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.DescribeStatement"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasResultSet": false,
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "describeStatement-invalidResponse",
+      "operation": "describeStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000012",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasResultSet": false,
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementId": "bad"
+      },
+      "name": "describeStatement-defect",
+      "operation": "describeStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000013",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=827060f862b0d524ece5a1e6e236bb44221ea06617bf5ced742cf45ddc6b695f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.DescribeStatement"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "describeStatement-rateLimit",
+      "operation": "describeStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000014",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=827060f862b0d524ece5a1e6e236bb44221ea06617bf5ced742cf45ddc6b695f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.DescribeStatement"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "describeStatement-unavailable",
+      "operation": "describeStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000015",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=827060f862b0d524ece5a1e6e236bb44221ea06617bf5ced742cf45ddc6b695f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.DescribeStatement"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "describeStatement-transportFailure",
+      "operation": "describeStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000016",
+      "exchanges": [
+        {
+          "body": "{\"Statements\":[{\"Id\":\"123e4567-e89b-12d3-a456-426614174000\",\"Status\":\"FINISHED\"}],\"NextToken\":\"page-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MaxResults": 2,
+            "NextToken": "page-1"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=39482251139b6afb64dade4213ec37131cd37c5cb1d13b69101283d78aab8d3d"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ListStatements"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextToken": "page-2",
+          "statements": [
+            {
+              "hasResultSet": false,
+              "id": "123e4567-e89b-12d3-a456-426614174000",
+              "status": "FINISHED"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "nextToken": "page-1"
+      },
+      "name": "listStatements-listed",
+      "operation": "listStatements"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000017",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MaxResults": 2,
+            "NextToken": "page-1"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=39482251139b6afb64dade4213ec37131cd37c5cb1d13b69101283d78aab8d3d"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ListStatements"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextToken": "",
+          "statements": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "nextToken": "page-1"
+      },
+      "name": "listStatements-providerRejected",
+      "operation": "listStatements"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000018",
+      "exchanges": [
+        {
+          "body": "{\"Statements\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MaxResults": 2,
+            "NextToken": "page-1"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=39482251139b6afb64dade4213ec37131cd37c5cb1d13b69101283d78aab8d3d"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ListStatements"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextToken": "",
+          "statements": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "nextToken": "page-1"
+      },
+      "name": "listStatements-invalidResponse",
+      "operation": "listStatements"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000019",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextToken": "",
+          "statements": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 101,
+        "nextToken": "page-1"
+      },
+      "name": "listStatements-defect",
+      "operation": "listStatements"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000020",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MaxResults": 2,
+            "NextToken": "page-1"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=39482251139b6afb64dade4213ec37131cd37c5cb1d13b69101283d78aab8d3d"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ListStatements"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "nextToken": "page-1"
+      },
+      "name": "listStatements-rateLimit",
+      "operation": "listStatements"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000021",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MaxResults": 2,
+            "NextToken": "page-1"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=39482251139b6afb64dade4213ec37131cd37c5cb1d13b69101283d78aab8d3d"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ListStatements"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "nextToken": "page-1"
+      },
+      "name": "listStatements-unavailable",
+      "operation": "listStatements"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000022",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "MaxResults": 2,
+            "NextToken": "page-1"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=39482251139b6afb64dade4213ec37131cd37c5cb1d13b69101283d78aab8d3d"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.ListStatements"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "nextToken": "page-1"
+      },
+      "name": "listStatements-transportFailure",
+      "operation": "listStatements"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [
+        {
+          "body": "{\"Status\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=c8b4dd8f88835090d3872755a54c94f1fd24d9334382f01ced32c46173c5d36f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.CancelStatement"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "canceled": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "cancelStatement-canceled",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [
+        {
+          "body": "{\"Status\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=c8b4dd8f88835090d3872755a54c94f1fd24d9334382f01ced32c46173c5d36f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.CancelStatement"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"Status\":\"FINISHED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=827060f862b0d524ece5a1e6e236bb44221ea06617bf5ced742cf45ddc6b695f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.DescribeStatement"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notCanceled",
+        "failureKind": "",
+        "output": {
+          "canceled": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "cancelStatement-notCanceled",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"com.amazonaws.redshiftdata#ResourceNotFoundException\",\"message\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=c8b4dd8f88835090d3872755a54c94f1fd24d9334382f01ced32c46173c5d36f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.CancelStatement"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "canceled": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "cancelStatement-missing",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=c8b4dd8f88835090d3872755a54c94f1fd24d9334382f01ced32c46173c5d36f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.CancelStatement"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "canceled": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "cancelStatement-providerRejected",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [
+        {
+          "body": "{\"Status\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=c8b4dd8f88835090d3872755a54c94f1fd24d9334382f01ced32c46173c5d36f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.CancelStatement"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "canceled": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "cancelStatement-invalidResponse",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "canceled": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "bad"
+      },
+      "name": "cancelStatement-defect",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=c8b4dd8f88835090d3872755a54c94f1fd24d9334382f01ced32c46173c5d36f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.CancelStatement"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "cancelStatement-rateLimit",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=c8b4dd8f88835090d3872755a54c94f1fd24d9334382f01ced32c46173c5d36f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.CancelStatement"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "cancelStatement-unavailable",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=c8b4dd8f88835090d3872755a54c94f1fd24d9334382f01ced32c46173c5d36f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.CancelStatement"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "cancelStatement-transportFailure",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "exchanges": [
+        {
+          "body": "{\"Status\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=c8b4dd8f88835090d3872755a54c94f1fd24d9334382f01ced32c46173c5d36f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.CancelStatement"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"Status\":\"ABORTED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=827060f862b0d524ece5a1e6e236bb44221ea06617bf5ced742cf45ddc6b695f"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.DescribeStatement"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "canceled": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a9805dcb-0f8b-5a5b-9286-a373b2d0098b",
+      "input": {
+        "statementId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "cancelStatement-alreadyAborted",
+      "operation": "cancelStatement"
     }
   ],
   "schemaVersion": 1

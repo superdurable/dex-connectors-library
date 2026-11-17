@@ -892,6 +892,1215 @@
       },
       "name": "getTimeSeriesDaily-defect",
       "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "00000001-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"bestMatches\":[{\"1. symbol\":\"TSCO.LON\",\"2. name\":\"Tesco PLC\",\"4. region\":\"United Kingdom\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "SYMBOL_SEARCH"
+            ],
+            "keywords": [
+              "tesco"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "matches": [
+            {
+              "name": "Tesco PLC",
+              "region": "United Kingdom",
+              "symbol": "TSCO.LON"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "tesco"
+      },
+      "name": "searchSymbols-found",
+      "operation": "searchSymbols"
+    },
+    {
+      "callId": "00000002-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "SYMBOL_SEARCH"
+            ],
+            "keywords": [
+              "tesco"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "matches": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "tesco"
+      },
+      "name": "searchSymbols-providerRejected",
+      "operation": "searchSymbols"
+    },
+    {
+      "callId": "00000003-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "SYMBOL_SEARCH"
+            ],
+            "keywords": [
+              "tesco"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "matches": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "tesco"
+      },
+      "name": "searchSymbols-invalidResponse",
+      "operation": "searchSymbols"
+    },
+    {
+      "callId": "00000004-0000-4000-8000-000000000001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "matches": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": ""
+      },
+      "name": "searchSymbols-defect",
+      "operation": "searchSymbols"
+    },
+    {
+      "callId": "00000005-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "SYMBOL_SEARCH"
+            ],
+            "keywords": [
+              "tesco"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "tesco"
+      },
+      "name": "searchSymbols-429",
+      "operation": "searchSymbols"
+    },
+    {
+      "callId": "00000006-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "SYMBOL_SEARCH"
+            ],
+            "keywords": [
+              "tesco"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "tesco"
+      },
+      "name": "searchSymbols-503",
+      "operation": "searchSymbols"
+    },
+    {
+      "callId": "00000007-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "SYMBOL_SEARCH"
+            ],
+            "keywords": [
+              "tesco"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "tesco"
+      },
+      "name": "searchSymbols-transport",
+      "operation": "searchSymbols"
+    },
+    {
+      "callId": "00000008-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"Realtime Currency Exchange Rate\":{\"1. From_Currency Code\":\"USD\",\"3. To_Currency Code\":\"JPY\",\"5. Exchange Rate\":\"159.17723289\",\"6. Last Refreshed\":\"2026-11-17 04:29:14\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "from_currency": [
+              "USD"
+            ],
+            "function": [
+              "CURRENCY_EXCHANGE_RATE"
+            ],
+            "to_currency": [
+              "JPY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fromCurrency": "USD",
+          "lastRefreshed": "2026-11-17 04:29:14",
+          "rate": "159.17723289",
+          "toCurrency": "JPY"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromCurrency": "USD",
+        "toCurrency": "JPY"
+      },
+      "name": "getCurrencyExchangeRate-found",
+      "operation": "getCurrencyExchangeRate"
+    },
+    {
+      "callId": "00000009-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "from_currency": [
+              "USD"
+            ],
+            "function": [
+              "CURRENCY_EXCHANGE_RATE"
+            ],
+            "to_currency": [
+              "JPY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fromCurrency": "",
+          "lastRefreshed": "",
+          "rate": "",
+          "toCurrency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromCurrency": "USD",
+        "toCurrency": "JPY"
+      },
+      "name": "getCurrencyExchangeRate-notFound",
+      "operation": "getCurrencyExchangeRate"
+    },
+    {
+      "callId": "00000010-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "from_currency": [
+              "USD"
+            ],
+            "function": [
+              "CURRENCY_EXCHANGE_RATE"
+            ],
+            "to_currency": [
+              "JPY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fromCurrency": "",
+          "lastRefreshed": "",
+          "rate": "",
+          "toCurrency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromCurrency": "USD",
+        "toCurrency": "JPY"
+      },
+      "name": "getCurrencyExchangeRate-providerRejected",
+      "operation": "getCurrencyExchangeRate"
+    },
+    {
+      "callId": "00000011-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "from_currency": [
+              "USD"
+            ],
+            "function": [
+              "CURRENCY_EXCHANGE_RATE"
+            ],
+            "to_currency": [
+              "JPY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fromCurrency": "",
+          "lastRefreshed": "",
+          "rate": "",
+          "toCurrency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromCurrency": "USD",
+        "toCurrency": "JPY"
+      },
+      "name": "getCurrencyExchangeRate-invalidResponse",
+      "operation": "getCurrencyExchangeRate"
+    },
+    {
+      "callId": "00000012-0000-4000-8000-000000000001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fromCurrency": "",
+          "lastRefreshed": "",
+          "rate": "",
+          "toCurrency": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromCurrency": "US",
+        "toCurrency": "JPY"
+      },
+      "name": "getCurrencyExchangeRate-defect",
+      "operation": "getCurrencyExchangeRate"
+    },
+    {
+      "callId": "00000013-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "from_currency": [
+              "USD"
+            ],
+            "function": [
+              "CURRENCY_EXCHANGE_RATE"
+            ],
+            "to_currency": [
+              "JPY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromCurrency": "USD",
+        "toCurrency": "JPY"
+      },
+      "name": "getCurrencyExchangeRate-429",
+      "operation": "getCurrencyExchangeRate"
+    },
+    {
+      "callId": "00000014-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "from_currency": [
+              "USD"
+            ],
+            "function": [
+              "CURRENCY_EXCHANGE_RATE"
+            ],
+            "to_currency": [
+              "JPY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromCurrency": "USD",
+        "toCurrency": "JPY"
+      },
+      "name": "getCurrencyExchangeRate-503",
+      "operation": "getCurrencyExchangeRate"
+    },
+    {
+      "callId": "00000015-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "from_currency": [
+              "USD"
+            ],
+            "function": [
+              "CURRENCY_EXCHANGE_RATE"
+            ],
+            "to_currency": [
+              "JPY"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromCurrency": "USD",
+        "toCurrency": "JPY"
+      },
+      "name": "getCurrencyExchangeRate-transport",
+      "operation": "getCurrencyExchangeRate"
+    },
+    {
+      "callId": "00000016-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"markets\":[{\"market_type\":\"Equity\",\"region\":\"United States\",\"primary_exchanges\":\"NYSE\",\"current_status\":\"closed\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "MARKET_STATUS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "markets": [
+            {
+              "currentStatus": "closed",
+              "marketType": "Equity",
+              "primaryExchanges": "NYSE",
+              "region": "United States"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "region": "United States"
+      },
+      "name": "getMarketStatus-found",
+      "operation": "getMarketStatus"
+    },
+    {
+      "callId": "00000017-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "MARKET_STATUS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "markets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "region": "United States"
+      },
+      "name": "getMarketStatus-providerRejected",
+      "operation": "getMarketStatus"
+    },
+    {
+      "callId": "00000018-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "MARKET_STATUS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "markets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "region": "United States"
+      },
+      "name": "getMarketStatus-invalidResponse",
+      "operation": "getMarketStatus"
+    },
+    {
+      "callId": "00000019-0000-4000-8000-000000000001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "markets": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "region": "\n"
+      },
+      "name": "getMarketStatus-defect",
+      "operation": "getMarketStatus"
+    },
+    {
+      "callId": "00000020-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "MARKET_STATUS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "region": "United States"
+      },
+      "name": "getMarketStatus-429",
+      "operation": "getMarketStatus"
+    },
+    {
+      "callId": "00000021-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "MARKET_STATUS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "region": "United States"
+      },
+      "name": "getMarketStatus-503",
+      "operation": "getMarketStatus"
+    },
+    {
+      "callId": "00000022-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "MARKET_STATUS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "region": "United States"
+      },
+      "name": "getMarketStatus-transport",
+      "operation": "getMarketStatus"
+    },
+    {
+      "callId": "00000023-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"last_updated\":\"2026-11-16 16:16:00 US/Eastern\",\"top_gainers\":[{\"ticker\":\"IBM\",\"price\":\"255.25\"}],\"top_losers\":[{\"ticker\":\"XYZ\",\"price\":\"2.15\"}],\"most_actively_traded\":[{\"ticker\":\"ABC\",\"price\":\"9.11\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TOP_GAINERS_LOSERS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "lastUpdated": "2026-11-16 16:16:00 US/Eastern",
+          "mostActivelyTraded": [
+            {
+              "price": "9.11",
+              "ticker": "ABC"
+            }
+          ],
+          "topGainers": [
+            {
+              "price": "255.25",
+              "ticker": "IBM"
+            }
+          ],
+          "topLosers": [
+            {
+              "price": "2.15",
+              "ticker": "XYZ"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "getTopGainersLosers-found",
+      "operation": "getTopGainersLosers"
+    },
+    {
+      "callId": "00000024-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TOP_GAINERS_LOSERS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "lastUpdated": "",
+          "mostActivelyTraded": [],
+          "topGainers": [],
+          "topLosers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "getTopGainersLosers-providerRejected",
+      "operation": "getTopGainersLosers"
+    },
+    {
+      "callId": "00000025-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TOP_GAINERS_LOSERS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "lastUpdated": "",
+          "mostActivelyTraded": [],
+          "topGainers": [],
+          "topLosers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "getTopGainersLosers-invalidResponse",
+      "operation": "getTopGainersLosers"
+    },
+    {
+      "callId": "00000026-0000-4000-8000-000000000001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "lastUpdated": "",
+          "mostActivelyTraded": [],
+          "topGainers": [],
+          "topLosers": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": -1
+      },
+      "name": "getTopGainersLosers-defect",
+      "operation": "getTopGainersLosers"
+    },
+    {
+      "callId": "00000027-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TOP_GAINERS_LOSERS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "getTopGainersLosers-429",
+      "operation": "getTopGainersLosers"
+    },
+    {
+      "callId": "00000028-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TOP_GAINERS_LOSERS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "getTopGainersLosers-503",
+      "operation": "getTopGainersLosers"
+    },
+    {
+      "callId": "00000029-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TOP_GAINERS_LOSERS"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "getTopGainersLosers-transport",
+      "operation": "getTopGainersLosers"
     }
   ],
   "schemaVersion": 1

@@ -14,7 +14,10 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/algolia/scenarios.json")
+SCENARIOS = [
+    scenario for scenario in load_scenarios(ROOT / "conformance/connectors/algolia/scenarios.json")
+    if scenario["operation"] in {"search", "saveObject"}
+]
 CONNECTION = sdk.ConnectionRef("algolia", "algolia")
 ADAPTER = PythonOperationAdapter(
     "algolia", CONNECTION, algolia,

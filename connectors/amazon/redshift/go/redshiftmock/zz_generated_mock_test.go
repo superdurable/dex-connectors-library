@@ -20,6 +20,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[redshift.StatementResultPage](`{"records":[[{"stringValue":"example"}]],"nextToken":"","totalNumRows":1}`)
 			return err
 		}},
+		{name: "executeStatement/submittedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redshift.StatementIdentity](`{"id":"123e4567-e89b-12d3-a456-426614174000"}`)
+			return err
+		}},
+		{name: "describeStatement/describedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redshift.StatementStatus](`{"id":"123e4567-e89b-12d3-a456-426614174000","status":"FINISHED","hasResultSet":true}`)
+			return err
+		}},
+		{name: "listStatements/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redshift.StatementPage](`{"statements":[{"id":"123e4567-e89b-12d3-a456-426614174000","status":"FINISHED","hasResultSet":false}],"nextToken":""}`)
+			return err
+		}},
+		{name: "cancelStatement/canceledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[redshift.StatementCancellation](`{"canceled":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +48,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetStatementResult().Definition().Operation.OperationID != "getStatementResult" {
 		t.Errorf("getStatementResult mock has another definition")
+	}
+	if mock.ExecuteStatement().Definition().Operation.OperationID != "executeStatement" {
+		t.Errorf("executeStatement mock has another definition")
+	}
+	if mock.DescribeStatement().Definition().Operation.OperationID != "describeStatement" {
+		t.Errorf("describeStatement mock has another definition")
+	}
+	if mock.ListStatements().Definition().Operation.OperationID != "listStatements" {
+		t.Errorf("listStatements mock has another definition")
+	}
+	if mock.CancelStatement().Definition().Operation.OperationID != "cancelStatement" {
+		t.Errorf("cancelStatement mock has another definition")
 	}
 }
